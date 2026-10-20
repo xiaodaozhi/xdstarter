@@ -1,0 +1,49 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {"major": 3, "minor": 25, "patch": 0},
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {"BUILD_TESTING": "ON"}
+    },
+    {
+      "name": "core-debug",
+      "displayName": "Core tests without Qt (Debug)",
+      "inherits": "base",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug", "XDSTARTER_BUILD_APP": "OFF"}
+    },
+    {
+      "name": "core-release",
+      "displayName": "Core tests without Qt (Release)",
+      "inherits": "base",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "Release", "XDSTARTER_BUILD_APP": "OFF"}
+    },
+    {
+      "name": "app-debug",
+      "displayName": "Qt Quick prototype (Debug)",
+      "inherits": "base",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug", "XDSTARTER_BUILD_APP": "ON"}
+    },
+    {
+      "name": "app-release",
+      "displayName": "Qt Quick prototype (Release)",
+      "inherits": "base",
+      "cacheVariables": {"CMAKE_BUILD_TYPE": "Release", "XDSTARTER_BUILD_APP": "ON"}
+    }
+  ],
+  "buildPresets": [
+    {"name": "core-debug", "configurePreset": "core-debug"},
+    {"name": "core-release", "configurePreset": "core-release"},
+    {"name": "app-debug", "configurePreset": "app-debug"},
+    {"name": "app-release", "configurePreset": "app-release"}
+  ],
+  "testPresets": [
+    {"name": "core-debug", "configurePreset": "core-debug", "output": {"outputOnFailure": true}, "execution": {"noTestsAction": "error"}},
+    {"name": "core-release", "configurePreset": "core-release", "output": {"outputOnFailure": true}, "execution": {"noTestsAction": "error"}},
+    {"name": "app-debug", "configurePreset": "app-debug", "output": {"outputOnFailure": true}, "execution": {"noTestsAction": "error"}},
+    {"name": "app-release", "configurePreset": "app-release", "output": {"outputOnFailure": true}, "execution": {"noTestsAction": "error"}}
+  ]
+}

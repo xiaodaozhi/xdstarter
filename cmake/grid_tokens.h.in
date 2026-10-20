@@ -1,0 +1,16 @@
+#pragma once
+
+// Generated from docs/design/tokens/tile-grid.json. Edit the shared JSON tokens.
+namespace xdstarter::grid_tokens {
+
+inline constexpr int cell = @GRID_CELL@;
+inline constexpr int gap = @GRID_GAP@;
+inline constexpr int columns = @GRID_COLUMNS@;
+inline constexpr int smallColumns = @GRID_SMALL_COLUMNS@;
+inline constexpr int smallRows = @GRID_SMALL_ROWS@;
+inline constexpr int standardColumns = @GRID_STANDARD_COLUMNS@;
+inline constexpr int standardRows = @GRID_STANDARD_ROWS@;
+inline constexpr int wideColumns = @GRID_WIDE_COLUMNS@;
+inline constexpr int wideRows = @GRID_WIDE_ROWS@;
+
+} // namespace xdstarter::grid_tokens
