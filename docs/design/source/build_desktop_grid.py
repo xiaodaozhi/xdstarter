@@ -1,8 +1,9 @@
 """Native SVG mockups: both themes share the exact tile-grid.json geometry."""
 import json
 from pathlib import Path
-import subprocess
 from html import escape
+from render_svg import render_svg
+from ui_symbols import STROKE_WIDTH, THEME_COLORS, avatar_body, brand_mark, glyph_paths
 
 ROOT = Path(__file__).resolve().parents[1]
 GRID = json.loads((ROOT/'tokens/tile-grid.json').read_text())
@@ -11,6 +12,18 @@ COLORS = {'Word':'#174DA3','Excel':'#14613D','PowerPoint':'#973F20','VS Code':'#
           'Spotify':'#145636','VLC':'#914711','Terminal':'#35475C',
           'Calculator':'#175E85','Clock':'#35475C','Notepad':'#145D80','Settings':'#35475C'}
 LABELS = {'WeChat':'微信','Photos':'照片'}
+
+# The 1920x1080 reference canvas represents 150% UI scaling.
+# Menu border and Start button hit area share a 16 DIP / 24 px left anchor.
+SCALE = 1.5
+START_X = 24
+TASKBAR_TOP = 1008
+
+
+def ui_glyph(name, x, y, size=36, color='#FFFFFF'):
+    return (f'<g data-ui-symbol="{name}" transform="translate({x} {y}) scale({size / 24})" '
+            f'fill="none" stroke="{color}" stroke-width="{STROKE_WIDTH}" '
+            f'stroke-linecap="round" stroke-linejoin="round">{glyph_paths(name)}</g>')
 
 def r(x,y,w,h,fill,rx=6,extra=''):
     return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{rx}" fill="{fill}" {extra}/>'
@@ -89,16 +102,18 @@ def build(theme):
     <linearGradient id="fold" x2=".6" y2="1"><stop stop-color="{'#EDF6FF' if light else '#275BBB'}"/><stop offset="1" stop-color="{'#78A5E2' if light else '#0A244C'}"/></linearGradient>
     <linearGradient id="panel" x2="1" y2="1"><stop stop-color="{'#F5FAFF' if light else '#21334A'}"/><stop offset="1" stop-color="{'#E3EFFC' if light else '#111F32'}"/></linearGradient>
     <linearGradient id="tile" x2="0" y2="1"><stop stop-color="white" stop-opacity=".05"/><stop offset="1" stop-color="black" stop-opacity=".06"/></linearGradient>
-    <filter id="shadow" x="-10%" y="-10%" width="125%" height="130%"><feDropShadow dx="0" dy="12" stdDeviation="15" flood-color="#061224" flood-opacity="{'0.12' if light else '0.35'}"/></filter>
+    <filter id="shadow" x="-10%" y="-10%" width="125%" height="130%"><feGaussianBlur in="SourceAlpha" stdDeviation="15" result="blur"/><feOffset in="blur" dy="12" result="offset"/><feFlood flood-color="#061224" flood-opacity="{'0.12' if light else '0.35'}" result="color"/><feComposite in="color" in2="offset" operator="in" result="shade"/><feMerge><feMergeNode in="shade"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     </defs>'''
     p+=r(0,0,1920,1080,'url(#desktop)',0)
     for d in ['M780-100C1610 40 1300 370 2040 440L2040 780C1310 570 1470 130 780-100Z',
               'M1260-100C2050 130 1240 450 1940 600L1940 850C1230 650 1900 280 1260-100Z',
               'M890 1180C1440 540 1680 450 2070 640L2070 850C1620 660 1480 860 1270 1180Z']:
         p+=path(d,'url(#fold)', '#BBD6FA' if light else '#23559A',1)
-    p+=r(44,88,1362,910,'url(#panel)',20,f'stroke="{border}" filter="url(#shadow)"')
-    p+=path('M144 88V998M516 164V998','none',border,1,'opacity=".35"')
-    p+=circle(94,144,26,'#B4D0F2')+path('M69 153L85 132 104 148 117 141 119 162H69Z','#547A93')
+    p+=f'<g id="menu-window" data-left-px="{START_X}" data-left-dip="{START_X / SCALE:g}" transform="translate({START_X - 44} 0)">'
+    p+=r(44,88,1362,904,'url(#panel)',20,f'data-role="menu-border" stroke="{border}" filter="url(#shadow)"')
+    p+=path('M140 88V992M516 164V992','none',border,1,'opacity=".35"')
+    p+='<g data-role="user-avatar" data-size-dip="32" transform="translate(68 120) scale(.75)">'
+    p+='<title>用户账户：圆形默认头像</title>'+avatar_body(theme, 'menu-avatar-circle')+'</g>'
     p+=r(176,110,1200,54,'#FFFFFF' if light else '#263B55',16,f'stroke="{border}" fill-opacity=".5"')
     p+=circle(205,135,9,'none',f'stroke="{muted}" stroke-width="2"')+path('M212 142L219 149','none',muted,2)
     p+=t(236,146,'搜索应用或快捷方式',21,muted)
@@ -108,9 +123,12 @@ def build(theme):
         if letter:p+=t(178,yy-37,letter,18,muted)
         key={'Microsoft Excel':'Excel','Microsoft Word':'Word'}.get(label,label)
         p+=icon(key,178,yy-22,42)+t(244,yy+8,label,21,fg)
-    for name,yy in [('Folder',713),('Download',797),('Settings',879)]:
-        p+=icon(name,77,yy,34,muted)
-    p+=path('M94 936V952M82 943A17 17 0 1 0 106 943','none',muted,2.5)
+    for name, label, center_y in [('documents','文档',736),('downloads','下载',808),
+                                  ('settings','设置',880),('power','电源选项',952)]:
+        p+=f'<g data-shortcut="{name}" data-hit-size-dip="48" role="button" aria-label="{label}"><title>{label}</title>'
+        p+=r(56,center_y-36,72,72,'#D7E7FA' if light else '#294462',12,
+             f'data-role="shortcut-hit-area" fill-opacity="{0.5 if name == "documents" else 0}"')
+        p+=ui_glyph(name,74,center_y-18,36,fg if name == 'documents' else THEME_COLORS[theme])+'</g>'
 
     for group,title,top in [('work','工作',238),('daily','日常',492),('entertainment','娱乐',740)]:
         p+=t(546,top-22,title,24,fg,600)+t(1355,top-24,'···',25,muted)
@@ -132,17 +150,20 @@ def build(theme):
             p+='</g>'
         p+='</g>'
     p+=r(1237,935,138,44,'none',22,f'stroke="{border}"')+t(1254,964,'＋ 添加应用',18,fg)
-    p+=r(0,1014,1920,66,'#E4F0FC' if light else '#112440',0,'fill-opacity=".95"')
-    for xx in (28,48):
-        for yy in (1030,1050):p+=r(xx,yy,17,17,'#48BDF4',2)
-    p+=circle(110,1048,11,'none',f'stroke="{fg}" stroke-width="3"')+path('M118 1056L128 1066','none',fg,3)
-    p+=icon('Folder',162,1026,44)+icon('Edge',230,1026,44)+icon('VS Code',298,1026,44)
+    p+='</g>'
+    p+=r(0,TASKBAR_TOP,1920,72,'#E4F0FC' if light else '#112440',0,'fill-opacity=".95"')
+    p+=f'<g id="start-button" data-left-px="{START_X}" data-left-dip="16" data-hit-size-dip="48"><title>XDStarter 开始按钮</title>'
+    p+=r(START_X,TASKBAR_TOP,72,72,'#C2D9F5' if light else '#284769',10,
+         'data-role="start-hit-area" fill-opacity=".65"')
+    p+=f'<g transform="translate(42 1026) scale({36/256})">{brand_mark()}</g></g>'
+    p+=ui_glyph('search',114,1026,36,fg)
+    p+=icon('Folder',170,1022,44)+icon('Edge',238,1022,44)+icon('VS Code',306,1022,44)
     p+=path('M1688 1048L1696 1040 1704 1048M1725 1043Q1737 1032 1749 1043M1730 1048Q1737 1042 1744 1048','none',fg,2)
     p+=circle(1737,1054,2,fg)+path('M1765 1043H1771L1779 1036V1058L1771 1051H1765ZM1786 1040Q1796 1048 1786 1056','none',fg,2)
     p+=t(1885,1044,'09:41',17,fg,400,'text-anchor="end"')+t(1885,1067,'2026/10/20',16,fg,400,'text-anchor="end"')
     out=ROOT/f'mockups/v2/xdstarter-desktop-{theme}-v2.svg'
-    out.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080"><g font-family="Arial, Hiragino Sans GB, sans-serif">'+p+'</g></svg>')
-    subprocess.run(['rsvg-convert',str(out),'-o',str(out.with_suffix('.png'))],check=True)
-    print(f'{theme}: exact shared grid, 1920x1080 PNG + editable SVG')
+    out.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" data-design-revision="2.1" data-reference-scale="1.5"><g font-family="Segoe UI">'+p+'</g></svg>', encoding='utf-8')
+    render_svg(out,out.with_suffix('.png'))
+    print(f'{theme}: revision 2.1, aligned Start anchor, circular avatar, exact shared grid')
 
 for theme in ('dark','light'):build(theme)

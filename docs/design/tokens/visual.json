@@ -1,6 +1,8 @@
 {
   "brand": {"blue": "#368BFF", "cyan": "#36D6CB", "ink": "#142138"},
+  "status": {"error": "#ED7777"},
   "cornerRadiusDip": {"menu": 12, "tile": 6},
+  "menuChrome": {"shadowInsetDip": 24, "screenGapDip": 8, "borderWidthDip": 1},
   "tileLabelFontDip": 14,
   "defaultMenuSizeDip": {"width": 980, "height": 680},
   "animationDurationMs": 140,
