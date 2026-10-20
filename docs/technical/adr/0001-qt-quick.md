@@ -2,6 +2,8 @@
 
 日期：2026-10-20。状态：已接受，依据项目所有者明确选择。
 
+版本与 Windows 工具链条款已由 [ADR-0002](0002-toolchain-baseline.md) 调整；本 ADR 保留首次选择的背景与框架决定。
+
 ## 背景
 
 XDStarter 需要支持多跨度磁贴、拖拽与动画、深浅主题、Windows 11 菜单浮层，以及原生 Win 键与开始按钮集成。已有精确 SVG 设计与网格数据，没有历史应用代码。
@@ -9,7 +11,7 @@ XDStarter 需要支持多跨度磁贴、拖拽与动画、深浅主题、Windows
 ## 决定
 
 - UI 使用 Qt Quick / QML，业务与平台适配使用 C++20，构建采用 CMake。
-- 初始 Qt 基线为 6.12.0，Windows 首选 MSVC 2022 x64。
+- 首次选择 Qt 6.12.0，Windows 首选 MSVC 2022 x64；当前 Qt 精确版本与正式构建基线以 [ADR-0002](0002-toolchain-baseline.md) 为准。
 - 普通控件可采用 Qt Quick Controls 的 FluentWinUI3 风格，磁贴由自定义组件绘制。
 - 通用布局/模型不依赖 Win32，Windows 系统集成单独封装。
 - 首版支持目标仍为 Windows 11 x64；跨平台开发便利不等同于跨平台产品承诺。
