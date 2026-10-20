@@ -1,0 +1,88 @@
+{
+  "name": "Bug 报告",
+  "description": "提供版本、环境、复现、预期与实际行为",
+  "title": "[Bug] ",
+  "labels": [
+    "type:bug",
+    "status:needs-triage"
+  ],
+  "body": [
+    {
+      "type": "input",
+      "id": "version",
+      "attributes": {
+        "label": "软件或设计版本",
+        "description": "Release/commit；设计问题请注明稿件版本。"
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "input",
+      "id": "windows",
+      "attributes": {
+        "label": "Windows 版本与构建",
+        "description": "例如 winver 输出；非 Windows 问题注明开发环境。"
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "environment",
+      "attributes": {
+        "label": "显示与输入环境",
+        "description": "DPI、显示器、任务栏、输入法、Qt/RHI/GPU 等适用信息。"
+      },
+      "validations": {
+        "required": false
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "steps",
+      "attributes": {
+        "label": "复现步骤",
+        "description": "从初始状态逐步描述。"
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "expected",
+      "attributes": {
+        "label": "预期行为",
+        "description": "应当发生什么？"
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "actual",
+      "attributes": {
+        "label": "实际行为与影响",
+        "description": "实际结果、出现频率及系统入口是否仍可用。"
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "evidence",
+      "attributes": {
+        "label": "日志、截图与补充信息",
+        "description": "去除账号、个人路径和其他敏感信息。"
+      },
+      "validations": {
+        "required": false
+      }
+    }
+  ]
+}

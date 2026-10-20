@@ -1,0 +1,43 @@
+{
+  "name": "文档与设计",
+  "description": "修改产品/技术文档、流程或视觉设计",
+  "title": "[文档] ",
+  "labels": [
+    "type:docs",
+    "status:needs-triage"
+  ],
+  "body": [
+    {
+      "type": "textarea",
+      "id": "problem",
+      "attributes": {
+        "label": "需要修正或补充的内容",
+        "description": "指出文档位置或设计版本。"
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "result",
+      "attributes": {
+        "label": "期望结果与验收",
+        "description": "说明需要同步的文档、源文件和导出图。"
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "references",
+      "attributes": {
+        "label": "参考与关联任务"
+      },
+      "validations": {
+        "required": false
+      }
+    }
+  ]
+}

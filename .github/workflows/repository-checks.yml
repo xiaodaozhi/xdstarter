@@ -1,0 +1,42 @@
+{
+  "name": "Repository checks",
+  "on": {
+    "push": {
+      "branches": [
+        "main"
+      ]
+    },
+    "pull_request": {},
+    "workflow_dispatch": {}
+  },
+  "permissions": {
+    "contents": "read"
+  },
+  "jobs": {
+    "check": {
+      "runs-on": "ubuntu-latest",
+      "timeout-minutes": 10,
+      "steps": [
+        {
+          "name": "Checkout (actions/checkout v6)",
+          "uses": "actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803",
+          "with": {
+            "persist-credentials": false
+          }
+        },
+        {
+          "name": "Check documents and design assets",
+          "run": "python3 scripts/check_repository.py"
+        },
+        {
+          "name": "Preview project bootstrap",
+          "run": "python3 scripts/github/bootstrap.py"
+        },
+        {
+          "name": "Test project-bootstrap safety and idempotence",
+          "run": "python3 -m unittest discover -s tests/tooling -v"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "name": "功能需求",
+  "description": "描述用户场景、期望行为和可验证的验收标准",
+  "title": "[需求] ",
+  "labels": [
+    "type:feature",
+    "status:needs-triage"
+  ],
+  "body": [
+    {
+      "type": "textarea",
+      "id": "scenario",
+      "attributes": {
+        "label": "用户场景与问题",
+        "description": "谁在什么情况下遇到什么问题？"
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "proposal",
+      "attributes": {
+        "label": "期望行为与范围",
+        "description": "说明期望行为和本次不包含的内容。"
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "acceptance",
+      "attributes": {
+        "label": "验收标准",
+        "description": "写出可以逐条验证的结果。"
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "references",
+      "attributes": {
+        "label": "关联需求、设计与替代方案",
+        "description": "PRD 编号、已有 Issue、设计稿或其他证据。"
+      },
+      "validations": {
+        "required": false
+      }
+    }
+  ]
+}

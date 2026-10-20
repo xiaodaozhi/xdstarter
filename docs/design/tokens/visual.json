@@ -1,0 +1,11 @@
+{
+  "brand": {"blue": "#368BFF", "cyan": "#36D6CB", "ink": "#142138"},
+  "cornerRadiusDip": {"menu": 12, "tile": 6},
+  "tileLabelFontDip": 14,
+  "defaultMenuSizeDip": {"width": 980, "height": 680},
+  "animationDurationMs": 140,
+  "themes": {
+    "dark": {"foreground": "#F4F7FB", "secondary": "#ACBBD0", "opaqueFallback": "#182334"},
+    "light": {"foreground": "#172338", "secondary": "#596A82", "opaqueFallback": "#EFF5FC"}
+  }
+}

@@ -1,0 +1,36 @@
+# Local build and IDE state
+build/
+build-*/
+out/
+.cache/
+.qt/
+.qtcreator/
+.vs/
+.vscode/
+CMakeUserPresets.json
+*.user
+compile_commands.json
+
+# Generated release bundles and local archives
+artifacts/
+dist/
+*.zip
+*.exe
+*.dll
+*.pdb
+
+# Python and machine-local files
+__pycache__/
+*.py[cod]
+.venv/
+.DS_Store
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Tool-specific local workspace configuration
+.codex/
+.agents/
+.aws/

@@ -1,0 +1,54 @@
+{
+  "name": "任务或技术研究",
+  "description": "验证技术问题、记录取舍或拆分实施任务",
+  "title": "[研究] ",
+  "labels": [
+    "type:research",
+    "status:needs-triage"
+  ],
+  "body": [
+    {
+      "type": "textarea",
+      "id": "question",
+      "attributes": {
+        "label": "目标与待回答问题",
+        "description": "说明为什么需要本任务。"
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "approach",
+      "attributes": {
+        "label": "研究或实施范围",
+        "description": "相关平台、依赖和计划输出。"
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "acceptance",
+      "attributes": {
+        "label": "完成标准",
+        "description": "可复现记录、决策、原型或测试结果。"
+      },
+      "validations": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "id": "references",
+      "attributes": {
+        "label": "相关文档与任务"
+      },
+      "validations": {
+        "required": false
+      }
+    }
+  ]
+}

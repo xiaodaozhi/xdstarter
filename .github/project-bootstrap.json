@@ -1,0 +1,230 @@
+{
+  "repository": "xiaodaozhi/xdstarter",
+  "labels": [
+    {
+      "name": "type:feature",
+      "color": "1D76DB",
+      "description": "功能需求与实现"
+    },
+    {
+      "name": "type:bug",
+      "color": "1D76DB",
+      "description": "可复现的缺陷"
+    },
+    {
+      "name": "type:research",
+      "color": "1D76DB",
+      "description": "技术验证与决策"
+    },
+    {
+      "name": "type:docs",
+      "color": "1D76DB",
+      "description": "产品、技术与协作文档"
+    },
+    {
+      "name": "priority:P0",
+      "color": "D93F0B",
+      "description": "关键可行性或系统恢复阻塞"
+    },
+    {
+      "name": "priority:P1",
+      "color": "D93F0B",
+      "description": "当前里程碑核心能力"
+    },
+    {
+      "name": "priority:P2",
+      "color": "D93F0B",
+      "description": "后续优化与非阻塞改进"
+    },
+    {
+      "name": "status:needs-triage",
+      "color": "FBCA04",
+      "description": "待分流或补充信息"
+    },
+    {
+      "name": "status:ready",
+      "color": "FBCA04",
+      "description": "范围与验收已清晰"
+    },
+    {
+      "name": "status:in-progress",
+      "color": "FBCA04",
+      "description": "实施中"
+    },
+    {
+      "name": "status:blocked",
+      "color": "FBCA04",
+      "description": "有明确外部或任务依赖阻塞"
+    },
+    {
+      "name": "area:ui",
+      "color": "0E8A16",
+      "description": "Qt Quick 界面与交互"
+    },
+    {
+      "name": "area:windows",
+      "color": "0E8A16",
+      "description": "Windows 系统集成"
+    },
+    {
+      "name": "area:core",
+      "color": "0E8A16",
+      "description": "布局、模型、搜索与持久化"
+    },
+    {
+      "name": "area:docs",
+      "color": "0E8A16",
+      "description": "文档与设计"
+    },
+    {
+      "name": "area:build",
+      "color": "0E8A16",
+      "description": "构建、工具与 CI"
+    },
+    {
+      "name": "area:release",
+      "color": "0E8A16",
+      "description": "测试、兼容与发行"
+    }
+  ],
+  "milestones": [
+    {
+      "title": "M0-Foundation",
+      "description": "仓库、产品与技术规格、设计资产、协作入口和许可决定。"
+    },
+    {
+      "title": "M1-Prototype",
+      "description": "Qt 工程、精确磁贴布局和 Windows 系统集成可行性。"
+    },
+    {
+      "title": "M2-Alpha",
+      "description": "应用目录、搜索、磁贴编辑与本地持久化核心流程。"
+    },
+    {
+      "title": "M3-Beta",
+      "description": "兼容、辅助功能、性能和安装发行验证。"
+    }
+  ],
+  "seedIssues": [
+    {
+      "key": "foundation",
+      "title": "[准备] 初始化产品、技术、设计与 GitHub 协作基线",
+      "body": "建立 Qt Quick 项目的前期准备，不将设计稿声明为已实现软件。\n\n验收：\n- [ ] 访客 README、docs 导航、产品/交互/架构/测试/发布与规范齐全\n- [ ] 最新 Logo、精确网格和深浅 PNG/SVG 在 docs/design 中正确归档\n- [ ] Issue 表单、PR 模板、Labels、Milestones 和后续初始任务可用\n- [ ] 本地和 GitHub 仓库检查通过，实际检查范围清晰\n\n文档入口： https://github.com/xiaodaozhi/xdstarter/tree/main/docs\n完成后在此记录提交和验证结果，并关闭。",
+      "milestone": "M0-Foundation",
+      "labels": [
+        "type:docs",
+        "priority:P1",
+        "status:in-progress",
+        "area:docs"
+      ]
+    },
+    {
+      "key": "license",
+      "title": "[决策] 确认项目代码、文档与原创设计资产的许可证",
+      "body": "需要项目所有者决定应用代码、文档、原创 Logo/设计的授权方式，并确认 Qt 许可渠道。\n\n验收：\n- [ ] 所有者确认许可方案并说明应用、文档、资产的适用范围\n- [ ] 添加相应 LICENSE/NOTICE，更新 README 与 docs/governance/licensing.md\n- [ ] 按选用 Qt 模块和动态部署方式记录再分发义务及维护渠道\n\n当前未选择 MIT/GPL 等项目许可证；这是公开发行前置条件，不阻止通用原型验证。",
+      "milestone": "M0-Foundation",
+      "labels": [
+        "type:research",
+        "priority:P1",
+        "status:needs-triage",
+        "area:release"
+      ]
+    },
+    {
+      "key": "qt-scaffold",
+      "title": "[原型] 建立 Qt Quick / C++20 / CMake 应用工程",
+      "body": "按 ADR-0001 建立真实可配置、构建、测试的 Qt 6.12.0 工程。\n\n验收：\n- [ ] QGuiApplication + QML 可运行，Windows 使用 MSVC 2022 x64\n- [ ] core / services / platform 接口与 QML 分层，macOS 有明确标识的 stub\n- [ ] CMake Presets 不包含开发者机器路径，补充实际构建/运行命令\n- [ ] CI 增加真实应用构建与核心测试；当前文档检查继续保留\n\n依据：docs/technical/development.md、architecture.md。",
+      "milestone": "M1-Prototype",
+      "labels": [
+        "type:feature",
+        "priority:P1",
+        "status:ready",
+        "area:build"
+      ]
+    },
+    {
+      "key": "tile-layout",
+      "title": "[原型] 实现三档磁贴网格与混合 DPI 对齐",
+      "body": "对应 PRD-003、PRD-009、PRD-011。使用共享网格，不能由文本或布局拉伸磁贴。\n\n验收：\n- [ ] 小 48×48、标准 104×104、宽 216×104 DIP，统一间隙 8\n- [ ] 四枚小磁贴与标准磁贴占位相同，两枚标准含间隙等于宽磁贴\n- [ ] 深浅主题与长名称不改变几何；小磁贴有辅助功能名称和提示\n- [ ] 核心边界测试与 100/125/150/175/200% 实际 UI 截图验证\n\n依据：docs/technical/tile-layout.md、docs/design/tokens/tile-grid.json。",
+      "milestone": "M1-Prototype",
+      "labels": [
+        "type:feature",
+        "priority:P1",
+        "status:ready",
+        "area:ui"
+      ]
+    },
+    {
+      "key": "windows-spike",
+      "title": "[研究] 验证 Windows 唤起、焦点、材料与开始菜单接管",
+      "body": "这是决定日常系统融合可行性的 P0 原型，不预先承诺所有 Windows 11 构建支持。\n\n验收：\n- [ ] 普通用户权限下验证 Qt Quick 窗口材料、无边框、焦点与反复唤起\n- [ ] 验证单独 Win 键、开始按钮左键，并保留 Win 组合键与右键系统菜单\n- [ ] 记录任务栏居中/左对齐、自动隐藏、双屏 DPI、Explorer 重启与睡眠恢复\n- [ ] 暂停、退出、异常和不兼容时保留原生系统入口\n- [ ] 输出确切 Windows 构建、Qt/RHI 环境、方法取舍、失败案例与支持边界\n\n依据：docs/technical/windows-integration.md。禁止注入 Explorer 或替换系统文件。",
+      "milestone": "M1-Prototype",
+      "labels": [
+        "type:research",
+        "priority:P0",
+        "status:ready",
+        "area:windows"
+      ]
+    },
+    {
+      "key": "catalog",
+      "title": "[功能] 应用目录、图标缓存与启动服务",
+      "body": "对应 PRD-002、PRD-004，目录与启动能力通过 Windows 适配提供。\n\n验收：\n- [ ] 枚举用户/公共开始菜单快捷方式及打包应用，稳定标识与去重\n- [ ] 异步图标加载与有界缓存，不阻塞菜单显示\n- [ ] 正确启动 .lnk 与 AUMID，失败保留菜单并说明原因\n- [ ] 覆盖卸载、失效路径、中文名称与权限问题\n\n依据：docs/technical/architecture.md、data-persistence.md。",
+      "milestone": "M2-Alpha",
+      "labels": [
+        "type:feature",
+        "priority:P1",
+        "status:ready",
+        "area:windows"
+      ]
+    },
+    {
+      "key": "search",
+      "title": "[功能] 本地应用名称、拼音和首字母搜索",
+      "body": "对应 PRD-006、PRD-012，范围为应用与已固定快捷方式。\n\n验收：\n- [ ] 名称/英文/拼音全拼与首字母匹配，排序稳定并去重\n- [ ] 确认拼音提供者和词库许可证，记录依赖\n- [ ] 空查询、无结果、后台目录更新及旧查询返回不会破坏状态\n- [ ] 结果可键盘启动，不发起网络搜索；记录参考数据集与响应 P95\n\n依据：docs/product/interaction.md、docs/technical/testing.md。",
+      "milestone": "M2-Alpha",
+      "labels": [
+        "type:feature",
+        "priority:P1",
+        "status:ready",
+        "area:core"
+      ]
+    },
+    {
+      "key": "tile-editing",
+      "title": "[功能] 磁贴固定、分组、拖拽与尺寸编辑",
+      "body": "对应 PRD-004、PRD-005、PRD-009。\n\n验收：\n- [ ] 固定/取消固定、显示名称、创建与排序分组\n- [ ] 拖拽和跨组移动有精确占位预览，合法松开后一次性提交\n- [ ] 尺寸变化保持左上锚点，冲突不覆盖已有磁贴\n- [ ] Esc 取消、无效落点恢复、键盘可操作，缩小窗口不打乱布局\n\n依据：docs/product/interaction.md、docs/technical/tile-layout.md。",
+      "milestone": "M2-Alpha",
+      "labels": [
+        "type:feature",
+        "priority:P1",
+        "status:ready",
+        "area:ui"
+      ]
+    },
+    {
+      "key": "persistence",
+      "title": "[功能] 布局配置、原子保存与恢复",
+      "body": "对应 PRD-007。保存稳定 targetId/tileId/groupId 与整数格坐标，目录缓存可重建。\n\n验收：\n- [ ] schemaVersion=1 的配置校验、QSaveFile 原子保存和有效备份\n- [ ] 重启还原布局，失效应用保留占位并提示\n- [ ] 损坏/写盘失败/较新 schema 不破坏原始数据\n- [ ] 导入校验与恢复路径可测试，不自动执行导入目标\n\n依据：docs/technical/data-persistence.md。",
+      "milestone": "M2-Alpha",
+      "labels": [
+        "type:feature",
+        "priority:P1",
+        "status:ready",
+        "area:core"
+      ]
+    },
+    {
+      "key": "beta-readiness",
+      "title": "[验证] 建立 Beta 兼容、辅助功能、性能与发行清单",
+      "body": "对应 PRD-008 至 PRD-012。先在本 Issue 拆分可独立验收的子任务。\n\n验收：\n- [ ] 精确记录 Windows/任务栏/DPI/输入法/渲染后端支持矩阵\n- [ ] 主题、减少动画、高对比度、屏幕阅读器与键盘验收\n- [ ] 参考设备采集至少 100 次唤起/查询 P95、隐藏 CPU、内存和帧耗时\n- [ ] 干净机器 Qt 部署、安装升级卸载、开机项清理与原生菜单恢复\n- [ ] 许可、依赖、签名、已知问题与 Release notes 完整\n\n当前性能数字仅为目标。依据：docs/technical/testing.md、release.md。",
+      "milestone": "M3-Beta",
+      "labels": [
+        "type:research",
+        "priority:P1",
+        "status:ready",
+        "area:release"
+      ]
+    }
+  ]
+}
