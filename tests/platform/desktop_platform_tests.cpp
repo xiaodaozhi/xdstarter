@@ -2,9 +2,15 @@
 #include "platform/desktop_tray.h"
 
 #include <QCoreApplication>
+#include <QCryptographicHash>
+#include <QDateTime>
+#include <QElapsedTimer>
 #include <QEvent>
+#include <QFile>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QSysInfo>
 
 #include <iostream>
 #include <limits>
@@ -34,6 +40,210 @@ QJsonObject jsonRect(const QRect& rect) {
             {QStringLiteral("y"), rect.y()},
             {QStringLiteral("width"), rect.width()},
             {QStringLiteral("height"), rect.height()}};
+}
+
+QJsonObject jsonNativeWindow(const xdstarter::DesktopNativeWindowObservation& window) {
+    // Hex strings preserve the complete integer even in JSON consumers that
+    // represent every number as a double. They are never reusable identities.
+    return {{QStringLiteral("handle"), QStringLiteral("0x%1").arg(window.handle, 0, 16)},
+            {QStringLiteral("rootHandle"), QStringLiteral("0x%1").arg(window.rootHandle, 0, 16)},
+            {QStringLiteral("processId"), static_cast<qint64>(window.processId)},
+            {QStringLiteral("className"), window.className},
+            {QStringLiteral("physicalRect"), jsonRect(window.physicalRect)},
+            {QStringLiteral("exists"), window.exists},
+            {QStringLiteral("visible"), window.visible}};
+}
+
+QJsonObject probeEnvironment() {
+    QFile executable(QCoreApplication::applicationFilePath());
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+    const bool hashed = executable.open(QIODevice::ReadOnly) && hash.addData(&executable);
+#ifdef _MSC_FULL_VER
+    const QString compiler = QStringLiteral("MSVC %1").arg(_MSC_FULL_VER);
+#elif defined(__clang__)
+    const QString compiler = QStringLiteral("Clang ") + QString::fromLatin1(__clang_version__);
+#elif defined(__GNUC__)
+    const QString compiler = QStringLiteral("GCC ") + QString::fromLatin1(__VERSION__);
+#else
+    const QString compiler = QStringLiteral("unknown");
+#endif
+    return {{QStringLiteral("program"), QStringLiteral("xdstarter_desktop_platform_tests")},
+            {QStringLiteral("binarySha256"), hashed ? QString::fromLatin1(hash.result().toHex())
+                                                    : QString()},
+            {QStringLiteral("qtBuildVersion"), QStringLiteral(QT_VERSION_STR)},
+            {QStringLiteral("qtRuntimeVersion"), QString::fromLatin1(qVersion())},
+            {QStringLiteral("product"), QSysInfo::prettyProductName()},
+            {QStringLiteral("productVersion"), QSysInfo::productVersion()},
+            {QStringLiteral("kernelVersion"), QSysInfo::kernelVersion()},
+            {QStringLiteral("compiler"), compiler},
+            {QStringLiteral("buildAbi"), QSysInfo::buildAbi()},
+            {QStringLiteral("cpuArchitecture"), QSysInfo::currentCpuArchitecture()},
+            {QStringLiteral("buildArchitecture"), QSysInfo::buildCpuArchitecture()}};
+}
+
+xdstarter::DesktopStartButtonHitResult nativeFreeHitFixture() {
+    xdstarter::DesktopStartButtonHitResult result;
+    result.anchor.trusted = true;
+    result.anchor.monitorPhysicalRect = QRect(-1920, 0, 1920, 1080);
+    result.anchor.workAreaPhysicalRect = QRect(-1920, 0, 1920, 1040);
+    result.anchor.startButtonPhysicalRect = QRect(-1912, 1040, 48, 40);
+    result.taskbar = {1, 1, 501, QStringLiteral("Shell_TrayWnd"), QRect(-1920, 1040, 1920, 40),
+                      true, true};
+    result.startWindow = {2, 1, 501, QStringLiteral("Start"), result.anchor.startButtonPhysicalRect,
+                          true, true};
+    result.uiaProviderProcessId = 501;
+    result.taskbarVerifiedExplorer = true;
+    result.nativeHandleRead = true;
+    result.startWindowIsTaskbarChild = true;
+    result.observationsStable = true;
+    const QRect button = result.anchor.startButtonPhysicalRect;
+    const std::array<QPoint, 5> points{
+        button.center(), QPoint(button.left() + 1, button.top() + 1),
+        QPoint(button.right() - 1, button.top() + 1),
+        QPoint(button.left() + 1, button.bottom() - 1),
+        QPoint(button.right() - 1, button.bottom() - 1)};
+    for (const QPoint& point : points) {
+        auto& sample = result.samples[result.sampleCount++];
+        sample = {point, result.startWindow, true, true};
+    }
+    return result;
+}
+
+void testStartButtonHitClassification(TestContext& test) {
+    using Classification = xdstarter::DesktopStartButtonHitClassification;
+    const auto baseline = nativeFreeHitFixture();
+    const auto expect = [&test](const xdstarter::DesktopStartButtonHitResult& value,
+                                Classification expected, std::string_view description) {
+        test.expect(xdstarter::classifyStartButtonHitTarget(value) == expected, description);
+    };
+    expect(baseline, Classification::IndependentCandidate,
+           "five matching samples on an independent window are only a diagnostic candidate");
+    auto value = baseline;
+    value.anchor.trusted = false;
+    expect(value, Classification::Unidentified,
+           "unidentified UIA button cannot become a candidate");
+    value = baseline;
+    value.nativeHandleRead = false;
+    expect(value, Classification::Unavailable,
+           "failed native HWND property is not a zero-HWND result");
+    value = baseline;
+    value.startWindow = {};
+    expect(value, Classification::NoNativeWindow,
+           "UIA elements without HWND have an explicit result");
+    value = baseline;
+    value.startWindow = value.taskbar;
+    value.startWindowIsTaskbarChild = false;
+    expect(value, Classification::SharedHost, "taskbar HWND is not an independent button window");
+    value = baseline;
+    value.startWindow.physicalRect = value.taskbar.physicalRect;
+    expect(value, Classification::SharedHost, "a native host covering neighboring icons is shared");
+    value = baseline;
+    value.startWindow.physicalRect.translate(1, 0);
+    expect(value, Classification::GeometryMismatch,
+           "even a one-pixel geometry difference is rejected");
+    value = baseline;
+    value.startWindow.processId = 502;
+    expect(value, Classification::IdentityMismatch,
+           "foreign native process cannot use trusted UIA bounds");
+    value = baseline;
+    value.uiaProviderProcessId = 0;
+    expect(value, Classification::IdentityMismatch, "missing provider identity is rejected");
+    value = baseline;
+    value.taskbar.processId = 502;
+    expect(value, Classification::IdentityMismatch, "taskbar provider process must agree");
+    value = baseline;
+    value.startWindow.rootHandle = 3;
+    expect(value, Classification::IdentityMismatch, "foreign root window is rejected");
+    value = baseline;
+    value.startWindowIsTaskbarChild = false;
+    expect(value, Classification::IdentityMismatch,
+           "matching geometry without child identity is rejected");
+    value = baseline;
+    value.taskbarVerifiedExplorer = false;
+    expect(value, Classification::Unavailable,
+           "unverified taskbar process cannot create a candidate");
+    value = baseline;
+    value.startWindow.exists = false;
+    expect(value, Classification::Unavailable, "destroyed start window is unavailable");
+    value = baseline;
+    value.startWindow.visible = false;
+    expect(value, Classification::Unavailable, "hidden start window is unavailable");
+    value = baseline;
+    value.taskbar.visible = false;
+    expect(value, Classification::Unavailable, "auto-hidden taskbar is not presumed clickable");
+    value = baseline;
+    value.observationsStable = false;
+    expect(value, Classification::ChangedDuringQuery,
+           "movement or replacement during sampling is rejected");
+    for (const unsigned int count : {0U, 4U, 6U}) {
+        value = baseline;
+        value.sampleCount = count;
+        expect(value, Classification::Unavailable,
+               "only the complete fixed five-point sample is accepted");
+    }
+    for (std::size_t index = 0; index < baseline.samples.size(); ++index) {
+        value = baseline;
+        value.samples[index].withinStartWindow = false;
+        expect(value, Classification::Occluded,
+               "each corner and center must hit the button window");
+        value = baseline;
+        value.samples[index].withinTaskbar = false;
+        expect(value, Classification::Occluded, "every sample must remain within the same taskbar");
+        value = baseline;
+        value.samples[index].window.processId = 502;
+        expect(value, Classification::Occluded, "overlay from another process is not a button hit");
+    }
+    value = baseline;
+    value.samples[1].physicalPoint = value.samples[0].physicalPoint;
+    expect(value, Classification::Occluded,
+           "duplicating center samples cannot replace corner coverage");
+    value = baseline;
+    value.samples[0].window.handle = 0;
+    expect(value, Classification::Occluded, "missing hit HWND is rejected");
+    value = baseline;
+    value.samples[0].window.visible = false;
+    expect(value, Classification::Occluded, "invisible hit window is not accepted");
+    value = baseline;
+    value.samples[0].window.rootHandle = 3;
+    expect(value, Classification::Occluded, "sample root identity must agree with taskbar");
+    value = baseline;
+    value.samples[0].window.handle = 3;
+    value.samples[0].window.className = QStringLiteral("Child");
+    expect(value, Classification::IndependentCandidate,
+           "verified descendants of an independent button window can match a sample");
+    value = baseline;
+    value.anchor.monitorPhysicalRect = QRect(0, 0, 1920, 1080);
+    expect(value, Classification::GeometryMismatch, "button on another monitor is not a target");
+    value = baseline;
+    value.anchor.startButtonPhysicalRect =
+        QRect(QPoint(std::numeric_limits<int>::min(), 0),
+               QPoint(std::numeric_limits<int>::max(), 39));
+    value.startWindow.physicalRect = value.anchor.startButtonPhysicalRect;
+    expect(value, Classification::GeometryMismatch,
+           "overflowing endpoint spans are rejected safely");
+    for (const int edge : {2, 3, 4, 5}) {
+        value = baseline;
+        const QRect button(-1912, 1040, edge, edge);
+        value.anchor.startButtonPhysicalRect = button;
+        value.startWindow.physicalRect = button;
+        const std::array<QPoint, 5> points{
+            button.center(), QPoint(button.left() + 1, button.top() + 1),
+            QPoint(button.right() - 1, button.top() + 1),
+            QPoint(button.left() + 1, button.bottom() - 1),
+            QPoint(button.right() - 1, button.bottom() - 1)};
+        for (std::size_t index = 0; index < points.size(); ++index) {
+            value.samples[index].physicalPoint = points[index];
+            value.samples[index].window = value.startWindow;
+        }
+        expect(value, edge < 5 ? Classification::GeometryMismatch
+                              : Classification::IndependentCandidate,
+               "tiny sets are rejected; five-pixel bounds keep five distinct points");
+    }
+    test.expect(xdstarter::startButtonHitClassificationName(Classification::IndependentCandidate) ==
+                    QStringLiteral("independent-candidate") &&
+                    xdstarter::startButtonHitClassificationName(Classification::NoNativeWindow) ==
+                    QStringLiteral("no-native-window"),
+                "diagnostic classification names are stable values rather than localized UI names");
 }
 
 // A native-free event source exercises the same queued session gate used by the
@@ -107,6 +317,56 @@ class HiddenNativeWindow {
 int main(int argc, char* argv[]) {
     QCoreApplication application(argc, argv);
     auto platform = xdstarter::createDesktopPlatform();
+    if (application.arguments().contains(QStringLiteral("--probe-start-hit"))) {
+        // The sole entry point for this native read-only research query. Normal
+        // tests and the product never enumerate the live Shell for hit testing.
+        QElapsedTimer timer;
+        timer.start();
+        const auto hit = platform->queryStartButtonHitTarget();
+        const qint64 elapsed = timer.elapsed();
+        QJsonArray samples;
+        for (unsigned int index = 0; index < hit.sampleCount && index < hit.samples.size();
+             ++index) {
+            const auto& sample = hit.samples[index];
+            samples.append(QJsonObject{
+                {QStringLiteral("x"), sample.physicalPoint.x()},
+                {QStringLiteral("y"), sample.physicalPoint.y()},
+                {QStringLiteral("window"), jsonNativeWindow(sample.window)},
+                {QStringLiteral("withinStartWindow"), sample.withinStartWindow},
+                {QStringLiteral("withinTaskbar"), sample.withinTaskbar}});
+        }
+        const QJsonObject value{
+            {QStringLiteral("schemaVersion"), 1},
+            {QStringLiteral("query"), QStringLiteral("start-button-native-hit")},
+            {QStringLiteral("readOnly"), true},
+            {QStringLiteral("captureReady"), false},
+            {QStringLiteral("observedAtUtc"),
+             QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)},
+            {QStringLiteral("elapsedMs"), elapsed},
+            {QStringLiteral("environment"), probeEnvironment()},
+            {QStringLiteral("classification"),
+             xdstarter::startButtonHitClassificationName(hit.classification)},
+            {QStringLiteral("uiaIdentified"), hit.anchor.trusted},
+            {QStringLiteral("monitorName"), hit.anchor.monitorName},
+            {QStringLiteral("monitorPhysicalRect"), jsonRect(hit.anchor.monitorPhysicalRect)},
+            {QStringLiteral("workAreaPhysicalRect"), jsonRect(hit.anchor.workAreaPhysicalRect)},
+            {QStringLiteral("startButtonPhysicalRect"),
+             jsonRect(hit.anchor.startButtonPhysicalRect)},
+            {QStringLiteral("dpi"), static_cast<int>(hit.anchor.dpi)},
+            {QStringLiteral("taskbar"), jsonNativeWindow(hit.taskbar)},
+            {QStringLiteral("taskbarVerifiedExplorer"), hit.taskbarVerifiedExplorer},
+            {QStringLiteral("uiaProviderProcessId"), static_cast<qint64>(hit.uiaProviderProcessId)},
+            {QStringLiteral("nativeHandleRead"), hit.nativeHandleRead},
+            {QStringLiteral("startWindow"), jsonNativeWindow(hit.startWindow)},
+            {QStringLiteral("startWindowIsTaskbarChild"), hit.startWindowIsTaskbarChild},
+            {QStringLiteral("observationsStable"), hit.observationsStable},
+            {QStringLiteral("sampleCount"), static_cast<int>(hit.sampleCount)},
+            {QStringLiteral("samples"), samples},
+            {QStringLiteral("message"), hit.message},
+            {QStringLiteral("errorCode"), hit.errorCode}};
+        std::cout << QJsonDocument(value).toJson(QJsonDocument::Indented).constData();
+        return 0;
+    }
     const bool probeMenu = application.arguments().contains(QStringLiteral("--probe-menu-anchor"));
     if (probeMenu || application.arguments().contains(QStringLiteral("--probe-anchor"))) {
         // Explicit read-only native probe, never part of unattended CTest. A
@@ -129,6 +389,7 @@ int main(int argc, char* argv[]) {
     }
 
     TestContext test;
+    testStartButtonHitClassification(test);
     for (const auto& action : {QStringLiteral("documents"), QStringLiteral("downloads"),
                                QStringLiteral("settings"), QStringLiteral("account")}) {
         test.expect(xdstarter::isSupportedDesktopAction(action), "known action is allowed");
@@ -244,6 +505,12 @@ int main(int argc, char* argv[]) {
                     !invalidAppearance.errorCode.isEmpty(),
                 "invalid native handle never claims native decorations are disabled");
     NativeFreePlatform nativeFree;
+    const auto unsupportedHit = nativeFree.queryStartButtonHitTarget();
+    test.expect(unsupportedHit.classification ==
+                        xdstarter::DesktopStartButtonHitClassification::Unsupported &&
+                    unsupportedHit.errorCode == QStringLiteral("unsupported-platform") &&
+                    nativeFree.anchorQueries == 0 && unsupportedHit.sampleCount == 0,
+                "base hit probe is unsupported without triggering Shell or legacy anchor queries");
     const auto delegatedAnchor = nativeFree.queryMenuAnchor();
     test.expect(nativeFree.anchorQueries == 1 && delegatedAnchor.dpi == 144 &&
                     delegatedAnchor.monitorName == QStringLiteral("native-free-fixture") &&

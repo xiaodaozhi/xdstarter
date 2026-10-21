@@ -37,7 +37,8 @@ template <typename T> class ComPtr {
 
 class ComApartment {
   public:
-    ComApartment() : result_(CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED)) {}
+    explicit ComApartment(DWORD model = COINIT_APARTMENTTHREADED)
+        : result_(CoInitializeEx(nullptr, model)) {}
     ~ComApartment() {
         if (SUCCEEDED(result_)) {
             CoUninitialize();
@@ -144,7 +145,15 @@ BOOL CALLBACK collectTaskbars(HWND window, LPARAM parameter) {
     return TRUE;
 }
 
-bool findStartButton(IUIAutomation* automation, HWND taskbar, QRect& button, QString& error) {
+struct StartButtonDetails {
+    HWND nativeWindow = nullptr;
+    int providerProcess = 0;
+    bool nativeHandleRead = false;
+    QString nativeHandleError;
+};
+
+bool findStartButton(IUIAutomation* automation, HWND taskbar, QRect& button, QString& error,
+                     StartButtonDetails* details = nullptr) {
     ComPtr<IUIAutomationElement> root;
     HRESULT result = automation->ElementFromHandle(taskbar, root.put());
     if (FAILED(result)) {
@@ -221,7 +230,51 @@ bool findStartButton(IUIAutomation* automation, HWND taskbar, QRect& button, QSt
         return false;
     }
     button = candidate;
+    if (details) {
+        UIA_HWND nativeWindow = nullptr;
+        const HRESULT nativeResult = element->get_CurrentNativeWindowHandle(&nativeWindow);
+        details->providerProcess = providerProcess;
+        details->nativeHandleRead = SUCCEEDED(nativeResult);
+        if (SUCCEEDED(nativeResult)) {
+            details->nativeWindow = reinterpret_cast<HWND>(nativeWindow);
+        } else {
+            details->nativeHandleError =
+                nativeErrorCode(QStringLiteral("uia-native-window"), nativeResult);
+        }
+    }
     return true;
+}
+
+DesktopNativeWindowObservation observeWindow(HWND window) {
+    DesktopNativeWindowObservation result;
+    result.handle = reinterpret_cast<quintptr>(window);
+    if (!window || !IsWindow(window)) {
+        return result;
+    }
+    result.exists = true;
+    result.visible = IsWindowVisible(window) != FALSE;
+    result.rootHandle = reinterpret_cast<quintptr>(GetAncestor(window, GA_ROOT));
+    DWORD process = 0;
+    GetWindowThreadProcessId(window, &process);
+    result.processId = process;
+    wchar_t className[128]{};
+    const int length = GetClassNameW(window, className, static_cast<int>(std::size(className)));
+    if (length > 0) {
+        result.className = QString::fromWCharArray(className, length);
+    }
+    RECT bounds{};
+    if (GetWindowRect(window, &bounds)) {
+        result.physicalRect = rectangle(bounds);
+    }
+    return result;
+}
+
+bool sameWindowObservation(const DesktopNativeWindowObservation& before,
+                           const DesktopNativeWindowObservation& after) {
+    return before.handle == after.handle && before.rootHandle == after.rootHandle &&
+           before.processId == after.processId && before.className == after.className &&
+           before.physicalRect == after.physicalRect && before.exists == after.exists &&
+           before.visible == after.visible;
 }
 
 DesktopActionResult shellOpen(const wchar_t* target) {
@@ -375,6 +428,135 @@ DesktopAnchorResult WindowsDesktopPlatform::queryStartButtonAnchor() {
         }
     }
     return result;
+}
+
+DesktopStartButtonHitResult WindowsDesktopPlatform::queryStartButtonHitTarget() {
+    DesktopStartButtonHitResult result;
+    result.anchor.dpi = 0;
+    result.classification = DesktopStartButtonHitClassification::Unidentified;
+    const auto finish = [&result]() {
+        result.classification = classifyStartButtonHitTarget(result);
+        const QString classification = startButtonHitClassificationName(result.classification);
+        if (result.errorCode.isEmpty() &&
+            result.classification != DesktopStartButtonHitClassification::IndependentCandidate) {
+            result.errorCode = QStringLiteral("start-hit-") + classification;
+        }
+        result.message =
+            result.classification == DesktopStartButtonHitClassification::IndependentCandidate
+                ? QStringLiteral("本次只读采样发现独立原生命中候选；不代表可持续接管或允许消费输入。")
+                : QStringLiteral("只读命中研究未取得独立候选（%1）；系统开始按钮保持原生行为。")
+                      .arg(classification);
+        return result;
+    };
+    PhysicalCoordinates coordinates;
+    if (!coordinates.ready()) {
+        result.errorCode = QStringLiteral("physical-coordinate-context-unavailable");
+        return finish();
+    }
+    POINT cursor{};
+    if (!GetPhysicalCursorPos(&cursor)) {
+        result.errorCode = QStringLiteral("physical-cursor-unavailable");
+        return finish();
+    }
+    const HMONITOR monitor = MonitorFromPoint(cursor, MONITOR_DEFAULTTOPRIMARY);
+    setMonitor(result.anchor, monitor);
+    if (!result.anchor.monitorPhysicalRect.isValid() ||
+        !result.anchor.workAreaPhysicalRect.isValid()) {
+        result.errorCode = QStringLiteral("invalid-monitor-area");
+        return finish();
+    }
+    QVector<HWND> taskbars;
+    EnumWindows(collectTaskbars, reinterpret_cast<LPARAM>(&taskbars));
+    HWND taskbar = nullptr;
+    for (HWND candidate : taskbars) {
+        if (MonitorFromWindow(candidate, MONITOR_DEFAULTTONULL) == monitor) {
+            if (taskbar) {
+                result.errorCode = QStringLiteral("ambiguous-monitor-taskbar");
+                return finish();
+            }
+            taskbar = candidate;
+        }
+    }
+    if (!taskbar) {
+        result.errorCode = QStringLiteral("visible-explorer-taskbar-unavailable");
+        return finish();
+    }
+    result.taskbar = observeWindow(taskbar);
+    result.taskbarVerifiedExplorer = isExplorerWindow(taskbar);
+    result.anchor.dpi = GetDpiForWindow(taskbar);
+    // This explicit research operation owns its apartment. No UIA pointers or
+    // calls escape to normal product placement, the GUI, or an input callback.
+    ComApartment apartment(COINIT_MULTITHREADED);
+    if (!apartment.ready()) {
+        result.errorCode = nativeErrorCode(QStringLiteral("com-initialize"), apartment.result());
+        return finish();
+    }
+    ComPtr<IUIAutomation> automation;
+    const HRESULT created = CoCreateInstance(CLSID_CUIAutomation, nullptr, CLSCTX_INPROC_SERVER,
+                                             IID_PPV_ARGS(automation.put()));
+    if (FAILED(created)) {
+        result.errorCode = nativeErrorCode(QStringLiteral("uia-initialize"), created);
+        return finish();
+    }
+    ComPtr<IUIAutomation2> automation2;
+    if (SUCCEEDED(automation->QueryInterface(IID_PPV_ARGS(automation2.put())))) {
+        automation2->put_ConnectionTimeout(1500);
+        automation2->put_TransactionTimeout(1500);
+    }
+    StartButtonDetails details;
+    if (!findStartButton(automation.get(), taskbar, result.anchor.startButtonPhysicalRect,
+                          result.errorCode, &details)) {
+        return finish();
+    }
+    result.anchor.trusted = true;
+    result.nativeHandleRead = details.nativeHandleRead;
+    result.uiaProviderProcessId = static_cast<quint32>(details.providerProcess);
+    result.startWindow = observeWindow(details.nativeWindow);
+    result.startWindowIsTaskbarChild =
+        details.nativeWindow && details.nativeWindow != taskbar &&
+        IsChild(taskbar, details.nativeWindow) != FALSE;
+    if (!details.nativeHandleRead) {
+        result.errorCode = details.nativeHandleError;
+    }
+    const QRect button = result.anchor.startButtonPhysicalRect;
+    if (button.width() >= 5 && button.height() >= 5) {
+        // Fixed five points, one physical pixel inside each corner. They are
+        // diagnostic samples, not a claim that the whole rectangle is clickable.
+        const std::array<QPoint, 5> points{
+            button.center(), QPoint(button.left() + 1, button.top() + 1),
+            QPoint(button.right() - 1, button.top() + 1),
+            QPoint(button.left() + 1, button.bottom() - 1),
+            QPoint(button.right() - 1, button.bottom() - 1)};
+        for (const QPoint& point : points) {
+            const HWND hit = WindowFromPoint(POINT{point.x(), point.y()});
+            auto& sample = result.samples[result.sampleCount++];
+            sample.physicalPoint = point;
+            sample.window = observeWindow(hit);
+            sample.withinStartWindow = details.nativeWindow && hit &&
+                                       (hit == details.nativeWindow ||
+                                        IsChild(details.nativeWindow, hit) != FALSE);
+            sample.withinTaskbar = hit && (hit == taskbar || IsChild(taskbar, hit) != FALSE);
+        }
+    }
+    // Re-read after sampling to reject observed movement/replacement. This does
+    // not make the observations atomic or protect a later click from changes.
+    QRect secondButton;
+    QString secondError;
+    StartButtonDetails secondDetails;
+    DesktopAnchorResult secondMonitor;
+    setMonitor(secondMonitor, monitor);
+    result.observationsStable =
+        findStartButton(automation.get(), taskbar, secondButton, secondError, &secondDetails) &&
+        secondDetails.nativeHandleRead && details.nativeHandleRead &&
+        secondDetails.nativeWindow == details.nativeWindow &&
+        secondDetails.providerProcess == details.providerProcess && secondButton == button &&
+        sameWindowObservation(result.taskbar, observeWindow(taskbar)) &&
+        sameWindowObservation(result.startWindow, observeWindow(details.nativeWindow)) &&
+        isExplorerWindow(taskbar) && GetDpiForWindow(taskbar) == result.anchor.dpi &&
+        MonitorFromWindow(taskbar, MONITOR_DEFAULTTONULL) == monitor &&
+        secondMonitor.monitorPhysicalRect == result.anchor.monitorPhysicalRect &&
+        secondMonitor.workAreaPhysicalRect == result.anchor.workAreaPhysicalRect;
+    return finish();
 }
 
 DesktopAppearanceResult WindowsDesktopPlatform::configureMenuWindow(quintptr nativeHandle) {

@@ -40,6 +40,16 @@ Windows 在专用消息线程安装低级键盘 Hook，以及仅维护按钮按�
 
 显式 `xdstarter_desktop_platform_tests.exe --probe-menu-anchor` 输出工作区查询 JSON；`--probe-anchor` 输出 UIA 开始按钮研究 JSON。二者均需单独记录环境，常规 CTest 不执行桌面 probe，且成功输出不等于系统输入接管或完整 Windows 兼容通过。
 
+### 开始按钮原生命中的只读研究
+
+[#24](https://github.com/xiaodaozhi/xdstarter/issues/24) 在可替换平台接口增加只读命中诊断，由 `xdstarter_desktop_platform_tests.exe --probe-start-hit` 显式调用。它复用唯一 StartButton、Button、Explorer 及物理边界校验，进一步读取 UIA 元素的原生 HWND、所属任务栏、进程、可见性、窗口类与几何，并在按钮中心及内缩四角采样实时 `WindowFromPoint` 身份。结果区分没有 HWND、共享宿主、几何不符、遮挡/命中不一致和独立命中候选；真实结果、版本与 hash 由[测试策略](testing.md)记录，此处不预判本机结果。
+
+此 probe 不装 Hook，不调用控件动作，不消费或合成输入，不移动窗口或修改任务栏/系统配置，不接入产品 UI，也不建立持续缓存或订阅。普通启动、常规 CTest 及产品菜单快速工作区定位不运行该研究查询。分步读取与五点采样不是原子事务，单次独立候选不等于可持续点击接管；原生开始按钮行为不因该研究改变。
+
+微软不保证 `AutomationId` 跨版本稳定，`NativeWindowHandle` 也可为 0；UIA 矩形与未离屏状态不保证没有遮挡。UIA 属性变化事件并不完备，`WindowFromPoint` 只能提供该次点位的原生窗口身份。因此共享宿主、宿主 HWND 加旧按钮矩形、仅 TTL 或仅事件订阅都不能推定命中安全。依据与保守取舍见 [ADR-0009](adr/0009-start-button-hit-probe.md)。[UIA 属性标识](https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-automation-element-propids)、[UIA 属性与事件](https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-propertiesoverview)、[WindowFromPoint](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-windowfrompoint)
+
+实际接管需另行设计回调内有界身份复核和缓存失效策略，覆盖 Explorer/任务栏重建、显示/DPI/位置/可见性变化与查询失败；缺失、过期、歧义或不支持时，本次完整点击保留原生路径。还须实测原生 down/up 行为，并证明长按、双击、拖出、暂停、失败及退出期间的完整按下/释放配对，不能以先吞 down、失效后放行 up 或先开再关原生 Start 代替恢复。真实物理左键、右键系统菜单、Win+X、其他任务栏项目、与 Win 键接管并用及异常后的原生入口分别验收，未验证的系统组合继续留在父 [#6](https://github.com/xiaodaozhi/xdstarter/issues/6)。
+
 任务栏居中/左对齐、自动隐藏、副屏、混合 DPI 和语言差异必须按实际环境验证。自动隐藏、Explorer 重启与混合 DPI 跨屏本轮尚未完成实际验证。将来启用接管前仍须探测支持条件，不以关闭原生菜单后重开自定义窗口的闪烁方案作为验收通过。
 
 对不支持的系统组合保留原生行为；界面区分 Win 键未启用、实际启用、暂停和失败，并明确开始按钮未接管。安全桌面、锁屏、UAC 等系统隔离场景不作为接管目标，不以普通桌面 Hook 的结果扩大支持范围。

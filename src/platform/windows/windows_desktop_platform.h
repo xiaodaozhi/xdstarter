@@ -8,6 +8,7 @@ class WindowsDesktopPlatform final : public DesktopPlatform {
   public:
     [[nodiscard]] DesktopActionResult openDesktopAction(const QString& actionId) override;
     [[nodiscard]] DesktopAnchorResult queryStartButtonAnchor() override;
+    [[nodiscard]] DesktopStartButtonHitResult queryStartButtonHitTarget() override;
     [[nodiscard]] DesktopAnchorResult queryMenuAnchor() override;
     [[nodiscard]] DesktopAppearanceResult configureMenuWindow(quintptr nativeHandle) override;
     [[nodiscard]] DesktopPlacementResult placeWindow(quintptr nativeHandle,

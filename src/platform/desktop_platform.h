@@ -4,6 +4,7 @@
 #include <QSize>
 #include <QString>
 
+#include <array>
 #include <memory>
 
 namespace xdstarter {
@@ -26,6 +27,61 @@ struct DesktopAnchorResult {
     QString errorCode;
     QString monitorName;
 };
+
+// These handles are diagnostic integer values, not persistent identities or
+// permission to consume input. No native types cross the platform boundary.
+struct DesktopNativeWindowObservation {
+    quintptr handle = 0;
+    quintptr rootHandle = 0;
+    quint32 processId = 0;
+    QString className;
+    QRect physicalRect;
+    bool exists = false;
+    bool visible = false;
+};
+
+struct DesktopStartButtonHitSample {
+    QPoint physicalPoint;
+    DesktopNativeWindowObservation window;
+    bool withinStartWindow = false;
+    bool withinTaskbar = false;
+};
+
+enum class DesktopStartButtonHitClassification {
+    Unsupported,
+    Unidentified,
+    Unavailable,
+    NoNativeWindow,
+    SharedHost,
+    IdentityMismatch,
+    GeometryMismatch,
+    Occluded,
+    ChangedDuringQuery,
+    IndependentCandidate
+};
+
+struct DesktopStartButtonHitResult {
+    DesktopAnchorResult anchor;
+    DesktopNativeWindowObservation taskbar;
+    DesktopNativeWindowObservation startWindow;
+    quint32 uiaProviderProcessId = 0;
+    bool taskbarVerifiedExplorer = false;
+    bool nativeHandleRead = false;
+    bool startWindowIsTaskbarChild = false;
+    bool observationsStable = false;
+    std::array<DesktopStartButtonHitSample, 5> samples{};
+    unsigned int sampleCount = 0;
+    DesktopStartButtonHitClassification classification =
+        DesktopStartButtonHitClassification::Unsupported;
+    QString message;
+    QString errorCode;
+};
+
+// Native-free classification of an explicit, short-lived diagnostic sample.
+// IndependentCandidate is only a point-in-time observation, never capture-ready.
+[[nodiscard]] DesktopStartButtonHitClassification
+classifyStartButtonHitTarget(const DesktopStartButtonHitResult& result);
+[[nodiscard]] QString startButtonHitClassificationName(DesktopStartButtonHitClassification value);
 
 struct DesktopPlacementResult {
     bool success = false;
@@ -56,6 +112,9 @@ class DesktopPlatform {
     // these on a worker. An operation that needs COM owns its own apartment.
     [[nodiscard]] virtual DesktopActionResult openDesktopAction(const QString& actionId) = 0;
     [[nodiscard]] virtual DesktopAnchorResult queryStartButtonAnchor() = 0;
+    // Explicit read-only research only. Never called by normal product startup
+    // or menu placement; may block on another process's UI Automation provider.
+    [[nodiscard]] virtual DesktopStartButtonHitResult queryStartButtonHitTarget();
     // Product placement does not require StartButton UIA identification. The
     // default preserves injected-platform behavior; Windows overrides this
     // with a work-area-only query that performs no COM or UIA operation.

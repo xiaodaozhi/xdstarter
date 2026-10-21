@@ -100,6 +100,8 @@ CMake 的 `xdstarter_add_ui` 为产品与 GUI 测试编译同一组 QML、contro
 
 具体 C++ 方法签名随各模块 Issue 落地；对持久化格式、错误语义或跨模块职责的变更应更新本设计。
 
+[Issue #24](https://github.com/xiaodaozhi/xdstarter/issues/24) 的 `DesktopPlatform::queryStartButtonHitTarget()` 是显式只读研究接口，返回原生窗口身份、物理几何与五点命中的值快照；通用分类器不依赖 Win32。非支持平台返回明确诊断。它不接入 `DesktopShellService` 的产品定位、不持久化 HWND、不安装输入 Hook；`IndependentCandidate` 只表示本次采样满足研究条件，不能用于启用接管。后续缓存与完整点击手势的准入条件见 [ADR-0009](adr/0009-start-button-hit-probe.md)。
+
 ## 线程与性能
 
 GUI 线程更新布局 QVariantList 和应用 QAbstractListModel，并管理窗口与原生托盘；保存快照在独立后台线程写盘，应用目录/图标/可用性/启动使用另一串行 worker，桌面动作与产品工作区查询再使用独立的 DesktopShellService worker。启用 Win 键时另有专用原生消息线程，回调仅更新最小状态、固定有界输入派发与投递通知；每 500 ms 的输入桌面检查在消息循环中执行，暂停时移除 Hook，退出等待线程结束，不将其计时响应当作 Hook 存活证明。Windows 产品工作区查询不执行 COM/UIA，显式 UIA 研究 probe 独立于普通唤起。启动布局读取有界进行。队列信号或受控任务返回值不直接修改场景图对象；退出停止新请求并等待 worker 结束。Shell/COM 查询不进入 GUI 或原生消息回调。后续搜索索引也应后台执行。

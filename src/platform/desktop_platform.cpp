@@ -20,6 +20,107 @@ DesktopAnchorResult DesktopPlatform::queryMenuAnchor() {
     return queryStartButtonAnchor();
 }
 
+DesktopStartButtonHitResult DesktopPlatform::queryStartButtonHitTarget() {
+    DesktopStartButtonHitResult result;
+    result.message = QStringLiteral("此平台不提供开始按钮原生命中研究查询。");
+    result.errorCode = QStringLiteral("unsupported-platform");
+    return result;
+}
+
+DesktopStartButtonHitClassification
+classifyStartButtonHitTarget(const DesktopStartButtonHitResult& result) {
+    using Classification = DesktopStartButtonHitClassification;
+    if (!result.anchor.trusted) {
+        return Classification::Unidentified;
+    }
+    if (!result.nativeHandleRead) {
+        return Classification::Unavailable;
+    }
+    if (!result.startWindow.handle) {
+        return Classification::NoNativeWindow;
+    }
+    if (!result.taskbarVerifiedExplorer || !result.taskbar.handle || !result.taskbar.exists ||
+        !result.taskbar.visible || !result.startWindow.exists || !result.startWindow.visible ||
+        result.taskbar.className.isEmpty() || result.startWindow.className.isEmpty()) {
+        return Classification::Unavailable;
+    }
+    if (!result.uiaProviderProcessId || result.taskbar.processId != result.uiaProviderProcessId ||
+        result.taskbar.rootHandle != result.taskbar.handle ||
+        result.startWindow.processId != result.uiaProviderProcessId ||
+        result.startWindow.rootHandle != result.taskbar.handle) {
+        return Classification::IdentityMismatch;
+    }
+    const QRect& button = result.anchor.startButtonPhysicalRect;
+    const QRect& native = result.startWindow.physicalRect;
+    const auto boundedButton = [](const QRect& rect) {
+        const qint64 width = static_cast<qint64>(rect.right()) - rect.left() + 1;
+        const qint64 height = static_cast<qint64>(rect.bottom()) - rect.top() + 1;
+        // Keep the center distinct from all four one-pixel-inset corners.
+        return width >= 5 && width <= 256 && height >= 5 && height <= 256;
+    };
+    if (result.startWindow.handle == result.taskbar.handle ||
+        (native != button && native.contains(button))) {
+        return Classification::SharedHost;
+    }
+    if (!result.startWindowIsTaskbarChild) {
+        return Classification::IdentityMismatch;
+    }
+    if (!boundedButton(button) || !boundedButton(native) || native != button ||
+        !result.taskbar.physicalRect.contains(button) ||
+        !result.anchor.monitorPhysicalRect.contains(button)) {
+        return Classification::GeometryMismatch;
+    }
+    if (!result.observationsStable) {
+        return Classification::ChangedDuringQuery;
+    }
+    if (result.sampleCount != result.samples.size()) {
+        return Classification::Unavailable;
+    }
+    const std::array<QPoint, 5> expectedPoints{
+        button.center(), QPoint(button.left() + 1, button.top() + 1),
+        QPoint(button.right() - 1, button.top() + 1),
+        QPoint(button.left() + 1, button.bottom() - 1),
+        QPoint(button.right() - 1, button.bottom() - 1)};
+    for (std::size_t index = 0; index < result.samples.size(); ++index) {
+        const auto& sample = result.samples[index];
+        if (sample.physicalPoint != expectedPoints[index] || !sample.window.handle ||
+            !sample.window.exists || !sample.window.visible || !sample.withinStartWindow ||
+            !sample.withinTaskbar || sample.window.className.isEmpty() ||
+            sample.window.processId != result.uiaProviderProcessId ||
+            sample.window.rootHandle != result.taskbar.handle) {
+            return Classification::Occluded;
+        }
+    }
+    return Classification::IndependentCandidate;
+}
+
+QString startButtonHitClassificationName(DesktopStartButtonHitClassification value) {
+    using Classification = DesktopStartButtonHitClassification;
+    switch (value) {
+    case Classification::Unsupported:
+        return QStringLiteral("unsupported");
+    case Classification::Unidentified:
+        return QStringLiteral("unidentified");
+    case Classification::Unavailable:
+        return QStringLiteral("unavailable");
+    case Classification::NoNativeWindow:
+        return QStringLiteral("no-native-window");
+    case Classification::SharedHost:
+        return QStringLiteral("shared-host");
+    case Classification::IdentityMismatch:
+        return QStringLiteral("identity-mismatch");
+    case Classification::GeometryMismatch:
+        return QStringLiteral("geometry-mismatch");
+    case Classification::Occluded:
+        return QStringLiteral("occluded");
+    case Classification::ChangedDuringQuery:
+        return QStringLiteral("changed-during-query");
+    case Classification::IndependentCandidate:
+        return QStringLiteral("independent-candidate");
+    }
+    return QStringLiteral("unsupported");
+}
+
 QRect desktopPopupPhysicalRect(const QSize& windowPhysicalSize, const DesktopAnchorResult& anchor,
                                int gapPhysicalPixels) {
     const QRect area = anchor.workAreaPhysicalRect;
