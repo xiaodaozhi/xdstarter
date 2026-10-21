@@ -6,7 +6,27 @@
 
 GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查看 PNG，核对字体、应用图标、长名称、间隙及辅助功能信息的表达。
 
-## 当前：单独 Win 键唤起（Issue #22）
+## 当前：开始按钮只读命中研究（Issue #24）
+
+2026-10-21，[#24](https://github.com/xiaodaozhi/xdstarter/issues/24) 按 [ADR-0009](adr/0009-start-button-hit-probe.md) 为后续开始按钮接管验证身份前提。新增显式 `xdstarter_desktop_platform_tests.exe --probe-start-hit`，输出有限原生窗口与五点采样 JSON；产品唤起不调用该接口，不安装新 Hook、不调用控件动作或发送输入。`captureReady` 固定为 false，CLI 退出 0 表示完成诊断，不表示存在可接管目标。
+
+正式入口 `./scripts/build-windows.ps1 -Preset app-release` 使用 Qt 6.8.2、MSVC 19.29.30153.0/v142、SDK 10.0.19041.0，最终 Release、QML lint 和 11/11 CTest 通过（18.78 秒），日志为本地 `build/issue24-build.log`。通用分类检查覆盖无 HWND、共享宿主、进程/祖先不符、几何/同屏约束、遮挡、缺失/重复采样、采样期间变化、负坐标和极值跨度；默认不支持查询不调用原 UIA anchor。首轮构建已通过，随后只读复核发现 3×3/4×4 矩形会使采样点退化重合，补上最小 5 像素的保守门槛与 2/3/4/5 边界回归后完成最终构建；首轮日志保留 `build/issue24-build-initial.log`。
+
+### 本机只读结果
+
+以普通桌面进程、后台隐藏的命令行方式运行三次显式 probe，没有弹出产品窗口或协调键鼠独占。程序 SHA-256 为 `6111487e6cfe3ea8cc7170c0d27e8e21ff7a0910970b15aac6b81322c446d01e`，程序自行读取二进制 hash 并与启动器核对。环境为 Windows 11 Version 26H2、kernel `10.0.26300`、x64、Qt 构建/运行均 6.8.2、MSVC `_MSC_FULL_VER=192930153`；这是 `QCoreApplication` 诊断，无 Qt Quick 窗口或 RHI 渲染结果。当前任务栏位于屏幕底部，按钮位于左端，DPI 144；未修改任务栏或系统显示设置。
+
+| 采样（Asia/Shanghai） | 查询耗时 | UIA 身份 | 原生 HWND | 五点窗口类 | 结论 |
+| --- | --- | --- | --- | --- | --- |
+| 12:16:21.894 | 235 ms | 唯一可信按钮 | 0 | 全部 `Shell_TrayWnd` | `no-native-window` |
+| 12:16:22.584 | 186 ms | 唯一可信按钮 | 0 | 全部 `Shell_TrayWnd` | `no-native-window` |
+| 12:16:22.926 | 170 ms | 唯一可信按钮 | 0 | 全部 `Shell_TrayWnd` | `no-native-window` |
+
+三次按钮物理矩形均为 `(0, 1528, 83, 72)`；任务栏为真实 Explorer `Shell_TrayWnd`。各次前后 UIA 身份/几何及任务栏观察稳定，中心和内缩四角共十五点都位于同一任务栏，不能绑定独立 Start 窗口。这支持“本机不满足本轮独立 HWND 保守准入”的结论，不证明所有 Windows 构建没有独立窗口，也不证明所有其他机制均不可行。耗时是三次研究查询的观察值，不是菜单唤起性能、P95 或持续缓存新鲜度保证。
+
+本地工件为 `build/validation/issue24-native/start-hit-1.json` 至 `start-hit-3.json`、各自 stderr 与 `summary.json`；原始临时 HWND/PID 仅保留本地，不作为持久标识提交。默认产品、常规 CTest 和真实 probe 分开记录；本轮没有重做物理点击、右键/Win+X、Win 键接管或恢复交互，前一轮证据保持各自程序 hash 的历史身份。后续接管必须先解决共享任务栏宿主中的语义命中绑定、变化/失效与完整 down/up 手势，不能直接把一次 UIA 矩形放入输入回调。父 [#6](https://github.com/xiaodaozhi/xdstarter/issues/6) 继续开放，远程检查与合并结果以本轮 PR 和 #24 为准。
+
+## 历史：单独 Win 键唤起（Issue #22）
 
 2026-10-21，[#22](https://github.com/xiaodaozhi/xdstarter/issues/22) 承接父任务 [#6](https://github.com/xiaodaozhi/xdstarter/issues/6)，实现默认关闭、不持久化的单独 Win 键接管，以及窗口和托盘的启用/暂停入口。本轮本机验收已完成；机制与已知限制见 [ADR-0008](adr/0008-win-key-capture.md)，开始按钮仍未接管。
 
