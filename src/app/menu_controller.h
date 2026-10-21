@@ -21,6 +21,7 @@ class PrototypeService;
 class ApplicationCatalog;
 class DesktopShellService;
 class SearchService;
+struct LayoutResult;
 
 class MenuController : public QObject {
     Q_OBJECT
@@ -54,6 +55,8 @@ class MenuController : public QObject {
     Q_PROPERTY(bool searchBusy READ searchBusy NOTIFY searchChanged)
     Q_PROPERTY(QString searchStatus READ searchStatus NOTIFY searchChanged)
     Q_PROPERTY(QVariantList searchResults READ searchResults NOTIFY searchResultsChanged)
+    Q_PROPERTY(int maximumGroups READ maximumGroups CONSTANT)
+    Q_PROPERTY(int maximumGroupNameLength READ maximumGroupNameLength CONSTANT)
     Q_PROPERTY(bool desktopActionBusy READ desktopActionBusy NOTIFY desktopActionStateChanged)
     Q_PROPERTY(
         QString desktopActionStatus READ desktopActionStatus NOTIFY desktopActionStateChanged)
@@ -109,6 +112,12 @@ class MenuController : public QObject {
     Q_INVOKABLE bool launchTile(const QString& tileId);
     Q_INVOKABLE bool pinApplication(const QString& appId, const QString& groupId = {});
     Q_INVOKABLE bool unpinTile(const QString& tileId);
+    [[nodiscard]] int maximumGroups() const;
+    [[nodiscard]] int maximumGroupNameLength() const;
+    Q_INVOKABLE QString createGroup(const QString& name);
+    Q_INVOKABLE bool renameGroup(const QString& groupId, const QString& name);
+    Q_INVOKABLE bool moveGroupBy(const QString& groupId, int delta);
+    Q_INVOKABLE bool removeGroup(const QString& groupId);
     [[nodiscard]] bool desktopActionBusy() const;
     [[nodiscard]] QString desktopActionStatus() const;
     Q_INVOKABLE bool requestDesktopAction(const QString& actionId);
@@ -148,6 +157,9 @@ class MenuController : public QObject {
     [[nodiscard]] QVariantMap findTile(const QString& tileId) const;
     void rebuildSearchEntries();
     void refreshSearchResults();
+    bool canEditGroups();
+    bool applyGroupResult(const LayoutResult& result, const QJsonObject& before,
+                          const QString& successMessage);
     PrototypeService& prototypeService_;
     QVariantList tiles_;
     QVariantList groups_;

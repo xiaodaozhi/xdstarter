@@ -6,7 +6,71 @@
 
 GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查看 PNG，核对字体、应用图标、长名称、间隙及辅助功能信息的表达。
 
-## 当前：离线应用搜索（Issue #8）
+## 当前：分组管理（Issue #9）
+
+2026-10-21，[#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 本轮交付编辑模式的新建、重命名、相邻排序及空组删除，保留至少一组。磁贴显示名称编辑仍在该 Issue 跟踪，本轮使用 `Refs #9`，不关闭整个 Issue；布局格式仍为 schemaVersion 2。
+
+服务检查覆盖名称 trim、128 个 UTF-16 代码单元及 emoji 边界、控制字符或换行、重复名称、1/32 组边界、未知 id、非空组与最后一组保护、只读和失败不变性；检查排序仅改变组数组，保留磁贴目标、标识、格坐标与尺寸。已有 schema 1/2 读取规则保持兼容，新增保存／恢复检查组名、稳定 id 和顺序。
+
+四条 GUI 用例覆盖创建／重命名／排序／删除、长名称省略与 PlainText、Shift+F10／Enter、IME 合成预编辑、取消／Esc／收起丢弃草稿、固定到新组、跨组鼠标拖拽、同文件重建恢复，以及分组变化不重建搜索索引、不抢用户已移到主题／目录／搜索控件的焦点。独立只读审查发现的后台刷新抢回旧分组焦点问题已修复并加入回归。
+
+分组初版（追加 #28 定位修复前）的正式入口 `./scripts/build-windows.ps1 -Preset app-release` 使用 Qt 6.8.2、MSVC 19.29.30153.0/v142、SDK 10.0.19041.0，最终 Release、适用 QML lint 与 **12/12 CTest** 通过（18.96 秒），GUI **41/41**。最终日志为本地 `build/issue9-build-delivery.log`。保留一条既有 `Qt.inputMethod.reset` 的 lint 类型警告，运行行为由搜索及 IME 用例检查。
+
+首轮日志保留 `build/issue9-build-initial.log`：编译及 lint 完成，但服务断言使用 Latin-1 包装中文名称，另有排序后焦点恢复失败，CTest 为 10/12、GUI 40/41；不把这次结果记为通过。修正中文断言，并根据 Qt focus 日志仅为待完成操作放行控件销毁后落入的布局焦点容器，第二轮 `build/issue9-build-final.log` 为 12/12、GUI 41/41（20.05 秒）。随后补查后台可用性刷新路径，在旧委托销毁前捕获实际聚焦的稳定 groupId，新增可用性 `true → false → true` 的严格回归，再冻结代码完成上述最终构建。
+
+| 分组初版程序（定位修复前） | SHA-256 |
+| --- | --- |
+| 产品 `xdstarter.exe` | `e28629df2c58345e2ee8ed595d2ac40da43a9c7ba548328dee8767ac6917a866` |
+| GUI `xdstarter_ui_tests.exe` | `77e5b88931522fe7978d47bd29adcfc442a7881223a64bec41aef562a0afd7b9` |
+
+### Windows 原生窗口专项
+
+同一分组初版 GUI 程序使用 Windows QPA / Direct3D 11 / Intel Iris Xe 执行四个新增用例，**6/6** 通过（含初始化与清理，5.437 秒）。Qt 测试事件直接送入测试窗口，没有发送全局键盘鼠标输入。覆盖菜单和命名弹层、IME 合成事件、跨组拖拽、删除保护、布局保存／重建及后台焦点回归；重建是同一测试进程内重新创建 QML engine 和服务，不是产品独立进程重启。
+
+直接 `QQuickWindow.grabWindow()` 导出的[浅色](../design/validation/issue-9/groups-light.png)与[深色](../design/validation/issue-9/groups-dark.png)为 1028×728、DPR 1，已目视核对两组标题、空组提示、管理入口、编辑按钮和主题。[元数据](../design/validation/issue-9/groups-render.json)标注受控目录、程序 hash、结果与恢复边界。图中下方磁贴受正常滚动视口裁切，截图本身不作为完整磁贴几何通过证据；共享几何由既有像素检查及分组操作前后的布局断言覆盖。首轮本地启动器误将 `,txt` 作为 QTest 函数名，未执行功能用例；修正参数分组后执行同一程序，失败启动日志保留在 `build/validation/issue9-native/wrapper-initial.log`。
+
+分组初版产品使用隔离布局读取281项真实目录，实际完成新建“工具 Tools”、固定Access及跨组拖到原组；原三枚磁贴与目标逐对象保持不变。命名弹层失焦后草稿未提交，窗口收起。用户随后发现首次跨屏托盘恢复时菜单底部越过任务栏，建立 #28；本次观察推翻该场景的通过预期，不能以先前受控窗口或旧CI代替实际验收。用户从托盘菜单退出初版，独立进程句柄记录PID43276于2026-10-21 15:50:53（Asia/Shanghai）退出代码0，证据仅保留本地build/validation/issue9-product/。修复版后续完成改名、排序及同文件独立进程恢复，证据见下方 #28 追加记录。
+
+## 本轮追加：隐藏窗口跨混合 DPI 唤回（Issue #28）
+
+2026-10-21，分组实际验收发现 [#28](https://github.com/xiaodaozhi/xdstarter/issues/28)：96 DPI 隐藏窗口首次从 144 DPI 屏幕托盘唤回时，定位先于原生窗口迁移与 Qt DPR 更新。修复使用公开 Qt Windows screen 的 HMONITOR 映射目标屏幕；隐藏迁移后等待目标 DPR、保存的逻辑尺寸意图及实际原生物理尺寸一致，两次稳定采样后才定位和显示。总等待上限 1500 ms，取消、关闭、重入及迟到回调有回归；可见窗口在收起前同步保存最新尺寸，避免遗漏尚未送达的 resize 通知。机制见 [ADR-0007](adr/0007-custom-menu-chrome.md)。
+
+最终源码 `550f5d4` 使用正式入口 `./scripts/build-windows.ps1 -Preset app-release`，Qt 6.8.2、MSVC 19.29.30153.0/v142、SDK 10.0.19041.0。Release、适用 QML lint 与 **12/12 CTest** 通过（38.45 秒）；GUI **41/41**，host **34/34**。最终日志为本地 `build/issue28-build-delivery-final.log`。既有搜索路径 `Qt.inputMethod.reset` 的 lint 类型警告保留，不将它写为新增错误或零警告构建。
+
+| 修复后最终程序 | SHA-256 |
+| --- | --- |
+| 产品 `xdstarter.exe` | `079c5202f3ff01a53187354c0133b71124dafc674ba2acce505f0a030da28066` |
+| GUI `xdstarter_ui_tests.exe` | `e03c5ad960bbce417aafc29397c1af4df69ad189c2ce61a5c432bfcba021fdfa` |
+| host `xdstarter_desktop_window_host_tests.exe` | `5505b43baa4d7586d29bb35706e08e2e99ea5c6f8701c585b36825ed634d82cf` |
+
+### 原生双屏独立测量
+
+同一最终 GUI 的显式 `--native-screen-transition-probe` 在 Windows QPA / Direct3D 11、Intel Iris Xe、kernel `10.0.26300` 下实际运行，**六轮全部通过**，`errors` 与 `qmlWarnings` 为空。该程序不属于普通 CTest，需要两块真实不同 DPI 且能容纳默认面板的显示器；前提不满足报告不可用，映射错误明确失败。结果见[原生测量 JSON](../design/validation/issue-28/native-screen-transition-probe.json)。
+
+| 实际目标屏幕 | 工作区（物理像素） | 默认面板（物理像素） | 外窗（物理像素） | 左侧／底部间距 |
+| --- | --- | --- | --- | --- |
+| DISPLAY1，144 DPI／Qt DPR 1.5 | `(0,0,2400,1528)` | `(12,496,1470,1020)` | `(-24,460,1542,1092)` | 各 12 px，即 8 DIP |
+| DISPLAY2，96 DPI／Qt DPR 1 | `(252,-1080,1920,1032)` | `(260,-736,980,680)` | `(236,-760,1028,728)` | 各 8 px，即 8 DIP |
+
+从低 DPI 隐藏窗口开始，高低屏交替三次往返；每轮独立调用 `GetWindowRect`、`GetDpiForWindow` 和 `MonitorFromWindow`，不是读取定位函数的输出。同步 `visibleChanged` 样本与 1000 ms 后样本的外窗／面板几何一致，均保持 1028×728 DIP 外窗、980×680 DIP 面板和每侧 24 DIP 阴影留白。六轮首样本均处于 Qt 已可见、原生不可见且尚未 exposed 的时刻；稳定样本额外要求原生可见、Qt 可见及 exposed 全为真。因此这项检查证明两个采样端点的几何与稳定后的真实可见性，不能单独声称连续逐帧没有跳动。
+
+该 probe 使用真实显示器和渲染后端，但托盘信号与目标 anchor 由受控适配器提供，不注册／点击真实托盘，不发送全局输入，不连接真实目录或读写用户布局。真实产品托盘和分组验收另行记录，不把两者混为一项证据。
+
+### 修复后真实产品与独立进程恢复
+
+使用上述最终产品 hash 和独立验收布局文件，读取 281 项真实应用目录，没有修改日常用户配置。首进程实际将稳定 groupId 的“工具 Tools”改名为“学习与资料 Learning”，完成上移、下移、再上移；新增“验收临时空组”，输入另一名称后按 Esc，原名保留且未保存草稿。内部菜单和命名弹层操作期间窗口保持可用。用户协助真实托盘恢复，反馈“位置和大小正常”；恢复后工具实际观察到“完成编辑”状态。保存快照逐对象核对原四枚磁贴、目标及主题未变。
+
+首进程于 16:38:43（Asia/Shanghai）通过用户菜单操作退出，代码 0。第二进程于 16:39:27 启动同一文件，用户实际删除临时空组并确认退出；16:43:30 记录退出代码 0。第三进程于 16:43:44 再次启动，工具恢复到前台，实际观察到浅色主题、“学习与资料 Learning”在前、“常用应用”在后、四枚原磁贴存在、搜索框为空且为非编辑状态；临时空组没有恢复。通过电源菜单退出，16:45:10 记录代码 0。三个独立进程使用同一最终产品 hash；最终重启前后 schemaVersion、targets、groups、preferences 深度相等，分组改名／排序／删除之外的目标、tileId、坐标和尺寸与验收起始快照相同。最后的四枚磁贴为 standard／small／wide／standard，仍沿用共享几何。
+
+第二次启动曾进入既有最小化恢复路径，日志 `trayRecovery: false`；工具激活时两次被用户输入检测中止，随后由用户完成操作。第三次工具成功激活最终产品并核对实际内容。记录这一恢复边界，不据此声称每次托盘注册成功或 Explorer 重启兼容。完整布局和日志仅保留本地 `build/validation/issue28-product/`，公开[脱敏验收摘要](../design/validation/issue-28/product-acceptance.json)只含版本、阶段时间和结果，不上传用户桌面背景、真实目标路径或完整目录。
+
+### 失败与修正记录
+
+首轮原生探测因 Qt 屏幕名为面板型号而非 GDI 设备名，错误报告未满足双屏前提；修正为独立 HMONITOR 映射。随后六轮探测低 DPI 方向三轮通过，高 DPI 方向三轮失败：位置已正确但 Qt 逻辑尺寸缩为 685×485、物理外窗仍为 1028×728。保留迁移前逻辑尺寸意图后，没有放宽默认 980×680 DIP 面板断言。下一轮正式检查为 11/12：立即 resize 后收起尚未捕获新尺寸；增加收起前同步捕获及严格回归后完成最终 12/12 构建和六轮原生通过。失败 JSON 与日志分别保留在本地 `initial-unmatched-screen-probe.json`、`mapped-but-shrunk-probe.json` 及 `build/issue28-build-delivery.log`，不覆盖成最终通过结果。
+
+独立只读审查核对屏幕身份、GUI 线程边界、尺寸意图、取消／重入、迟到回调、1500 ms 总时限及测试断言，最终未留下 P1/P2。该结果不覆盖物理系统缩放切换、显示器拔插、远程桌面、其他 Windows 构建或完整混合 DPI 矩阵；父 #5、#6 继续保持开放。
+
+## 历史：离线应用搜索（Issue #8）
 
 2026-10-21，[#8](https://github.com/xiaodaozhi/xdstarter/issues/8) 接入名称／英文、拼音全拼和首字母搜索，机制、容量与数据许可见 [ADR-0010](adr/0010-local-application-search.md)。自动检查、原生样例抓帧及真实目录／窗口交互分别记录如下。
 

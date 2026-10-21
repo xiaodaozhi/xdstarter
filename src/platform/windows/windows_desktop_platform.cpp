@@ -1,7 +1,11 @@
 #include "windows_desktop_platform.h"
 
 #include <QDir>
+#include <QGuiApplication>
+#include <QScreen>
+#include <QThread>
 #include <QVector>
+#include <QtGui/qscreen_platform.h>
 
 #include <algorithm>
 #include <iterator>
@@ -621,6 +625,48 @@ DesktopAppearanceResult WindowsDesktopPlatform::configureMenuWindow(quintptr nat
         result.errorCode = nativeErrorCode(QStringLiteral("dwm-menu-appearance"), failure);
     }
     return result;
+}
+
+QScreen *WindowsDesktopPlatform::screenForAnchor(const DesktopAnchorResult &anchor) {
+    const auto *application = qobject_cast<QGuiApplication *>(QCoreApplication::instance());
+    if (!application || QThread::currentThread() != application->thread() ||
+        anchor.monitorName.isEmpty())
+        return nullptr;
+    PhysicalCoordinates coordinates;
+    if (!coordinates.ready())
+        return nullptr;
+    QScreen *match = nullptr;
+    for (auto *screen : QGuiApplication::screens()) {
+        // QScreen::name() may be an EDID model name, not \\.\DISPLAYn.
+        // Qt's public Windows native interface supplies the actual HMONITOR.
+        const auto *native = screen->nativeInterface<QNativeInterface::QWindowsScreen>();
+        MONITORINFOEXW info{};
+        info.cbSize = sizeof(info);
+        if (!native || !GetMonitorInfoW(native->handle(), reinterpret_cast<MONITORINFO *>(&info)) ||
+            QString::fromWCharArray(info.szDevice) != anchor.monitorName ||
+            (anchor.monitorPhysicalRect.isValid() &&
+             rectangle(info.rcMonitor) != anchor.monitorPhysicalRect))
+            continue;
+        if (match)
+            return nullptr;
+        match = screen;
+    }
+    return match;
+}
+
+DesktopWindowMetricsResult WindowsDesktopPlatform::queryWindowMetrics(quintptr nativeHandle) {
+    PhysicalCoordinates coordinates;
+    const HWND window = reinterpret_cast<HWND>(nativeHandle);
+    DWORD process = 0;
+    const DWORD thread = GetWindowThreadProcessId(window, &process);
+    RECT current{};
+    if (!coordinates.ready() || !window || !IsWindow(window) ||
+        process != GetCurrentProcessId() || thread != GetCurrentThreadId() ||
+        GetAncestor(window, GA_ROOT) != window || !GetWindowRect(window, &current)) {
+        return {true, false, {}};
+    }
+    const QRect bounds = rectangle(current);
+    return {true, bounds.isValid(), bounds.size()};
 }
 
 DesktopPlacementResult WindowsDesktopPlatform::placeWindow(quintptr nativeHandle,

@@ -50,12 +50,175 @@ void expectNeighbor(TestContext& test, const xdstarter::PrototypeService& servic
                 description);
 }
 
+void checkGroupManagement(TestContext& test, const xdstarter::TileGrid& grid) {
+    using namespace xdstarter;
+    PrototypeService service(grid);
+    const auto initialGroups = service.previewGroups();
+    const auto initial = service.snapshot();
+    const auto renamed = service.renameGroup(QStringLiteral("work"), QStringLiteral("  办公工具  "));
+    auto expected = initial;
+    auto expectedGroups = expected.value(QStringLiteral("groups")).toArray();
+    auto work = expectedGroups[0].toObject();
+    work.insert(QStringLiteral("name"), QStringLiteral("办公工具"));
+    expectedGroups[0] = work;
+    expected.insert(QStringLiteral("groups"), expectedGroups);
+    test.expect(renamed.success && renamed.groupId == QLatin1String("work") &&
+                    renamed.tileId.isEmpty() && service.snapshot() == expected,
+                "rename trims a group name while preserving tile and target snapshots");
+    const auto sameName = service.renameGroup(QStringLiteral("work"), QStringLiteral("办公工具"));
+    test.expect(sameName.success && service.snapshot() == expected,
+                "renaming to the same name succeeds without a layout change");
+
+    test.expect(service.moveGroupBy(QStringLiteral("daily"), -1).success,
+                "a group moves one position toward the start");
+    expectedGroups = QJsonArray{expectedGroups[1], expectedGroups[0], expectedGroups[2]};
+    expected.insert(QStringLiteral("groups"), expectedGroups);
+    test.expect(service.snapshot() == expected,
+                "group ordering changes only the ordered group array");
+    expectNeighbor(test, service, "work-standard-1", "up", "daily-wide",
+                   "up navigation follows the newly ordered preceding group");
+    expectNeighbor(test, service, "work-standard-1", "down", "entertainment-wide",
+                   "down navigation follows the newly ordered following group");
+    for (const auto& before : initialGroups) {
+        for (const auto& after : service.previewGroups()) {
+            if (before.id != after.id) {
+                continue;
+            }
+            test.expect(before.width == after.width && before.height == after.height &&
+                            before.tiles.size() == after.tiles.size(),
+                        "rename and reorder keep each group's existing geometry");
+            for (qsizetype index = 0; index < before.tiles.size(); ++index) {
+                const auto& first = before.tiles[index];
+                const auto& second = after.tiles[index];
+                test.expect(first.id == second.id && first.targetId == second.targetId &&
+                                first.column == second.column && first.row == second.row &&
+                                first.size == second.size &&
+                                sameRectangle(first.rectangle, second.rectangle),
+                            "group edits keep tile identity, target, placement and geometry");
+            }
+        }
+    }
+
+    const auto created = service.createGroup(QStringLiteral("  办公工具  "));
+    const auto createdGroups = service.previewGroups();
+    test.expect(created.success && !created.groupId.isEmpty() && created.tileId.isEmpty() &&
+                    created.groupId != QLatin1String("work") && createdGroups.size() == 4 &&
+                    createdGroups.last().id == created.groupId &&
+                    createdGroups.last().name == QStringLiteral("办公工具") &&
+                    createdGroups.last().tiles.isEmpty() && createdGroups.last().width == 552 &&
+                    createdGroups.last().height == 216,
+                "create appends an independent empty group with a trimmed, non-unique name");
+    test.expect(service.moveGroupBy(created.groupId, -1).success,
+                "new empty groups can be reordered");
+    expectNeighbor(test, service, "work-standard-1", "down", "entertainment-wide",
+                   "navigation skips a newly created empty intermediate group");
+
+    const auto beforeInvalid = service.snapshot();
+    for (const auto& invalidName :
+         {QString{}, QStringLiteral("   "),
+          QString(LayoutStore::maximumGroupNameLength + 1, QChar(0x4e2d)),
+          QStringLiteral("制\t表"), QStringLiteral("换\n行"), QStringLiteral("\rleading"),
+          QStringLiteral("null\0character"), QStringLiteral("line\u2028separator"),
+          QStringLiteral("paragraph\u2029separator")}) {
+        test.expect(!service.createGroup(invalidName).success &&
+                        !service.renameGroup(QStringLiteral("work"), invalidName).success &&
+                        service.snapshot() == beforeInvalid,
+                    "empty, oversized and control-containing names fail atomically");
+    }
+    test.expect(!service.renameGroup(QStringLiteral("missing"), QStringLiteral("name")).success &&
+                    !service.moveGroupBy(QStringLiteral("missing"), 1).success &&
+                    !service.removeGroup(QStringLiteral("missing")).success &&
+                    !service.moveGroupBy(QStringLiteral("daily"), -1).success &&
+                    !service.moveGroupBy(QStringLiteral("entertainment"), 1).success &&
+                    !service.moveGroupBy(QStringLiteral("work"), 0).success &&
+                    !service.moveGroupBy(QStringLiteral("work"), 2).success &&
+                    !service.removeGroup(QStringLiteral("work")).success &&
+                    service.snapshot() == beforeInvalid,
+                "unknown ids, boundary moves, invalid deltas and populated deletes preserve state");
+    test.expect(service.removeGroup(created.groupId).success && service.snapshot() == expected,
+                "deleting an empty group preserves the remaining group and target snapshots");
+    test.expect(service.moveGroupBy(QStringLiteral("daily"), 1).success,
+                "a group moves one position toward the end");
+
+    const auto destination = service.createGroup(QStringLiteral("固定目标"));
+    const auto application = QJsonObject{
+        {QStringLiteral("id"), QStringLiteral("group-test-target")},
+        {QStringLiteral("type"), QStringLiteral("shortcut")},
+        {QStringLiteral("name"), QStringLiteral("分组应用")},
+        {QStringLiteral("symbol"), QStringLiteral("G")},
+        {QStringLiteral("shortcutPath"), QStringLiteral("C:\\Missing\\GroupTest.lnk")}};
+    const auto pinned = service.pinApplication(application, destination.groupId);
+    test.expect(destination.success && pinned.success &&
+                    service.previewGroups().last().tiles.first().id == pinned.tileId,
+                "a newly created group accepts application pinning");
+    test.expect(service.moveTile(pinned.tileId, QStringLiteral("work"), 0, 2).success &&
+                    service.removeGroup(destination.groupId).success &&
+                    service.isApplicationPinned(QStringLiteral("group-test-target")) &&
+                    service.targetForTile(pinned.tileId) == application,
+                "moving a tile out permits group removal without changing its launch target");
+
+    PrototypeService limits(grid, {}, false);
+    const auto lastGroup = limits.previewGroups().first().id;
+    const auto beforeLastDelete = limits.snapshot();
+    test.expect(!limits.removeGroup(lastGroup).success && limits.snapshot() == beforeLastDelete,
+                "the final empty group cannot be deleted");
+    const auto longName = QString(LayoutStore::maximumGroupNameLength, QChar(0x4e2d));
+    test.expect(limits.renameGroup(lastGroup, longName).success &&
+                    limits.previewGroups().first().name == longName,
+                "the 128 UTF-16-unit Chinese group-name boundary is accepted");
+    const auto emoji = QString::fromUtf8("\xf0\x9f\x98\x80");
+    test.expect(limits.renameGroup(lastGroup, emoji.repeated(64)).success,
+                "64 supplementary characters fit the 128 UTF-16-unit name limit");
+    const auto beforeLongName = limits.snapshot();
+    test.expect(!limits.renameGroup(lastGroup, emoji.repeated(65)).success &&
+                    limits.snapshot() == beforeLongName,
+                "the name limit counts UTF-16 units rather than Unicode scalars");
+    QSet<QString> generatedIds{lastGroup};
+    for (int count = 1; count < LayoutStore::maximumGroups; ++count) {
+        const auto added = limits.createGroup(longName);
+        test.expect(added.success && !added.groupId.isEmpty() &&
+                        !generatedIds.contains(added.groupId),
+                    "each group within the limit receives a unique stable id");
+        generatedIds.insert(added.groupId);
+    }
+    const auto maximumSnapshot = limits.snapshot();
+    test.expect(limits.previewGroups().size() == LayoutStore::maximumGroups &&
+                    LayoutStore::validate(maximumSnapshot).success &&
+                    !limits.createGroup(QStringLiteral("overflow")).success &&
+                    limits.snapshot() == maximumSnapshot,
+                "32 groups are valid and an additional group fails without changing the layout");
+    auto excessiveGroups = maximumSnapshot;
+    auto excessiveArray = excessiveGroups.value(QStringLiteral("groups")).toArray();
+    auto excess = excessiveArray.last().toObject();
+    excess.insert(QStringLiteral("id"), QStringLiteral("thirty-third-group"));
+    excessiveArray.append(excess);
+    excessiveGroups.insert(QStringLiteral("groups"), excessiveArray);
+    test.expect(!LayoutStore::validate(excessiveGroups).success,
+                "the persisted group-count boundary uses the same 32-group limit");
+    PrototypeService restored(grid, {}, false);
+    test.expect(restored.restoreSnapshot(maximumSnapshot).success &&
+                    restored.snapshot() == maximumSnapshot,
+                "group ids, duplicate names and order survive snapshot restoration");
+
+    auto legacyNames = beforeLastDelete;
+    auto legacyGroups = legacyNames.value(QStringLiteral("groups")).toArray();
+    auto legacyGroup = legacyGroups[0].toObject();
+    legacyGroup.insert(QStringLiteral("name"), QStringLiteral("Old\nName"));
+    legacyGroups[0] = legacyGroup;
+    legacyNames.insert(QStringLiteral("groups"), legacyGroups);
+    test.expect(LayoutStore::validate(legacyNames).success &&
+                    restored.restoreSnapshot(legacyNames).success &&
+                    restored.snapshot() == legacyNames,
+                "new edit-name rules do not invalidate previously legal stored group names");
+}
+
 } // namespace
 
 int main() {
     using namespace xdstarter;
     TestContext test;
     const TileGrid grid;
+    checkGroupManagement(test, grid);
     PrototypeService service(grid);
     const auto groups = service.previewGroups();
     test.expect(groups.size() == 3, "preview contains three independent groups");

@@ -24,7 +24,6 @@
 namespace xdstarter {
 namespace {
 
-constexpr int maximumGroups = 32;
 constexpr int maximumTiles = 512;
 
 LayoutResult failure(const QString& message) { return {false, message}; }
@@ -243,7 +242,7 @@ LayoutResult LayoutStore::validate(const QJsonObject& snapshot) {
         const auto id = group.value(QStringLiteral("id"));
         if (!keys(group, {QStringLiteral("id"), QStringLiteral("name"), QStringLiteral("tiles")}) ||
             !text(id) || groupIds.contains(id.toString()) ||
-            !text(group.value(QStringLiteral("name")), 128) ||
+            !text(group.value(QStringLiteral("name")), maximumGroupNameLength) ||
             !group.value(QStringLiteral("tiles")).isArray()) {
             return failure(QStringLiteral("分组标识、名称或磁贴列表无效"));
         }

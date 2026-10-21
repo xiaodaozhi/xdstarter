@@ -19,6 +19,24 @@ namespace {
 
 enum class Direction { Left, Right, Up, Down };
 
+LayoutResult validateGroupName(const QString& name) {
+    const auto trimmed = name.trimmed();
+    if (trimmed.isEmpty()) {
+        return {false, QStringLiteral("请输入分组名称")};
+    }
+    if (trimmed.size() > LayoutStore::maximumGroupNameLength) {
+        return {false, QStringLiteral("分组名称不能超过 128 个字符")};
+    }
+    for (const auto character : name) {
+        if (character.category() == QChar::Other_Control ||
+            character.category() == QChar::Separator_Line ||
+            character.category() == QChar::Separator_Paragraph) {
+            return {false, QStringLiteral("分组名称不能包含控制字符或换行")};
+        }
+    }
+    return {true, {}};
+}
+
 std::optional<Direction> parseDirection(const QString& direction) {
     if (direction == QLatin1String("left")) {
         return Direction::Left;
@@ -415,6 +433,103 @@ LayoutResult PrototypeService::unpinTile(const QString& tileId) {
         }
     }
     return {false, QStringLiteral("磁贴不存在")};
+}
+
+LayoutResult PrototypeService::createGroup(const QString& name) {
+    if (isReadOnly()) {
+        return {false, QStringLiteral("更新版本配置当前为只读"), true};
+    }
+    const auto nameValidation = validateGroupName(name);
+    if (!nameValidation.success) {
+        return nameValidation;
+    }
+    if (groups_.size() >= LayoutStore::maximumGroups) {
+        return {false, QStringLiteral("最多只能创建 32 个分组")};
+    }
+    PreviewGroup group{QUuid::createUuid().toString(QUuid::WithoutBraces), name.trimmed(), {},
+                       grid_.width(), 0};
+    updateGroupGeometry(group);
+    auto candidate = snapshot();
+    auto groups = candidate.value(QStringLiteral("groups")).toArray();
+    groups.append(QJsonObject{{QStringLiteral("id"), group.id},
+                              {QStringLiteral("name"), group.name},
+                              {QStringLiteral("tiles"), QJsonArray{}}});
+    candidate.insert(QStringLiteral("groups"), groups);
+    const auto validation = LayoutStore::validate(candidate);
+    if (!validation.success) {
+        return validation;
+    }
+    groups_.append(group);
+    return {true, {}, false, {}, group.id};
+}
+
+LayoutResult PrototypeService::renameGroup(const QString& groupId, const QString& name) {
+    if (isReadOnly()) {
+        return {false, QStringLiteral("更新版本配置当前为只读"), true};
+    }
+    const auto nameValidation = validateGroupName(name);
+    if (!nameValidation.success) {
+        return nameValidation;
+    }
+    for (qsizetype index = 0; index < groups_.size(); ++index) {
+        if (groups_[index].id != groupId) {
+            continue;
+        }
+        auto candidate = snapshot();
+        auto groups = candidate.value(QStringLiteral("groups")).toArray();
+        auto group = groups[index].toObject();
+        group.insert(QStringLiteral("name"), name.trimmed());
+        groups[index] = group;
+        candidate.insert(QStringLiteral("groups"), groups);
+        const auto validation = LayoutStore::validate(candidate);
+        if (!validation.success) {
+            return validation;
+        }
+        groups_[index].name = name.trimmed();
+        return {true, {}, false, {}, groupId};
+    }
+    return {false, QStringLiteral("分组不存在")};
+}
+
+LayoutResult PrototypeService::moveGroupBy(const QString& groupId, int delta) {
+    if (isReadOnly()) {
+        return {false, QStringLiteral("更新版本配置当前为只读"), true};
+    }
+    if (delta != -1 && delta != 1) {
+        return {false, QStringLiteral("分组每次只能向上或向下移动一位")};
+    }
+    for (qsizetype index = 0; index < groups_.size(); ++index) {
+        if (groups_[index].id != groupId) {
+            continue;
+        }
+        const auto destination = index + delta;
+        if (destination < 0 || destination >= groups_.size()) {
+            return {false, QStringLiteral("分组已在列表边界")};
+        }
+        groups_.swapItemsAt(index, destination);
+        return {true, {}, false, {}, groupId};
+    }
+    return {false, QStringLiteral("分组不存在")};
+}
+
+LayoutResult PrototypeService::removeGroup(const QString& groupId) {
+    if (isReadOnly()) {
+        return {false, QStringLiteral("更新版本配置当前为只读"), true};
+    }
+    for (qsizetype index = 0; index < groups_.size(); ++index) {
+        if (groups_[index].id != groupId) {
+            continue;
+        }
+        if (groups_.size() == 1) {
+            return {false, QStringLiteral("至少需要保留一个分组")};
+        }
+        if (!groups_[index].tiles.isEmpty()) {
+            return {false, QStringLiteral("只能删除空分组，请先移动或取消固定其中的磁贴")};
+        }
+        groups_.removeAt(index);
+        return {true, {}, false, {}, groupId};
+    }
+    return {false, QStringLiteral("分组不存在")};
 }
 
 QJsonObject PrototypeService::targetForTile(const QString& tileId) const {

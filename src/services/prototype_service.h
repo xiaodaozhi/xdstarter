@@ -44,6 +44,10 @@ class PrototypeService final {
     [[nodiscard]] LayoutResult pinApplication(const QJsonObject& target,
                                               const QString& groupId = {});
     [[nodiscard]] LayoutResult unpinTile(const QString& tileId);
+    [[nodiscard]] LayoutResult createGroup(const QString& name);
+    [[nodiscard]] LayoutResult renameGroup(const QString& groupId, const QString& name);
+    [[nodiscard]] LayoutResult moveGroupBy(const QString& groupId, int delta);
+    [[nodiscard]] LayoutResult removeGroup(const QString& groupId);
     [[nodiscard]] QJsonObject targetForTile(const QString& tileId) const;
     [[nodiscard]] bool isApplicationPinned(const QString& applicationId) const;
     [[nodiscard]] QJsonObject snapshot() const;

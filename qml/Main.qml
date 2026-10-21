@@ -39,6 +39,13 @@ ApplicationWindow {
     property string pinApplicationName: ""
     property bool pinApplicationPinned: false
     property string focusedTileId: ""
+    property string focusedGroupId: ""
+    property bool groupFocusPending: false
+    property string managedGroupId: ""
+    property string namingGroupId: ""
+    property string groupNameError: ""
+    readonly property var managedGroup: controller.groups.find(group => group.id === managedGroupId) || null
+    readonly property int managedGroupIndex: controller.groups.findIndex(group => group.id === managedGroupId)
     property string draggedTileId: ""
     readonly property bool dragActive: draggedTileId.length > 0
     property real dragPointerX: 0
@@ -60,7 +67,7 @@ ApplicationWindow {
     property string resizeTileSize: ""
     property bool dismissalManaged: false
     property bool presentationSuspended: false
-    readonly property bool internalPopupVisible: resizeMenu.visible || pinMenu.visible || powerMenu.visible || aboutPopup.visible
+    readonly property bool internalPopupVisible: resizeMenu.visible || pinMenu.visible || powerMenu.visible || aboutPopup.visible || groupMenu.visible || groupNameDialog.visible
     readonly property bool dismissalBlocked: dragActive || internalPopupVisible
 
     signal dismissRequested
@@ -182,8 +189,106 @@ ApplicationWindow {
     }
 
     function restoreTileFocus(): void {
-        if (visible && !presentationSuspended && !internalPopupVisible && !dragActive && !controller.searchActive && !searchField.activeFocus)
+        if (visible && !presentationSuspended && !internalPopupVisible && !dragActive && !controller.searchActive && !searchField.activeFocus && focusedGroupId.length === 0)
             focusTileById(focusedTileId);
+    }
+
+    function restoreGroupFocus(): void {
+        if (!visible || presentationSuspended || internalPopupVisible || dragActive || controller.searchActive || searchField.activeFocus || !controller.editMode)
+            return;
+        let focusItem = activeFocusItem;
+        let groupHasFocus = false;
+        while (focusItem && focusItem !== contentItem) {
+            if (focusItem.objectName.indexOf("groupActions-") === 0) {
+                groupHasFocus = true;
+                break;
+            }
+            focusItem = focusItem.parent;
+        }
+        const focusWasLost = !activeFocusItem || activeFocusItem === contentItem || !activeFocusItem.visible;
+        const returningFromCreate = groupFocusPending && activeFocusItem === newGroupButton;
+        // Replacing a focused Repeater delegate leaves its ScrollView focus scope active.
+        // Only our pending operation can return from these non-interactive containers.
+        const returningFromLayout = groupFocusPending && (activeFocusItem === groupsScroll || activeFocusItem === groupsFlickable || activeFocusItem === groupsColumn);
+        if (!focusWasLost && !groupHasFocus && !returningFromCreate && !returningFromLayout) {
+            groupFocusPending = false;
+            return;
+        }
+        for (let index = 0; index < groupRepeater.count; ++index) {
+            const group = groupRepeater.itemAt(index) as TileGroup;
+            if (group && group.group.id === focusedGroupId) {
+                ensureTileVisible(group.actionsItem);
+                group.focusActions();
+                groupFocusPending = false;
+                return;
+            }
+        }
+    }
+
+    function openGroupMenu(groupId: string, source: Item): void {
+        if (!controller.editMode || controller.readOnly || dragActive)
+            return;
+        managedGroupId = groupId;
+        focusedGroupId = groupId;
+        const position = source.mapToItem(contentItem, 0, source.height);
+        groupMenu.x = Math.max(shadowInset, Math.min(position.x, width - shadowInset - groupMenu.width));
+        groupMenu.y = Math.max(shadowInset, Math.min(position.y, height - shadowInset - groupMenu.implicitHeight));
+        groupMenu.open();
+    }
+
+    function openGroupNameDialog(groupId: string): void {
+        if (!controller.editMode || controller.readOnly)
+            return;
+        namingGroupId = groupId;
+        groupNameError = "";
+        const group = controller.groups.find(candidate => candidate.id === groupId);
+        groupNameField.text = group ? group.name : "";
+        groupMenu.close();
+        groupNameDialog.open();
+    }
+
+    function submitGroupName(): void {
+        if (groupNameField.inputMethodComposing || !controller.editMode || controller.readOnly)
+            return;
+        const rawName = groupNameField.text;
+        const name = rawName.trim();
+        if (name.length === 0 || name.length > controller.maximumGroupNameLength || /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(rawName)) {
+            groupNameError = qsTr("请输入 1 至 %1 个字符，不含控制字符的分组名称。").arg(controller.maximumGroupNameLength);
+            return;
+        }
+        const id = namingGroupId;
+        const acceptedId = id.length === 0 ? controller.createGroup(name) : controller.renameGroup(id, name) ? id : "";
+        if (acceptedId.length === 0) {
+            groupNameError = qsTr("无法保存分组，请检查分组数量或布局状态后重试。");
+            return;
+        }
+        focusedGroupId = acceptedId;
+        groupFocusPending = true;
+        showApplications = false;
+        groupNameDialog.close();
+        Qt.callLater(restoreGroupFocus);
+    }
+
+    function moveManagedGroup(delta: int): void {
+        const id = managedGroupId;
+        groupMenu.close();
+        if (controller.moveGroupBy(id, delta)) {
+            focusedGroupId = id;
+            groupFocusPending = true;
+        }
+        Qt.callLater(restoreGroupFocus);
+    }
+
+    function removeManagedGroup(): void {
+        const index = managedGroupIndex;
+        const id = managedGroupId;
+        const fallback = controller.groups[index > 0 ? index - 1 : 1];
+        groupMenu.close();
+        if (controller.removeGroup(id)) {
+            focusedGroupId = fallback ? fallback.id : "";
+            groupFocusPending = true;
+        }
+        Qt.callLater(restoreGroupFocus);
     }
 
     function focusSearch(): void {
@@ -310,6 +415,8 @@ ApplicationWindow {
         pinMenu.close();
         powerMenu.close();
         aboutPopup.close();
+        groupMenu.close();
+        groupNameDialog.close();
     }
 
     function prepareForDismissal(): void {
@@ -481,6 +588,7 @@ ApplicationWindow {
 
         function onGroupsChanged(): void {
             Qt.callLater(window.restoreTileFocus);
+            Qt.callLater(window.restoreGroupFocus);
         }
 
         function onSearchQueryChanged(): void {
@@ -502,9 +610,13 @@ ApplicationWindow {
         }
 
         function onEditModeChanged(): void {
-            if (!window.controller.editMode)
+            if (!window.controller.editMode) {
                 window.cancelDrag();
-            else
+                groupMenu.close();
+                groupNameDialog.close();
+                window.focusedGroupId = "";
+                window.groupFocusPending = false;
+            } else
                 window.showApplications = false;
         }
 
@@ -513,6 +625,8 @@ ApplicationWindow {
                 window.cancelDrag();
                 resizeMenu.close();
                 pinMenu.close();
+                groupMenu.close();
+                groupNameDialog.close();
             }
         }
 
@@ -532,7 +646,7 @@ ApplicationWindow {
     Shortcut {
         sequence: "Escape"
         autoRepeat: false
-        enabled: !resizeMenu.visible && !pinMenu.visible && !powerMenu.visible && !aboutPopup.visible && !searchField.inputMethodComposing
+        enabled: !window.internalPopupVisible && !searchField.inputMethodComposing
         onActivated: window.handleEscape()
     }
 
@@ -743,6 +857,21 @@ ApplicationWindow {
                         text: window.controller.editMode ? qsTr("编辑布局 · 拖拽移动，右键调整尺寸") : qsTr("你的应用，触手可及")
                         color: window.theme.foreground
                         wrapMode: Text.WordWrap
+                    }
+
+                    Button {
+                        id: newGroupButton
+
+                        objectName: "newGroupButton"
+                        text: qsTr("新建分组")
+                        visible: window.controller.editMode
+                        enabled: !window.controller.readOnly && window.controller.groups.length < window.controller.maximumGroups
+                        Accessible.description: qsTr("最多保留 %1 个分组。").arg(window.controller.maximumGroups)
+                        ToolTip.visible: hovered || activeFocus
+                        ToolTip.text: enabled ? qsTr("新建一个空分组") : Accessible.description
+                        onClicked: window.openGroupNameDialog("")
+                        Keys.onReturnPressed: window.openGroupNameDialog("")
+                        Keys.onEnterPressed: window.openGroupNameDialog("")
                     }
 
                     Button {
@@ -1015,6 +1144,15 @@ ApplicationWindow {
                                     id: groupRepeater
 
                                     model: window.controller.groups
+                                    onItemRemoved: (index, item) => {
+                                        const removedGroup = item as TileGroup;
+                                        // Capture actual focus before this delegate is deleted. A catalog
+                                        // availability update can replace it without a user edit operation.
+                                        if (removedGroup && removedGroup.actionsItem.activeFocus && !window.presentationSuspended) {
+                                            window.focusedGroupId = removedGroup.group.id;
+                                            window.groupFocusPending = true;
+                                        }
+                                    }
 
                                     delegate: TileGroup {
                                         required property var modelData
@@ -1027,12 +1165,18 @@ ApplicationWindow {
                                         iconRevision: window.controller.iconRevision
                                         iconVersions: window.controller.iconVersions
                                         draggedTileId: window.draggedTileId
+                                        onActionsRequested: (groupId, source) => window.openGroupMenu(groupId, source)
+                                        onActionsFocused: groupId => {
+                                            window.focusedGroupId = groupId;
+                                            Qt.callLater(window.restoreGroupFocus);
+                                        }
                                         onSelected: name => window.selectPreview(name)
                                         onActivated: tileId => window.activateTile(tileId)
                                         onFocused: item => {
                                             const button = item as TileButton;
                                             if (button)
                                                 window.focusedTileId = button.tile.id;
+                                            window.focusedGroupId = "";
                                             if (!window.dragActive)
                                                 window.ensureTileVisible(item);
                                         }
@@ -1331,6 +1475,177 @@ ApplicationWindow {
     }
 
     Menu {
+        id: groupMenu
+
+        objectName: "groupMenu"
+        title: qsTr("管理分组")
+        parent: window.contentItem
+        popupType: Popup.Item
+        width: Math.min(300, window.panelWidth - 32)
+        onClosed: Qt.callLater(window.restoreGroupFocus)
+
+        MenuItem {
+            objectName: "groupRenameAction"
+            text: qsTr("重命名")
+            enabled: window.controller.editMode && !window.controller.readOnly && window.managedGroup !== null
+            onTriggered: window.openGroupNameDialog(window.managedGroupId)
+            Keys.onReturnPressed: window.openGroupNameDialog(window.managedGroupId)
+            Keys.onEnterPressed: window.openGroupNameDialog(window.managedGroupId)
+        }
+
+        MenuItem {
+            objectName: "groupMoveUpAction"
+            text: qsTr("上移分组")
+            enabled: window.controller.editMode && !window.controller.readOnly && window.managedGroupIndex > 0
+            onTriggered: window.moveManagedGroup(-1)
+            Keys.onReturnPressed: window.moveManagedGroup(-1)
+            Keys.onEnterPressed: window.moveManagedGroup(-1)
+        }
+
+        MenuItem {
+            objectName: "groupMoveDownAction"
+            text: qsTr("下移分组")
+            enabled: window.controller.editMode && !window.controller.readOnly && window.managedGroupIndex >= 0 && window.managedGroupIndex < window.controller.groups.length - 1
+            onTriggered: window.moveManagedGroup(1)
+            Keys.onReturnPressed: window.moveManagedGroup(1)
+            Keys.onEnterPressed: window.moveManagedGroup(1)
+        }
+
+        MenuSeparator {}
+
+        MenuItem {
+            objectName: "groupDeleteAction"
+            text: qsTr("删除空分组")
+            enabled: window.controller.editMode && !window.controller.readOnly && window.controller.groups.length > 1 && window.managedGroup !== null && window.managedGroup.tiles.length === 0
+            Accessible.description: groupDeleteHint.text
+            onTriggered: window.removeManagedGroup()
+            Keys.onReturnPressed: window.removeManagedGroup()
+            Keys.onEnterPressed: window.removeManagedGroup()
+        }
+
+        Label {
+            id: groupDeleteHint
+
+            objectName: "groupDeleteHint"
+            width: groupMenu.width - groupMenu.leftPadding - groupMenu.rightPadding
+            leftPadding: 12
+            rightPadding: 12
+            topPadding: 4
+            bottomPadding: 8
+            text: window.controller.groups.length <= 1 ? qsTr("至少保留一个分组。") : window.managedGroup && window.managedGroup.tiles.length > 0 ? qsTr("请先将磁贴移至其他分组，或取消固定，再删除此分组。") : qsTr("只删除空分组，不影响其他分组。")
+            color: window.theme.secondary
+            font.pixelSize: 12
+            wrapMode: Text.WordWrap
+        }
+    }
+
+    Dialog {
+        id: groupNameDialog
+
+        objectName: "groupNameDialog"
+        parent: window.contentItem
+        popupType: Popup.Item
+        modal: true
+        focus: true
+        closePolicy: Popup.NoAutoClose
+        width: Math.min(420, window.panelWidth - 40)
+        x: (window.width - width) / 2
+        y: Math.max(window.shadowInset, (window.height - height) / 2)
+        title: window.namingGroupId.length > 0 ? qsTr("重命名分组") : qsTr("新建分组")
+        onOpened: {
+            groupNameField.forceActiveFocus(Qt.OtherFocusReason);
+            groupNameField.selectAll();
+        }
+        onClosed: {
+            if (groupNameField.inputMethodComposing) {
+                // qmllint disable missing-property
+                Qt.inputMethod.reset();
+                // qmllint enable missing-property
+            }
+            groupNameField.clear();
+            window.groupNameError = "";
+            Qt.callLater(window.restoreGroupFocus);
+        }
+
+        background: Rectangle {
+            radius: 8
+            color: window.theme.opaqueFallback
+            border.width: 1
+            border.color: window.theme.menuBorder
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 12
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("分组名称（最多 %1 个字符）").arg(window.controller.maximumGroupNameLength)
+                color: window.theme.foreground
+                wrapMode: Text.WordWrap
+            }
+
+            TextField {
+                id: groupNameField
+
+                objectName: "groupNameField"
+                Layout.fillWidth: true
+                maximumLength: window.controller.maximumGroupNameLength
+                selectByMouse: true
+                color: window.theme.foreground
+                Accessible.name: qsTr("分组名称")
+                Accessible.description: qsTr("输入名称后按 Enter 保存，Esc 取消。允许重名。")
+                Keys.priority: Keys.BeforeItem
+                Keys.onPressed: event => {
+                    if (inputMethodComposing)
+                        return;
+                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                        window.submitGroupName();
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Escape) {
+                        groupNameDialog.close();
+                        event.accepted = true;
+                    }
+                }
+            }
+
+            Label {
+                objectName: "groupNameError"
+                Layout.fillWidth: true
+                visible: window.groupNameError.length > 0
+                text: window.groupNameError
+                textFormat: Text.PlainText
+                color: window.tokens.status.error
+                wrapMode: Text.WordWrap
+                Accessible.role: Accessible.AlertMessage
+            }
+
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: 8
+
+                Button {
+                    objectName: "groupNameCancelButton"
+                    text: qsTr("取消")
+                    onClicked: groupNameDialog.close()
+                    Keys.onReturnPressed: groupNameDialog.close()
+                    Keys.onEnterPressed: groupNameDialog.close()
+                    Keys.onEscapePressed: groupNameDialog.close()
+                }
+
+                Button {
+                    objectName: "groupNameSaveButton"
+                    text: qsTr("保存")
+                    enabled: !groupNameField.inputMethodComposing && window.controller.editMode && !window.controller.readOnly
+                    onClicked: window.submitGroupName()
+                    Keys.onReturnPressed: window.submitGroupName()
+                    Keys.onEnterPressed: window.submitGroupName()
+                    Keys.onEscapePressed: groupNameDialog.close()
+                }
+            }
+        }
+    }
+
+    Menu {
         id: powerMenu
 
         objectName: "powerMenu"
@@ -1470,6 +1785,29 @@ ApplicationWindow {
 
                 objectName: "pinToGroup-" + modelData.id
                 text: modelData.name
+                contentItem: Text {
+                    text: pinGroupOption.text
+                    textFormat: Text.PlainText
+                    elide: Text.ElideRight
+                    color: pinGroupOption.palette.windowText
+                    font: pinGroupOption.font
+                    verticalAlignment: Text.AlignVCenter
+                }
+                Accessible.name: text
+                ToolTip {
+                    id: pinGroupToolTip
+
+                    width: Math.min(380, implicitWidth)
+                    visible: pinGroupOption.hovered || pinGroupOption.activeFocus
+                    text: pinGroupOption.text
+                    contentItem: Text {
+                        text: pinGroupOption.text
+                        textFormat: Text.PlainText
+                        color: pinGroupToolTip.palette.toolTipText
+                        font: pinGroupToolTip.font
+                        wrapMode: Text.Wrap
+                    }
+                }
                 enabled: !window.controller.readOnly && !window.pinApplicationPinned
                 palette.light: window.tokens.brand.cyan
                 palette.midlight: window.tokens.brand.blue
