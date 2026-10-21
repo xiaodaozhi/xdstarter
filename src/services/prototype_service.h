@@ -58,6 +58,7 @@ class PrototypeService final {
     [[nodiscard]] const LayoutLoadResult& loadResult() const;
     [[nodiscard]] bool isReadOnly() const;
     [[nodiscard]] QString configurationPath() const;
+    [[nodiscard]] bool sampleMode() const;
 
   private:
     const TileGrid& grid_;
@@ -66,6 +67,7 @@ class PrototypeService final {
     QJsonArray targets_;
     LayoutLoadResult loadResult_;
     QString configurationPath_;
+    bool sampleMode_ = true;
     [[nodiscard]] QVector<PreviewGroup> makeDefaultGroups() const;
     void updateGroupGeometry(PreviewGroup& group) const;
     [[nodiscard]] LayoutResult updateTileDisplayName(const QString& tileId,

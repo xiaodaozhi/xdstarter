@@ -3,18 +3,30 @@
 #include "platform/platform_integration.h"
 #include "services/application_catalog.h"
 #include "services/desktop_shell_service.h"
+#include "services/layout_import.h"
 #include "services/layout_store.h"
 #include "services/prototype_service.h"
 #include "services/search_service.h"
 #include "xdstarter/grid_tokens.h"
 
+#include <QFileInfo>
 #include <QPointer>
 
 #include <algorithm>
+#include <atomic>
 #include <optional>
 #include <utility>
 
 namespace xdstarter {
+
+// Worker owns result until done is published; the GUI consumes it once, including on shutdown.
+struct PendingLayoutImport {
+    QJsonObject replacement;
+    quint64 revision = 0;
+    LayoutImportCommitResult outcome;
+    std::atomic_bool done{false};
+};
+
 namespace {
 
 QString sizeName(TileSize size) {
@@ -166,8 +178,8 @@ MenuController::MenuController(PrototypeService& prototypeService,
 }
 
 MenuController::~MenuController() {
-    search_.reset();
     flushSave();
+    search_.reset();
     saveThread_.quit();
     saveThread_.wait();
 }
@@ -185,7 +197,8 @@ void MenuController::refreshGroups() {
             auto tile = tileValue.toMap();
             const auto target =
                 prototypeService_.targetForTile(tile.value(QStringLiteral("id")).toString());
-            tile.insert(QStringLiteral("originalName"), target.value(QStringLiteral("name")).toString());
+            tile.insert(QStringLiteral("originalName"),
+                        target.value(QStringLiteral("name")).toString());
             const auto type = target.value(QStringLiteral("type")).toString();
             tile.insert(QStringLiteral("targetType"), type);
             const bool real =
@@ -316,7 +329,8 @@ QString MenuController::searchStatus() const {
         status = QStringLiteral("未找到与「%1」匹配的应用。").arg(search_->query());
     else if (search_->matchCount() > SearchIndex::maximumResults)
         status = QStringLiteral("匹配 %1 项，显示前 %2 项。")
-                     .arg(search_->matchCount()).arg(SearchIndex::maximumResults);
+                     .arg(search_->matchCount())
+                     .arg(SearchIndex::maximumResults);
     else
         status = QStringLiteral("找到 %1 项应用。").arg(search_->matchCount());
     if (catalogBusy())
@@ -350,8 +364,8 @@ void MenuController::rebuildSearchEntries() {
                 entries.append({tile.targetId, name, {}});
             }
             auto& entry = entries[positions.value(tile.targetId)];
-            const auto originalName = prototypeService_.targetForTile(tile.id)
-                                          .value(QStringLiteral("name")).toString();
+            const auto originalName =
+                prototypeService_.targetForTile(tile.id).value(QStringLiteral("name")).toString();
             if (!originalName.isEmpty() && originalName != entry.displayName &&
                 !entry.aliases.contains(originalName))
                 entry.aliases.append(originalName);
@@ -360,9 +374,10 @@ void MenuController::rebuildSearchEntries() {
         }
     }
     // Group order is presentation state, not a change to application search identity.
-    std::sort(entries.begin(), entries.end(), [](const SearchEntry& left, const SearchEntry& right) {
-        return left.targetId < right.targetId;
-    });
+    std::sort(entries.begin(), entries.end(),
+              [](const SearchEntry& left, const SearchEntry& right) {
+                  return left.targetId < right.targetId;
+              });
     for (auto& entry : entries) {
         entry.aliases.sort(Qt::CaseSensitive);
         entry.tileDisplayNames.sort(Qt::CaseSensitive);
@@ -394,8 +409,8 @@ void MenuController::refreshSearchResults() {
             {QStringLiteral("appId"), match.targetId},
             {QStringLiteral("displayName"), match.displayName},
             {QStringLiteral("kind"), target.type},
-            {QStringLiteral("iconSource"), real ? QStringLiteral("image://application-icons/") +
-                                                     match.targetId : QString{}},
+            {QStringLiteral("iconSource"),
+             real ? QStringLiteral("image://application-icons/") + match.targetId : QString{}},
             {QStringLiteral("available"), available.success},
             {QStringLiteral("unavailableReason"), available.message},
             {QStringLiteral("pinned"), pinnedTargetIds_.contains(match.targetId)},
@@ -491,9 +506,12 @@ bool MenuController::launchTile(const QString& tileId) {
 }
 
 bool MenuController::pinApplication(const QString& appId, const QString& groupId) {
+    if (rejectImportMutation())
+        return false;
     if (readOnly_ || !catalog_ || !catalog_->containsApplication(appId)) {
         setOperationMessage(readOnly_ ? QStringLiteral("当前配置只读，不能固定应用。")
-                                      : QStringLiteral("应用目录中找不到该应用，请刷新后重试。"), true);
+                                      : QStringLiteral("应用目录中找不到该应用，请刷新后重试。"),
+                            true);
         return false;
     }
     const auto result =
@@ -508,13 +526,16 @@ bool MenuController::pinApplication(const QString& appId, const QString& groupId
 }
 
 bool MenuController::unpinTile(const QString& tileId) {
+    if (rejectImportMutation())
+        return false;
     if (readOnly_) {
         setOperationMessage(QStringLiteral("当前配置只读，不能取消固定。"), true);
         return false;
     }
     const auto result = prototypeService_.unpinTile(tileId);
     setOperationMessage(result.success ? QStringLiteral("已取消固定，不会卸载应用。")
-                                       : result.message, !result.success);
+                                       : result.message,
+                        !result.success);
     if (!result.success)
         return false;
     refreshGroups();
@@ -527,7 +548,7 @@ int MenuController::maximumTileDisplayNameLength() const {
 }
 
 bool MenuController::applyTileNameResult(const LayoutResult& result, const QJsonObject& before,
-                                        const QString& successMessage) {
+                                         const QString& successMessage) {
     if (!result.success) {
         setOperationMessage(result.message, true);
         return false;
@@ -541,29 +562,35 @@ bool MenuController::applyTileNameResult(const LayoutResult& result, const QJson
 }
 
 bool MenuController::renameTile(const QString& tileId, const QString& displayName) {
+    if (rejectImportMutation())
+        return false;
     if (readOnly_) {
         setOperationMessage(QStringLiteral("当前配置只读，不能修改磁贴显示名称。"), true);
         return false;
     }
     const auto before = prototypeService_.snapshot();
     return applyTileNameResult(prototypeService_.renameTile(tileId, displayName), before,
-                                QStringLiteral("磁贴显示名称已更新，应用启动目标保持不变。"));
+                               QStringLiteral("磁贴显示名称已更新，应用启动目标保持不变。"));
 }
 
 bool MenuController::resetTileDisplayName(const QString& tileId) {
+    if (rejectImportMutation())
+        return false;
     if (readOnly_) {
         setOperationMessage(QStringLiteral("当前配置只读，不能恢复磁贴原名称。"), true);
         return false;
     }
     const auto before = prototypeService_.snapshot();
     return applyTileNameResult(prototypeService_.resetTileDisplayName(tileId), before,
-                                QStringLiteral("已恢复磁贴原名称。"));
+                               QStringLiteral("已恢复磁贴原名称。"));
 }
 
 int MenuController::maximumGroups() const { return LayoutStore::maximumGroups; }
 int MenuController::maximumGroupNameLength() const { return LayoutStore::maximumGroupNameLength; }
 
 bool MenuController::canEditGroups() {
+    if (rejectImportMutation())
+        return false;
     if (readOnly_) {
         setOperationMessage(QStringLiteral("当前配置只读，不能编辑分组。"), true);
         return false;
@@ -624,6 +651,8 @@ bool MenuController::removeGroup(const QString& groupId) {
 }
 
 void MenuController::setEditMode(bool enabled) {
+    if (enabled && rejectImportMutation())
+        return;
     if (enabled && readOnly_) {
         setOperationMessage(QStringLiteral("当前配置只读，不能编辑布局。"), true);
         return;
@@ -635,7 +664,7 @@ void MenuController::setEditMode(bool enabled) {
 }
 
 void MenuController::setDarkTheme(bool enabled) {
-    if (readOnly_ || darkTheme_ == enabled)
+    if (rejectImportMutation() || readOnly_ || darkTheme_ == enabled)
         return;
     darkTheme_ = enabled;
     emit darkThemeChanged();
@@ -677,7 +706,9 @@ QVariantMap MenuController::previewPlacement(const QString& tileId, const QStrin
     const auto tile = findTile(tileId);
     const auto size = parseSize(tile.value(QStringLiteral("size")).toString());
     LayoutResult result{false, QStringLiteral("找不到磁贴。")};
-    if (readOnly_)
+    if (importCommitting())
+        result.message = QStringLiteral("正在替换布局，请稍候。");
+    else if (readOnly_)
         result.message = QStringLiteral("当前配置只读，不能编辑布局。");
     else if (size)
         result = prototypeService_.checkPlacement(tileId, groupId, column, row, *size);
@@ -690,12 +721,15 @@ QVariantMap MenuController::previewPlacement(const QString& tileId, const QStrin
 }
 
 bool MenuController::moveTile(const QString& tileId, const QString& groupId, int column, int row) {
+    if (rejectImportMutation())
+        return false;
     if (readOnly_) {
         setOperationMessage(QStringLiteral("当前配置只读，不能移动磁贴。"), true);
         return false;
     }
     const auto result = prototypeService_.moveTile(tileId, groupId, column, row);
-    setOperationMessage(result.success ? QStringLiteral("磁贴已移动。") : result.message, !result.success);
+    setOperationMessage(result.success ? QStringLiteral("磁贴已移动。") : result.message,
+                        !result.success);
     if (!result.success)
         return false;
     refreshGroups();
@@ -717,14 +751,18 @@ bool MenuController::moveTileBy(const QString& tileId, int dx, int dy) {
 }
 
 bool MenuController::resizeTile(const QString& tileId, const QString& sizeNameValue) {
+    if (rejectImportMutation())
+        return false;
     const auto size = parseSize(sizeNameValue);
     if (!size || readOnly_) {
         setOperationMessage(readOnly_ ? QStringLiteral("当前配置只读，不能调整尺寸。")
-                                      : QStringLiteral("未知的磁贴尺寸。"), true);
+                                      : QStringLiteral("未知的磁贴尺寸。"),
+                            true);
         return false;
     }
     const auto result = prototypeService_.resizeTile(tileId, *size);
-    setOperationMessage(result.success ? QStringLiteral("磁贴尺寸已切换。") : result.message, !result.success);
+    setOperationMessage(result.success ? QStringLiteral("磁贴尺寸已切换。") : result.message,
+                        !result.success);
     if (!result.success)
         return false;
     refreshGroups();
@@ -743,6 +781,11 @@ QJsonObject MenuController::currentSnapshot() const {
 
 void MenuController::scheduleSave() {
     ++revision_;
+    if (importReading_ || !importSnapshot_.isEmpty()) {
+        cancelLayoutImport();
+        importError_ = QStringLiteral("当前布局已更改，请重新选择文件并确认预览。");
+        emit importStateChanged();
+    }
     if (!saveWorker_) {
         setPersistenceStatus(QStringLiteral("本次布局仅在内存中保留。"));
         return;
@@ -752,7 +795,7 @@ void MenuController::scheduleSave() {
 }
 
 void MenuController::requestSave() {
-    if (readOnly_)
+    if (readOnly_ || importCommitting())
         return;
     if (!saveWorker_) {
         setPersistenceStatus(QStringLiteral("未配置保存路径，本次布局仅在内存中保留。"));
@@ -765,7 +808,7 @@ void MenuController::requestSave() {
 }
 
 void MenuController::startSave() {
-    if (readOnly_ || !saveWorker_ || saving_ || revision_ == savedRevision_)
+    if (readOnly_ || !saveWorker_ || saving_ || importCommitting() || revision_ == savedRevision_)
         return;
     saving_ = true;
     emit savingChanged();
@@ -773,16 +816,20 @@ void MenuController::startSave() {
     const auto snapshot = currentSnapshot();
     const auto path = prototypeService_.configurationPath();
     const auto revision = revision_;
+    const auto epoch = saveEpoch_;
+    const auto diskRevision = diskRevision_;
     const QPointer<MenuController> receiver(this);
     QMetaObject::invokeMethod(
         saveWorker_,
-        [receiver, snapshot, path, revision] {
+        [receiver, snapshot, path, revision, epoch, diskRevision] {
             const auto result = LayoutStore(path).save(snapshot);
+            if (result.success)
+                diskRevision->store(revision, std::memory_order_release);
             if (receiver) {
                 QMetaObject::invokeMethod(
                     receiver,
-                    [receiver, result, revision] {
-                        if (receiver)
+                    [receiver, result, revision, epoch] {
+                        if (receiver && receiver->saveEpoch_ == epoch)
                             receiver->completeSave(revision, result.success, result.message,
                                                    result.readOnly);
                     },
@@ -811,6 +858,17 @@ void MenuController::completeSave(quint64 revision, bool success, const QString&
 
 bool MenuController::flushSave() {
     saveTimer_.stop();
+    if (pendingImport_) {
+        const auto pending = pendingImport_;
+        // Fence the existing worker before capturing memory: an old snapshot must never
+        // overwrite a successful import whose GUI completion is still queued.
+        QMetaObject::invokeMethod(
+            saveWorker_, [] {}, Qt::BlockingQueuedConnection);
+        completeLayoutImport(pending);
+        if (!pending->outcome.result.success)
+            return false;
+    }
+    cancelLayoutImport();
     if (readOnly_ || !saveWorker_ || revision_ == savedRevision_)
         return !readOnly_;
     const auto snapshot = currentSnapshot();
@@ -820,7 +878,205 @@ bool MenuController::flushSave() {
         saveWorker_, [&result, snapshot, path] { result = LayoutStore(path).save(snapshot); },
         Qt::BlockingQueuedConnection);
     completeSave(revision_, result.success, result.message, result.readOnly);
+    if (result.success)
+        diskRevision_->store(revision_, std::memory_order_release);
     return result.success;
+}
+
+bool MenuController::layoutImportSupported() const {
+    return saveWorker_ && !prototypeService_.sampleMode();
+}
+bool MenuController::importBusy() const { return importReading_ || importCommitting(); }
+bool MenuController::importCommitting() const { return bool(pendingImport_); }
+QVariantMap MenuController::importPreview() const { return importPreview_; }
+QString MenuController::importError() const { return importError_; }
+
+bool MenuController::rejectImportMutation() {
+    if (!importCommitting())
+        return false;
+    setOperationMessage(QStringLiteral("正在替换布局，请稍候。"), true);
+    return true;
+}
+
+bool MenuController::canImport() {
+    if (layoutImportSupported() && !readOnly_ && !importCommitting())
+        return true;
+    importError_ = readOnly_ ? QStringLiteral("当前配置只读，不能导入或恢复布局。")
+                   : importCommitting()
+                       ? QStringLiteral("正在替换布局，请稍候。")
+                       : QStringLiteral("当前为内存样例模式，不能导入或恢复布局。");
+    emit importStateChanged();
+    return false;
+}
+
+bool MenuController::stageLayoutImport(const QUrl& source) {
+    if (!canImport())
+        return false;
+    if (!source.isLocalFile()) {
+        cancelLayoutImport();
+        importError_ = QStringLiteral("请选择本地 JSON 布局文件。");
+        emit importStateChanged();
+        return false;
+    }
+    return stageLayoutImportPath(source.toLocalFile(), false);
+}
+
+bool MenuController::stageBackupRestore() {
+    if (!canImport())
+        return false;
+    return stageLayoutImportPath(prototypeService_.configurationPath() + QStringLiteral(".bak"),
+                                 true);
+}
+
+bool MenuController::stageLayoutImportPath(const QString& path, bool backup) {
+    cancelLayoutImport();
+    importReading_ = true;
+    const auto generation = importGeneration_;
+    const auto revision = revision_;
+    const QPointer<MenuController> receiver(this);
+    emit importStateChanged();
+    QMetaObject::invokeMethod(
+        saveWorker_,
+        [receiver, path, backup, generation, revision] {
+            const auto preview = readLayoutImport(path);
+            if (!receiver)
+                return;
+            QMetaObject::invokeMethod(
+                receiver,
+                [receiver, preview, path, backup, generation, revision] {
+                    if (!receiver || receiver->importGeneration_ != generation)
+                        return;
+                    receiver->importReading_ = false;
+                    if (receiver->readOnly_ || receiver->revision_ != revision) {
+                        receiver->importError_ = QStringLiteral("当前布局已更改，请重新读取预览。");
+                    } else if (!preview.success) {
+                        receiver->importError_ = preview.message;
+                    } else {
+                        receiver->importSnapshot_ = preview.snapshot;
+                        receiver->importPreviewRevision_ = revision;
+                        receiver->importPreview_ = {
+                            {QStringLiteral("source"), path},
+                            {QStringLiteral("fileName"), QFileInfo(path).fileName()},
+                            {QStringLiteral("directory"), QFileInfo(path).path()},
+                            {QStringLiteral("backup"), backup},
+                            {QStringLiteral("sourceVersion"), preview.sourceVersion},
+                            {QStringLiteral("currentVersion"), LayoutStore::schemaVersion},
+                            {QStringLiteral("groups"), preview.groupCount},
+                            {QStringLiteral("tiles"), preview.tileCount},
+                            {QStringLiteral("targets"), preview.targetCount},
+                            {QStringLiteral("theme"),
+                             preview.snapshot.value(QStringLiteral("preferences"))
+                                 .toObject()
+                                 .value(QStringLiteral("theme"))
+                                 .toString()}};
+                    }
+                    emit receiver->importStateChanged();
+                },
+                Qt::QueuedConnection);
+        },
+        Qt::QueuedConnection);
+    return true;
+}
+
+void MenuController::cancelLayoutImport() {
+    if (importCommitting())
+        return;
+    ++importGeneration_;
+    importReading_ = false;
+    importSnapshot_ = {};
+    importPreview_ = {};
+    importError_.clear();
+    emit importStateChanged();
+}
+
+bool MenuController::confirmLayoutImport() {
+    if (!canImport())
+        return false;
+    if (importReading_ || importSnapshot_.isEmpty() || importPreviewRevision_ != revision_) {
+        importError_ = QStringLiteral("预览已失效，请重新选择布局文件。");
+        emit importStateChanged();
+        return false;
+    }
+    saveTimer_.stop();
+    ++saveEpoch_; // Old autosave callbacks cannot restart a timer or change import status.
+    const auto pending = std::make_shared<PendingLayoutImport>();
+    pending->replacement = importSnapshot_;
+    pending->revision = revision_;
+    const auto current = currentSnapshot();
+    const auto path = prototypeService_.configurationPath();
+    const auto diskRevision = diskRevision_;
+    pendingImport_ = pending;
+    importSnapshot_ = {};
+    importPreview_ = {};
+    importError_.clear();
+    saving_ = true;
+    emit savingChanged();
+    emit importStateChanged();
+    setPersistenceStatus(QStringLiteral("正在保存当前编辑并替换布局…"));
+    const QPointer<MenuController> receiver(this);
+    QMetaObject::invokeMethod(
+        saveWorker_,
+        [receiver, pending, current, path, diskRevision] {
+            const bool dirty = pending->revision > diskRevision->load(std::memory_order_acquire);
+            pending->outcome = commitLayoutImport(
+                current, pending->replacement,
+                [path](const QJsonObject& snapshot) { return LayoutStore(path).save(snapshot); },
+                dirty);
+            if (pending->outcome.currentSaved || pending->outcome.result.success)
+                diskRevision->store(pending->revision, std::memory_order_release);
+            pending->done.store(true, std::memory_order_release);
+            if (receiver)
+                QMetaObject::invokeMethod(
+                    receiver,
+                    [receiver, pending] {
+                        if (receiver)
+                            receiver->completeLayoutImport(pending);
+                    },
+                    Qt::QueuedConnection);
+        },
+        Qt::QueuedConnection);
+    return true;
+}
+
+void MenuController::completeLayoutImport(const std::shared_ptr<PendingLayoutImport>& pending) {
+    if (pendingImport_ != pending || !pending->done.load(std::memory_order_acquire))
+        return;
+    pendingImport_.reset();
+    saving_ = false;
+    emit savingChanged();
+    const auto& outcome = pending->outcome;
+    savedRevision_ = std::max(savedRevision_, diskRevision_->load(std::memory_order_acquire));
+    if (outcome.result.success) {
+        // This immutable snapshot was strictly validated before either disk write.
+        const auto restored = prototypeService_.restoreSnapshot(pending->replacement);
+        Q_ASSERT(restored.success);
+        darkTheme_ = pending->replacement.value(QStringLiteral("preferences"))
+                         .toObject()
+                         .value(QStringLiteral("theme"))
+                         .toString() != QLatin1String("light");
+        ++revision_;
+        savedRevision_ = revision_;
+        diskRevision_->store(revision_, std::memory_order_release);
+        setEditMode(false);
+        setSearchQuery({});
+        refreshGroups();
+        emit darkThemeChanged();
+        setPersistenceStatus(QStringLiteral("布局已替换并保存，可从更多菜单预览恢复备份。"));
+        emit importStateChanged();
+        emit layoutImportSucceeded();
+        return;
+    }
+    importError_ = outcome.result.message;
+    if (outcome.result.readOnly && !readOnly_) {
+        readOnly_ = true;
+        setEditMode(false);
+        emit readOnlyChanged();
+    }
+    setPersistenceStatus(outcome.currentSaved
+                             ? QStringLiteral("此前编辑已保存，导入失败；当前布局保持不变。")
+                             : QStringLiteral("导入失败，当前布局保持不变。"),
+                         true);
+    emit importStateChanged();
 }
 
 } // namespace xdstarter

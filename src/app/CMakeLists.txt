@@ -6,7 +6,7 @@ function(xdstarter_add_ui target import_root)
         "${PROJECT_SOURCE_DIR}/src/app/desktop_window_host.cpp"
     )
     set(qml_files)
-    foreach(component IN ITEMS Main TileButton TileGroup ShortcutRail MenuChrome)
+    foreach(component IN ITEMS Main TileButton TileGroup ShortcutRail MenuChrome LayoutImportDialog)
         set(qml_file "${PROJECT_SOURCE_DIR}/qml/${component}.qml")
         set_source_files_properties("${qml_file}" PROPERTIES QT_RESOURCE_ALIAS "${component}.qml")
         list(APPEND qml_files "${qml_file}")
@@ -14,7 +14,7 @@ function(xdstarter_add_ui target import_root)
     qt_add_qml_module(${target}
         URI XDStarter
         VERSION 1.0
-        DEPENDENCIES QtQml.Models
+        DEPENDENCIES QtQml.Models QtQuick.Dialogs
         OUTPUT_DIRECTORY "${import_root}/XDStarter"
         IMPORT_PATH "${import_root}"
         QML_FILES ${qml_files}
@@ -53,7 +53,7 @@ function(xdstarter_add_ui target import_root)
     )
     target_link_libraries(${target} PRIVATE
         xdstarter_services xdstarter_platform
-        Qt6::Gui Qt6::Qml Qt6::QmlModels Qt6::Quick Qt6::QuickControls2 Qt6::Svg
+        Qt6::Gui Qt6::Qml Qt6::QmlModels Qt6::Quick Qt6::QuickControls2 Qt6::QuickDialogs2 Qt6::Svg
     )
     target_include_directories(${target} PRIVATE "${PROJECT_SOURCE_DIR}/src/app")
 endfunction()

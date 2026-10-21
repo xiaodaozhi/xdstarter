@@ -8,10 +8,12 @@
 #include <QString>
 #include <QThread>
 #include <QTimer>
+#include <QUrl>
 #include <QVariantList>
 #include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
 
+#include <atomic>
 #include <memory>
 
 namespace xdstarter {
@@ -22,6 +24,8 @@ class ApplicationCatalog;
 class DesktopShellService;
 class SearchService;
 struct LayoutResult;
+struct LayoutImportPreview;
+struct PendingLayoutImport;
 
 class MenuController : public QObject {
     Q_OBJECT
@@ -42,6 +46,11 @@ class MenuController : public QObject {
     Q_PROPERTY(bool darkTheme READ darkTheme WRITE setDarkTheme NOTIFY darkThemeChanged)
     Q_PROPERTY(bool readOnly READ readOnly NOTIFY readOnlyChanged)
     Q_PROPERTY(bool saving READ saving NOTIFY savingChanged)
+    Q_PROPERTY(bool layoutImportSupported READ layoutImportSupported CONSTANT)
+    Q_PROPERTY(bool importBusy READ importBusy NOTIFY importStateChanged)
+    Q_PROPERTY(bool importCommitting READ importCommitting NOTIFY importStateChanged)
+    Q_PROPERTY(QVariantMap importPreview READ importPreview NOTIFY importStateChanged)
+    Q_PROPERTY(QString importError READ importError NOTIFY importStateChanged)
     Q_PROPERTY(QString operationMessage READ operationMessage NOTIFY operationMessageChanged)
     Q_PROPERTY(bool operationError READ operationError NOTIFY operationMessageChanged)
     Q_PROPERTY(QString persistenceStatus READ persistenceStatus NOTIFY persistenceStatusChanged)
@@ -101,6 +110,15 @@ class MenuController : public QObject {
     Q_INVOKABLE bool resizeTile(const QString& tileId, const QString& size);
     Q_INVOKABLE void requestSave();
     bool flushSave();
+    [[nodiscard]] bool layoutImportSupported() const;
+    [[nodiscard]] bool importBusy() const;
+    [[nodiscard]] bool importCommitting() const;
+    [[nodiscard]] QVariantMap importPreview() const;
+    [[nodiscard]] QString importError() const;
+    Q_INVOKABLE bool stageLayoutImport(const QUrl& source);
+    Q_INVOKABLE bool stageBackupRestore();
+    Q_INVOKABLE bool confirmLayoutImport();
+    Q_INVOKABLE void cancelLayoutImport();
     [[nodiscard]] QAbstractItemModel* applications() const;
     [[nodiscard]] bool catalogBusy() const;
     [[nodiscard]] QString catalogStatus() const;
@@ -141,6 +159,8 @@ class MenuController : public QObject {
     void darkThemeChanged();
     void readOnlyChanged();
     void savingChanged();
+    void importStateChanged();
+    void layoutImportSucceeded();
     void operationMessageChanged();
     void persistenceStatusChanged();
     void catalogChanged();
@@ -165,6 +185,10 @@ class MenuController : public QObject {
     void scheduleSave();
     void startSave();
     void completeSave(quint64 revision, bool success, const QString& message, bool readOnly);
+    bool stageLayoutImportPath(const QString& path, bool backup);
+    void completeLayoutImport(const std::shared_ptr<PendingLayoutImport>& pending);
+    bool rejectImportMutation();
+    bool canImport();
     [[nodiscard]] QJsonObject currentSnapshot() const;
     [[nodiscard]] QVariantMap findTile(const QString& tileId) const;
     void rebuildSearchEntries();
@@ -197,6 +221,16 @@ class MenuController : public QObject {
     QObject* saveWorker_ = nullptr;
     quint64 revision_ = 0;
     quint64 savedRevision_ = 0;
+    quint64 saveEpoch_ = 0;
+    // Disk progress is published by the one save worker before GUI callbacks run.
+    std::shared_ptr<std::atomic<quint64>> diskRevision_ = std::make_shared<std::atomic<quint64>>(0);
+    quint64 importGeneration_ = 0;
+    quint64 importPreviewRevision_ = 0;
+    bool importReading_ = false;
+    QVariantMap importPreview_;
+    QString importError_;
+    QJsonObject importSnapshot_;
+    std::shared_ptr<PendingLayoutImport> pendingImport_;
     ApplicationCatalog* catalog_ = nullptr;
     QPointer<DesktopShellService> desktopShell_;
     std::unique_ptr<SearchService> search_;

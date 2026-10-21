@@ -142,7 +142,15 @@ Button {
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
             anchors.verticalCenterOffset: tileButton.tile.small ? 0 : -20
+            width: tileButton.iconSizeDip
+            height: tileButton.iconSizeDip
             text: tileButton.tile.symbol
+            textFormat: Text.PlainText
+            wrapMode: Text.NoWrap
+            elide: Text.ElideRight
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            clip: true
             visible: appIcon.status !== Image.Ready
             color: "#FFFFFF"
             font.pixelSize: tileButton.tile.small ? 22 : 26

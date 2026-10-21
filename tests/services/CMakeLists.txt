@@ -7,6 +7,11 @@ target_link_libraries(xdstarter_layout_store_tests PRIVATE xdstarter_services)
 add_test(NAME services.layout_store COMMAND xdstarter_layout_store_tests)
 
 find_package(Qt6 REQUIRED COMPONENTS Test)
+qt_add_executable(xdstarter_layout_import_tests layout_import_tests.cpp)
+target_link_libraries(xdstarter_layout_import_tests PRIVATE xdstarter_services Qt6::Test)
+add_test(NAME services.layout_import COMMAND xdstarter_layout_import_tests)
+set_tests_properties(services.layout_import PROPERTIES TIMEOUT 30)
+
 qt_add_executable(xdstarter_application_catalog_tests application_catalog_tests.cpp)
 target_link_libraries(xdstarter_application_catalog_tests PRIVATE xdstarter_services Qt6::Test)
 add_test(NAME services.application_catalog COMMAND xdstarter_application_catalog_tests)
