@@ -161,6 +161,10 @@ int main() {
     test.expect(
         futureService.isReadOnly() && futureService.pinApplication(QJsonObject{}).readOnly &&
             futureService.unpinTile(QStringLiteral("work-standard-1")).readOnly &&
+            futureService.createGroup(QStringLiteral("只读分组")).readOnly &&
+            futureService.renameGroup(QStringLiteral("work"), QStringLiteral("只读改名")).readOnly &&
+            futureService.moveGroupBy(QStringLiteral("work"), 1).readOnly &&
+            futureService.removeGroup(QStringLiteral("work")).readOnly &&
             !futureService
                  .moveTile(QStringLiteral("work-standard-1"), QStringLiteral("daily"), 0, 2)
                  .success &&
@@ -313,6 +317,27 @@ int main() {
         snapshot.insert(QStringLiteral("targets"), QJsonArray{target});
         return snapshot;
     };
+    const auto groupPath = directory.filePath(QStringLiteral("groups/layout.json"));
+    PrototypeService groupLayout(grid, {}, false);
+    const auto createdGroup = groupLayout.createGroup(QStringLiteral("  新建工作组  "));
+    const auto emptyGroup = groupLayout.createGroup(QStringLiteral("即将删除"));
+    const auto groupPin = groupLayout.pinApplication(application, createdGroup.groupId);
+    test.expect(createdGroup.success && emptyGroup.success && groupPin.success &&
+                    groupLayout.renameGroup(createdGroup.groupId,
+                                            QString(LayoutStore::maximumGroupNameLength,
+                                                    QChar(0x4e2d)))
+                        .success &&
+                    groupLayout.moveGroupBy(createdGroup.groupId, -1).success &&
+                    groupLayout.removeGroup(emptyGroup.groupId).success &&
+                    LayoutStore(groupPath).save(groupLayout.snapshot()).success,
+                "created, renamed, reordered and removed groups commit through normal storage");
+    const PrototypeService groupRestart(grid, groupPath, false);
+    test.expect(!groupRestart.loadResult().usedDefaults &&
+                    groupRestart.snapshot() == groupLayout.snapshot() &&
+                    groupRestart.previewGroups().first().id == createdGroup.groupId &&
+                    groupRestart.previewGroups().first().tiles.first().id == groupPin.tileId &&
+                    groupRestart.targetForTile(groupPin.tileId) == application,
+                "a new process restores group identity, order, long names and pinned targets");
     auto uncApplication = application;
     uncApplication.insert(QStringLiteral("shortcutPath"),
                           QStringLiteral("\\\\server\\share\\Programs\\Remote.lnk"));
