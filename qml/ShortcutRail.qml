@@ -12,6 +12,7 @@ Rectangle {
     required property var tokens
     property bool busy: false
     readonly property string assetRoot: "qrc:/xdstarter/ui/" + (darkTheme ? "dark" : "light") + "/"
+    readonly property var theme: tokens.themes[darkTheme ? "dark" : "light"]
 
     signal actionRequested(string actionId)
 
@@ -24,7 +25,7 @@ Rectangle {
         anchors.right: parent.right
         width: 1
         height: parent.height
-        color: Qt.alpha(rail.tokens.brand.blue, 0.15)
+        color: rail.theme.separator
     }
 
     component RailButton: Button {
@@ -49,12 +50,14 @@ Rectangle {
 
         background: Rectangle {
             radius: 8
-            color: button.hovered || button.down ? Qt.alpha(rail.tokens.brand.blue, button.down ? 0.25 : 0.14) : "transparent"
+            color: button.down ? rail.theme.pressed : (button.hovered ? rail.theme.hover : "transparent")
             border.width: button.activeFocus ? 2 : 0
             border.color: rail.tokens.brand.cyan
         }
 
         contentItem: Item {
+            opacity: button.enabled ? 1 : 0.45
+
             Image {
                 objectName: button.avatar ? "shortcutAvatar" : "shortcutIcon-" + button.actionId
                 anchors.centerIn: parent

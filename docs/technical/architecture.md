@@ -124,3 +124,10 @@ GUI 线程更新布局 QVariantList 和应用 QAbstractListModel，并管理窗�
 图标缓存限制为约 8 MiB，刷新目录时重新加载；异步返回校验当前目标描述和版本，防止旧结果覆盖新目标。单个应用图标加载完成只更新对应模型行和固定磁贴的图片版本，避免全部磁贴重新请求图片；取消固定后清理不再引用的目标与图片版本。
 
 菜单保持常驻，隐藏时停止不必要的动画与轮询。按需加载图标并限制缓存，避免每次唤起重新扫描。启动延迟、CPU、内存与 GPU 使用需要通过[测试策略](testing.md)测量。
+
+
+## 菜单视觉状态（v2 修订 2.2）
+
+[#29](https://github.com/xiaodaozhi/xdstarter/issues/29) 继续复用产品与 GUI 测试的相同 QML、controller 和视觉资源。完整布局读取 visual.json 的 layout、font、themes 与 tilePalette；tile-grid.json 仍是磁贴实体几何来源。浏览仅裁去未使用的组尾放置行，编辑恢复完整区域，服务快照和持久化 schema 不变。
+
+controller 将操作、保存、桌面动作与目录扫描的结构化成功／失败结果映射为只读 operationError、persistenceError、desktopActionError、catalogError，并随原状态 NOTIFY 一起更新。目录部分警告也保留可见提示。QML 使用这些标志保留重要反馈，将普通成功反馈放入有界计时的覆盖层，避免常驻状态栏挤占正文；不基于本地化字符串猜测严重程度。更多菜单仍为 Popup.Item，沿用内部焦点和取消规则。独立视觉 probe 仅使用内存布局、匿名目录与图标，不调用真实 Shell、托盘或输入接管，其抓帧不能代替真实产品验收。

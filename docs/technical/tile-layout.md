@@ -20,7 +20,13 @@ height = rowSpan × cell + (rowSpan − 1) × gap
 
 ## 原型布局与呈现
 
-普通首次启动提供空的“常用应用”分组；smoke 与测试夹具可使用工作、日常、娱乐三组、15 枚样例。默认每组容器为 552×216 DIP；样例初始磁贴只占顶部 104 DIP，下方预留两行拖放空间。磁贴向下移动后，组高随最底部磁贴增长并继续保留两行空位。容器高度不是磁贴高度，空白区域不能被截图检查误判成被拉长的磁贴。
+普通首次启动提供空的“常用应用”分组；smoke 与测试夹具可使用工作、日常、娱乐三组、15 枚样例。[Issue #29](https://github.com/xiaodaozhi/xdstarter/issues/29) 区分浏览与编辑的呈现高度，避免浏览时每组常驻大块拖放留白：
+
+- 浏览网格使用磁贴实际占用高度 `max(tile.y + tile.height)`；空组使用 56 DIP 提示区域。样例各组初始占用 104 DIP。
+- 编辑网格使用 service 提供的完整拖放空间：`max(216, occupiedHeight + 2 × pitch)` DIP，宽度始终为 552 DIP。样例初始编辑高度为 216 DIP；向下移动后，继续在最底部磁贴下保留两行空位。
+- 组标题为 32 DIP，至网格间距 8 DIP，组间距 24 DIP，来自[视觉 tokens](../design/tokens/visual.json)。模式切换可改变后续组的屏幕位置及滚动范围，不改动组内磁贴的整数坐标、尺寸或共享几何，也不将呈现高度写入配置。
+
+`TileGroup` 用实际 `grid.height` 计算组外框，拖放命中同一 `gridItem` 坐标系。容器高度不是磁贴高度，编辑留白不能被截图检查误判成被拉长的磁贴。
 
 `MenuController.groups → TileGroup → TileButton` 呈现 C++ 提供的逻辑矩形。小磁贴只显示居中图标；标准与宽磁贴使用固定内部名称区，长名称省略，完整文本由 ToolTip 与 `Accessible.name` 保留。文本、焦点描边与内部布局均不撑开外框。样例不会枚举或启动已安装应用。
 

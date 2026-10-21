@@ -50,6 +50,7 @@ class ApplicationCatalog final : public QObject {
     [[nodiscard]] bool busy() const;
     [[nodiscard]] bool launchBusy() const;
     [[nodiscard]] QString status() const;
+    [[nodiscard]] bool error() const;
     [[nodiscard]] LaunchTarget target(const QString& id) const;
     [[nodiscard]] bool containsApplication(const QString& id) const;
     [[nodiscard]] LaunchResult availability(const QString& id) const;
@@ -86,6 +87,7 @@ class ApplicationCatalog final : public QObject {
     mutable QMutex iconMutex_;
     QCache<QString, QImage> icons_{8 * 1024 * 1024};
     bool busy_ = false;
+    bool error_ = false;
     bool launchBusy_ = false;
     QString status_ = QStringLiteral("尚未读取应用目录。");
 };

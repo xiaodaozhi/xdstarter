@@ -1,0 +1,166 @@
+{
+  "compiler": "MSVC 192930153",
+  "compoundPixelChecks": {
+    "fourSmallEqualsStandard": true,
+    "fourSmallOuterWidthPx": 156,
+    "standardWidthPx": 156
+  },
+  "dropAreaGeometryWindowDip": {
+    "height": 104,
+    "width": 552,
+    "x": 376,
+    "y": 488
+  },
+  "graphicsApi": "Direct3D11",
+  "graphicsApiValue": 4,
+  "gridCropPx": {
+    "height": 156,
+    "width": 828,
+    "x": 564,
+    "y": 732
+  },
+  "gridGeometryWindowDip": {
+    "height": 104,
+    "width": 552,
+    "x": 376,
+    "y": 488
+  },
+  "gridScreenshot": "light-entertainment-grid.png",
+  "group": "entertainment",
+  "imageHeightPx": 1092,
+  "imageHeightRatio": 1.5,
+  "imageWidthPx": 1542,
+  "imageWidthRatio": 1.5,
+  "kernelType": "winnt",
+  "kernelVersion": "10.0.26300",
+  "lowerScanlineRunsPx": [
+    {
+      "startPx": 0,
+      "widthPx": 324
+    },
+    {
+      "startPx": 336,
+      "widthPx": 156
+    },
+    {
+      "startPx": 504,
+      "widthPx": 156
+    },
+    {
+      "startPx": 672,
+      "widthPx": 156
+    }
+  ],
+  "operatingSystem": "Windows 11 Version 26H2",
+  "pixelScanPassed": true,
+  "platformName": "windows",
+  "qtVersion": "6.8.2",
+  "requestedScaleFactor": "1",
+  "screenAvailableGeometryDip": {
+    "height": 1019,
+    "width": 1600,
+    "x": 0,
+    "y": 0
+  },
+  "screenDevicePixelRatio": 1.5,
+  "screenGeometryDip": {
+    "height": 1067,
+    "width": 1600,
+    "x": 0,
+    "y": 0
+  },
+  "screenLogicalDpi": 96,
+  "screenPhysicalDpi": 134.1463696369637,
+  "smallVerticalScanlineRunsPx": [],
+  "theme": "light",
+  "tiles": [
+    {
+      "accessibleName": "宽磁贴示例二",
+      "id": "entertainment-wide",
+      "labelTruncated": false,
+      "labelVisible": true,
+      "renderedGeometryDip": {
+        "height": 104,
+        "width": 216,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "accessibleName": "标准磁贴示例六",
+      "id": "entertainment-standard-1",
+      "labelTruncated": true,
+      "labelVisible": true,
+      "renderedGeometryDip": {
+        "height": 104,
+        "width": 104,
+        "x": 224,
+        "y": 0
+      }
+    },
+    {
+      "accessibleName": "标准磁贴示例七",
+      "id": "entertainment-standard-2",
+      "labelTruncated": true,
+      "labelVisible": true,
+      "renderedGeometryDip": {
+        "height": 104,
+        "width": 104,
+        "x": 336,
+        "y": 0
+      }
+    },
+    {
+      "accessibleName": "标准磁贴示例八",
+      "id": "entertainment-standard-3",
+      "labelTruncated": true,
+      "labelVisible": true,
+      "renderedGeometryDip": {
+        "height": 104,
+        "width": 104,
+        "x": 448,
+        "y": 0
+      }
+    }
+  ],
+  "tooltipCaptureOpacity": 0,
+  "tooltipsHiddenForGeometryCapture": true,
+  "topScanlineRunsPx": [
+    {
+      "startPx": 0,
+      "widthPx": 324
+    },
+    {
+      "startPx": 336,
+      "widthPx": 156
+    },
+    {
+      "startPx": 504,
+      "widthPx": 156
+    },
+    {
+      "startPx": 672,
+      "widthPx": 156
+    }
+  ],
+  "verticalScanlineRunsPx": [
+    {
+      "startPx": 0,
+      "widthPx": 156
+    }
+  ],
+  "windowDevicePixelRatio": 1.5,
+  "windowFrameGeometryDip": {
+    "height": 728,
+    "width": 1028,
+    "x": 285,
+    "y": 145
+  },
+  "windowGeometryDip": {
+    "height": 728,
+    "width": 1028,
+    "x": 285,
+    "y": 145
+  },
+  "windowScreenshot": "light-entertainment-window.png"
+}

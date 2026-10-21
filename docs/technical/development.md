@@ -99,6 +99,39 @@ Debug 构建使用 `-Preset app-debug`。脚本复用已构建的 `xdstarter_ui_
 
 此矩阵覆盖当前屏幕上的 Qt 有效缩放，不证明更改 Windows 系统缩放后的行为、混合 DPI 跨屏切换、原生系统接管或屏幕阅读器焦点已通过。原生交互验证需要可见 Windows 桌面；其他 Qt 版本、MSVC 2022 应用 CI 与 macOS 构建的结果须按各自环境单独记录，不能由本机矩阵推断。
 
+## 高保真界面状态探针
+
+[Issue #29](https://github.com/xiaodaozhi/xdstarter/issues/29) 增加显式 `--visual-acceptance-probe`，入口位于 `xdstarter_ui_tests.exe`；它不属于普通 CTest 的默认执行路径，也不由现有 `verify-windows-ui.ps1` 自动调用。先完成含测试的 Qt 6.8.2 `app-release` 构建，再从仓库根目录运行。下面使用默认项目 Qt 缓存；使用外部只读缓存时，将 `qtRoot` 改为相同版本 Kit 的路径。环境变量放在子 PowerShell 进程中，不改变父终端或 Windows 显示设置。
+
+```powershell
+# 原生 Windows QPA；QT_SCALE_FACTOR=1 表示当前屏幕基础 DPR，不等于固定 100%。
+pwsh -NoProfile -Command {
+    $qtRoot = (Resolve-Path './build/Qt/6.8.2/msvc2022_64').Path
+    $env:PATH = (Join-Path $qtRoot 'bin') + [IO.Path]::PathSeparator + $env:PATH
+    $env:QT_QPA_PLATFORM = 'windows'
+    $env:QT_SCALE_FACTOR = '1'
+    $env:QT_QPA_FONTDIR = Join-Path $env:WINDIR 'Fonts'
+    Remove-Item Env:QT_QUICK_BACKEND, Env:QT_SCREEN_SCALE_FACTORS, Env:QT_SCALE_FACTOR_ROUNDING_POLICY, Env:QT_ENABLE_HIGHDPI_SCALING -ErrorAction SilentlyContinue
+    $env:XDSTARTER_VISUAL_VALIDATION_DIR = [IO.Path]::GetFullPath('build/validation/visual/native-current')
+    & ./build/app-release/bin/xdstarter_ui_tests.exe --visual-acceptance-probe
+    exit $LASTEXITCODE
+}
+```
+
+`XDSTARTER_VISUAL_VALIDATION_DIR` 必须是绝对且可写的输出目录；探针缺少它或无法建立目录会非零退出。离屏复核可在同一命令中改为 `QT_QPA_PLATFORM=offscreen`、`QT_QUICK_BACKEND=software`，并将输出目录改为 `build/validation/visual/offscreen`；此时不要再删除 `QT_QUICK_BACKEND`。成功执行应输出 `visual-acceptance-probe.json` 和深浅主题各 11 张完整窗口 PNG，共 **22 张**；失败时检查 JSON 和非零退出码，不要求失败运行留下完整图片集。状态包括：
+
+- 默认浏览、更多菜单、搜索有结果、搜索无结果。
+- 编辑布局、组名弹层、分组菜单、失效目标。
+- 480×480 DIP 窄面板、空目录/空布局、受控加载。
+
+该探针使用产品的 QML、controller 和共享几何，运行匿名内存应用目录、合成图标和独立布局快照。它不枚举已安装应用，不启动真实应用，不注册托盘，不发送全局输入，不读写用户布局，也不执行系统快捷动作。应用目录和可用性仍通过隔离后台夹具驱动，加载状态由可释放的扫描门控制；这些状态图不证明真实目录、系统托盘或原生焦点接管已通过。
+
+每张抓帧前后复核目标状态并等待新渲染帧；JSON 记录实际 DPR、图形 API、逻辑窗口尺寸、像素尺寸、关键区域、磁贴矩形、状态断言与 QML 警告。Windows QPA 额外检查原始抓帧 alpha 及四角透明；离屏后端可能提供 RGB backing store，转存 RGBA PNG 不代表它验证了原生透明窗口。应同时保留实际二进制 SHA-256、源码 head 和运行日志，不能用旧 PNG 替代新版本结果。
+
+五档有效缩放需分别运行进程并分目录保存：先以 Windows QPA 的 `QT_SCALE_FACTOR=1` 读取基础 DPR，再将因子设为 `目标 DPR / 基础 DPR`，目标为 1、1.25、1.5、1.75、2；以每张 JSON 的实际 `devicePixelRatio` 确认生效。不能简单将因子 1/1.25/1.5/1.75/2 当作所有机器上的对应有效缩放。此次命令说明不代表当前原生矩阵已通过；运行结果见[测试策略](testing.md)与关联 Issue。
+
+当前 SVG 与 QML 优先使用 Segoe UI Variable，中文由系统字体回退，不分发字体。相同几何和 token 不保证不同字体环境下逐像素同字形，文本、图标及状态仍须目视。原生进程缩放不等同更改系统缩放、热插拔、混合 DPI 首次唤回、真实输入法或屏幕阅读器验收；这些与产品窗口搜索/编辑、托盘和重启恢复分开记录。
+
 macOS 可使用对应的 Qt 6.8.2 Kit 和相同 app presets，界面明确标记模拟平台；当前尚未进行 macOS 构建验证。
 
 ## 构建输出与个人配置

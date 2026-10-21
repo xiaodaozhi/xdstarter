@@ -6,7 +6,97 @@
 
 GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查看 PNG，核对字体、应用图标、长名称、间隙及辅助功能信息的表达。
 
-## 当前：分组管理（Issue #9）
+## 当前：高保真界面落地与视觉验收（Issue #29）
+
+2026-10-21，[#29](https://github.com/xiaodaozhi/xdstarter/issues/29) 将 [v2 修订 2.2](../design/README.md) 统一为可运行界面：顶部搜索与编辑／更多／收起入口，240 DIP 应用目录与分组磁贴正文，主题控件、菜单、弹层及重要反馈。正常浏览不常驻品牌大标题和调试底栏；共享磁贴保持 48 DIP 小格、8 DIP 间隙、48／104／216×104 DIP 三档几何，布局 schemaVersion 2 不变。当前设计 SVG/PNG 仅是布局基准，下面区分构建、离屏状态、原生像素与真实产品证据。
+
+### 正式构建与自动检查
+
+正式入口 `./scripts/build-windows.ps1 -Preset app-release` 使用 Qt **6.8.2**、MSVC **19.29.30153.0／v142**、Windows SDK **10.0.19041.0**。视觉及真机验收前的 `build/issue29-build-rounded-overlay.log` 为 **12/12 CTest（38.63 秒）**。后续仅修正跨组滚动用例的几何前提，最终 `build/issue29-build-ci-scroll-precondition.log` 再次完成 Release、QML lint 和 **12/12 CTest（30.49 秒）**，GUI **44/44**、host **34/34**。产品及 host 散列没有变化。此次 QML lint 没有诊断：`Qt.inputMethod.reset` 使用局部类型抑制，搜索／输入法运行回归仍保留；Qt SDK 头文件的既有 MSVC C4702 警告没有消除，不把它写为整个构建零警告。
+
+| 程序及证据版本 | SHA-256 |
+| --- | --- |
+| 产品 `xdstarter.exe` | `34f18e80c19b5d81356ad71dec76c6fc7870c32c34e26d86ca2cf46d9131cb23` |
+| 原生视觉证据 GUI `xdstarter_ui_tests.exe` | `35c4a04c00e72703ef986cb06d66c2fd112e244d4e7bfc477b082c4e21b184ff` |
+| 滚动用例修正后最终 GUI | `d36940ee0efa19f77c272c84eda1d96cb95d8357276676c00f68d87aba772085` |
+| host `xdstarter_desktop_window_host_tests.exe` | `d5cbb03068876e11dccbe65df382256ab85c1571e4c14934dad3ac4629999785` |
+
+本轮新增三条 GUI 用例，覆盖完整搜索工具栏及更多菜单入口、深浅主题与浏览／编辑切换、共享网格和图标／文字对比；结构化错误反馈在定时器结束后仍可见，失败后重试可清零；磁贴名含 `<b>literal</b>` 等标记时，标签与有界提示仍按 PlainText 原样显示。原有目录、搜索、拖放、分组、只读保护、持久化和焦点回归继续执行。布局改变只调整浏览容器的占用高度，编辑使用 service 的完整拖放空间，磁贴坐标和尺寸前后相同。
+
+包含公开验收工件的仓库文档／素材检查通过，255 项开发素材及其清单未重建；`tests/tooling` **13/13** 通过（本地 `build/issue29-tooling-tests.log`）。独立只读审查发现 TileButton 标签及提示的 AutoText 遗漏，已显式改为 PlainText、提示宽度上限 380 DIP，并补充字面文本回归；其余主题、错误状态、内部菜单、分组高度与滚动路径未留下已确认 P1/P2。
+
+### 视觉证据 GUI 的离屏状态抓帧
+
+显式 `--visual-acceptance-probe` 在 `offscreen/software` 下取得 **22/22** 张状态图并通过状态断言，`errors` 与 `qmlWarnings` 均为空，DPR 为 1。深浅主题各含浏览、更多菜单、搜索有／无结果、编辑、组名弹层、分组菜单、失效、窄面板、空布局／目录及加载 11 状态；运行方法见[开发环境](development.md)。本地工件为 `build/validation/issue29/offscreen/` 中的 PNG 和 `visual-acceptance-probe.json`；公开[离屏摘要](../design/validation/issue-29/offscreen-summary.json)保留 22 帧断言与元数据，删除未提交 PNG 的截图字段，并明确图片仅保存在本地 build 目录。
+
+夹具复用产品 QML、controller、网格与后台目录接口，只使用匿名内存目标、合成图标和隔离快照；不读取用户布局、枚举已安装应用、启动应用、注册托盘或发送全局输入。抓帧前后检查状态并等待新帧，记录逻辑尺寸、实际 DPR、物理图片尺寸、关键区域和磁贴矩形。离屏原始 capture 没有 alpha；转换 RGBA 仅用于保存统一 PNG 格式，不能据此宣称透明角、原生圆角窗口或 DWM 合成通过。
+
+### 原生矩阵与产品验收的版本边界
+
+早期版本曾以 GUI `e71627b56b0c715c83108f77dc76dd7e086f6e2d64e7bceda3bc078ec005effc`、对应当时产品 `b449…` 执行五档完整 GUI，每档 44/44；其结果属于图标等待及圆角蒙层修正之前的程序，历史矩阵保留为 `native-matrix-before-icon-wait.json`。另有 GUI `824edb6336f2501267f06047e0f23bb2f824c2d5972b6c762c231e156db3ac9f` 的 `renderedGroups` 像素专项，保留为 `native-matrix-before-rounded-overlay.json`。两者都不作为上表最终 GUI 的五档完整回归证据。
+
+原生视觉证据 GUI `35c4a04c…` 的五档像素专项 **全部通过**，结果见[原生矩阵](../design/validation/issue-29/native-matrix.json)。此次仅运行 `renderedGroups`，不是每档重新执行完整 44 项 GUI。每档初始化／抓帧／清理共 **3/3**；深浅主题 × 三组得到 6 份 group JSON，每份包含完整窗口与网格裁剪两张 PNG，共 12 PNG，像素扫描均通过。完整本地工件位于 `build/validation/issue29/final-native-pixels/`，公开矩阵保留程序 hash、实际 DPR、图形 API 与结果。
+
+| Qt 有效缩放 | 实际 DPR | 图形后端 | QTest | 六组像素扫描 |
+| --- | --- | --- | --- | --- |
+| 100% | 1 | Direct3D 11 | 3/3 | 通过 |
+| 125% | 1.25 | Direct3D 11 | 3/3 | 通过 |
+| 150% | 1.5 | Direct3D 11 | 3/3 | 通过 |
+| 175% | 1.75 | Direct3D 11 | 3/3 | 通过 |
+| 200% | 2 | Direct3D 11 | 3/3 | 通过 |
+
+本次用 `QT_SCREEN_SCALE_FACTORS` 将两块已连接显示器同时设为目标 DPR，`QT_SCALE_FACTOR=1`，逐图核对实际 DPR；只修改测试进程环境，没有修改系统显示设置。它验证 Windows QPA 下的有效缩放、光栅边界及共享几何，不验证真实混合 DPR 跨屏迁移或系统缩放变更。真实托盘、应用目录和独立产品重启也不在匿名像素夹具范围内。
+
+### 同一最终 GUI 的原生 22 状态
+
+同一 `35c4a04c…` GUI 在 Windows QPA／Direct3D 11、Qt 6.8.2、kernel `10.0.26300` 下运行显式视觉探针，**22/22 通过**；所有帧实际 DPR 为 1，`originalCaptureHasAlphaChannel` 与四角透明检查均为真，`errors`、`qmlWarnings` 均为空。公开[完整原生元数据](../design/validation/issue-29/visual-acceptance-probe.json)包含状态与新帧断言、图标就绪后的完整窗口帧、像素／逻辑尺寸、区域与磁贴几何，以及最终产品和 GUI hash；[源文件摘要](../design/validation/issue-29/source-digests.json)与证据一同保留。
+
+| 状态 | 深色原生 PNG | 浅色原生 PNG |
+| --- | --- | --- |
+| 默认浏览 | [深色](../design/validation/issue-29/dark-browse.png) | [浅色](../design/validation/issue-29/light-browse.png) |
+| 更多菜单 | [深色](../design/validation/issue-29/dark-more-menu.png) | [浅色](../design/validation/issue-29/light-more-menu.png) |
+| 搜索结果 | [深色](../design/validation/issue-29/dark-search-results.png) | [浅色](../design/validation/issue-29/light-search-results.png) |
+| 搜索无结果 | [深色](../design/validation/issue-29/dark-search-empty.png) | [浅色](../design/validation/issue-29/light-search-empty.png) |
+| 编辑布局 | [深色](../design/validation/issue-29/dark-edit.png) | [浅色](../design/validation/issue-29/light-edit.png) |
+| 组名弹层 | [深色](../design/validation/issue-29/dark-group-name-dialog.png) | [浅色](../design/validation/issue-29/light-group-name-dialog.png) |
+| 分组菜单 | [深色](../design/validation/issue-29/dark-group-menu.png) | [浅色](../design/validation/issue-29/light-group-menu.png) |
+| 失效目标 | [深色](../design/validation/issue-29/dark-unavailable.png) | [浅色](../design/validation/issue-29/light-unavailable.png) |
+| 窄面板 | [深色](../design/validation/issue-29/dark-narrow.png) | [浅色](../design/validation/issue-29/light-narrow.png) |
+| 空目录／布局 | [深色](../design/validation/issue-29/dark-empty.png) | [浅色](../design/validation/issue-29/light-empty.png) |
+| 受控加载 | [深色](../design/validation/issue-29/dark-loading.png) | [浅色](../design/validation/issue-29/light-loading.png) |
+
+已目视核对完整图标、工具栏、分组、菜单、深浅主题与组名弹层；修正后的 Dialog 蒙层只覆盖圆角可见面板，外窗透明角保持。搜索空状态的重复文案已去除，探针在输入查询前通过 Ctrl+F 聚焦搜索，避免残留的更多菜单焦点影响状态。抓帧和输入都局限于匿名测试窗口，不含用户桌面背景、真实应用列表或目标路径；这一原生状态证据没有替代真实产品窗口交互、托盘恢复或重启布局验收，也不扩大为材料或完整系统兼容通过。
+
+### 真实产品交互、托盘与独立进程恢复
+
+同一最终产品 `34f18e80…`、源码提交 `57ed29e`，在 Windows kernel `10.0.26300`／Qt 6.8.2／Direct3D 11 下使用独立验收布局运行两个进程，没有修改日常用户配置。公开[产品验收摘要](../design/validation/issue-29/product-acceptance.json)记录程序身份、进程阶段、布局断言和用户确认，不包含 PID、机器路径、真实目标描述或私人桌面截图。
+
+首进程从浅色主题开始，实际完成 `huatu` 查找唯一画图结果、更多菜单切换深色、清空搜索恢复浏览、进入编辑、新建分组弹层后按 Esc 丢弃草稿。内部菜单和弹层操作没有误收起主窗口；将 Epic 磁贴从原分组跨组拖到学习分组的 `(column 0, row 0)`，再从 standard 切为 wide，实际保存。首个受限启动上下文中，部分打包应用图标显示为通用占位，`trayRecovery: false`；备用激活路径可以恢复窗口并保留编辑状态。这一环境差异保留记录，不将它写为该启动上下文的图标／托盘通过。
+
+第二进程在普通桌面启动上下文运行同一二进制和同一布局，实际恢复深色主题、非编辑状态和空搜索；学习分组位于首组，Epic 为 wide，原另外三枚磁贴仍在原分组。真实系统图标，包括画图等打包应用图标，显示正常，日志记录 `trayRecovery: true`。用户最后亲自点击通知区域图标并正常退出，确认“**恢复正常，查询保留，已从菜单退出**”；此次确认覆盖真实托盘恢复及当前进程查询保留，不是受控托盘适配器或合成输入结果。
+
+| 独立产品进程 | 启动时间（Asia/Shanghai） | 正常菜单退出时间 | 退出代码 |
+| --- | --- | --- | --- |
+| 首进程 | 2026-10-21 17:58:15 | 18:02:08 | 0 |
+| 重启进程 | 2026-10-21 18:02:14 | 18:08:16 | 0 |
+
+保留进程句柄的启动器独立记录两次退出。逐对象断言 `first-after == restart-before == restart-after`；目标描述、稳定目标／磁贴／分组 id、组名与顺序全部保留，schemaVersion 仍为 2。相对验收起始快照，仅主题改为 dark，以及同一 Epic 从原组 `(0,0)` standard 移至学习组 `(0,0)` wide；其余三枚磁贴的目标、位置与尺寸不变。查询只在进程内收起／唤回时保留，重启初始为空，没有写入布局文件。完整布局、真实目录、进程日志及桌面背景截图仅存本地 `build/validation/issue29/product/`。
+
+上述首受限与普通桌面两个启动上下文的差别不证明所有启动方式均兼容。本轮没有重新验收 Win 键或开始按钮接管、Explorer 重启、远程桌面、物理系统缩放切换、显示器热插拔、屏幕阅读器及 Mica／Acrylic；前轮结果继续保留各自程序身份，父 #5／#6 与相关后续任务保持各自范围。
+
+### 失败与修正记录
+
+PR 初次 head `72d13d4` 的[附加 MSVC 2022 检查](https://github.com/xiaodaozhi/xdstarter/actions/runs/39583500992/job/119166601916) 为 11/12 CTest、GUI 43 通过／1 失败：跨组用例断言 `contentY > 0`，却没有先建立并等待目标必须离开视口的几何前提。新布局的浏览／编辑组高不同，原用例依赖默认尺寸及重排时机，CI 没有记录当时的实际目标矩形，不能进一步认定生产 Timer 有缺陷。修正仅在该用例缩到最小窗高，等待编辑网格为 216 DIP 并明确目标位于安全区之外；随后继续使用生产边缘滚动 Timer 和原来的非零滚动、单次跨组提交、坐标、15 枚磁贴及焦点断言。最终正式 CTest 及独立重复结果见[修正摘要](../design/validation/issue-29/ci-scroll-regression.json)。这项变更没有修改产品、QML 或显式视觉探针，原生图片保留实际抓帧 GUI `35c4a04c…` 和源码 `57ed29e` 的身份，不重标为新的 GUI hash；相同产品 `34f18e80…` 的真机证据仍保持准确。
+
+- 初轮 `build/issue29-build-initial.log` 为 **11/12 CTest，GUI 40 通过／3 失败**：旧测试仍要求历史高亮色、260 DIP 目录及常驻品牌图标。核对修订 2.2 后调整这三条视觉期待，保留其可读性、入口及实际几何断言，没有把失败记为通过。
+- 离屏探针初次缺少系统字体目录，保留 `offscreen-initial-fonts.json` 和启动日志。随后用空 TextInput 的 `boundingRect()` 衡量布局框，得到的是文本／光标 ink 边界而假失败；改用 `size()` 测布局外框，保留 `offscreen-ink-bounds-failed.json`。
+- 原生首次新帧不保证异步图标已经 `Image.Ready`。探针增加显式图标就绪等待，再等待新渲染帧；先前 JSON 保留为 `offscreen-before-icon-wait.json`，不以带占位或迟到图标的帧充当最终状态图。
+- 严格原生 alpha 检查发现深浅主题组名 Dialog 的默认模态蒙层覆盖整张透明外窗，**两张状态帧失败**，记录于 `native-dialog-alpha-failed.json` 和 `build/issue29-visual-native-final.log`。修复 `Overlay.modal`，蒙层仅绘制在同一圆角面板内；没有降低原生原始 alpha／四角透明断言，随后重新正式构建为上表最终程序。
+- 最终五档专项的初版全局缩放因子按单屏基础 DPR 校准，测试窗口换屏后触发实际 DPR 不匹配；失败启动器／日志保留为 `build/issue29-native-pixels-dpr-location-failed.log`。改为当前测试进程的双屏同目标 DPR 覆盖，仍逐图检查实际 DPR；早期启动器参数失败另存 `build/issue29-native-pixels-wrapper-failed.log`。
+
+本轮采用实色面板，当前 SVG 与 QML 字体为 Segoe UI Variable、中文使用系统回退。字体回退、真实应用图标与设计示意不同，不能要求匿名夹具和第三方示意图逐像素一致。系统缩放切换、热插拔、远程桌面、其他 Windows 构建、屏幕阅读器及完整 Mica／Acrylic 或接管矩阵不由本机状态图证明；相关父 #5／#6 和 Beta 范围继续按 Issues 跟踪。
+
+## 历史：分组管理（Issue #9）
 
 2026-10-21，[#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 本轮交付编辑模式的新建、重命名、相邻排序及空组删除，保留至少一组。磁贴显示名称编辑仍在该 Issue 跟踪，本轮使用 `Refs #9`，不关闭整个 Issue；布局格式仍为 schemaVersion 2。
 
@@ -31,7 +121,7 @@ GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查�
 
 分组初版产品使用隔离布局读取281项真实目录，实际完成新建“工具 Tools”、固定Access及跨组拖到原组；原三枚磁贴与目标逐对象保持不变。命名弹层失焦后草稿未提交，窗口收起。用户随后发现首次跨屏托盘恢复时菜单底部越过任务栏，建立 #28；本次观察推翻该场景的通过预期，不能以先前受控窗口或旧CI代替实际验收。用户从托盘菜单退出初版，独立进程句柄记录PID43276于2026-10-21 15:50:53（Asia/Shanghai）退出代码0，证据仅保留本地build/validation/issue9-product/。修复版后续完成改名、排序及同文件独立进程恢复，证据见下方 #28 追加记录。
 
-## 本轮追加：隐藏窗口跨混合 DPI 唤回（Issue #28）
+## 历史：隐藏窗口跨混合 DPI 唤回（Issue #28）
 
 2026-10-21，分组实际验收发现 [#28](https://github.com/xiaodaozhi/xdstarter/issues/28)：96 DPI 隐藏窗口首次从 144 DPI 屏幕托盘唤回时，定位先于原生窗口迁移与 Qt DPR 更新。修复使用公开 Qt Windows screen 的 HMONITOR 映射目标屏幕；隐藏迁移后等待目标 DPR、保存的逻辑尺寸意图及实际原生物理尺寸一致，两次稳定采样后才定位和显示。总等待上限 1500 ms，取消、关闭、重入及迟到回调有回归；可见窗口在收起前同步保存最新尺寸，避免遗漏尚未送达的 resize 通知。机制见 [ADR-0007](adr/0007-custom-menu-chrome.md)。
 
