@@ -257,9 +257,21 @@ LayoutResult LayoutStore::validate(const QJsonObject& snapshot) {
             const auto size = tileSize(tile.value(QStringLiteral("size")));
             const auto column = tile.value(QStringLiteral("column"));
             const auto row = tile.value(QStringLiteral("row"));
+            const auto displayName = tile.value(QStringLiteral("displayName"));
+            const auto displayText = displayName.toString();
+            const bool validDisplayName = !tile.contains(QStringLiteral("displayName")) ||
+                (version >= 3 && displayName.isString() && !displayText.isEmpty() &&
+                 displayText == displayText.trimmed() && displayText.isValidUtf16() &&
+                 displayText.size() <= maximumTileDisplayNameLength &&
+                 std::none_of(displayText.cbegin(), displayText.cend(), [](QChar character) {
+                     return character.category() == QChar::Other_Control ||
+                            character.category() == QChar::Separator_Line ||
+                            character.category() == QChar::Separator_Paragraph;
+                 }));
             if (!keys(tile,
                       {QStringLiteral("id"), QStringLiteral("targetId"), QStringLiteral("column"),
-                       QStringLiteral("row"), QStringLiteral("size")}) ||
+                       QStringLiteral("row"), QStringLiteral("size"), QStringLiteral("displayName")}) ||
+                !validDisplayName ||
                 !text(tileId) || tileIds.contains(tileId.toString()) ||
                 !tile.value(QStringLiteral("targetId")).isString() ||
                 !targetIds.contains(tile.value(QStringLiteral("targetId")).toString()) || !size ||
@@ -269,7 +281,7 @@ LayoutResult LayoutStore::validate(const QJsonObject& snapshot) {
                                : *size == TileSize::Standard ? grid_tokens::standardRows
                                                              : grid_tokens::wideRows) >
                     maximumRows) {
-                return failure(QStringLiteral("磁贴标识、引用、尺寸或格坐标无效"));
+                return failure(QStringLiteral("磁贴标识、引用、尺寸、格坐标或显示名称无效"));
             }
             const auto rectangle = grid.rectangle(column.toInt(), row.toInt(), *size);
             if (!rectangle) {

@@ -38,6 +38,8 @@
 
 忙碌与无结果状态分别说明，目录扫描使用已有快照并提示更新；刷新失败保留旧目录。未固定且已离开目录的目标从索引移除，固定但失效的目标保留并说明不可用。图标按每 id 版本更新，图标失败保留占位。查询只存于进程内，不写入布局、日志或偏好；重启从空查询开始，不改变 schemaVersion 2。
 
+schema 3 的每磁贴显示名称扩展由 [ADR-0011](0011-tile-display-names.md) 定义：结果仍优先目录名称，原目标名称和同目标所有有效覆盖均作为别名；恢复原名或移除覆盖后重建当前名称快照，不保留被删除的历史别名。普通每目标16名称上限保持，磁贴覆盖使用全索引合计512条的独立有界预算。
+
 ## 数据来源与许可
 
 固定来源为 [Unicode Unihan 17.0.0 官方包](https://www.unicode.org/Public/17.0.0/ucd/Unihan.zip)，属性含义参照对应 [UAX #38 修订 39](https://www.unicode.org/reports/tr38/tr38-39.html)。按 `kMandarin`、`kTGHZ2013`、`kXHC1983`、`kHanyuPinyin` 顺序取并集，丢弃字典位置及声调，稳定去重。四字段补充简体常见多音字：`乐 le/yue`、`长 zhang/chang`、`重 zhong/chong`、`行 xing/hang`。没有加入其他 Unihan 读音属性、简繁变体传播或词级词库。

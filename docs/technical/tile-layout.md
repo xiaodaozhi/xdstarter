@@ -57,7 +57,7 @@ height = rowSpan × cell + (rowSpan − 1) × gap
 - 只删除空组，且不能删除最后一组。非空组需先跨组移动或明确取消固定以搬空；删除操作不隐式取消固定、丢弃或挤移磁贴。
 - QML 使用稳定 groupId 操作和恢复焦点，不把名称或数组下标当作身份。组名编辑是内部 `Popup.Item` 暂态；取消、Esc 或外部收起丢弃未提交文本，输入法预编辑不提交操作。
 
-组名与顺序直接写入现有 schemaVersion 2 的 `groups[].name` 和数组顺序，无需升级格式。已提交操作走同一 500 ms 合并保存、原子写入和退出 flush；只读恢复策略照旧。分组不参与应用搜索，单纯重命名或排序不重建搜索索引。磁贴显示名称编辑尚未接入，不能将本轮分组事务等同于 [#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 全部验收完成。
+组名与顺序沿用 schemaVersion 2 已有的 `groups[].name` 和数组顺序，分组操作本身不增加字段；当前显示名称覆盖使用 schemaVersion 3 写入。已提交操作走同一 500 ms 合并保存、原子写入和退出 flush；只读恢复策略照旧。分组不参与应用搜索，单纯重命名或排序不重建搜索索引。磁贴显示名称覆盖使用 schema 3 的可选字段，独立于分组事务；原目标与共享几何不变，兼容与搜索规则见 [ADR-0011](adr/0011-tile-display-names.md)。实际完成范围按 [#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 与测试证据记录。
 
 ## DPI 与像素边界
 

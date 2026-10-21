@@ -48,6 +48,9 @@ ApplicationWindow {
     property bool groupFocusPending: false
     property string managedGroupId: ""
     property string namingGroupId: ""
+    property string namingTileId: ""
+    property string tileNameError: ""
+    readonly property var contextTile: tileById(resizeTileId)
     property string groupNameError: ""
     readonly property var managedGroup: controller.groups.find(group => group.id === managedGroupId) || null
     readonly property int managedGroupIndex: controller.groups.findIndex(group => group.id === managedGroupId)
@@ -72,7 +75,7 @@ ApplicationWindow {
     property string resizeTileSize: ""
     property bool dismissalManaged: false
     property bool presentationSuspended: false
-    readonly property bool internalPopupVisible: resizeMenu.visible || pinMenu.visible || powerMenu.visible || aboutPopup.visible || groupMenu.visible || groupNameDialog.visible || moreMenu.visible
+    readonly property bool internalPopupVisible: resizeMenu.visible || pinMenu.visible || powerMenu.visible || aboutPopup.visible || groupMenu.visible || groupNameDialog.visible || moreMenu.visible || tileNameDialog.visible
     readonly property bool dismissalBlocked: dragActive || internalPopupVisible
 
     signal dismissRequested
@@ -338,6 +341,49 @@ ApplicationWindow {
         groupMenu.open();
     }
 
+    function tileById(tileId: string): var {
+        for (const group of controller.groups)
+            for (const tile of group.tiles)
+                if (tile.id === tileId)
+                    return tile;
+        return null;
+    }
+
+    function openTileNameDialog(): void {
+        if (controller.readOnly || dragActive || !contextTile)
+            return;
+        namingTileId = contextTile.id;
+        focusedTileId = namingTileId;
+        focusedGroupId = "";
+        tileNameError = "";
+        tileNameField.text = contextTile.name;
+        resizeMenu.close();
+        tileNameDialog.open();
+    }
+
+    function submitTileName(): void {
+        if (tileNameField.inputMethodComposing || controller.readOnly)
+            return;
+        const rawName = tileNameField.text;
+        const name = rawName.trim();
+        if (name.length === 0 || name.length > controller.maximumTileDisplayNameLength || /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(rawName)) {
+            tileNameError = qsTr("请输入 1 至 %1 个字符，不含控制字符或换行的磁贴显示名称。").arg(controller.maximumTileDisplayNameLength);
+            return;
+        }
+        if (!controller.renameTile(namingTileId, rawName)) {
+            tileNameError = controller.operationMessage;
+            return;
+        }
+        tileNameDialog.close();
+    }
+
+    function resetCurrentTileName(): void {
+        const tileId = resizeTileId;
+        resizeMenu.close();
+        controller.resetTileDisplayName(tileId);
+        Qt.callLater(restoreTileFocus);
+    }
+
     function openGroupNameDialog(groupId: string): void {
         if (!controller.editMode || controller.readOnly)
             return;
@@ -522,6 +568,7 @@ ApplicationWindow {
         groupMenu.close();
         groupNameDialog.close();
         moreMenu.close();
+        tileNameDialog.close();
     }
 
     function openMoreMenu(): void {
@@ -749,6 +796,7 @@ ApplicationWindow {
                 window.cancelDrag();
                 groupMenu.close();
                 groupNameDialog.close();
+                tileNameDialog.close();
                 window.focusedGroupId = "";
                 window.groupFocusPending = false;
             } else
@@ -762,6 +810,7 @@ ApplicationWindow {
                 pinMenu.close();
                 groupMenu.close();
                 groupNameDialog.close();
+                tileNameDialog.close();
             }
         }
 
@@ -1986,6 +2035,144 @@ ApplicationWindow {
         }
     }
 
+    Dialog {
+        id: tileNameDialog
+
+        objectName: "tileNameDialog"
+        parent: window.contentItem
+        popupType: Popup.Item
+        modal: true
+        focus: true
+        closePolicy: Popup.NoAutoClose
+        Overlay.modal: Item {
+            Rectangle {
+                x: window.shadowInset
+                y: window.shadowInset
+                width: window.panelWidth
+                height: window.panelHeight
+                radius: window.tokens.cornerRadiusDip.menu
+                color: Qt.rgba(0, 0, 0, 0.4)
+            }
+        }
+        width: Math.min(420, window.panelWidth - 40)
+        padding: 20
+        x: (window.width - width) / 2
+        y: Math.max(window.shadowInset, (window.height - height) / 2)
+        title: qsTr("修改磁贴显示名称")
+        header: Label {
+            text: tileNameDialog.title
+            textFormat: Text.PlainText
+            leftPadding: tileNameDialog.leftPadding
+            rightPadding: tileNameDialog.rightPadding
+            topPadding: tileNameDialog.topPadding
+            bottomPadding: 12
+            font.pixelSize: window.tokens.font.heading
+            font.bold: true
+            color: window.theme.foreground
+        }
+        onOpened: {
+            tileNameField.forceActiveFocus(Qt.OtherFocusReason);
+            tileNameField.selectAll();
+        }
+        onClosed: {
+            if (tileNameField.inputMethodComposing) {
+                // qmllint disable missing-property
+                Qt.inputMethod.reset();
+                // qmllint enable missing-property
+            }
+            tileNameField.clear();
+            window.tileNameError = "";
+            window.namingTileId = "";
+            Qt.callLater(window.restoreTileFocus);
+        }
+
+        background: Rectangle {
+            radius: 8
+            color: window.theme.surface
+            border.width: 1
+            border.color: window.theme.controlBorder
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 12
+
+            Label {
+                Layout.fillWidth: true
+                text: qsTr("仅修改此磁贴的显示名称，应用名称和启动目标不变。最多 %1 个字符，表情可能占两个字符。").arg(window.controller.maximumTileDisplayNameLength)
+                textFormat: Text.PlainText
+                color: window.theme.foreground
+                wrapMode: Text.WordWrap
+            }
+
+            TextField {
+                id: tileNameField
+
+                objectName: "tileNameField"
+                Layout.fillWidth: true
+                implicitHeight: window.tokens.layout.searchHeight
+                padding: 10
+                maximumLength: 512
+                selectByMouse: true
+                color: window.theme.foreground
+                Accessible.name: qsTr("磁贴显示名称")
+                Accessible.description: qsTr("输入名称后按 Enter 保存，Esc 取消。原名称保留为搜索别名。")
+                background: Rectangle {
+                    radius: 6
+                    color: window.theme.searchBackground
+                    border.width: tileNameField.activeFocus ? 2 : 1
+                    border.color: tileNameField.activeFocus ? window.tokens.brand.blue : window.theme.controlBorder
+                }
+                Keys.priority: Keys.BeforeItem
+                Keys.onPressed: event => {
+                    if (inputMethodComposing)
+                        return;
+                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                        window.submitTileName();
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Escape) {
+                        tileNameDialog.close();
+                        event.accepted = true;
+                    }
+                }
+            }
+
+            Label {
+                objectName: "tileNameError"
+                Layout.fillWidth: true
+                visible: window.tileNameError.length > 0
+                text: window.tileNameError
+                textFormat: Text.PlainText
+                color: window.theme.errorForeground
+                wrapMode: Text.WordWrap
+                Accessible.role: Accessible.AlertMessage
+            }
+
+            RowLayout {
+                Layout.alignment: Qt.AlignRight
+                spacing: 8
+
+                ActionButton {
+                    objectName: "tileNameCancelButton"
+                    text: qsTr("取消")
+                    onClicked: tileNameDialog.close()
+                    Keys.onReturnPressed: tileNameDialog.close()
+                    Keys.onEnterPressed: tileNameDialog.close()
+                    Keys.onEscapePressed: tileNameDialog.close()
+                }
+
+                ActionButton {
+                    objectName: "tileNameSaveButton"
+                    text: qsTr("保存")
+                    enabled: !tileNameField.inputMethodComposing && !window.controller.readOnly
+                    onClicked: window.submitTileName()
+                    Keys.onReturnPressed: window.submitTileName()
+                    Keys.onEnterPressed: window.submitTileName()
+                    Keys.onEscapePressed: tileNameDialog.close()
+                }
+            }
+        }
+    }
+
     ActionMenu {
         id: powerMenu
 
@@ -2058,6 +2245,26 @@ ApplicationWindow {
         parent: window.contentItem
         popupType: Popup.Item
         onClosed: Qt.callLater(window.restoreTileFocus)
+
+        ActionMenuItem {
+            objectName: "renameTileItem"
+            text: qsTr("修改显示名称")
+            enabled: !window.controller.readOnly && window.contextTile !== null
+            onTriggered: window.openTileNameDialog()
+            Keys.onReturnPressed: window.openTileNameDialog()
+            Keys.onEnterPressed: window.openTileNameDialog()
+        }
+
+        ActionMenuItem {
+            objectName: "resetTileNameItem"
+            text: qsTr("恢复原名称")
+            enabled: !window.controller.readOnly && window.contextTile !== null && window.contextTile.displayName.length > 0
+            onTriggered: window.resetCurrentTileName()
+            Keys.onReturnPressed: window.resetCurrentTileName()
+            Keys.onEnterPressed: window.resetCurrentTileName()
+        }
+
+        ActionSeparator {}
 
         SizeMenuItem {
             objectName: "sizeSmallItem"

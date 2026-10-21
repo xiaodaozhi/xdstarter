@@ -148,7 +148,7 @@ int main() {
                 "overwritten damaged config is retained as a diagnostic artifact");
 
     auto future = edited;
-    future.insert(QStringLiteral("schemaVersion"), 3);
+    future.insert(QStringLiteral("schemaVersion"), LayoutStore::schemaVersion + 1);
     const auto futureBytes = QJsonDocument(future).toJson();
     test.expect(writeBytes(path, futureBytes), "future schema fixture writes");
     const auto futureLoad = store.load(defaults);
@@ -161,6 +161,8 @@ int main() {
     test.expect(
         futureService.isReadOnly() && futureService.pinApplication(QJsonObject{}).readOnly &&
             futureService.unpinTile(QStringLiteral("work-standard-1")).readOnly &&
+            futureService.renameTile(QStringLiteral("work-standard-1"), QStringLiteral("拒绝")).readOnly &&
+            futureService.resetTileDisplayName(QStringLiteral("work-standard-1")).readOnly &&
             futureService.createGroup(QStringLiteral("只读分组")).readOnly &&
             futureService.renameGroup(QStringLiteral("work"), QStringLiteral("只读改名")).readOnly &&
             futureService.moveGroupBy(QStringLiteral("work"), 1).readOnly &&
@@ -282,7 +284,36 @@ int main() {
     test.expect(LayoutStore(legacyPath).save(migrated.snapshot()).success &&
                     readBytes(legacyPath + QStringLiteral(".bak")) == legacyBytes &&
                     QJsonDocument::fromJson(readBytes(legacyPath)).object() == expectedMigration,
-                "first version-two save preserves the exact original version-one bytes as backup");
+                "first current-version save preserves the exact original version-one bytes as backup");
+
+    auto versionTwo = defaults;
+    versionTwo.insert(QStringLiteral("schemaVersion"), 2);
+    const auto versionTwoPath = directory.filePath(QStringLiteral("version-two.json"));
+    const auto versionTwoBytes = QByteArray(" \n") + QJsonDocument(versionTwo).toJson();
+    test.expect(writeBytes(versionTwoPath, versionTwoBytes), "version two fixture writes");
+    PrototypeService versionTwoService(grid, versionTwoPath);
+    test.expect(versionTwoService.loadResult().success && !versionTwoService.isReadOnly() &&
+                    readBytes(versionTwoPath) == versionTwoBytes &&
+                    versionTwoService.renameTile(QStringLiteral("work-standard-1"), QStringLiteral("新名称")).success &&
+                    LayoutStore(versionTwoPath).save(versionTwoService.snapshot()).success &&
+                    readBytes(versionTwoPath + QStringLiteral(".bak")) == versionTwoBytes,
+                "version two load stays read-only on disk and first version three write backs up exact bytes");
+    PrototypeService renamedRestart(grid, versionTwoPath);
+    test.expect(renamedRestart.snapshot() == versionTwoService.snapshot(),
+                "version three display overrides survive an independent service restart");
+    for (const int oldVersion : {1, 2}) {
+        auto oldWithOverride = changeTile(defaults, QStringLiteral("displayName"), QStringLiteral("unsafe old extension"));
+        oldWithOverride.insert(QStringLiteral("schemaVersion"), oldVersion);
+        test.expect(!LayoutStore::validate(oldWithOverride).success,
+                    "legacy schemas reject the new field rather than silently accepting it");
+    }
+    for (const auto& invalid : {QJsonValue{}, QJsonValue(12), QJsonValue(QString{}),
+                                QJsonValue(QStringLiteral(" padded ")), QJsonValue(QStringLiteral("bad\nname")),
+                                QJsonValue(QString(129, QLatin1Char('n')))})
+        test.expect(!LayoutStore::validate(changeTile(defaults, QStringLiteral("displayName"), invalid)).success,
+                    "schema three requires canonical nonempty bounded plain display text");
+    test.expect(!LayoutStore::validate(changeTile(defaults, QStringLiteral("arbitraryField"), true)).success,
+                "new schema keeps rejecting unrelated unknown tile fields");
 
     PrototypeService realApplications(grid, {}, false);
     const QJsonObject application{

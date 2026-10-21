@@ -1,6 +1,6 @@
 # 交互设计
 
-本文件区分当前 Qt Quick 菜单原型与后续完整目标。[Issue #14](https://github.com/xiaodaozhi/xdstarter/issues/14) 已将 [#13 的设计素材](https://github.com/xiaodaozhi/xdstarter/issues/13) 接入运行时；[#15](https://github.com/xiaodaozhi/xdstarter/issues/15) 接入无边框和外部焦点收起；[#16](https://github.com/xiaodaozhi/xdstarter/issues/16) 改为自绘外观与统一面板边距；[#22](https://github.com/xiaodaozhi/xdstarter/issues/22) 接入用户显式启用的单独 Win 键唤起。[#8](https://github.com/xiaodaozhi/xdstarter/issues/8) 接入本地应用与固定目标搜索；[#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 增加分组管理；本轮 [#29](https://github.com/xiaodaozhi/xdstarter/issues/29) 按 v2 修订 2.2 统一完整菜单布局与视觉。磁贴显示名称编辑与开始按钮接管继续按对应 Issues 推进。实际验证范围见[测试策略](../technical/testing.md)。
+本文件区分当前 Qt Quick 菜单原型与后续完整目标。[Issue #14](https://github.com/xiaodaozhi/xdstarter/issues/14) 已将 [#13 的设计素材](https://github.com/xiaodaozhi/xdstarter/issues/13) 接入运行时；[#15](https://github.com/xiaodaozhi/xdstarter/issues/15) 接入无边框和外部焦点收起；[#16](https://github.com/xiaodaozhi/xdstarter/issues/16) 改为自绘外观与统一面板边距；[#22](https://github.com/xiaodaozhi/xdstarter/issues/22) 接入用户显式启用的单独 Win 键唤起。[#8](https://github.com/xiaodaozhi/xdstarter/issues/8) 接入本地应用与固定目标搜索；[#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 增加分组管理；本轮 [#29](https://github.com/xiaodaozhi/xdstarter/issues/29) 按 v2 修订 2.2 统一完整菜单布局与视觉。磁贴显示名称编辑及搜索别名联动由 [ADR-0011](../technical/adr/0011-tile-display-names.md) 定义，开始按钮接管继续按对应 Issue 推进。实际验证范围见[测试策略](../technical/testing.md)。
 
 ## 浏览与启动
 
@@ -40,9 +40,11 @@ Esc 在输入法预编辑期间交给输入法；其他时候先关闭当前子�
 
 ## 编辑磁贴
 
-右键应用可固定，右键磁贴可调整尺寸或取消固定。进入“编辑布局”后允许拖拽及跨组移动；拖拽期间显示与真实目标尺寸一致的占位框，松开后才提交布局。修改磁贴显示名称仍待后续开发，不改变当前应用目录名称与启动目标。
+右键应用可固定，右键磁贴可调整尺寸或取消固定。进入“编辑布局”后允许拖拽及跨组移动；拖拽期间显示与真实目标尺寸一致的占位框，松开后才提交布局。右键或 Shift+F10 的磁贴菜单提供“修改显示名称”和“恢复原名称”，浏览模式也可操作；仅覆盖当前磁贴，不改变系统应用目录名称、原目标名称或启动目标。
 
 调整大小保持左上锚点；有冲突时显示无效预览，由用户选择其他落点，不静默覆盖其他磁贴。取消操作还原拖拽前布局。缩小窗口使用滚动容纳现有布局。
+
+显示名称弹层说明“仅修改此磁贴”和最多 128 个字符，表情可能占两个字符；首尾空白会去除，空名称、超限、控制字符或换行明确报错，不静默截短。保存或非输入法预编辑 Enter 才提交，取消／Esc／外部收起丢弃草稿；预编辑期间 Enter、Esc 先交给输入法。恢复原名移除覆盖。小磁贴提示、完整辅助名称及标准／宽磁贴标签同步；目标身份、颜色、尺寸、坐标和启动描述保持。搜索继续按目标去重，原名和各磁贴覆盖都可查找，结果名称优先显示目录名称。
 
 小磁贴只显示居中图标，鼠标悬停和键盘聚焦显示名称，辅助功能名称始终可读。标准与宽磁贴显示图标和名称；长名称省略并提供完整提示。
 
@@ -54,7 +56,7 @@ Esc 在输入法预编辑期间交给输入法；其他时候先关闭当前子�
 
 组名弹层内的文字只有点击“保存”或非输入法预编辑期间按 Enter 才提交；输入法预编辑期间 Enter、Esc 交给输入法。Esc、“取消”或外部失焦收起丢弃尚未提交的组名文本，不写入布局。组名编辑与内部菜单使用同一窗口焦点规则，打开它们不会收起整个菜单；提交失败保留当前布局并显示原因。已提交操作沿用布局的合并保存及退出 flush，重启恢复名称和数组顺序。
 
-分组名称与分组排序不参与应用搜索；相同应用仍按 targetId 去重，目录与固定目标的搜索名称未变时不重建索引。本轮仅交付分组管理，[Issue #9](https://github.com/xiaodaozhi/xdstarter/issues/9) 中磁贴显示名称编辑的验收仍保留待办；布局导入界面由 [#10](https://github.com/xiaodaozhi/xdstarter/issues/10) 后续推进。
+分组名称与分组排序不参与应用搜索；相同应用仍按 targetId 去重，目录与固定目标的搜索名称未变时不重建索引。分组与磁贴显示名称编辑共用既有保存通道，显示覆盖的严格 schema 3 兼容策略见 [ADR-0011](../technical/adr/0011-tile-display-names.md)；布局导入界面由 [#10](https://github.com/xiaodaozhi/xdstarter/issues/10) 后续推进。
 
 ## 视觉反馈与布局密度
 

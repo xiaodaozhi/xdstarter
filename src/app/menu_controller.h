@@ -60,6 +60,7 @@ class MenuController : public QObject {
     Q_PROPERTY(QVariantList searchResults READ searchResults NOTIFY searchResultsChanged)
     Q_PROPERTY(int maximumGroups READ maximumGroups CONSTANT)
     Q_PROPERTY(int maximumGroupNameLength READ maximumGroupNameLength CONSTANT)
+    Q_PROPERTY(int maximumTileDisplayNameLength READ maximumTileDisplayNameLength CONSTANT)
     Q_PROPERTY(bool desktopActionBusy READ desktopActionBusy NOTIFY desktopActionStateChanged)
     Q_PROPERTY(bool desktopActionError READ desktopActionError NOTIFY desktopActionStateChanged)
     Q_PROPERTY(
@@ -119,6 +120,9 @@ class MenuController : public QObject {
     Q_INVOKABLE bool launchTile(const QString& tileId);
     Q_INVOKABLE bool pinApplication(const QString& appId, const QString& groupId = {});
     Q_INVOKABLE bool unpinTile(const QString& tileId);
+    Q_INVOKABLE bool renameTile(const QString& tileId, const QString& displayName);
+    Q_INVOKABLE bool resetTileDisplayName(const QString& tileId);
+    [[nodiscard]] int maximumTileDisplayNameLength() const;
     [[nodiscard]] int maximumGroups() const;
     [[nodiscard]] int maximumGroupNameLength() const;
     Q_INVOKABLE QString createGroup(const QString& name);
@@ -166,6 +170,8 @@ class MenuController : public QObject {
     void rebuildSearchEntries();
     void refreshSearchResults();
     bool canEditGroups();
+    bool applyTileNameResult(const LayoutResult& result, const QJsonObject& before,
+                             const QString& successMessage);
     bool applyGroupResult(const LayoutResult& result, const QJsonObject& before,
                           const QString& successMessage);
     PrototypeService& prototypeService_;
