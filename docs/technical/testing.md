@@ -6,7 +6,34 @@
 
 GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查看 PNG，核对字体、应用图标、长名称、间隙及辅助功能信息的表达。
 
-## 当前：高保真界面落地与视觉验收（Issue #29）
+## 当前开发验证：磁贴显示名称与搜索别名（Issue #9）
+
+2026-10-21，[#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 剩余的磁贴显示名称编辑已接入右键／Shift+F10 菜单、内部命名弹层、controller、布局与搜索。当前写入 schema 3，严格兼容读取 schema 1/2；旧文件只读取时原字节不变，首次保存保留旧版原字节备份。每枚磁贴可有独立覆盖，原 target 名称与启动描述不变。契约见 [ADR-0011](adr/0011-tile-display-names.md)；此处只记录本分支已执行的检查，不沿用下方旧版本的原生窗口、托盘及产品重启结论。
+
+### 正式构建与覆盖范围
+
+正式入口 `./scripts/build-windows.ps1 -Preset app-release` 使用 Qt **6.8.2**、MSVC **19.29.30153.0／v142**、Windows SDK **10.0.19041.0**。最终本地日志 `build/issue9-tile-names-delivery-final.log` 完成 Release、QML lint 与 **12/12 CTest（27.80 秒）**；GUI **47/47**，host **34/34**。QML lint 没有诊断；没有将 Qt SDK 既有编译警告写为整个构建零警告。文档／素材检查通过，255 项开发素材未重建；`tests/tooling` **13/13** 通过。
+
+| 本分支最终程序 | SHA-256 |
+| --- | --- |
+| 产品 `xdstarter.exe` | `2353d99abf657662b4a82bccd9f7980f3b3e461326031b9f490bf6d5abdef464` |
+| GUI `xdstarter_ui_tests.exe` | `c7eb92cdf7d492d2bf42ed8c6d3cbf222340c17ea11619c4a72118100d22ce1a` |
+| host `xdstarter_desktop_window_host_tests.exe` | `3933c64f29cccf46e437874d72d0ba872adf4442c15da6363f89b17615a12a69` |
+
+服务与保存检查覆盖 trim、空白／129 字符／控制字符／换行／行段分隔符／无效 UTF-16 拒绝、128 代码单元 emoji 边界、未知 id、只读与失败不变性；名称修改和恢复保留目标数组、稳定标识、坐标及尺寸。schema 1/2 的新字段拒绝、旧主配置原字节备份、schema 3 严格字段和重建恢复均有检查。搜索保留每目标 16 个普通名称的原预算，另以整个索引共享的 512 条预算覆盖所有有效磁贴名称；首项、末项、全局超限及恢复后移除旧别名有明确断言。
+
+新增三条 GUI 用例覆盖键盘菜单／弹层、PlainText 标签与完整辅助名称、可见 128 限制、预编辑 Enter／Esc、取消／收起丢弃草稿、只读禁用、同目标两枚磁贴的独立名称，以及原名／覆盖的名称、拼音与首字母搜索。目录名称变化仍优先用于搜索结果，已保存原名与其余有效覆盖可继续查找。真实保存文件后重新创建 QML engine、controller 与服务，逐对象比较完整已保存快照；这属于同一测试进程内重建，不是产品独立进程重启。普通 CTest 的 GUI 为 `offscreen/software` 受控夹具；本分支没有另行运行原生桌面窗口、托盘或真实应用独立进程验收。
+
+### 开发中的失败与复测
+
+- `build/issue9-tile-names-initial.log` 在受限上下文的空编译器探针出现 C1902，尚未编译产品；改在正式 MSVC 构建上下文配置后通过，没有改变工具链版本。
+- `build/issue9-tile-names-formal.log` 为 **10/12 CTest，GUI 46/47**：新服务用例误用不存在的样例 tileId；新 GUI 恢复用例比较未包含 controller 默认主题的 service 快照。修正为实际样例 id 与完整已保存 JSON。该轮已有图标加载路径的 QtQuickPixmap 警告保留记录，未计作新增 QML 引擎错误。
+- `build/issue9-tile-names-regression.log` 为 **11/12，GUI 46/47**：新 GUI 在重建后首次呈现回调完成前打开菜单，被既有的呈现清理关闭。用例改为等待真实 `frameSwapped` 后发送键盘；菜单可见、恢复入口及布局断言保持。随后 `build/issue9-tile-names-final.log` 已达 12/12；最后仅修改用户错误文案，形成上表程序。
+- `build/issue9-tile-names-delivery.log` 为 **11/12**：未修改的 `platform.applications` 夹具中，Shell 返回成功、标记文件存在，但随后的文件打开失败，连带参数与工作目录断言失败。单次原因未确定，没有据此修改平台实现或放宽严格断言。带明确 Qt DLL 路径的独立复测 `build/issue9-platform-launch-with-qt.log` 为 **1/1（1.67 秒）**；同一程序随后完成上面的正式 **12/12**。另一次手动 CTest 未设置 Qt DLL 路径，30 秒超时，保留为 `build/issue9-platform-launch-recheck.log`，属于启动器环境错误。
+
+本轮新功能的原生窗口交互、真实托盘与独立产品进程恢复需要在最终集成程序上协调验收；上述离屏及受控服务证据不宣称这些范围已经通过。下方 #29 及更早章节保留各自二进制身份与历史边界。
+
+## 历史：高保真界面落地与视觉验收（Issue #29）
 
 2026-10-21，[#29](https://github.com/xiaodaozhi/xdstarter/issues/29) 将 [v2 修订 2.2](../design/README.md) 统一为可运行界面：顶部搜索与编辑／更多／收起入口，240 DIP 应用目录与分组磁贴正文，主题控件、菜单、弹层及重要反馈。正常浏览不常驻品牌大标题和调试底栏；共享磁贴保持 48 DIP 小格、8 DIP 间隙、48／104／216×104 DIP 三档几何，布局 schemaVersion 2 不变。当前设计 SVG/PNG 仅是布局基准，下面区分构建、离屏状态、原生像素与真实产品证据。
 
