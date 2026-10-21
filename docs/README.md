@@ -1,6 +1,6 @@
 # 文档导航
 
-本目录保存稳定的产品规格、设计、技术决策和协作规范。当前基线建立于 2026-10-20：Qt Quick 原型已实现真实应用目录、图标、启动与固定/取消固定，三档磁贴编辑及 schemaVersion 2 布局与主题恢复，并接入快捷栏、圆形头像、软件图标、托盘和无边框菜单焦点交互。本轮 [#16](https://github.com/xiaodaozhi/xdstarter/issues/16) 将可见面板左侧/底部边距统一为 8 DIP，改用自绘圆角、单层边框和阴影，并在隐藏时定位后显示，替代先前原生 DWM 外观请求与按钮/回退两种横向锚点。当前与历史构建、实际窗口证据及未覆盖环境统一见[测试策略](technical/testing.md)，历史结果不替代新版本验收。正式工具清单与 xdzip 核实的版本对齐，继续使用本项目 Qt 6.8.2 的获取与构建入口。搜索、分组管理、透明背景材料与系统开始菜单接管继续按 Issues 推进。
+本目录保存稳定的产品规格、设计、技术决策和协作规范。Qt Quick 原型已实现真实应用目录、图标、启动与固定/取消固定，三档磁贴编辑及 schemaVersion 2 布局与主题恢复，并接入快捷栏、圆形头像、软件图标、托盘和无边框菜单焦点交互。[#16](https://github.com/xiaodaozhi/xdstarter/issues/16) 统一可见面板左侧/底部 8 DIP 边距，接入自绘外观与隐藏阶段定位；本轮 [#22](https://github.com/xiaodaozhi/xdstarter/issues/22) 增加默认关闭、可显式启用及暂停的单独 Win 键原型，系统开始按钮保持原生入口。当前与历史构建、实际窗口证据及未覆盖环境统一见[测试策略](technical/testing.md)，历史结果不替代新版本验收。正式工具清单与 xdzip 核实的版本对齐，继续使用本项目 Qt 6.8.2 的获取与构建入口。搜索、分组管理、透明背景材料与其余系统接管继续按 Issues 推进，父 [#6](https://github.com/xiaodaozhi/xdstarter/issues/6) 不因局部原型交付关闭。
 
 ## 产品与设计
 
@@ -31,6 +31,7 @@
 | [ADR-0005：普通窗口桌面集成](technical/adr/0005-desktop-shell-prototype.md) | 快捷动作后台边界、原生托盘恢复、可信定位与系统接管的阶段区分 |
 | [ADR-0006：菜单弹层与焦点](technical/adr/0006-menu-popup.md) | 历史原生外观选择；延后焦点复核与可恢复收起继续有效 |
 | [ADR-0007：自绘菜单与统一边距](technical/adr/0007-custom-menu-chrome.md) | 自绘圆角/边框/阴影、透明外窗、对称工作区间距与隐藏阶段定位 |
+| [ADR-0008：单独 Win 键原型](technical/adr/0008-win-key-capture.md) | 默认关闭、专用输入线程、组合键放行、有界释放派发与失败停用 |
 
 ## 协作与规范
 
