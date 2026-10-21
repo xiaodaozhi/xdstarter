@@ -96,5 +96,6 @@ if errors:
 subprocess.run([sys.executable, str(design / 'source/verify_tile_grid.py')], check=True)
 subprocess.run([sys.executable, str(design / 'source/verify_menu_design.py')], check=True)
 subprocess.run([sys.executable, str(design / 'source/verify_development_assets.py')], check=True)
+subprocess.run([sys.executable, str(ROOT / 'scripts/check_pinyin_data.py')], check=True)
 print(f'PASS: {len(FILES)} repository files; local links, formats, current canvases, logo alpha, forms and shared tile geometry.')
 print('Qt application builds and Windows integration tests are not part of this check.')
