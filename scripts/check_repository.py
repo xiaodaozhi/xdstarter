@@ -59,7 +59,7 @@ def png_size(path):
 
 design = ROOT / 'docs/design'
 for name in ('dark', 'light'):
-    require(png_size(design / f'mockups/v2/xdstarter-desktop-{name}-v2.png') == (1920, 1080), f'{name}: incorrect canvas')
+    require(png_size(design / f'mockups/v2/xdstarter-desktop-{name}-v2.png') == (1920, 1200), f'{name}: incorrect canvas')
 require(png_size(design / 'mockups/v2/xdstarter-tile-grid-v2.png') == (1600, 1080), 'grid: incorrect canvas')
 require(png_size(design / 'brand/xdstarter-brand-board.png') == (1920, 1080), 'brand: incorrect canvas')
 

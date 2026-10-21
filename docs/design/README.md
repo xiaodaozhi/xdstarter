@@ -1,108 +1,119 @@
 # 视觉设计与资产
 
-当前基准：**v2 精确网格矢量稿，修订 2.1**。本次修订调整开始菜单的左对齐锚点，重绘侧栏快捷图标与圆形头像，并提供开发切图和 Windows 软件图标，跟踪于 [Issue #13](https://github.com/xiaodaozhi/xdstarter/issues/13)。Logo 沿用三枚阶梯状圆角磁贴，磁贴网格不变。原始图像探索仅保留为历史材料。
+当前基准：**v2 精确网格矢量稿，修订 2.2**，对应 [Issue #29](https://github.com/xiaodaozhi/xdstarter/issues/29) 的“高保真界面落地与视觉验收”。本修订统一此前的窗口外观与完整正文布局：顶部以搜索为主入口，右侧提供编辑、更多和收起图标；正文并列应用目录与磁贴分组，正常浏览不常驻品牌大标题、调试提示或保存按钮。源文件、tokens 和当前桌面导出同时维护。
 
-[Issue #14](https://github.com/xiaodaozhi/xdstarter/issues/14) 承接素材交付，将侧栏、圆形头像和软件图标接入运行时；[#15](https://github.com/xiaodaozhi/xdstarter/issues/15) 增加无边框菜单与外部焦点收起；[#16](https://github.com/xiaodaozhi/xdstarter/issues/16) 将运行时可见面板的左侧/底部工作区边距统一为 8 DIP，并完全自绘圆角、单层边框与阴影，禁用 Windows 原生装饰。本轮 [#22](https://github.com/xiaodaozhi/xdstarter/issues/22) 增加默认关闭、可显式启用及暂停的单独 Win 键原型，开始按钮仍为原生入口。现有 v2 修订 2.1 图片保留原画布锚点，未重生成，不作为新位置与自绘窗口外观的像素验收图。当前程序及实际结果分别记录于[测试策略](../technical/testing.md)；背景材料和其余系统接管继续按 Issues 推进。
-
-本轮入口的 Windows 原生渲染样例见[启用菜单](validation/issue-22/win-key-enable-sample-native.png)与[暂停菜单](validation/issue-22/win-key-pause-sample-native.png)。它们取自测试窗口的完整 RGBA 帧，使用内存样例磁贴和模拟接管状态；不连接真实应用目录，也不证明原生输入接管。生成方式和实际物理按键验收分别见[测试策略](../technical/testing.md)。
+设计导出说明目标布局；实际 QML 抓帧、有效缩放、产品交互和重启的结果统一记录在[测试策略](../technical/testing.md)，不能以 SVG/PNG 导出代替运行时验收。Mica/Acrylic 与完整系统接管仍由 [#6](https://github.com/xiaodaozhi/xdstarter/issues/6) 跟踪，本轮采用实色面板。
 
 ## 当前设计稿
 
 | 资产 | 位置 |
 | --- | --- |
-| 深色界面 | [PNG](mockups/v2/xdstarter-desktop-dark-v2.png) / [SVG](mockups/v2/xdstarter-desktop-dark-v2.svg) |
-| 浅色界面 | [PNG](mockups/v2/xdstarter-desktop-light-v2.png) / [SVG](mockups/v2/xdstarter-desktop-light-v2.svg) |
+| 深色界面，修订 2.2 | [PNG](mockups/v2/xdstarter-desktop-dark-v2.png) / [SVG](mockups/v2/xdstarter-desktop-dark-v2.svg) |
+| 浅色界面，修订 2.2 | [PNG](mockups/v2/xdstarter-desktop-light-v2.png) / [SVG](mockups/v2/xdstarter-desktop-light-v2.svg) |
 | 尺寸与对齐规范 | [PNG](mockups/v2/xdstarter-tile-grid-v2.png) / [SVG](mockups/v2/xdstarter-tile-grid-v2.svg) |
 | Logo 展示板 | [PNG](brand/xdstarter-brand-board.png) / [SVG](brand/xdstarter-brand-board.svg) |
 | 独立标志 | [SVG](brand/xdstarter-mark.svg) / [1024 透明 PNG](brand/xdstarter-mark-1024.png) |
 | 应用图标 | [SVG](assets/app/xdstarter-app-icon.svg) / [512 PNG](assets/app/xdstarter-app-icon-512.png) |
 | 横向字标 | [SVG](brand/xdstarter-wordmark.svg) / [PNG](brand/xdstarter-wordmark.png) |
 | 开发素材总览 | [PNG](assets/asset-overview.png) / [SVG](assets/asset-overview.svg) / [使用说明](assets/README.md) |
-| 开发素材清单 | [manifest.json](assets/manifest.json)，记录逐项尺寸、缩放、主题、源文件与 SHA-256 |
-| Windows 软件图标 | [xdstarter.ico](assets/app/xdstarter.ico)，含 16 至 256 px 的十帧图标 |
+| 开发素材清单 | [manifest.json](assets/manifest.json)，逐项尺寸、缩放、主题、源文件与 SHA-256 |
+| Windows 软件图标 | [xdstarter.ico](assets/app/xdstarter.ico)，16 至 256 px 十帧 |
 
-`brand/` 保留品牌展示与单色标志。开发集成使用 `assets/` 中的独立 SVG、透明 PNG 与 ICO，完整规格见其[使用说明](assets/README.md)。两张桌面界面图为 1920×1080；网格规范图为 1600×1080。设计稿中的第三方应用图标仅为简化矢量示意，不随开发素材分发；运行时从系统应用目录提取实际图标。
+桌面图为 **1920×1200 px、150% 参考缩放**，网格规范图仍为 1600×1080 px。默认可见面板为 980×680 DIP，即 1470×1020 px；参考任务栏高 48 DIP，即 72 px。面板左侧与任务栏上方各留 8 DIP：画布中的可见外缘为 `x = 12 px`、`y = 96 px`，底边 `y = 1116 px`，任务栏顶边 `y = 1128 px`。任务栏开始按钮仍可位于 `x = 24 px`，它不再决定菜单锚点。
 
-## 对齐、侧栏与头像
+修订 2.1 的两套桌面 SVG/PNG 与生成器已冻结至[历史归档](archive/v2-revision-2.1/README.md)，不用于当前位置、完整布局或窗口外观验收。更早的生成式探索见[归档说明](archive/README.md)。Logo、网格规范图及 255 项开发素材继续沿用既有版本，没有因桌面画布修订重新导出。
 
-桌面设计稿的参考缩放为 150%，以下为修订 2.1 当时的画布约定；画布坐标以 px 表示，界面规格以 DIP 表示。其中开始按钮同左对齐已由 #16 的运行时对称边距规则替代，图标与头像几何继续使用：
+设计中的第三方应用图标是简化矢量示意，不作为可分发应用图标，也不要求实际系统图标与示意逐像素相同。运行时从系统应用目录提取图标；当前 SVG 与 QML 均优先使用 Segoe UI Variable，中文字形使用系统回退，仓库不分发字体。
 
-| 项目 | 修订 2.1 规格 |
+## 版式与共享几何
+
+[visual.json](tokens/visual.json) 保存完整菜单的视觉合约；[tile-grid.json](tokens/tile-grid.json) 是磁贴实体几何的唯一数据源。两张主题图共用同一布局，没有单独缩放或挪动某枚磁贴。
+
+| 项目 | DIP 合约 |
 | --- | --- |
-| 菜单与开始按钮左对齐（历史画布锚点） | 原图菜单可见边框和任务栏开始按钮命中区共用 `x = 24 px`，对应 16 DIP；不用于 #16 的运行时位置验收 |
-| 任务栏 | 顶边 `y = 1008 px`，高 72 px，即 48 DIP；开始按钮命中区为 72×72 px，即 48×48 DIP |
-| 左侧快捷入口 | 文档、下载、设置、电源四项；24 DIP 线描图标，统一 1.75 DIP 圆头笔画；命中区为 48×48 DIP |
-| 快捷栏宽度 | 64 DIP；不占用右侧磁贴的共享网格宽度 |
-| 左上头像 | 32 DIP 圆形头像，150% 对应 48×48 px；人物图形及背景均受圆形遮罩约束，圆外透明 |
+| 默认可见面板 | 980×680；12 圆角、1 单层边框；外窗每侧 24 阴影留白 |
+| 工作区边距 | 可见面板左侧与底部均为 8；空间不足时按工作区夹限 |
+| 快捷栏 | 宽 64；48×48 命中区、24 线描图标、32 圆形头像 |
+| 正文 | 距快捷栏及面板外缘 24；主要列间距 24 |
+| 顶部 | 搜索高 40；三个 36×36 图标入口，间隔 8；正文与搜索相隔 24 |
+| 应用目录 | 宽 240；标题高 32，右侧提供 28×28 刷新入口；目录行高 44、字母分节高 20，分节使用 12 字号 |
+| 磁贴分组 | 标题高 32、标题至网格 8、组间 24；默认网格 10 列、总宽 552 |
+| 小磁贴 | 48×48，1×1 小格 |
+| 标准磁贴 | 104×104，2×2 小格 |
+| 宽磁贴 | 216×104，4×2 小格 |
 
-头像 SVG 使用 `<mask>`，与项目 Qt 6.8.2 SVG 渲染器配合。Qt 6.8 的[遮罩文档](https://doc.qt.io/qt-6.8/svgextensions.html#masking)列出 `<mask>` 支持，并说明不支持 `<clipPath>`。实际用户照片也应在运行时进行圆形裁切。电源入口的交互仍遵循[交互设计](../product/interaction.md)，打开带文字的操作菜单。
+基础小格 48 DIP、间隙 8 DIP，因此 `48 + 8 + 48 = 104`，`104 + 8 + 104 = 216`。150% 对应 72×72、156×156、324×156 px，间隙 12 px。默认版式中，正文起点为面板内 `(88, 88) DIP`，磁贴列从 `x = 352 DIP` 开始；三个示例组的网格顶边依次为 `128/296/464 DIP`。浏览模式按实际占用高度排组，空组保留可见占位；编辑模式保留拖放区域和上下文操作，不改动磁贴坐标与尺寸。窄窗通过目录/磁贴切换及滚动容纳现有数据，不压缩磁贴。
 
-## 运行时接入
+字体基准为正文与磁贴文字 14 DIP、说明与字母分节 12 DIP、分组和目录标题 16 DIP。目录图标 32 DIP，位于 44 DIP 目录行的 `(6, 6) DIP`，文字起点距行左侧 46 DIP；小磁贴图标 28 DIP，标准与宽磁贴图标 36 DIP，后两者图标顶距 14 DIP。磁贴文字布局框距左右和底边 10 DIP；SVG 另以磁贴底边上方 14 DIP 定位 14 DIP 字号的基线，基线不是文字框底边。长名称省略并提供完整提示。快捷栏图标维持 1.75 DIP 圆头线条；圆形头像的背景、人物都受圆形遮罩约束，圆外透明。
 
-`ShortcutRail.qml` 采用 64 DIP 栏宽、48×48 DIP 命中区、32 DIP 圆形头像和 24 DIP 图标，并从 qrc 按深浅主题读取 `assets/ui/{theme}/` 中的独立 SVG。头像当前为占位素材，点击进入账户设置；文档、下载和设置分别打开受控系统入口。每项保留键盘焦点、辅助功能名称和完整提示。电源菜单提供 Win 键唤起启用/暂停和退出 XDStarter，系统关机、重启与注销未启用。Win 键接管每次启动默认关闭，等待启用结果时显示忙碌状态；仅支持环境且托盘可用时允许显式启用，不改变现有快捷栏图标和几何。
+## 主题、表面与控件状态
 
-软件 ICO 已写入 Windows EXE 资源；应用与窗口 `QIcon` 使用 16–1024 px 的多尺寸 PNG，托盘从自带图像创建原生图标。Qt 资源和 EXE 资源均由构建打包，不依赖程序工作目录。中性磁贴底图继续作为开发参考，实际磁贴根据共享网格与主题原生绘制。
+品牌蓝 `#368BFF`、青 `#36D6CB`、深蓝 `#142138` 保留用于品牌、焦点和强调。正文使用当前实色 `opaqueFallback`，快捷栏及高层表面使用 `surface`；搜索、控件边框、分隔线和交互状态从同一主题表取值。
 
-菜单每次用户唤起时，后台通过 `queryMenuAnchor()` 只读查询目标显示器、工作区和任务栏 DPI，不初始化 COM 或等待 UIA 开始按钮识别。可见面板距工作区左侧与底部均为 8 DIP，空间不足时夹限，不再因按钮识别状态改变位置。透明外窗每边 24 DIP 阴影留白不计入面板间距，也不读取 DWM frame 边界参与布局；产品入口初始隐藏，在完成定位后再显示。原 UIA 研究接口仅在显式 probe 中使用。自动隐藏任务栏、Explorer 重启和混合 DPI 跨屏尚未完成实际验证；系统接管与材料继续由 [Issue #6](https://github.com/xiaodaozhi/xdstarter/issues/6) 跟踪。
-
-运行时以 `visual.json` 的 `cornerRadiusDip.menu = 12` 和 `menuChrome` 为外观基准：`shadowInsetDip = 24`、`screenGapDip = 8`、`borderWidthDip = 1`。Canvas 使用共享圆角路径绘制主题实色面板、单层边框与阴影，并沿同一路径裁切侧栏背景，正文保留内边距。Windows 原生边框、圆角与阴影被禁用；此轮不修改 255 项开发素材或共享磁贴网格，透明外窗也不代表启用了背景材料。决策见 [ADR-0007](../technical/adr/0007-custom-menu-chrome.md)。
-
-[Issue #18](https://github.com/xiaodaozhi/xdstarter/issues/18) 将菜单边框改为主题独立的 `themes.{light,dark}.menuBorder`：浅色为 `#B7BEC8` 中性灰，深色为 `#46505E` 灰蓝，均为不透明颜色，切换主题时立即重绘。浅色参考用户提供的 Windows 11 开始菜单细描边观感，不将参考截图当作固定系统色值。继续使用同一路径上的单层 1 DIP 内描边、12 DIP 圆角和现有阴影；此处是主题 token，不新增用户设置项，也不改变历史设计稿与开发素材。
-
-托盘提供显示/隐藏、Win 键唤起启用/暂停/恢复和文字退出，收起后可恢复窗口；不可用时停止接管，并通过最小化保留任务栏恢复入口。托盘提示显示实际 Win 键状态和“开始按钮未接管”，恢复注册不自动重新启用。桌面快捷动作与工作区查询在后台服务执行，失败保留窗口；生命周期和支持边界见 [Windows 集成](../technical/windows-integration.md)，本机结果不扩大为所有 Windows 环境通过。当前菜单使用设计的局部组件与几何约定，整张桌面设计稿仍不作为产品窗口的像素验收截图。
-
-## 尺寸和颜色
-
-[tile-grid.json](tokens/tile-grid.json) 是当前几何数据来源；[视觉 tokens](tokens/visual.json) 保存品牌色和基础视觉值。
-
-| 类型 | 实体尺寸（DIP） | 小格跨度 |
+| Token | 浅色 | 深色 |
 | --- | --- | --- |
-| 小正方形 | 48×48 | 1×1 |
-| 标准正方形 | 104×104 | 2×2 |
-| 宽磁贴 | 216×104 | 4×2 |
+| `opaqueFallback` | `#EFF5FC` | `#182334` |
+| `surface` | `#F8FAFE` | `#223148` |
+| `searchBackground` | `#FFFFFF` | `#23334A` |
+| `foreground` | `#172338` | `#F4F7FB` |
+| `secondary` | `#596A82` | `#ACBBD0` |
+| `errorForeground` | `#B42318` | `#FF9696` |
+| `menuBorder` | `#B7BEC8` | `#46505E` |
+| `controlBorder` | `#D1DAE6` | `#3B4B61` |
+| `separator` | `#D4DEEB` | `#324258` |
+| `hover` | `#E2EAF5` | `#2B3E57` |
+| `pressed` | `#D5E1F0` | `#344B68` |
 
-所有间隙为 8 DIP。`48 + 8 + 48 = 104`，`104 + 8 + 104 = 216`。当前界面图按 150% 绘制，对应 72×72、156×156、324×156 像素，间隙 12 像素。深浅主题共用同一份布局。
+菜单、对话框、按钮和列表沿用这些表面及状态色；鼠标悬停、按下、键盘焦点和禁用状态应可区分。重要错误和只读原因保留文字，并使用主题独立的 `errorForeground` 确保浅色/深色底上的可读性；全局 `status.error = #ED7777` 继续用于失效标记填充等图形，不能直接作为浅色背景上的错误文字。正常成功状态不占用常驻底栏。主体 Canvas 沿同一圆角路径绘制实色面板、1 DIP 内描边和阴影，侧栏沿该路径裁切；Windows 原生边框、圆角、阴影均禁用。透明外窗只用于承载阴影，不表示已启用模糊背景材料。决策见 [ADR-0007](../technical/adr/0007-custom-menu-chrome.md)。
 
-品牌蓝 `#368BFF`、青 `#36D6CB`、深蓝 `#142138`。字标 PNG 保留既有导出字形；包含文字的 SVG 依赖字体替换，几何 Logo 无字体依赖。当前菜单与素材总览在 Windows 上使用 Segoe UI 及系统中文回退字体，不随资源分发字体。运行时使用系统字体并重新验收中文与缩放。
+磁贴统一使用 `tilePalette` 中八种深色底与白字：`#245CA6`、`#206747`、`#9B482A`、`#244E79`、`#1E617B`、`#3B4D63`、`#404F9A`、`#8B5020`。底色由稳定身份映射：优先 `targetId`，否则磁贴 `id`，最多读取前 256 个 UTF-16 代码单元；初值 5381，每步 `hash = ((hash * 33) ^ codeUnit) >>> 0`，最终对调色板长度取余。设计示例以固定 app 标识代替运行时目标身份。分组、排序、重启和主题切换不会导致同一目标随意变色；底色不承诺品牌取色。微弱纵向层次为基础色顶部 1.05 倍提亮、底部 1.04 倍压暗。
 
-## 开发切图规格
+## 功能状态的视觉基准
+
+以下是本轮必须覆盖的布局状态，具体抓帧和通过情况见[测试策略](../technical/testing.md)。设计桌面图只展示默认浏览，不能代表这些交互已通过。
+
+| 状态 | 视觉与交互要求 |
+| --- | --- |
+| 默认浏览 | 顶部搜索和紧凑入口；目录与分组并列；无常驻品牌大标题或调试栏 |
+| 编辑布局 | 编辑入口状态可见；显示新建分组、管理分组和拖放区域；保留尺寸/跨组/取消操作 |
+| 搜索 | 正文切为结果；保留图标、名称、可用性及匹配状态；清空后恢复浏览位置 |
+| 空布局或空目录 | 在所属区域说明并提供可发现的固定、刷新或编辑入口，不伪造应用内容 |
+| 加载或刷新 | 区域内显示忙碌反馈；已有目录快照仍可浏览；不以整窗遮罩替代后台操作 |
+| 失效、错误或只读 | 保留明确原因与禁用状态；可恢复/取消固定等入口仍可发现 |
+| 更多与内部弹层 | 主题、保存、关于移入“更多”，刷新保留在目录标题旁；菜单/组名弹层与主体同主题，键盘可操作，模态遮罩限于圆角面板 |
+| 窄窗与缩放 | 原有磁贴实体几何保持；目录切换及滚动可达；文字、焦点与阴影不被截断 |
+
+实际验收分别覆盖深浅主题与 100/125/150/175/200% Qt 有效缩放。通过进程缩放抓帧不等同更改系统显示设置，也不自动证明热插拔、远程桌面、所有混合 DPI 迁移或完整 Windows 兼容矩阵通过。
+
+## 运行时与系统入口
+
+`ShortcutRail.qml` 从 qrc 读取 `assets/ui/{theme}/` 独立 SVG，保留可见焦点、辅助功能名称及提示。头像为占位，点击进入账户设置；文档、下载、设置打开受控系统入口，电源图标先打开带文字的菜单。软件 ICO 写入 Windows EXE 资源；窗口与托盘图标从自带多尺寸图像创建，不依赖工作目录。
+
+唤起时后台只读查询目标显示器、工作区与任务栏 DPI，在隐藏阶段完成实际跨屏迁移、逻辑尺寸恢复和稳定定位后显示；不等待 UIA 开始按钮识别，不读取 DWM 外框参与布局。当前窗口可见面板的对称间距与首次混合 DPI 恢复已有独立原生测量和产品验收记录；具体版本和边界见[测试策略](../technical/testing.md)。自动隐藏任务栏、Explorer 重启、远程会话及完整材料/接管兼容仍由 [#5](https://github.com/xiaodaozhi/xdstarter/issues/5) / [#6](https://github.com/xiaodaozhi/xdstarter/issues/6) 跟踪。
+
+托盘提供显示/隐藏、Win 键唤起启用/暂停/恢复和文字退出。Win 键原型每次启动默认关闭，托盘失效时停止接管并保留任务栏恢复方式；系统开始按钮仍为原生入口。历史 [Issue #22](https://github.com/xiaodaozhi/xdstarter/issues/22) 的[启用菜单](validation/issue-22/win-key-enable-sample-native.png)与[暂停菜单](validation/issue-22/win-key-pause-sample-native.png)是当时的独立样例，不作为修订 2.2 的整体视觉基准。
+
+## 开发切图与重建
 
 | 素材 | SVG 与 PNG 规格 |
 | --- | --- |
-| 深浅主题界面图标 | SVG 24×24 viewBox；100%、125%、150%、175%、200%、300% 对应 PNG 24、30、36、42、48、72 px |
-| 圆形占位头像 | 深浅主题 SVG；PNG 32、40、48、56、64、96、128、192、256 px，基准显示尺寸 32 DIP |
-| 三档中性磁贴底图 | 48×48、104×104、216×104 DIP；每档导出 100%、125%、150%、175%、200% PNG，圆角 6 DIP，无应用图标和文字 |
-| 应用图标 | ICO 含 16、20、24、32、40、48、64、96、128、256 px 十个 32 位 RGBA PNG 帧；独立 PNG 另含 512、1024 px |
-| 透明品牌标志 | 三枚阶梯状磁贴的 SVG 与对应 PNG，无应用图标外框 |
+| 深浅主题界面图标 | 24×24 viewBox；100/125/150/175/200/300% 对应 24/30/36/42/48/72 px |
+| 圆形头像 | 深浅 SVG；PNG 32/40/48/56/64/96/128/192/256 px，基准 32 DIP |
+| 中性磁贴底图 | 48×48、104×104、216×104 DIP，五档缩放；圆角 6 DIP，无应用图标文字 |
+| 软件图标 | ICO 内 16/20/24/32/40/48/64/96/128/256 px RGBA PNG；独立 PNG 另有 512/1024 px |
+| 透明标志 | 规范三阶磁贴 SVG 与 PNG，无应用图标外框 |
 
-`assets/` 提供 37 个 SVG、217 个 PNG 和 1 个 ICO，共 255 个素材文件，另含清单与说明。QML 优先使用矢量或根据 tokens 绘制几何；PNG 按实际设备像素比选择。不要将整张设计图作为界面背景，也不要把带示意应用图标的磁贴截图用作运行时磁贴。素材不附带字体，仓库许可证尚未确定，本轮不另行选择授权。
+`assets/` 共 37 SVG、217 PNG、1 ICO，即 255 个素材文件，另含清单与说明。修订 2.2 复用这些独立素材，没有重建或变更清单；中性磁贴底图是开发参考，运行时根据 tokens 绘制。不要把完整设计图或带示意图标的磁贴截图贴作界面。许可证尚未确定，本轮不另行选择授权。
 
-## 可复现源文件
-
-Python 生成与校验脚本仅使用标准库；PNG 通过 [render_svg.py](source/render_svg.py) 调用 Qt 6.8.2 的 `QSvgRenderer` 离屏导出。渲染辅助程序的源代码位于 [renderer/](source/renderer/)，不随素材分发 Qt 库或可执行文件。在已按[开发环境](../technical/development.md)配置的仓库根目录执行：
+生成与校验脚本仅使用 Python 标准库；PNG 通过 [render_svg.py](source/render_svg.py) 调用 Qt 6.8.2 的 `QSvgRenderer` 离屏导出。辅助程序已存在时，仅重建当前桌面稿：
 
 ```powershell
-./scripts/build-windows.ps1 -Preset app-release -DesignAssets
+./build/tooling/Scripts/python.exe docs/design/source/build_desktop_grid.py
+./build/tooling/Scripts/python.exe docs/design/source/verify_menu_design.py
+./build/tooling/Scripts/python.exe docs/design/source/verify_tile_grid.py
 ./build/tooling/Scripts/python.exe scripts/check_repository.py
 ```
 
-上述入口构建渲染辅助程序，重新导出本轮菜单图和开发素材，并运行素材专项校验；随后仓库检查包含菜单与开始按钮对齐、头像和磁贴几何等检查。辅助程序已构建时，也可分别执行本轮重建：
+缺少辅助程序时，按[开发环境](../technical/development.md)准备固定工具链；`./scripts/build-windows.ps1 -Preset app-release -DesignAssets` 会构建辅助程序并重建桌面稿及开发素材全套。不要仅为更新桌面稿而重导出 255 个未变素材。生成器在 `source/`，当前输出在 `mockups/v2/`；可用 `XDSTARTER_SVG_RENDERER` 显式选择已安装的 `rsvg-convert` 做渲染器比较。既有品牌板和网格规范图的 `build_brand.py`、`build_tile_grid.py` 使用 `rsvg-convert`，不属于本轮桌面重建。
 
-```sh
-python3 docs/design/source/build_desktop_grid.py
-python3 docs/design/source/build_development_assets.py
-python3 docs/design/source/verify_menu_design.py
-python3 docs/design/source/verify_tile_grid.py
-python3 docs/design/source/verify_development_assets.py
-python3 scripts/check_repository.py
-```
-
-本轮生成器输出到 `mockups/v2/` 和 `assets/`。如需对比其他渲染器导出，可通过 `XDSTARTER_SVG_RENDERER` 显式选择已安装的 `rsvg-convert`。既有品牌展示板及尺寸规范图的生成器 `build_brand.py`、`build_tile_grid.py` 仍直接使用 `rsvg-convert`，需要另行安装后执行；它们不属于 `-DesignAssets` 的本轮重建范围。
-
-文档与素材校验本身不要求安装渲染器；重新生成 PNG 才需要渲染环境。自动检查覆盖菜单/开始按钮实际边框对齐、侧栏点击区与线描规格、磁贴几何、PNG 尺寸和透明通道、头像圆形边界、素材哈希以及 ICO 帧目录和 PNG 负载；字体、图标观感与两张主题稿仍需目视核对。
-
-- [初始生成提示词](source/prompts/image-prompts.md)
-- [磁贴修订探索提示词](source/prompts/image-prompts-v2.md)
-- [归档说明](archive/README.md)
-
-修改设计时先更新网格或源文件，再导出 PNG/SVG 并目视核对。不要把生成式探索图作为精确尺寸依据。设计变更关联 Issue 和 PR，版本规则见[文档规范](../standards/documentation.md)。
+仓库检查覆盖当前画布、对称边距、单层边框、工具入口、圆形头像、共享磁贴几何、PNG 尺寸、素材透明度与哈希和 ICO 负载。字体、图标、主题观感及运行时状态仍须目视与实际交互核对。源文件改动后重新生成 SVG/PNG 并核对，版本规范见[文档规范](../standards/documentation.md)；历史探索提示词见[初始提示词](source/prompts/image-prompts.md)与[磁贴修订探索](source/prompts/image-prompts-v2.md)。
