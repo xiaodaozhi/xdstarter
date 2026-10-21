@@ -102,9 +102,11 @@ class ApplicationCatalogTests final : public QObject {
   private slots:
     void scanNormalizesAndRunsInBackground();
     void failedRefreshRetainsPreviousEntries();
+    void partialRefreshKeepsUsableEntriesAndWarning();
     void iconRequestsAreDeduplicatedAndCacheIsBounded();
     void refreshReloadsIconsAndMetadata();
     void launchChecksAvailabilityAndReportsCompletion();
+    void registeredMissingTargetsPreserveLayout_data();
     void registeredMissingTargetsPreserveLayout();
     void targetJsonRoundTripKeepsLaunchKindsSeparate();
 };
@@ -158,6 +160,7 @@ void ApplicationCatalogTests::failedRefreshRetainsPreviousEntries() {
     QCOMPARE(catalog.target(application.id).name, application.name);
     QVERIFY(catalog.containsApplication(application.id));
     QVERIFY(catalog.status().contains(QStringLiteral("fixture scan failure")));
+    QVERIFY(catalog.error());
     QCOMPARE(state->scans.load(), 2);
     QCOMPARE(state->guiThreadCalls.load(), 0);
     {
@@ -169,6 +172,29 @@ void ApplicationCatalogTests::failedRefreshRetainsPreviousEntries() {
     QCOMPARE(catalog.applicationsModel()->rowCount(), 0);
     QVERIFY(!catalog.containsApplication(application.id));
     QVERIFY(catalog.target(application.id).id.isEmpty());
+    QVERIFY(!catalog.error());
+}
+
+void ApplicationCatalogTests::partialRefreshKeepsUsableEntriesAndWarning() {
+    auto state = std::make_shared<FakeState>();
+    const auto readable = shortcut(QStringLiteral("Readable"));
+    const auto protectedTarget = shortcut(QStringLiteral("Protected"));
+    state->snapshot = {{readable, protectedTarget}, {}, true};
+    ApplicationCatalog catalog(fakePlatform(state));
+    catalog.refreshApplications();
+    QTRY_VERIFY_WITH_TIMEOUT(!catalog.busy(), 3000);
+    QCOMPARE(catalog.applicationsModel()->rowCount(), 2);
+    {
+        QMutexLocker lock(&state->mutex);
+        state->snapshot = {{readable}, {QStringLiteral("directory access denied")}, true};
+    }
+    catalog.refreshApplications();
+    QTRY_VERIFY_WITH_TIMEOUT(!catalog.busy(), 3000);
+    QCOMPARE(catalog.applicationsModel()->rowCount(), 1);
+    QVERIFY(catalog.containsApplication(readable.id));
+    QVERIFY(catalog.error());
+    QVERIFY(catalog.status().contains(QStringLiteral("directory access denied")));
+    QCOMPARE(state->guiThreadCalls.load(), 0);
 }
 
 void ApplicationCatalogTests::iconRequestsAreDeduplicatedAndCacheIsBounded() {
@@ -328,11 +354,27 @@ void ApplicationCatalogTests::launchChecksAvailabilityAndReportsCompletion() {
     QCOMPARE(state->guiThreadCalls.load(), 0);
 }
 
+void ApplicationCatalogTests::registeredMissingTargetsPreserveLayout_data() {
+    QTest::addColumn<QString>("errorCode");
+    QTest::addColumn<bool>("packaged");
+    QTest::newRow("shortcut-removed") << QStringLiteral("shortcut-missing") << false;
+    QTest::newRow("permission-denied") << QStringLiteral("access-denied") << false;
+    QTest::newRow("package-uninstalled") << QStringLiteral("application-missing") << true;
+}
+
 void ApplicationCatalogTests::registeredMissingTargetsPreserveLayout() {
+    QFETCH(QString, errorCode);
+    QFETCH(bool, packaged);
     auto state = std::make_shared<FakeState>();
-    state->defaultAvailability = {false, QStringLiteral("fixture shortcut removed"),
-                                  QStringLiteral("missing")};
-    const auto application = shortcut(QStringLiteral("Persisted"));
+    state->defaultAvailability = {false, QStringLiteral("fixture shortcut removed"), errorCode};
+    auto application = shortcut(QStringLiteral("Persisted"));
+    if (packaged) {
+        application.type = QStringLiteral("packaged");
+        application.shortcutPath.clear();
+        application.aumid = QStringLiteral("XDStarter.MissingPackage_0000000000000!App");
+        application.id = applicationTargetId(application.type, application.aumid);
+        application.iconKey = application.id;
+    }
     const TileGrid grid;
     PrototypeService layout(grid, {}, false);
     const auto pinned = layout.pinApplication(applicationTargetJson(application));
@@ -343,10 +385,18 @@ void ApplicationCatalogTests::registeredMissingTargetsPreserveLayout() {
     catalog.registerTargets(before.value(QStringLiteral("targets")).toArray());
     QTRY_VERIFY_WITH_TIMEOUT(availabilityChanged.count() > 0, 3000);
     QVERIFY(!catalog.availability(application.id).success);
+    QCOMPARE(catalog.availability(application.id).errorCode, errorCode);
     QCOMPARE(catalog.target(application.id).shortcutPath, application.shortcutPath);
+    QCOMPARE(catalog.target(application.id).aumid, application.aumid);
     QVERIFY(!catalog.containsApplication(application.id));
     QCOMPARE(layout.snapshot(), before);
     QVERIFY(layout.isApplicationPinned(application.id));
+    QSignalSpy failed(&catalog, &ApplicationCatalog::launchFailed);
+    QVERIFY(catalog.launchApplication(application.id));
+    QTRY_COMPARE_WITH_TIMEOUT(failed.count(), 1, 3000);
+    QVERIFY(!catalog.launchBusy());
+    QCOMPARE(state->launches.load(), 0);
+    QCOMPARE(layout.snapshot(), before);
     QVERIFY(layout.unpinTile(pinned.tileId).success);
     catalog.registerTargets(layout.snapshot().value(QStringLiteral("targets")).toArray());
     QVERIFY(catalog.target(application.id).id.isEmpty());
