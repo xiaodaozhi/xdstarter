@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace xdstarter {
 namespace {
@@ -35,6 +36,43 @@ qreal windowMetric(QWindow *window, const char *name, qreal fallback) {
 }
 } // namespace
 
+bool HiddenWindowReadiness::observe(bool onTargetScreen, qreal targetDpr, qreal renderDpr,
+                                    QSize logicalSize, const DesktopWindowMetricsResult &native) {
+    const bool validDpr = std::isfinite(targetDpr) && std::isfinite(renderDpr) &&
+                          targetDpr >= 1 && targetDpr <= 8 &&
+                          qFuzzyCompare(targetDpr, renderDpr);
+    if (!onTargetScreen || !validDpr || logicalSize.isEmpty() ||
+        logicalSize.width() * renderDpr > std::numeric_limits<int>::max() ||
+        logicalSize.height() * renderDpr > std::numeric_limits<int>::max()) {
+        reset();
+        return false;
+    }
+    const QSize expected(qRound(logicalSize.width() * renderDpr),
+                         qRound(logicalSize.height() * renderDpr));
+    const bool nativeMatches = !native.supported ||
+                               (native.success && !native.physicalSize.isEmpty() &&
+                                std::abs(native.physicalSize.width() - expected.width()) <= 1 &&
+                                std::abs(native.physicalSize.height() - expected.height()) <= 1);
+    if (!nativeMatches) {
+        reset();
+        return false;
+    }
+    const bool ready = sampled_ && qFuzzyCompare(dpr_, renderDpr) &&
+                       logicalSize_ == logicalSize && physicalSize_ == native.physicalSize;
+    sampled_ = true;
+    dpr_ = renderDpr;
+    logicalSize_ = logicalSize;
+    physicalSize_ = native.physicalSize;
+    return ready;
+}
+
+void HiddenWindowReadiness::reset() {
+    sampled_ = false;
+    dpr_ = 0;
+    logicalSize_ = {};
+    physicalSize_ = {};
+}
+
 DesktopWindowHost::DesktopWindowHost(QWindow &window, DesktopShellService &shell,
                                      DesktopPlatform &placement, DesktopTray &tray, QObject *parent)
     : QObject(parent), window_(&window), shell_(shell), placement_(placement), tray_(tray),
@@ -43,6 +81,9 @@ DesktopWindowHost::DesktopWindowHost(QWindow &window, DesktopShellService &shell
     focusTimer_.setSingleShot(true);
     focusTimer_.setInterval(100);
     connect(&focusTimer_, &QTimer::timeout, this, &DesktopWindowHost::checkFocus);
+    revealTimer_.setSingleShot(true);
+    revealTimer_.setInterval(16);
+    connect(&revealTimer_, &QTimer::timeout, this, &DesktopWindowHost::checkRevealPreparation);
     connect(qGuiApp, &QGuiApplication::focusWindowChanged, this,
             &DesktopWindowHost::scheduleFocusCheck);
     connect(qGuiApp, &QGuiApplication::applicationStateChanged, this,
@@ -86,6 +127,7 @@ DesktopWindowHost::DesktopWindowHost(QWindow &window, DesktopShellService &shell
     connect(&tray_, &DesktopTray::registrationChanged, this, &DesktopWindowHost::updateRecovery);
     connect(&window, &QWindow::visibleChanged, this, [this](bool visible) {
         if (!visible) {
+            cancelRevealPreparation();
             pendingReveal_ = false;
             focusTimer_.stop();
             focusArmed_ = false;
@@ -97,69 +139,140 @@ DesktopWindowHost::DesktopWindowHost(QWindow &window, DesktopShellService &shell
     connect(&shell_, &DesktopShellService::startButtonAnchorReady, this,
             [this](quint64 request, const DesktopAnchorResult &anchor) {
                 if (stopping_ || request != placementRequest_ || !window_ ||
-                    (!pendingReveal_ && (!window_->isVisible() ||
-                                         window_->visibility() == QWindow::Minimized)))
+                    !pendingReveal_ || window_->isVisible())
                     return;
-                const bool reveal = pendingReveal_;
-                if (!anchor.monitorName.isEmpty()) {
-                    for (auto *screen : QGuiApplication::screens()) {
-                        if (screen->name() == anchor.monitorName && screen != window_->screen()) {
-                            window_->setScreen(screen);
-                            break;
-                        }
-                    }
-                }
-                if (reveal)
-                    configureAppearance();
-                // The panel and shadow use the same Qt render scale. UIA
-                // trust/failure and an unknown taskbar DPI never change it.
-                const qreal scale = std::clamp(window_->devicePixelRatio(), 1.0, 8.0);
-                const int gap = qRound(windowMetric(window_, "screenGapDip", 8) * scale);
-                const int inset = qRound(windowMetric(window_, "shadowInset", 0) * scale);
-                const auto result = placement_.placeWindow(
-                    window_->winId(), anchor, gap, !reveal && window_->isActive(), inset);
-                anchorStatus_ =
-                    result.success
+                beginRevealPreparation(anchor);
+            });
+}
+
+void DesktopWindowHost::beginRevealPreparation(const DesktopAnchorResult &anchor) {
+    const quint64 request = placementRequest_;
+    cancelRevealPreparation();
+    preparationRequest_ = request;
+    revealAnchor_ = anchor;
+    targetScreen_ = anchor.monitorName.isEmpty() ? window_->screen()
+                                               : placement_.screenForAnchor(anchor);
+    if (targetScreen_)
+        window_->setScreen(targetScreen_);
+    if (!isCurrentReveal(request))
+        return;
+    configureAppearance(); // Creates the native surface, still hidden.
+    if (!isCurrentReveal(request))
+        return;
+    if (targetScreen_) {
+        // setScreen() does not move an existing HWND on a virtual desktop.
+        // Moving the hidden surface to the target monitor delivers its DPI
+        // transition before final panel placement, without a visible jump.
+        const QRect area = targetScreen_->availableGeometry();
+        window_->setPosition(area.center() - QPoint(window_->width() / 2,
+                                                    window_->height() / 2));
+    }
+    if (!isCurrentReveal(request))
+        return;
+    revealDeadline_.start();
+    revealTimer_.start();
+}
+
+bool DesktopWindowHost::isCurrentReveal(quint64 request) const {
+    return !stopping_ && request && placementRequest_ == request && pendingReveal_ &&
+           window_ && !window_->isVisible();
+}
+
+void DesktopWindowHost::cancelRevealPreparation() {
+    revealTimer_.stop();
+    revealDeadline_.invalidate();
+    preparationRequest_ = 0;
+    readiness_.reset();
+    targetScreen_.clear();
+}
+
+void DesktopWindowHost::checkRevealPreparation() {
+    if (stopping_ || !pendingReveal_ || !window_ || window_->isVisible() ||
+        !placementRequest_ || preparationRequest_ != placementRequest_ ||
+        !revealDeadline_.isValid())
+        return;
+    const quint64 request = placementRequest_;
+    const qreal renderDpr = window_->devicePixelRatio();
+    const qreal screenDpr = targetScreen_ ? targetScreen_->devicePixelRatio() : renderDpr;
+    const auto native = placement_.queryWindowMetrics(window_->winId());
+    if (!isCurrentReveal(request))
+        return;
+    if (readiness_.observe(targetScreen_ && window_->screen() == targetScreen_,
+                           screenDpr, renderDpr, window_->size(), native)) {
+        finishRevealPreparation();
+        return;
+    }
+    if (revealDeadline_.elapsed() >= 1500) {
+        cancelRevealPreparation();
+        pendingReveal_ = false;
+        placementRequest_ = 0;
+        shell_.invalidateStartButtonAnchor();
+        anchorStatus_ = QStringLiteral("屏幕缩放尚未稳定，本次显示已取消；请从恢复入口重试。");
+        publishStatus();
+        qWarning().noquote() << "Desktop placement preparation timed out; window remains hidden.";
+        if (!stopping_ && !pendingReveal_ && !placementRequest_ && !recoveryAvailable_ && window_)
+            window_->showMinimized();
+        return;
+    }
+    revealTimer_.start();
+}
+
+void DesktopWindowHost::finishRevealPreparation() {
+    const quint64 request = placementRequest_;
+    const DesktopAnchorResult anchor = revealAnchor_;
+    // Only the settled Qt render DPR converts the QML panel, shadow and gap.
+    // The queried taskbar DPI is diagnostic and never substitutes for it.
+    const qreal scale = window_->devicePixelRatio();
+    const int gap = qRound(windowMetric(window_, "screenGapDip", 8) * scale);
+    const int inset = qRound(windowMetric(window_, "shadowInset", 0) * scale);
+    const auto result = placement_.placeWindow(window_->winId(), anchor, gap, false, inset);
+    if (!isCurrentReveal(request))
+        return;
+    anchorStatus_ = result.success
                         ? QStringLiteral("面板距工作区左侧和底部均为 %1 DIP。")
                               .arg(windowMetric(window_, "screenGapDip", 8))
                         : QStringLiteral("原生定位不可用，使用 Qt 工作区边距回退。");
-                if (!result.success && window_->screen()) {
-                    const auto area = window_->screen()->availableGeometry();
-                    const int logicalGap = qRound(windowMetric(window_, "screenGapDip", 8));
-                    const int logicalInset = qRound(windowMetric(window_, "shadowInset", 0));
-                    const int panelHeight = window_->height() - 2 * logicalInset;
-                    window_->setPosition(area.left() + logicalGap - logicalInset,
-                                         std::max(area.top() + logicalGap,
-                                                  area.bottom() + 1 - logicalGap - panelHeight) -
-                                             logicalInset);
-                }
-                const QString detail = result.message.isEmpty() ? anchor.message : result.message;
-                if (!detail.isEmpty())
-                    anchorStatus_ += QLatin1Char(' ') + detail;
-                publishStatus();
-                const QJsonObject evidence{
-                    {QStringLiteral("trustedAnchor"), anchor.trusted},
-                    {QStringLiteral("startButton"), rectangleJson(anchor.startButtonPhysicalRect)},
-                    {QStringLiteral("workArea"), rectangleJson(anchor.workAreaPhysicalRect)},
-                    {QStringLiteral("placedWindow"), rectangleJson(result.physicalRect)},
-                    {QStringLiteral("dpi"), static_cast<int>(anchor.dpi)},
-                    {QStringLiteral("renderDpr"), scale},
-                    {QStringLiteral("gapPhysical"), gap},
-                    {QStringLiteral("shadowInsetPhysical"), inset},
-                    {QStringLiteral("placedBeforeReveal"), reveal},
-                    {QStringLiteral("success"), result.success},
-                    {QStringLiteral("message"), anchorStatus_}};
-                qInfo().noquote() << "Desktop placement:"
-                                  << QJsonDocument(evidence).toJson(QJsonDocument::Compact);
-                if (reveal) {
-                    pendingReveal_ = false;
-                    window_->showNormal();
-                    window_->raise();
-                    window_->requestActivate();
-                    prepareWindow("prepareForPresentation");
-                    scheduleFocusCheck();
-                }
-            });
+    if (!result.success && window_->screen()) {
+        const auto area = window_->screen()->availableGeometry();
+        const int logicalGap = qRound(windowMetric(window_, "screenGapDip", 8));
+        const int logicalInset = qRound(windowMetric(window_, "shadowInset", 0));
+        const int panelHeight = window_->height() - 2 * logicalInset;
+        window_->setPosition(area.left() + logicalGap - logicalInset,
+                             std::max(area.top() + logicalGap,
+                                      area.bottom() + 1 - logicalGap - panelHeight) - logicalInset);
+    }
+    if (!isCurrentReveal(request))
+        return;
+    const QString detail = result.message.isEmpty() ? anchor.message : result.message;
+    if (!detail.isEmpty())
+        anchorStatus_ += QLatin1Char(' ') + detail;
+    publishStatus();
+    if (!isCurrentReveal(request))
+        return;
+    qInfo().noquote() << "Desktop placement:"
+                      << QJsonDocument(QJsonObject{
+                             {QStringLiteral("trustedAnchor"), anchor.trusted},
+                             {QStringLiteral("startButton"), rectangleJson(anchor.startButtonPhysicalRect)},
+                             {QStringLiteral("workArea"), rectangleJson(anchor.workAreaPhysicalRect)},
+                             {QStringLiteral("placedWindow"), rectangleJson(result.physicalRect)},
+                             {QStringLiteral("dpi"), static_cast<int>(anchor.dpi)},
+                             {QStringLiteral("renderDpr"), scale},
+                             {QStringLiteral("gapPhysical"), gap},
+                             {QStringLiteral("shadowInsetPhysical"), inset},
+                             {QStringLiteral("placedBeforeReveal"), true},
+                             {QStringLiteral("preparationMs"), revealDeadline_.elapsed()},
+                             {QStringLiteral("success"), result.success},
+                             {QStringLiteral("message"), anchorStatus_}})
+                             .toJson(QJsonDocument::Compact);
+    cancelRevealPreparation();
+    pendingReveal_ = false;
+    window_->showNormal();
+    if (stopping_ || !window_ || !window_->isVisible() || placementRequest_ != request)
+        return;
+    window_->raise();
+    window_->requestActivate();
+    prepareWindow("prepareForPresentation");
+    scheduleFocusCheck();
 }
 
 DesktopWindowHost::~DesktopWindowHost() {
@@ -272,6 +385,7 @@ void DesktopWindowHost::toggleWindowFrom(const QString &source) {
 
 bool DesktopWindowHost::eventFilter(QObject *object, QEvent *event) {
     if (object == window_ && event->type() == QEvent::Close && pendingReveal_) {
+        cancelRevealPreparation();
         pendingReveal_ = false;
         placementRequest_ = 0;
         shell_.invalidateStartButtonAnchor();
@@ -341,6 +455,7 @@ void DesktopWindowHost::dismiss(const QString &reason) {
     if (stopping_ || !window_)
         return;
     focusTimer_.stop();
+    cancelRevealPreparation();
     focusArmed_ = false;
     pendingReveal_ = false;
     placementRequest_ = 0;
@@ -384,6 +499,7 @@ void DesktopWindowHost::shutdown() {
         return;
     stopping_ = true;
     focusTimer_.stop();
+    cancelRevealPreparation();
     focusArmed_ = false;
     pendingReveal_ = false;
     placementRequest_ = 0;
@@ -398,6 +514,7 @@ void DesktopWindowHost::shutdown() {
 }
 
 void DesktopWindowHost::requestPlacement() {
+    cancelRevealPreparation();
     placementRequest_ = shell_.requestStartButtonAnchor();
 }
 

@@ -15,6 +15,7 @@
 #include <iostream>
 #include <limits>
 #include <string_view>
+#include <thread>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -520,7 +521,16 @@ int main(int argc, char* argv[]) {
     test.expect(!unsupportedAppearance.success && !unsupportedAppearance.nativeDecorationsDisabled &&
                     unsupportedAppearance.errorCode == QStringLiteral("unsupported-platform"),
                 "base platform explicitly falls back without touching a native handle");
+    const auto unsupportedMetrics = nativeFree.queryWindowMetrics(1);
+    test.expect(!unsupportedMetrics.supported && !unsupportedMetrics.success,
+                "base native metrics are explicitly unsupported without touching a handle");
+    test.expect(nativeFree.screenForAnchor(delegatedAnchor) == nullptr &&
+                    platform->screenForAnchor(delegatedAnchor) == nullptr,
+                "screen mapping is unavailable without a GUI application, including Windows");
 #ifdef Q_OS_WIN
+    const auto invalidMetrics = platform->queryWindowMetrics(0);
+    test.expect(invalidMetrics.supported && !invalidMetrics.success,
+                "native metrics reject an invalid handle before reading another window");
     const DPI_AWARENESS_CONTEXT previousDpi =
         SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     test.expect(previousDpi != nullptr, "hidden fixture uses explicit physical coordinates");
@@ -553,6 +563,20 @@ int main(int argc, char* argv[]) {
         const LONG_PTR extendedBefore = GetWindowLongPtrW(hidden.handle(), GWL_EXSTYLE);
         RECT boundsBefore{};
         GetWindowRect(hidden.handle(), &boundsBefore);
+        const auto metrics =
+            platform->queryWindowMetrics(reinterpret_cast<quintptr>(hidden.handle()));
+        test.expect(metrics.supported && metrics.success &&
+                        metrics.physicalSize == QSize(boundsBefore.right - boundsBefore.left,
+                                                       boundsBefore.bottom - boundsBefore.top),
+                    "native metrics report the hidden owned GUI-thread surface physical size");
+        bool crossThreadAccepted = true;
+        std::thread otherThread([&] {
+            crossThreadAccepted = platform->queryWindowMetrics(
+                reinterpret_cast<quintptr>(hidden.handle())).success;
+        });
+        otherThread.join();
+        test.expect(!crossThreadAccepted,
+                    "native metrics reject an owned surface from another GUI thread");
         const auto appearance =
             platform->configureMenuWindow(reinterpret_cast<quintptr>(hidden.handle()));
         test.expect(appearance.success == appearance.nativeDecorationsDisabled,
@@ -641,6 +665,8 @@ int main(int argc, char* argv[]) {
         HiddenNativeWindow child(0, hidden.handle());
         test.expect(child.handle() != nullptr, "isolated hidden child fixture is created");
         if (child.handle()) {
+            test.expect(!platform->queryWindowMetrics(reinterpret_cast<quintptr>(child.handle())).success,
+                        "native metrics reject an owned child rather than a top-level surface");
             const auto childAppearance =
                 platform->configureMenuWindow(reinterpret_cast<quintptr>(child.handle()));
             test.expect(!childAppearance.success &&
@@ -665,6 +691,8 @@ int main(int argc, char* argv[]) {
     test.expect(!desktopAppearance.success &&
                     desktopAppearance.errorCode == QStringLiteral("invalid-owned-window"),
                 "appearance refuses the foreign system desktop HWND before DWM calls");
+    test.expect(!platform->queryWindowMetrics(reinterpret_cast<quintptr>(GetDesktopWindow())).success,
+                "native metrics reject a foreign process window");
     if (previousDpi) {
         SetThreadDpiAwarenessContext(previousDpi);
     }

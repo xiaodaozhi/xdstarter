@@ -1,5 +1,9 @@
 #include "desktop_platform.h"
 
+#include <QGuiApplication>
+#include <QScreen>
+#include <QThread>
+
 #include <algorithm>
 #include <limits>
 
@@ -158,6 +162,26 @@ DesktopAppearanceResult DesktopPlatform::configureMenuWindow(quintptr) {
             false,
             QStringLiteral("此平台不配置 Windows 原生装饰，菜单使用自绘外观。"),
             QStringLiteral("unsupported-platform")};
+}
+
+DesktopWindowMetricsResult DesktopPlatform::queryWindowMetrics(quintptr) {
+    return {};
+}
+
+QScreen *DesktopPlatform::screenForAnchor(const DesktopAnchorResult &anchor) {
+    const auto *application = qobject_cast<QGuiApplication *>(QCoreApplication::instance());
+    if (!application || QThread::currentThread() != application->thread() ||
+        anchor.monitorName.isEmpty())
+        return nullptr;
+    QScreen *match = nullptr;
+    for (auto *screen : QGuiApplication::screens()) {
+        if (screen->name() != anchor.monitorName)
+            continue;
+        if (match)
+            return nullptr;
+        match = screen;
+    }
+    return match;
 }
 
 DesktopPlacementResult DesktopPlatform::placeWindow(quintptr, const DesktopAnchorResult&, int,

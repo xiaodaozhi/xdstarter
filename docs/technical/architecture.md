@@ -84,7 +84,7 @@ Windows 托盘直接使用 `Shell_NotifyIcon`，不引入 Widgets。隐藏的原
 
 `WinKeyCapture` 由 app 注入 host，通过 `setEnabled(bool)`、`stop()` 管理会话，以 `isSupported()`、`isActive()` 和 `statusChanged(active, message, errorCode)` 报告能力与实际状态。构造和进程启动均不安装 Hook，开关不进入布局 schema；QML 与托盘分别显示启用/暂停/失败和开始按钮未接管。Windows 专用消息线程维护键盘及鼠标观察 Hook，纯 C++ 状态机区分左右 Win 独按与组合。真实 down 和组合事件放行，独按 up 的固定三条输入派发成功后才消费物理 up、投递 toggle；窗口/焦点操作均在 GUI。会话代次阻止暂停、失败或退出前的旧事件重新开窗。本地 Windows 11 与输入桌面检查只作为原型启用 gate，不等于完整支持矩阵，具体限制见 ADR-0008。
 
-每次用户唤起窗口，host 请求 `DesktopShellService` worker 调用 `DesktopPlatform.queryMenuAnchor()`，Windows 仅读取指针所在显示器名称、物理矩形、工作区和任务栏 DPI，不初始化 COM 或调用 UIA。可见面板统一距工作区左侧和底部 8 DIP，不依据保留兼容用途的 `trusted` 字段改变位置。产品入口将 QML 初始 `visible` 设为 `false`，smoke 与独立 GUI 夹具仍自行显示。查询按代次合并；待显示窗口保持隐藏，当前结果返回后先配置原生装饰抑制、定位再显示，连续切换或取消使旧结果失效，不能重开窗口。GUI 仅对本进程窗口执行短时物理定位，按选定 Qt 窗口的实际渲染 DPR 换算并扣除透明阴影留白，不使用 DWM frame 边界参与布局；返回面板矩形与透明外窗边界分别记录。自动隐藏任务栏、Explorer 重启及混合 DPI 跨屏尚未完成实际验证，详见 [Windows 集成](windows-integration.md)。
+每次用户唤起窗口，host 请求 `DesktopShellService` worker 调用 `DesktopPlatform.queryMenuAnchor()`，Windows 仅读取指针所在显示器名称、物理矩形、工作区和任务栏 DPI，不初始化 COM 或调用 UIA。可见面板统一距工作区左侧和底部 8 DIP，不依据保留兼容用途的 `trusted` 字段改变位置。产品入口将 QML 初始 `visible` 设为 `false`，smoke 与独立 GUI 夹具仍自行显示。查询按代次合并；待显示窗口保持隐藏，当前结果返回后配置原生装饰抑制并迁移至目标屏幕，等待 Qt DPR 与原生物理尺寸连续一致，最终定位再显示。准备最长 1500 ms，新请求、取消、关闭、退出及同步重入使旧准备失效；超时保留托盘重试或最小化恢复入口。GUI 的 `queryWindowMetrics()` 只观测本进程 GUI 线程的顶层窗口尺寸，Win32 仍封装在平台适配器中。物理定位按稳定后的 Qt 渲染 DPR 换算并扣除透明阴影留白，不使用任务栏 DPI 或 DWM frame 边界替代；面板矩形与透明外窗边界分别记录。此次 [#28](https://github.com/xiaodaozhi/xdstarter/issues/28) 的实际跨屏验证与未覆盖组合见[测试策略](testing.md)，自动隐藏任务栏、Explorer 重启及完整混合 DPI 矩阵仍需后续验证。
 
 服务公开的 `requestStartButtonAnchor()`、`startButtonAnchorReady` 名称暂保留兼容，但 Windows 产品路径执行的是上述快速工作区查询，不等待 UIA 提供方超时。原 `queryStartButtonAnchor()` 和 `--probe-anchor` 仅保留为显式系统集成研究，`--probe-menu-anchor` 则输出产品工作区查询 JSON；这些 probe 不进入常规 CTest 或普通唤起。
 
@@ -95,7 +95,7 @@ CMake 的 `xdstarter_add_ui` 为产品与 GUI 测试编译同一组 QML、contro
 当前数据流如下；开始按钮接管仍为后续目标：
 
 1. 启动：读取偏好与布局 → 预创建菜单窗口 → 后台加载应用目录与图标 → 更新模型。
-2. 菜单唤起：托盘事件或显式启用后的有效 Win 独按通知 → DesktopWindowHost 清理暂态、保持隐藏并标记待显示 → DesktopShellService 快速读取显示器/工作区/任务栏 DPI → 当前有效结果先抑制原生装饰并定位可见面板，再显示与请求焦点；取消或过期结果不重开窗口，外部焦点持续离开后可恢复地收起。
+2. 菜单唤起：托盘事件或显式启用后的有效 Win 独按通知 → DesktopWindowHost 清理暂态、保持隐藏并标记待显示 → DesktopShellService 快速读取显示器/工作区/任务栏 DPI → 当前有效结果抑制原生装饰、隐藏迁移并等待 DPR／尺寸稳定 → 最终定位、显示与请求焦点；取消或过期结果不重开窗口，外部焦点持续离开后可恢复地收起。
 3. 搜索：目录与固定目标值快照／已提交查询 → SearchService 独立 worker 构建或查询 SearchIndex → 复核目录修订与查询代次 → controller 映射缓存状态 → QML 稳定排序结果列表。
 4. 编辑与固定：磁贴/分组的指针与键盘操作或选择应用 → controller 复核可写状态与编辑条件 → PrototypeService 校验 → 提交内存布局 → 更新模型 → 后台合并保存；显示名称编辑仍待后续开发。
 5. 启动目标：UI 发出 targetId → ApplicationCatalog worker 复核可用性 → ApplicationPlatform 启动 → 成功收起、失败保留菜单。

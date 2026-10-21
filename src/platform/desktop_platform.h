@@ -7,6 +7,8 @@
 #include <array>
 #include <memory>
 
+class QScreen;
+
 namespace xdstarter {
 
 struct DesktopActionResult {
@@ -99,6 +101,14 @@ struct DesktopAppearanceResult {
     QString errorCode;
 };
 
+struct DesktopWindowMetricsResult {
+    // Unsupported adapters may leave this false. A supported adapter returning
+    // success=false must not be treated as a settled native surface.
+    bool supported = false;
+    bool success = false;
+    QSize physicalSize;
+};
+
 [[nodiscard]] bool isSupportedDesktopAction(const QString& actionId);
 [[nodiscard]] QRect desktopPopupPhysicalRect(const QSize& windowPhysicalSize,
                                              const DesktopAnchorResult& anchor,
@@ -123,6 +133,12 @@ class DesktopPlatform {
     // Suppresses native rounding, border and shadow, including on Qt alpha
     // surfaces. Does not mutate Qt styles, hit testing, regions or input hooks.
     [[nodiscard]] virtual DesktopAppearanceResult configureMenuWindow(quintptr nativeHandle);
+    // Short GUI-thread mapping from the native anchor identity to exactly one
+    // live Qt screen. Workers must not call this or access returned QScreen.
+    [[nodiscard]] virtual QScreen *screenForAnchor(const DesktopAnchorResult &anchor);
+    // Short GUI-thread observation of this process's own top-level surface.
+    // It does not move, show or activate the window, or query another process.
+    [[nodiscard]] virtual DesktopWindowMetricsResult queryWindowMetrics(quintptr nativeHandle);
     // A short native GUI operation, with no Shell/COM/IO. Only a top-level window
     // owned by this process may be placed. The window's real physical size is
     // read after Qt has selected its screen, avoiding logical/native mixing.

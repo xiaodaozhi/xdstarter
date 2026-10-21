@@ -9,6 +9,7 @@
 #include <QPainter>
 #include <QRasterWindow>
 #include <QSemaphore>
+#include <QScreen>
 #include <QSignalSpy>
 #include <QThread>
 #include <QWindow>
@@ -16,6 +17,8 @@
 
 #include <atomic>
 #include <memory>
+#include <limits>
+#include <functional>
 
 namespace {
 
@@ -25,6 +28,7 @@ struct AnchorState {
     std::atomic_int queries{0};
     std::atomic_int completed{0};
     bool alternateTrust = false;
+    QString monitorName;
     QSemaphore release;
 };
 
@@ -51,6 +55,7 @@ class AnchorPlatform final : public xdstarter::DesktopPlatform {
         anchor.monitorPhysicalRect = QRect(0, 0, 1920, 1080);
         anchor.workAreaPhysicalRect = QRect(0, 0, 1920, 1008);
         anchor.dpi = 144;
+        anchor.monitorName = state_->monitorName;
         ++state_->completed;
         return anchor;
     }
@@ -63,6 +68,30 @@ class PlacementPlatform final : public xdstarter::DesktopPlatform {
   public:
     xdstarter::DesktopActionResult openDesktopAction(const QString&) override { return {}; }
     xdstarter::DesktopAnchorResult queryStartButtonAnchor() override { return {}; }
+
+    QScreen *screenForAnchor(const xdstarter::DesktopAnchorResult &anchor) override {
+        ++screenMappings;
+        return !nativeScreenIdentity.isEmpty() && anchor.monitorName == nativeScreenIdentity
+                   ? QGuiApplication::primaryScreen()
+                   : DesktopPlatform::screenForAnchor(anchor);
+    }
+
+    xdstarter::DesktopAppearanceResult configureMenuWindow(quintptr) override {
+        if (afterConfigure)
+            afterConfigure();
+        return {};
+    }
+
+    xdstarter::DesktopWindowMetricsResult queryWindowMetrics(quintptr) override {
+        ++metricQueries;
+        if (!reportNativeSize)
+            return {};
+        const QSize size = physicalSizeOverride.isValid()
+                               ? physicalSizeOverride
+                               : QSize(qRound(observedWindow->width() * observedWindow->devicePixelRatio()),
+                                       qRound(observedWindow->height() * observedWindow->devicePixelRatio()));
+        return {true, nativeQuerySucceeds, size};
+    }
 
     xdstarter::DesktopPlacementResult placeWindow(
         quintptr nativeHandle, const xdstarter::DesktopAnchorResult& anchor,
@@ -84,10 +113,20 @@ class PlacementPlatform final : public xdstarter::DesktopPlatform {
         }
         guiThreadOnly = guiThreadOnly &&
                         QThread::currentThread() == QCoreApplication::instance()->thread();
+        if (afterPlace)
+            afterPlace();
         return {true, QRect(24, 200, 640, 480), {}, {}};
     }
 
     int placements = 0;
+    int screenMappings = 0;
+    QString nativeScreenIdentity;
+    int metricQueries = 0;
+    bool reportNativeSize = false;
+    bool nativeQuerySucceeds = true;
+    QSize physicalSizeOverride;
+    std::function<void()> afterConfigure;
+    std::function<void()> afterPlace;
     quintptr handle = 0;
     int gap = 0;
     int inset = 0;
@@ -117,6 +156,10 @@ class FakeTray final : public xdstarter::DesktopTray {
         captureActive = active;
         captureCanEnable = canEnable;
         captureStatus = status;
+        if (nextStateUpdate) {
+            auto callback = std::move(nextStateUpdate);
+            callback();
+        }
         if (failNextStateUpdate && available) {
             failNextStateUpdate = false;
             setRegistration(false);
@@ -141,6 +184,7 @@ class FakeTray final : public xdstarter::DesktopTray {
     bool captureCanEnable = false;
     bool failNextStateUpdate = false;
     QString captureStatus;
+    std::function<void()> nextStateUpdate;
 };
 
 class FakeWinKeyCapture final : public xdstarter::WinKeyCapture {
@@ -232,6 +276,16 @@ class DesktopWindowHostTest : public QObject {
     void repeatedRevealPlacesHiddenAtStableMargins();
     void pendingRevealCanBeCanceled();
     void visibleReactivationDoesNotMoveAgain();
+    void hiddenReadinessTracksDpiAndResize();
+    void nativePreparationCanBeCanceledAndRestarted();
+    void newRevealWaitsForItsOwnAnchor();
+    void nativePreparationRejectsLateCloseAndShutdown();
+    void nativePreparationTimeoutKeepsRecovery_data();
+    void nativePreparationTimeoutKeepsRecovery();
+    void nativePreparationRejectsReentrantCancellation_data();
+    void nativePreparationRejectsReentrantCancellation();
+    void nativeScreenIdentityIsResolvedByPlatform();
+    void missingNativeScreenDoesNotUsePreviousScreen();
     void winKeyCaptureRequiresOptInAndStops();
     void winKeyCaptureFailureAndTrayLoss();
     void unsupportedWinKeyCaptureStaysDisabled();
@@ -727,6 +781,224 @@ void DesktopWindowHostTest::visibleReactivationDoesNotMoveAgain() {
     QCOMPARE(state->queries.load(), 1);
     QCOMPARE(placement.placements, 1);
     QVERIFY(window.isVisible());
+}
+
+void DesktopWindowHostTest::hiddenReadinessTracksDpiAndResize() {
+    xdstarter::HiddenWindowReadiness gate;
+    using Metrics = xdstarter::DesktopWindowMetricsResult;
+    const QSize logical(1028, 728);
+    const Metrics low{true, true, logical};
+    const Metrics high{true, true, QSize(1542, 1092)};
+
+    // A changed screen identity alone must not authorize the old 96-DPI size.
+    QVERIFY(!gate.observe(false, 1.5, 1, logical, low));
+    QVERIFY(!gate.observe(true, 1.5, 1, logical, low));
+    QVERIFY(!gate.observe(true, 1.5, 1.5, logical, low));
+    QVERIFY(!gate.observe(true, 1.5, 1.5, logical, high));
+    QVERIFY(gate.observe(true, 1.5, 1.5, logical, high));
+
+    // The opposite direction also waits for both Qt and the native surface.
+    QVERIFY(!gate.observe(true, 1, 1.5, logical, high));
+    QVERIFY(!gate.observe(true, 1, 1, logical, high));
+    QVERIFY(!gate.observe(true, 1, 1, logical, low));
+    QVERIFY(gate.observe(true, 1, 1, logical, low));
+
+    // A resize between samples cannot reuse readiness from the old geometry.
+    const QSize resized(1040, 750);
+    const Metrics newSize{true, true, resized};
+    QVERIFY(!gate.observe(true, 1, 1, resized, low));
+    QVERIFY(!gate.observe(true, 1, 1, resized, newSize));
+    QVERIFY(gate.observe(true, 1, 1, resized, newSize));
+    gate.reset();
+    QVERIFY(!gate.observe(true, 1, 1, resized, newSize));
+    QVERIFY(!gate.observe(true, 1, 1, resized, Metrics{true, false, resized}));
+    QVERIFY(!gate.observe(true, 1, 1, resized, newSize));
+    QVERIFY(!gate.observe(true, 1, std::numeric_limits<qreal>::quiet_NaN(), resized, newSize));
+    QVERIFY(!gate.observe(true, 1, 1, resized, newSize));
+    QVERIFY(gate.observe(true, 1, 1, resized, newSize));
+}
+
+void DesktopWindowHostTest::nativePreparationCanBeCanceledAndRestarted() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    window.resize(688, 528);
+    PlacementPlatform placement;
+    placement.observedWindow = &window;
+    placement.reportNativeSize = true;
+    placement.physicalSizeOverride = QSize(1, 1);
+    FakeTray tray;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.start(trayIcon());
+    QTRY_VERIFY(placement.metricQueries >= 2);
+    QCOMPARE(placement.placements, 0);
+    QVERIFY(!window.isVisible());
+    tray.toggle();
+    const int queries = placement.metricQueries;
+    placement.physicalSizeOverride = {};
+    QTest::qWait(80);
+    QCOMPARE(placement.metricQueries, queries);
+    QCOMPARE(placement.placements, 0);
+    QVERIFY(!window.isVisible());
+    tray.toggle();
+    QTRY_VERIFY(window.isVisible());
+    QCOMPARE(placement.placements, 1);
+    QVERIFY(!placement.placedWhileVisible);
+    QCOMPARE(state->queries.load(), 2);
+}
+
+void DesktopWindowHostTest::newRevealWaitsForItsOwnAnchor() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    PlacementPlatform placement;
+    placement.observedWindow = &window;
+    placement.reportNativeSize = true;
+    placement.nativeQuerySucceeds = false;
+    FakeTray tray;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.start(trayIcon());
+    QTRY_VERIFY(placement.metricQueries > 0);
+    state->delay = true;
+    host.showWindow();
+    QTRY_COMPARE(state->queries.load(), 2);
+    placement.nativeQuerySucceeds = true;
+    const int queries = placement.metricQueries;
+    QTest::qWait(80);
+    QCOMPARE(placement.metricQueries, queries);
+    QCOMPARE(placement.placements, 0);
+    QVERIFY(!window.isVisible());
+    state->delay = false;
+    state->release.release();
+    QTRY_VERIFY(window.isVisible());
+    QCOMPARE(placement.placements, 1);
+}
+
+void DesktopWindowHostTest::nativePreparationRejectsLateCloseAndShutdown() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    PlacementPlatform placement;
+    placement.observedWindow = &window;
+    placement.reportNativeSize = true;
+    placement.nativeQuerySucceeds = false;
+    FakeTray tray;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.start(trayIcon());
+    QTRY_VERIFY(placement.metricQueries > 0);
+    window.close();
+    placement.nativeQuerySucceeds = true;
+    QTest::qWait(80);
+    QVERIFY(!window.isVisible());
+    QCOMPARE(placement.placements, 0);
+
+    placement.nativeQuerySucceeds = false;
+    const int queries = placement.metricQueries;
+    host.showWindow();
+    QTRY_VERIFY(placement.metricQueries > queries);
+    host.shutdown();
+    placement.nativeQuerySucceeds = true;
+    QTest::qWait(80);
+    QVERIFY(!window.isVisible());
+    QCOMPARE(placement.placements, 0);
+}
+
+void DesktopWindowHostTest::nativePreparationTimeoutKeepsRecovery_data() {
+    QTest::addColumn<bool>("trayAvailable");
+    QTest::newRow("tray-retry") << true;
+    QTest::newRow("taskbar-retry") << false;
+}
+
+void DesktopWindowHostTest::nativePreparationTimeoutKeepsRecovery() {
+    QFETCH(bool, trayAvailable);
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    PlacementPlatform placement;
+    placement.observedWindow = &window;
+    placement.reportNativeSize = true;
+    placement.nativeQuerySucceeds = false;
+    FakeTray tray;
+    tray.registrationSucceeds = trayAvailable;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.start(trayIcon());
+    QTRY_VERIFY(window.property("integrationStatus").toString().contains(QStringLiteral("本次显示已取消")));
+    QCOMPARE(placement.placements, 0);
+    if (trayAvailable)
+        QVERIFY(!window.isVisible());
+    else
+        QCOMPARE(window.visibility(), QWindow::Minimized);
+    const int queries = placement.metricQueries;
+    QTest::qWait(80);
+    QCOMPARE(placement.metricQueries, queries);
+    placement.nativeQuerySucceeds = true;
+    host.toggleWindow();
+    QTRY_COMPARE(window.visibility(), QWindow::Windowed);
+    QCOMPARE(placement.placements, 1);
+    QVERIFY(!placement.placedWhileVisible);
+    QGuiApplication::setQuitOnLastWindowClosed(false);
+}
+
+void DesktopWindowHostTest::nativePreparationRejectsReentrantCancellation_data() {
+    QTest::addColumn<QString>("boundary");
+    QTest::newRow("appearance") << QStringLiteral("appearance");
+    QTest::newRow("native-placement") << QStringLiteral("placement");
+    QTest::newRow("published-status") << QStringLiteral("status");
+}
+
+void DesktopWindowHostTest::nativePreparationRejectsReentrantCancellation() {
+    QFETCH(QString, boundary);
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    PlacementPlatform placement;
+    FakeTray tray;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    const auto cancel = [&] { host.dismissWindow(); };
+    if (boundary == QStringLiteral("appearance"))
+        placement.afterConfigure = cancel;
+    else if (boundary == QStringLiteral("placement"))
+        placement.afterPlace = cancel;
+    else
+        placement.afterPlace = [&] { tray.nextStateUpdate = cancel; };
+    host.start(trayIcon());
+    QTRY_VERIFY(window.dismissals > 0);
+    QTest::qWait(80);
+    QVERIFY(!window.isVisible());
+    QCOMPARE(window.presentations, 0);
+    QCOMPARE(placement.placements, boundary == QStringLiteral("appearance") ? 0 : 1);
+}
+
+void DesktopWindowHostTest::nativeScreenIdentityIsResolvedByPlatform() {
+    auto state = std::make_shared<AnchorState>();
+    state->monitorName = QStringLiteral("native-display-identity");
+    QVERIFY(QGuiApplication::primaryScreen()->name() != state->monitorName);
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    PlacementPlatform placement;
+    placement.nativeScreenIdentity = state->monitorName;
+    FakeTray tray;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.start(trayIcon());
+    QTRY_VERIFY(window.isVisible());
+    QCOMPARE(placement.screenMappings, 1);
+    QCOMPARE(placement.placements, 1);
+    QCOMPARE(window.screen(), QGuiApplication::primaryScreen());
+}
+
+void DesktopWindowHostTest::missingNativeScreenDoesNotUsePreviousScreen() {
+    auto state = std::make_shared<AnchorState>();
+    state->monitorName = QStringLiteral("disconnected-native-display");
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    PlacementPlatform placement;
+    FakeTray tray;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.start(trayIcon());
+    QTRY_VERIFY(window.property("integrationStatus").toString().contains(QStringLiteral("本次显示已取消")));
+    QCOMPARE(placement.screenMappings, 1);
+    QCOMPARE(placement.placements, 0);
+    QVERIFY(!window.isVisible());
 }
 
 // Opt-in, inert second application window for reproducible native focus tests.

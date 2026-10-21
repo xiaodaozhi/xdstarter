@@ -2681,6 +2681,8 @@ int main(int argc, char* argv[]) {
     QQuickWindow::setDefaultAlphaBuffer(true);
     if (QCoreApplication::arguments().contains(QStringLiteral("--native-chrome-probe")))
         return runNativeChromeProbe();
+    if (QCoreApplication::arguments().contains(QStringLiteral("--native-screen-transition-probe")))
+        return runNativeScreenTransitionProbe();
     PrototypeWindowTest test;
     return QTest::qExec(&test, argc, argv);
 }
