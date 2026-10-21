@@ -6,7 +6,80 @@
 
 GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查看 PNG，核对字体、应用图标、长名称、间隙及辅助功能信息的表达。
 
-## 当前：高保真界面落地与视觉验收（Issue #29）
+## 当前开发验证：磁贴显示名称与搜索别名（Issue #9）
+
+2026-10-21，[#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 剩余的磁贴显示名称编辑已接入右键／Shift+F10 菜单、内部命名弹层、controller、布局与搜索。当前写入 schema 3，严格兼容读取 schema 1/2；旧文件只读取时原字节不变，首次保存保留旧版原字节备份。每枚磁贴可有独立覆盖，原 target 名称与启动描述不变。契约见 [ADR-0011](adr/0011-tile-display-names.md)；此处只记录本分支已执行的检查，不沿用下方旧版本的原生窗口、托盘及产品重启结论。
+
+### 正式构建与覆盖范围
+
+正式入口 `./scripts/build-windows.ps1 -Preset app-release` 使用 Qt **6.8.2**、MSVC **19.29.30153.0／v142**、Windows SDK **10.0.19041.0**。合入 PR #38 前的日志 `build/issue9-tile-names-delivery-final.log` 完成 Release、QML lint 与 **12/12 CTest（27.80 秒）**；GUI **47/47**，host **34/34**。QML lint 没有诊断；没有将 Qt SDK 既有编译警告写为整个构建零警告。文档／素材检查通过，255 项开发素材未重建；`tests/tooling` **13/13** 通过。
+
+| 合入 PR #38 前的显示名称程序 | SHA-256 |
+| --- | --- |
+| 产品 `xdstarter.exe` | `2353d99abf657662b4a82bccd9f7980f3b3e461326031b9f490bf6d5abdef464` |
+| GUI `xdstarter_ui_tests.exe` | `c7eb92cdf7d492d2bf42ed8c6d3cbf222340c17ea11619c4a72118100d22ce1a` |
+| host `xdstarter_desktop_window_host_tests.exe` | `3933c64f29cccf46e437874d72d0ba872adf4442c15da6363f89b17615a12a69` |
+
+合入 main `2303aef`（应用权限／目录错误 PR #38）后，`build/issue9-tile-names-main-sync.log` 再次完成 **12/12 CTest（30.39 秒）**。独立只读审查未发现已确认 P1/P2，并建议补足命名弹层的通用收起保护及返回焦点断言；随后只增加测试：`internalPopupsGuardAndCleanup` 包含 `tileNameDialog`，提交、恢复原名、Esc 和取消按钮结束后，实际磁贴必须重新取得 active focus。追加后的 `build/issue9-tile-names-focus-guard.log` 完成 Release、QML lint 与 **12/12 CTest（30.57 秒）**，GUI **47/47**、host **34/34**。仓库 **610 文件／255 素材** 与 tooling **13/13** 通过。产品代码未因追加焦点断言改变，最终程序如下；普通离屏 host 的 `raise()` 不支持及有意超时场景警告不作为真实托盘验收。
+
+| 合入 PR #38 并补足焦点断言后的程序 | SHA-256 |
+| --- | --- |
+| 产品 `xdstarter.exe` | `269c800746293a35e75e8afd0ed79eca99b0cd702daa17bd1da8290e531363ec` |
+| GUI `xdstarter_ui_tests.exe` | `d0e025ff89f7c2515e801e8c632edb5c2d095f54b63fbdd22c456f2ca9c4ae13` |
+| host `xdstarter_desktop_window_host_tests.exe` | `ccca0159bc9982b9995609d87510bb7a13326d7f20e403fd46cb90bd11f54b1a` |
+
+服务与保存检查覆盖 trim、空白／129 字符／控制字符／换行／行段分隔符／无效 UTF-16 拒绝、128 代码单元 emoji 边界、未知 id、只读与失败不变性；名称修改和恢复保留目标数组、稳定标识、坐标及尺寸。schema 1/2 的新字段拒绝、旧主配置原字节备份、schema 3 严格字段和重建恢复均有检查。搜索保留每目标 16 个普通名称的原预算，另以整个索引共享的 512 条预算覆盖所有有效磁贴名称；首项、末项、全局超限及恢复后移除旧别名有明确断言。
+
+新增三条 GUI 用例覆盖键盘菜单／弹层、PlainText 标签与完整辅助名称、可见 128 限制、预编辑 Enter／Esc、取消／收起丢弃草稿、只读禁用、同目标两枚磁贴的独立名称，以及原名／覆盖的名称、拼音与首字母搜索。目录名称变化仍优先用于搜索结果，已保存原名与其余有效覆盖可继续查找。真实保存文件后重新创建 QML engine、controller 与服务，逐对象比较完整已保存快照；这属于同一测试进程内重建，不是产品独立进程重启。普通 CTest 的 GUI 为 `offscreen/software` 受控夹具；本分支没有另行运行原生桌面窗口、托盘或真实应用独立进程验收。
+
+### 开发中的失败与复测
+
+- `build/issue9-tile-names-initial.log` 在受限上下文的空编译器探针出现 C1902，尚未编译产品；改在正式 MSVC 构建上下文配置后通过，没有改变工具链版本。
+- `build/issue9-tile-names-formal.log` 为 **10/12 CTest，GUI 46/47**：新服务用例误用不存在的样例 tileId；新 GUI 恢复用例比较未包含 controller 默认主题的 service 快照。修正为实际样例 id 与完整已保存 JSON。该轮已有图标加载路径的 QtQuickPixmap 警告保留记录，未计作新增 QML 引擎错误。
+- `build/issue9-tile-names-regression.log` 为 **11/12，GUI 46/47**：新 GUI 在重建后首次呈现回调完成前打开菜单，被既有的呈现清理关闭。用例改为等待真实 `frameSwapped` 后发送键盘；菜单可见、恢复入口及布局断言保持。随后 `build/issue9-tile-names-final.log` 已达 12/12；最后仅修改用户错误文案，形成上表程序。
+- `build/issue9-tile-names-delivery.log` 为 **11/12**：未修改的 `platform.applications` 夹具中，Shell 返回成功、标记文件存在，但随后的文件打开失败，连带参数与工作目录断言失败。单次原因未确定，没有据此修改平台实现或放宽严格断言。带明确 Qt DLL 路径的独立复测 `build/issue9-platform-launch-with-qt.log` 为 **1/1（1.67 秒）**；同一程序随后完成上面的正式 **12/12**。另一次手动 CTest 未设置 Qt DLL 路径，30 秒超时，保留为 `build/issue9-platform-launch-recheck.log`，属于启动器环境错误。
+
+本轮新功能的原生窗口交互、真实托盘与独立产品进程恢复需要在最终集成程序上协调验收；上述离屏及受控服务证据不宣称这些范围已经通过。下方 #29 及更早章节保留各自二进制身份与历史边界。
+
+## 应用目录异常验收（Issue #7）
+
+2026-10-21，本轮在从 `61c9376` 建立的独立工作树补充 [#7](https://github.com/xiaodaozhi/xdstarter/issues/7) 的权限与不可用目标验收，并修正实际发现的分类问题。仅使用 build 内新建的快捷方式、复制的受控 helper 和新目录，不改真实开始菜单、不卸载用户应用、不改日常布局或系统权限。普通产品窗口没有在本轮操作；此前真实目录、画图启动及失败窗口证据继续保留原版身份，不改标为当前程序。
+
+正式 `app-release` 使用 Qt **6.8.2**、MSVC **19.29.30153.0／v142**、链接器 **14.29.30153.0** 与 SDK **10.0.19041.0**。最终日志 `build/issue7-build-delivery.log` 的 Release、QML lint、**12/12 CTest（31.83 秒）** 通过；其中原生平台 2.48 秒，后台目录服务 1.73 秒，既有离屏 GUI 44/44 和 host 34/34 通过。离屏 GUI 没有读取真实目录，也不等于当前产品的真机交互验收。
+
+| 最终程序 | SHA-256 |
+| --- | --- |
+| 产品 | `7eb32ad1a33c50ad075a47100f047bb40fb882fdfaf4182ea7906fa085404f95` |
+| 应用平台测试 | `20e93c8137ed8570337738aa76e94301d6b4e4439e3ce51b9b3721130f87f337` |
+| 后台目录服务测试 | `3fbb02b994ecb620b57501dcddad1af395b74eadf35e3dab9eebe163747a2528` |
+| 受控启动 helper | `4751d8f0f22f4fc5c752b46d93ec40a97e982e71c4932538736002009e7b4c16` |
+
+### 真实 Windows API 与隔离 DACL
+
+同一最终平台测试在 Windows kernel `10.0.26300` 下独立运行，退出 **0**；[公开结果](validation/issue-7/catalog-errors.json)包含程序／源码散列、结构化错误和恢复结果，不含机器路径或真实应用清单。完整本地日志为 `build/validation/issue7/native-platform.log`，原始 JSON 位于 `build/validation/issue7/final/`。
+
+| 受控场景 | 实际断言与结果 |
+| --- | --- |
+| 中文、空格及 `&` 的快捷方式 | 仍由原 `.lnk` 启动构建的 helper，中文参数、含 `&` 的单个字面参数和工作目录逐项一致；不同参数的快捷方式保留独立身份，原生 Shell 图标可取。 |
+| 缺失文件与未注册包 | 缺失目标 `target-missing`，删除 fixture `.lnk` 后为 `shortcut-missing`；匿名、语法有效但未安装的 AUMID 返回 `application-missing`，启动失败。这验证卸载后注册项缺失的等价状态，没有实际卸载任何应用。 |
+| `.lnk` 读拒绝 | 只对新建快捷方式增加当前用户的 `FILE_READ_DATA` deny；原生打开返回 `ERROR_ACCESS_DENIED = 5`，可用性及启动均返回 `access-denied`；恢复原 DACL 后可用性恢复。 |
+| 普通 `.exe` 执行拒绝 | 仅限制复制的受控 helper；元数据仍可读，原生 `FILE_EXECUTE` 打开返回 5，明确执行权限预检及启动均返回 `access-denied`，helper 没有产生启动标记。 |
+| 关联文档保持原语义 | 新建 `.txt` 被禁止 `FILE_EXECUTE` 后，其 `.lnk` 可用性仍通过，没有打开其关联程序。重解析文件／应用别名不加入普通可执行文件预检。 |
+| 根目录及子目录读拒绝 | 原生 `FILE_LIST_DIRECTORY` 打开返回 5。可读根下有拒绝子目录时保留 1 个有效项目与 warnings；拒绝根与可读根混合时仍成功并保留有效结果；全部拒绝且根重复时 `success=false`，不会伪装成成功空目录。恢复 DACL 后受限子目录正常扫描。 |
+
+ACL 安全门先用文件句柄取得实际路径，再确认它是当前绝对 build 工作目录中新建 fixture 的非重解析子项；不会通过 Qt 的 `.lnk` 目标解析给外部程序修改权限。原 DACL 由 RAII 保存并恢复，最终 `allFixtureDaclsRestored=true`、`fixtureCleaned=true`。权限修改或原生拒绝不能建立时测试失败，不跳过、不降级为模拟通过；恢复失败时保留隔离目录并报告失败。
+
+服务的独立回归 **12/12，1.743 秒**，见本地 `build/validation/issue7/catalog-service.txt`。这部分明确使用注入平台：全失败刷新保留已有目录；部分成功保留可读项并显示错误标志；`shortcut-missing`／`access-denied`／`application-missing` 三类固定目标均保留描述和布局，启动失败且不进入底层 launch，仍可取消固定，平台调用不在 GUI 线程执行。它与上面的真实 DACL 证据互补，不能把假平台结果称为真实系统权限验收。
+
+### 失败记录与边界
+
+首轮 `build/issue7-build-initial.log` 为 **11/12 CTest（30.10 秒）**。ACL 安全门最初调用 `QFileInfo::canonicalFilePath()`，Windows 会解析 `.lnk` 的目的程序，因超出 fixture 路径被安全门拒绝；随后改用实际文件句柄核对快捷方式本体。初始原始结果 `build/validation/issue7/initial/catalog-errors.json` 的 `passed=false` 保留。
+
+第二轮 `build/issue7-build-diagnostics.log` 仍只有执行拒绝分类失败：原生执行打开返回 5，但本机 Shell 将同一拒绝折为 `E_FAIL`／“未指定的错误”。没有把一般 `E_FAIL` 一概解释成权限拒绝，而是增加仅针对普通 `.exe`／`.com` 文件的明确执行权限预检；关联文档、重解析文件／应用别名及其他打开错误继续交给原 Shell 路径。中间的 `build/issue7-build-final.log` 为 12/12（27.76 秒）；补充文档关联保护后再次正式构建，最终结果以 delivery 日志及上表散列为准。
+
+权限预检不是授权或安全边界，外部 ACL 仍可能在检查之后变化，最终启动结果继续由 Shell／应用激活接口返回。本轮没有新增原生产品窗口的权限提示交互、真实安装／卸载监听、重绑定目标、完整 Windows 版本矩阵、远程桌面或发行验证；原有真实窗口与本轮平台／服务结果分别记录。
+
+## 历史：高保真界面落地与视觉验收（Issue #29）
 
 2026-10-21，[#29](https://github.com/xiaodaozhi/xdstarter/issues/29) 将 [v2 修订 2.2](../design/README.md) 统一为可运行界面：顶部搜索与编辑／更多／收起入口，240 DIP 应用目录与分组磁贴正文，主题控件、菜单、弹层及重要反馈。正常浏览不常驻品牌大标题和调试底栏；共享磁贴保持 48 DIP 小格、8 DIP 间隙、48／104／216×104 DIP 三档几何，布局 schemaVersion 2 不变。当前设计 SVG/PNG 仅是布局基准，下面区分构建、离屏状态、原生像素与真实产品证据。
 

@@ -32,6 +32,8 @@ Python 包通过 PyPI 精确版本取得，项目工具保存在忽略的 `build
 
 应用 CI 固定 actions/checkout、actions/setup-python 与 Windows 使用的 astral-sh/setup-uv 提交；Python 补丁与工具版本由清单读取。Python 3.12.13 为仅源码安全版本，官方不提供该版 Windows 安装器；Windows CI 通过固定版本 uv 获取与本机相同渠道的 CPython，显式定位解释器后传入现有构建入口，严格版本检查保持不变。Linux 核心任务继续使用 setup-python。`windows-2022` runner 的 MSVC 2022/SDK 随镜像变化，仅作为显式附加兼容验证，不冒充上述 v142/19041 精确基线；实际日志记录其选择结果。Ubuntu 核心检查使用 runner 的 C++20 编译器，不提供 Qt/Windows 验收结论。Actions 恢复和检查证据见 [#12](https://github.com/xiaodaozhi/xdstarter/issues/12) 与 [PR #17](https://github.com/xiaodaozhi/xdstarter/pull/17)。
 
+所有工作流的 `actions/checkout` 统一固定为 [v7.0.1](https://github.com/actions/checkout/releases/tag/v7.0.1) 的 `3d3c42e5aac5ba805825da76410c181273ba90b1`，并保留 `persist-credentials: false` 与原有最小权限。该 Action 使用 Node 24；[官方升级说明](https://github.com/actions/checkout/blob/v7.0.1/README.md#whats-new)增加 ESM 与受信任事件中的 fork 检出限制。当前工作流仅使用 `push`、`pull_request` 和 `workflow_dispatch`，无需开启 `allow-unsafe-pr-checkout`。项目初始化的 `--apply` 仅在匹配路径的 `main` 推送或手动触发时执行；PR 中只运行初始化预览和安全、幂等单测，不将预览结果表述为实际写入验收。依赖维护与更新基线后的检查记录见 [PR #1](https://github.com/xiaodaozhi/xdstarter/pull/1)。
+
 ## 离线拼音数据
 
 [Issue #8](https://github.com/xiaodaozhi/xdstarter/issues/8) 选定 Unihan 17.0.0 的 `kMandarin`、`kTGHZ2013`、`kXHC1983`、`kHanyuPinyin` 四字段，按顺序合并并去声调；`ü` 保留为 `v`。规范表含 44,359 个码点、52,982 个字音，编译时逐记录包含到 `services`，普通构建和运行无需下载源数据。没有词级消歧、运行时网络或简繁变体传播，不承诺所有汉字及读音完整覆盖。
