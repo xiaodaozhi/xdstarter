@@ -6,7 +6,7 @@
 
 XDStarter 是一款面向 Windows 11 的自定义磁贴开始菜单项目：保留 Windows 10 的应用列表与磁贴分组，结合 Windows 11 的现代视觉，支持整理常用应用、键盘搜索与快速启动。
 
-> 当前处于工程原型阶段。Qt Quick 原型已实现真实应用目录、系统图标、启动与固定/取消固定、三档磁贴编辑，以及布局与主题保存恢复。无边框菜单已接入快捷栏、圆形头像、软件图标、托盘恢复与外部焦点收起，并采用自绘单层圆角、边框、阴影及隐藏阶段定位。单独 Win 键提供默认关闭、可显式启用及暂停的局部原型，系统开始按钮保持原生入口。本轮 [#8](https://github.com/xiaodaozhi/xdstarter/issues/8) 接入应用名称、英文、拼音全拼与首字母的离线搜索。构建、自动检查和实际 Windows 窗口证据按版本记录于[测试记录](docs/technical/testing.md)，历史结果不替代本轮验收。分组管理与其余系统接管继续开发，尚未提供可安装的软件。下面展示的是设计稿。
+> 当前处于工程原型阶段。Qt Quick 原型已实现真实应用目录、系统图标、启动与固定/取消固定、三档磁贴编辑，以及布局与主题保存恢复。无边框菜单已接入快捷栏、圆形头像、软件图标、托盘恢复与外部焦点收起，并采用自绘单层圆角、边框、阴影及隐藏阶段定位。单独 Win 键提供默认关闭、可显式启用及暂停的局部原型，系统开始按钮保持原生入口。应用名称、英文、拼音全拼与首字母支持离线搜索；本轮 [#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 接入分组新建、重命名、排序与空组删除。构建、自动检查和实际 Windows 窗口证据按版本记录于[测试记录](docs/technical/testing.md)，历史结果不替代本轮验收。磁贴显示名称编辑与其余系统接管继续开发，尚未提供可安装的软件。下面展示的是设计稿。
 
 ![XDStarter 深色界面设计稿](docs/design/mockups/v2/xdstarter-desktop-dark-v2.png)
 
@@ -22,7 +22,7 @@ XDStarter 是一款面向 Windows 11 的自定义磁贴开始菜单项目：保�
 - 支持中文、拼音及英文应用搜索，首版保持本地运行。
 - 提供深浅主题、键盘操作和辅助功能支持。
 
-磁贴编辑、应用目录、搜索与启动已接入工程原型，单独 Win 键提供可选开启的局部原型；分组管理与开始按钮接管等目标继续按 Issues 推进。实际验证范围与未验收环境以测试记录为准。
+磁贴与分组编辑、应用目录、搜索与启动已接入工程原型，单独 Win 键提供可选开启的局部原型；磁贴显示名称编辑与开始按钮接管等目标继续按 Issues 推进。实际验证范围与未验收环境以测试记录为准。
 
 ## 技术方向
 
@@ -77,6 +77,8 @@ $env:PATH = "$PWD/build/Qt/6.8.2/msvc2022_64/bin;$env:PATH"
 每次启动默认关闭 Win 键唤起，不随布局恢复。支持环境且托盘可用时，可从电源菜单或托盘显式启用，单独按下并释放 Win 键切换菜单；托盘另提供暂停/恢复入口。暂停、失败或退出停止接管，托盘恢复也不自动重新启用。系统开始按钮始终保持原生入口，Win 组合键沿原始输入路径放行；本地 Windows 11 的启用条件不等于完整兼容保证，实际物理按键、组合键和恢复范围以本轮测试记录为准。
 
 进入“编辑布局”后拖拽磁贴，或使用 Ctrl+方向键移动一格；右键或 Shift+F10 打开三档尺寸菜单。非法落点保留原布局，Esc 先关闭子菜单或取消拖拽，再清空搜索、退出编辑，最后收起菜单。外部收起会关闭子菜单并取消未提交拖拽，重新显示时聚焦搜索框。布局与深浅主题在编辑后自动合并保存，也可点击“保存布局”；再次启动使用同一文件恢复。普通启动默认使用用户应用数据目录；`--smoke-test` 使用三组样例，不连接真实目录、桌面动作、托盘或定位服务，也不读写布局文件。旧样例配置可以继续读取，样例磁贴不会启动应用。
+
+编辑模式点击“新建分组”，或通过组标题右侧的“⋯”（管理分组）选择“重命名”“上移分组”“下移分组”“删除空分组”。组名去除首尾空白后不能为空、最多 128 个 UTF-16 代码单元，不接受控制字符或换行；同名分组允许存在，以稳定 id 区分。最多 32 组且至少保留一组，非空分组需先将磁贴移到其他组或明确取消固定，搬空后才能删除。分组操作保留磁贴标识、启动目标、坐标与尺寸，沿用现有布局保存和恢复；只读配置禁止修改。磁贴显示名称编辑与布局导入界面仍待后续开发。
 
 完整命令与支持边界见[开发环境](docs/technical/development.md)、[测试策略](docs/technical/testing.md)。进度与证据见 [#4 工程](https://github.com/xiaodaozhi/xdstarter/issues/4)、[#5 几何](https://github.com/xiaodaozhi/xdstarter/issues/5)、[#7 应用目录与启动](https://github.com/xiaodaozhi/xdstarter/issues/7)、[#8 离线搜索](https://github.com/xiaodaozhi/xdstarter/issues/8)、[#9 编辑](https://github.com/xiaodaozhi/xdstarter/issues/9)、[#10 保存恢复](https://github.com/xiaodaozhi/xdstarter/issues/10)、[#14 设计接入与桌面恢复](https://github.com/xiaodaozhi/xdstarter/issues/14)、[#15 无边框菜单与焦点](https://github.com/xiaodaozhi/xdstarter/issues/15)、[#16 统一边距与自绘外观](https://github.com/xiaodaozhi/xdstarter/issues/16)、[#22 单独 Win 键原型](https://github.com/xiaodaozhi/xdstarter/issues/22)；设计重建方法见[设计资产说明](docs/design/README.md)。
 

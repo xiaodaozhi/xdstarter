@@ -75,7 +75,7 @@ $env:PATH = "$env:XDSTARTER_QT_ROOT/bin;$env:PATH"
 
 当前原型普通启动使用真实应用目录，支持图标、受控启动、固定/取消固定，以及目录与固定目标的离线名称、英文、拼音全拼和首字母搜索；输入框支持 Ctrl+F、方向键和 Enter，查询由专用后台 worker 处理，详见 [ADR-0010](adr/0010-local-application-search.md)。三档磁贴从共享几何获得外框，小磁贴仅显示图标，ToolTip 和辅助功能保留完整名称，长名称在磁贴内省略。缩小窗口时布局不重排，Tab/Shift+Tab 或方向键聚焦会自动双向滚动到目标。主题与布局可保存恢复；编辑模式支持拖拽/跨组移动、Ctrl+方向键移动和三档尺寸切换。普通启动使用当前用户布局目录，`--layout-file` 可隔离验证，查询不写入布局。
 
-`--smoke-test` 和 GUI 样例夹具使用三组共 15 枚固定样例。smoke 完全禁用布局读写，不连接真实目录、桌面动作、托盘、定位服务或 Win 键接管；样例名称可使用同一离线匹配逻辑搜索，但不能启动真实应用，也不代表已安装应用。分组管理和原生背景材料仍待后续开发；样例、模拟平台与真实 Windows 行为分别记录。
+`--smoke-test` 和 GUI 样例夹具使用三组共 15 枚固定样例。smoke 完全禁用布局读写，不连接真实目录、桌面动作、托盘、定位服务或 Win 键接管；样例名称可使用同一离线匹配逻辑搜索，但不能启动真实应用，也不代表已安装应用。编辑模式已接入分组新建、重命名、排序与空组删除，磁贴显示名称编辑和原生背景材料仍待后续开发；样例、模拟平台与真实 Windows 行为分别记录。
 
 启用应用与测试的预设当前注册十二套 CTest：`app.qml_smoke`、`core.tile_grid`、`services.prototype`、`services.layout_store`、`services.application_catalog`、`services.desktop_shell`、`services.search`、`platform.applications`、`platform.desktop`、`platform.win-key-capture`、`ui.prototype`、`ui.desktop_window_host`。注册不代表已运行通过；确切版本结果见[测试策略](testing.md)。`--smoke-test` 加载 QML/视觉资源并短暂运行后退出；`ui.prototype` 使用同一产品 QML 和 controller 检查交互与抓帧，本轮增加四个搜索用例，覆盖焦点与输入法、浏览恢复、键盘启动及目录／别名／重启状态。CTest 默认将 GUI 检查放在 offscreen/software 环境，该结果不代替原生 Windows 窗口和系统集成验收。
 

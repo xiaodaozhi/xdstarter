@@ -1,0 +1,41 @@
+{
+  "fixtureOnly": true,
+  "frames": [
+    {
+      "devicePixelRatio": 1,
+      "file": "groups-dark.png",
+      "heightPx": 728,
+      "widthPx": 1028
+    },
+    {
+      "devicePixelRatio": 1,
+      "file": "groups-light.png",
+      "heightPx": 728,
+      "widthPx": 1028
+    }
+  ],
+  "groupCount": 2,
+  "platformName": "windows",
+  "qtVersion": "6.8.2",
+  "tileCount": 1,
+  "capture": "QQuickWindow.grabWindow",
+  "renderer": "Direct3D 11 / Intel Iris Xe",
+  "uiBinarySha256": "77e5b88931522fe7978d47bd29adcfc442a7881223a64bec41aef562a0afd7b9",
+  "result": {
+    "passed": 6,
+    "failed": 0,
+    "skipped": 0,
+    "durationMs": 5437,
+    "includesInitAndCleanup": true
+  },
+  "cases": [
+    "groupManagementLifecycle",
+    "groupNameCompositionAndCancellation",
+    "groupCatalogMoveAndRestart",
+    "groupChangesPreserveSearchFocus"
+  ],
+  "recoveryBoundary": "Rebuilt QML engine and services from the same temporary layout file in one test process; not a product process restart.",
+  "physicalIme": false,
+  "globalMouseOrKeyboardInput": false,
+  "realApplicationCatalog": false
+}

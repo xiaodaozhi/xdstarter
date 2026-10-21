@@ -6,7 +6,32 @@
 
 GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查看 PNG，核对字体、应用图标、长名称、间隙及辅助功能信息的表达。
 
-## 当前：离线应用搜索（Issue #8）
+## 当前：分组管理（Issue #9）
+
+2026-10-21，[#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 本轮交付编辑模式的新建、重命名、相邻排序及空组删除，保留至少一组。磁贴显示名称编辑仍在该 Issue 跟踪，本轮使用 `Refs #9`，不关闭整个 Issue；布局格式仍为 schemaVersion 2。
+
+服务检查覆盖名称 trim、128 个 UTF-16 代码单元及 emoji 边界、控制字符或换行、重复名称、1/32 组边界、未知 id、非空组与最后一组保护、只读和失败不变性；检查排序仅改变组数组，保留磁贴目标、标识、格坐标与尺寸。已有 schema 1/2 读取规则保持兼容，新增保存／恢复检查组名、稳定 id 和顺序。
+
+四条 GUI 用例覆盖创建／重命名／排序／删除、长名称省略与 PlainText、Shift+F10／Enter、IME 合成预编辑、取消／Esc／收起丢弃草稿、固定到新组、跨组鼠标拖拽、同文件重建恢复，以及分组变化不重建搜索索引、不抢用户已移到主题／目录／搜索控件的焦点。独立只读审查发现的后台刷新抢回旧分组焦点问题已修复并加入回归。
+
+正式入口 `./scripts/build-windows.ps1 -Preset app-release` 使用 Qt 6.8.2、MSVC 19.29.30153.0/v142、SDK 10.0.19041.0，最终 Release、适用 QML lint 与 **12/12 CTest** 通过（18.96 秒），GUI **41/41**。最终日志为本地 `build/issue9-build-delivery.log`。保留一条既有 `Qt.inputMethod.reset` 的 lint 类型警告，运行行为由搜索及 IME 用例检查。
+
+首轮日志保留 `build/issue9-build-initial.log`：编译及 lint 完成，但服务断言使用 Latin-1 包装中文名称，另有排序后焦点恢复失败，CTest 为 10/12、GUI 40/41；不把这次结果记为通过。修正中文断言，并根据 Qt focus 日志仅为待完成操作放行控件销毁后落入的布局焦点容器，第二轮 `build/issue9-build-final.log` 为 12/12、GUI 41/41（20.05 秒）。随后补查后台可用性刷新路径，在旧委托销毁前捕获实际聚焦的稳定 groupId，新增可用性 `true → false → true` 的严格回归，再冻结代码完成上述最终构建。
+
+| 最终程序 | SHA-256 |
+| --- | --- |
+| 产品 `xdstarter.exe` | `e28629df2c58345e2ee8ed595d2ac40da43a9c7ba548328dee8767ac6917a866` |
+| GUI `xdstarter_ui_tests.exe` | `77e5b88931522fe7978d47bd29adcfc442a7881223a64bec41aef562a0afd7b9` |
+
+### Windows 原生窗口专项
+
+同一最终 GUI 程序使用 Windows QPA / Direct3D 11 / Intel Iris Xe 执行四个新增用例，**6/6** 通过（含初始化与清理，5.437 秒）。Qt 测试事件直接送入测试窗口，没有发送全局键盘鼠标输入。覆盖菜单和命名弹层、IME 合成事件、跨组拖拽、删除保护、布局保存／重建及后台焦点回归；重建是同一测试进程内重新创建 QML engine 和服务，不是产品独立进程重启。
+
+直接 `QQuickWindow.grabWindow()` 导出的[浅色](../design/validation/issue-9/groups-light.png)与[深色](../design/validation/issue-9/groups-dark.png)为 1028×728、DPR 1，已目视核对两组标题、空组提示、管理入口、编辑按钮和主题。[元数据](../design/validation/issue-9/groups-render.json)标注受控目录、程序 hash、结果与恢复边界。图中下方磁贴受正常滚动视口裁切，截图本身不作为完整磁贴几何通过证据；共享几何由既有像素检查及分组操作前后的布局断言覆盖。首轮本地启动器误将 `,txt` 作为 QTest 函数名，未执行功能用例；修正参数分组后执行同一程序，失败启动日志保留在 `build/validation/issue9-native/wrapper-initial.log`。
+
+本轮尚待真实应用目录的产品窗口交互、正常退出及同文件独立进程重启验收，已请求用户配合暂停桌面操作；现有受控目录及历史产品验收不替代这些待完成项。PR 可以先进行远程检查，验收完成前保持草稿、不合并。物理 IME、屏幕阅读器、混合 DPI、其他设备与本轮未重测的系统接管不在上述通过范围。
+
+## 历史：离线应用搜索（Issue #8）
 
 2026-10-21，[#8](https://github.com/xiaodaozhi/xdstarter/issues/8) 接入名称／英文、拼音全拼和首字母搜索，机制、容量与数据许可见 [ADR-0010](adr/0010-local-application-search.md)。自动检查、原生样例抓帧及真实目录／窗口交互分别记录如下。
 
