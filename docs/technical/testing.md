@@ -6,7 +6,24 @@
 
 GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查看 PNG，核对字体、应用图标、长名称、间隙及辅助功能信息的表达。
 
-## 当前：统一边距与自绘外观（Issue #16）
+## 当前：主题菜单边框（Issue #18）
+
+2026-10-21，[#18](https://github.com/xiaodaozhi/xdstarter/issues/18) 将菜单外轮廓由两主题共用的半透明品牌蓝改为独立 `menuBorder` token：浅色 `#B7BEC8`，深色 `#46505E`。保持不透明的单层 1 DIP 内描边、12 DIP 圆角、24 DIP 阴影留白及左/底 8 DIP 间距；主题切换会重绘。共享磁贴几何、布局 schema、原生装饰抑制和焦点逻辑没有变更。
+
+正式入口 `./scripts/build-windows.ps1 -Preset app-release` 使用 Qt 6.8.2、MSVC 19.29.30153.0/v142、Windows SDK 10.0.19041.0，完成 Release、QML lint 与 10/10 CTest（16.58 秒），其中 GUI 为 32/32、host 为 17/17；日志为本地 `build/issue18-build.log`。仓库检查同时发现既有 `CMakeLists.txt` 被 Windows `core.autocrlf` 转为 CRLF，导致素材清单的原始字节哈希不符；固定该文件名使用 LF 后，最终含两张新预览的 440 文件、255 项素材检查通过，没有刷新清单或重生成素材。
+
+| 程序 | SHA-256 |
+| --- | --- |
+| 产品 `xdstarter.exe` | `bfc9cd68e8fcf4de6b44343f8cb4f7b537e78f33cb4bbe74a074b1741cec1b82` |
+| GUI `xdstarter_ui_tests.exe` | `2dbe6c6e76b5f21e7d4523a691662589ac998ba0c80ff1ddc7a2b55656a8c770` |
+
+现有 `customChromePixels` 增加两主题四条直边的实际像素颜色检查，同时保留透明角、阴影、侧栏裁切与单层描边宽度约束。Windows QPA 原生渲染下，按基础 DPR 1.5 设置 Qt 缩放因子，100/125/150/175/200% 的该专项均通过（每档 3/3，包含初始化与清理）；每次均直接读取完整 `QQuickWindow.grabWindow()`，没有使用离屏 Canvas 回退。该结果是边框专项，不宣称重新运行了完整五档 GUI 矩阵，也没有修改 Windows 系统缩放。
+
+同一 GUI 程序的 `--native-chrome-probe` 在 Windows `10.0.26300`、Qt 6.8.2 / Direct3D 11、DPR 1.5 下通过十二轮显示/隐藏：首次显示和稳定后位置一致，左/底间距均为 8 DIP。深浅主题完整窗口截图均为 1542×1092 RGBA PNG，外窗四角 alpha 为 0，近/远阴影 alpha 分别为 28/3，面板像素 alpha 为 255。已目视核对边框、圆角和主题：[浅色预览](../design/validation/issue-18/light-native-chrome.png)、[深色预览](../design/validation/issue-18/dark-native-chrome.png)。两图使用内存样例磁贴，未连接真实应用目录。
+
+本轮工件位于本地 `build/validation/issue18-native/`：`native-chrome-probe.json`、`probe.log`、`border-matrix.json`、五份 `border-*.log` 和两张原始截图。probe 使用真实工作区查询及模拟托盘信号，不注册或点击真实托盘，也不读写用户布局；本轮未重做真实托盘、用户应用启动或重启布局恢复，相关既有结果保留下节的历史身份。远程检查与合并不在本轮本地验证结果内。
+
+## 历史：统一边距与自绘外观（Issue #16）
 
 2026-10-20，[#16](https://github.com/xiaodaozhi/xdstarter/issues/16) 修复托盘唤起时可信/失败锚点切换与显示后异步移动，改用透明外窗、QML 自绘单层圆角/边框/阴影，并禁用 Windows 原生装饰。可见面板距工作区左侧和底部统一为 8 DIP；外窗每侧 24 DIP 阴影留白不算作面板边距。Windows 产品入口初始隐藏，worker 的 `queryMenuAnchor()` 仅读取显示器、工作区和任务栏 DPI，不执行 COM/UIA，定位后再显示；旧 UIA 研究入口保留显式 probe，不能将产品兼容保留的 `trusted` 字段解释为唤起需要识别按钮。范围与取舍见 [ADR-0007](adr/0007-custom-menu-chrome.md)。继续使用本项目 Qt 6.8.2 与正式 v142/SDK19041 基线，不改变布局 schema 或磁贴几何。
 
