@@ -22,3 +22,9 @@ endif()
 add_test(NAME platform.desktop COMMAND xdstarter_desktop_platform_tests)
 set_tests_properties(platform.desktop PROPERTIES
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}" TIMEOUT 15)
+
+add_executable(xdstarter_win_key_capture_tests win_key_capture_tests.cpp)
+target_link_libraries(xdstarter_win_key_capture_tests PRIVATE xdstarter_platform)
+add_test(NAME platform.win-key-capture COMMAND xdstarter_win_key_capture_tests)
+set_tests_properties(platform.win-key-capture PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}" TIMEOUT 15)
