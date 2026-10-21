@@ -7,6 +7,7 @@
 #include "platform/desktop_platform.h"
 #include "platform/desktop_tray.h"
 #include "platform/platform_integration.h"
+#include "platform/win_key_capture.h"
 #include "services/application_catalog.h"
 #include "services/desktop_shell_service.h"
 #include "services/prototype_service.h"
@@ -144,11 +145,6 @@ int main(int argc, char *argv[]) {
                                          catalog.get(), desktopShell.get());
     QObject::connect(&controller, &xdstarter::MenuController::exitRequested, &application,
                      [&application] { application.quit(); });
-    QObject::connect(&application, &QCoreApplication::aboutToQuit, &controller, [&controller] {
-        if (!controller.readOnly() && !controller.flushSave()) {
-            qWarning() << "Layout save failed:" << controller.persistenceStatus();
-        }
-    });
     bool smokeHadWarnings = false;
     QQmlApplicationEngine engine;
     engine.addImageProvider(QStringLiteral("application-icons"),
@@ -175,12 +171,15 @@ int main(int argc, char *argv[]) {
     window->setIcon(applicationIcon);
     std::unique_ptr<xdstarter::DesktopPlatform> placement;
     std::unique_ptr<xdstarter::DesktopTray> tray;
+    std::unique_ptr<xdstarter::WinKeyCapture> winKeyCapture;
     std::unique_ptr<xdstarter::DesktopWindowHost> desktopHost;
     if (desktopShell) {
         placement = xdstarter::createDesktopPlatform();
         tray = xdstarter::createDesktopTray();
+        winKeyCapture = xdstarter::createWinKeyCapture();
         desktopHost = std::make_unique<xdstarter::DesktopWindowHost>(*window, *desktopShell,
                                                                      *placement, *tray);
+        desktopHost->attachWinKeyCapture(*winKeyCapture);
         QObject::connect(desktopHost.get(), &xdstarter::DesktopWindowHost::exitRequested,
                          &application, [&application] { application.quit(); });
         QObject::connect(&controller, &xdstarter::MenuController::launchSucceeded,
@@ -193,6 +192,12 @@ int main(int argc, char *argv[]) {
                          &xdstarter::DesktopWindowHost::shutdown);
         desktopHost->start(QImage(QStringLiteral(":/xdstarter/app/xdstarter-app-icon-32.png")));
     }
+    // Release global input before waiting for the final layout write.
+    QObject::connect(&application, &QCoreApplication::aboutToQuit, &controller, [&controller] {
+        if (!controller.readOnly() && !controller.flushSave()) {
+            qWarning() << "Layout save failed:" << controller.persistenceStatus();
+        }
+    });
     if (parser.isSet(smokeTestOption)) {
         QTimer::singleShot(250, &application, [&smokeHadWarnings] {
             QCoreApplication::exit(smokeHadWarnings ? EXIT_FAILURE : EXIT_SUCCESS);

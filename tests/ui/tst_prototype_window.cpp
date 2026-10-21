@@ -335,6 +335,7 @@ class PrototypeWindowTest : public QObject {
     void shortcutRailAssetsAndTheme();
     void desktopShortcutActions();
     void auxiliaryMenusRespectEscape();
+    void winKeyCaptureControlRequiresExplicitIntent();
     void framelessWindowDismissalIntent();
     void customChromePixels();
     void shadowMarginDismissal();
@@ -1374,6 +1375,89 @@ void PrototypeWindowTest::auxiliaryMenusRespectEscape() {
     QTest::keyClick(exitItem->window(), Qt::Key_Return);
     QTRY_COMPARE(exiting.count(), 1);
     // The host owns process shutdown. Tests observe intent without quitting the runner.
+    QVERIFY(window_->isVisible());
+}
+
+void PrototypeWindowTest::winKeyCaptureControlRequiresExplicitIntent() {
+    const auto artifactDirectory = qEnvironmentVariable("XDSTARTER_WIN_KEY_VALIDATION_DIR");
+    if (!artifactDirectory.isEmpty()) {
+        // These optional screenshots are complete native frames of the sample fixture.
+        // They do not instantiate input capture or enumerate the user's applications.
+        QCOMPARE(QGuiApplication::platformName(), QStringLiteral("windows"));
+        QVERIFY(QDir().mkpath(artifactDirectory));
+        auto* screen = window_->screen();
+        QVERIFY(screen);
+        const auto available = screen->availableGeometry();
+        const int shadow = qRound(window_->property("shadowInset").toReal());
+        const int width =
+            std::min(980 + 2 * shadow, std::max(480 + 2 * shadow, available.width() - 64));
+        const int height =
+            std::min(680 + 2 * shadow, std::max(480 + 2 * shadow, available.height() - 96));
+        window_->resize(width, height);
+        window_->setPosition(available.center() - QPoint(width / 2, height / 2));
+        QTRY_COMPARE(window_->size(), QSize(width, height));
+        // Resizing updates QML geometry on the next frame, after the size property changes.
+        QSignalSpy placed(window_, &QQuickWindow::frameSwapped);
+        window_->requestActivate();
+        QVERIFY(QTest::qWaitForWindowActive(window_));
+        window_->requestUpdate();
+        QTRY_VERIFY(!placed.isEmpty());
+    }
+    auto* menu = window_->findChild<QObject*>(QStringLiteral("powerMenu"));
+    QVERIFY(menu);
+    QSignalSpy requested(window_, SIGNAL(winKeyCaptureToggleRequested()));
+    QVERIFY(requested.isValid());
+    click(item(QStringLiteral("shortcut-power")));
+    QTRY_VERIFY(menu->property("opened").toBool());
+    auto* captureItem = item(QStringLiteral("winKeyCaptureItem"));
+    QVERIFY(captureItem);
+    QVERIFY(!captureItem->isEnabled());
+    QCOMPARE(requested.count(), 0);
+    QVERIFY(window_->setProperty("winKeyCaptureAvailable", true));
+    QTRY_VERIFY(captureItem->isEnabled());
+    QVERIFY(captureItem->property("text").toString().contains(QStringLiteral("启用")));
+    if (!artifactDirectory.isEmpty()) {
+        QSignalSpy rendered(window_, &QQuickWindow::frameSwapped);
+        window_->requestUpdate();
+        QTRY_VERIFY(!rendered.isEmpty());
+        const auto image = window_->grabWindow();
+        QVERIFY(!image.isNull());
+        QVERIFY(image.hasAlphaChannel());
+        QCOMPARE(image.size(), QSize(qRound(window_->width() * window_->devicePixelRatio()),
+                                     qRound(window_->height() * window_->devicePixelRatio())));
+        QVERIFY(image.save(QDir(artifactDirectory).filePath(
+            QStringLiteral("win-key-enable-sample-native.png"))));
+    }
+    captureItem->forceActiveFocus(Qt::TabFocusReason);
+    QTest::keyClick(window_, Qt::Key_Return);
+    QTRY_COMPARE(requested.count(), 1);
+    QTRY_VERIFY(!menu->property("visible").toBool());
+    // Emitting intent never claims that native installation has succeeded.
+    QVERIFY(!window_->property("winKeyCaptureActive").toBool());
+    QVERIFY(window_->setProperty("winKeyCaptureBusy", true));
+    click(item(QStringLiteral("shortcut-power")));
+    QTRY_VERIFY(menu->property("opened").toBool());
+    QTRY_VERIFY(!captureItem->isEnabled());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QVERIFY(window_->setProperty("winKeyCaptureBusy", false));
+    QVERIFY(window_->setProperty("winKeyCaptureActive", true));
+    click(item(QStringLiteral("shortcut-power")));
+    QTRY_VERIFY(menu->property("opened").toBool());
+    QTRY_VERIFY(captureItem->property("text").toString().contains(QStringLiteral("暂停")));
+    if (!artifactDirectory.isEmpty()) {
+        QSignalSpy rendered(window_, &QQuickWindow::frameSwapped);
+        window_->requestUpdate();
+        QTRY_VERIFY(!rendered.isEmpty());
+        const auto image = window_->grabWindow();
+        QVERIFY(!image.isNull());
+        QVERIFY(image.hasAlphaChannel());
+        QCOMPARE(image.size(), QSize(qRound(window_->width() * window_->devicePixelRatio()),
+                                     qRound(window_->height() * window_->devicePixelRatio())));
+        QVERIFY(image.save(QDir(artifactDirectory).filePath(
+            QStringLiteral("win-key-pause-sample-native.png"))));
+    }
+    click(captureItem);
+    QTRY_COMPARE(requested.count(), 2);
     QVERIFY(window_->isVisible());
 }
 

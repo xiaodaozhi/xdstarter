@@ -2,7 +2,9 @@
 
 当前基准：**v2 精确网格矢量稿，修订 2.1**。本次修订调整开始菜单的左对齐锚点，重绘侧栏快捷图标与圆形头像，并提供开发切图和 Windows 软件图标，跟踪于 [Issue #13](https://github.com/xiaodaozhi/xdstarter/issues/13)。Logo 沿用三枚阶梯状圆角磁贴，磁贴网格不变。原始图像探索仅保留为历史材料。
 
-[Issue #14](https://github.com/xiaodaozhi/xdstarter/issues/14) 承接素材交付，将侧栏、圆形头像和软件图标接入运行时；[#15](https://github.com/xiaodaozhi/xdstarter/issues/15) 增加无边框菜单与外部焦点收起。本轮 [#16](https://github.com/xiaodaozhi/xdstarter/issues/16) 按用户新要求，将运行时可见面板的左侧/底部工作区边距统一为 8 DIP，并完全自绘圆角、单层边框与阴影，禁用 Windows 原生装饰。现有 v2 修订 2.1 图片保留原画布锚点，未重生成，不作为新位置与自绘窗口外观的像素验收图。当前程序及实际结果分别记录于[测试策略](../technical/testing.md)；背景材料和系统开始菜单接管仍待后续实现。
+[Issue #14](https://github.com/xiaodaozhi/xdstarter/issues/14) 承接素材交付，将侧栏、圆形头像和软件图标接入运行时；[#15](https://github.com/xiaodaozhi/xdstarter/issues/15) 增加无边框菜单与外部焦点收起；[#16](https://github.com/xiaodaozhi/xdstarter/issues/16) 将运行时可见面板的左侧/底部工作区边距统一为 8 DIP，并完全自绘圆角、单层边框与阴影，禁用 Windows 原生装饰。本轮 [#22](https://github.com/xiaodaozhi/xdstarter/issues/22) 增加默认关闭、可显式启用及暂停的单独 Win 键原型，开始按钮仍为原生入口。现有 v2 修订 2.1 图片保留原画布锚点，未重生成，不作为新位置与自绘窗口外观的像素验收图。当前程序及实际结果分别记录于[测试策略](../technical/testing.md)；背景材料和其余系统接管继续按 Issues 推进。
+
+本轮入口的 Windows 原生渲染样例见[启用菜单](validation/issue-22/win-key-enable-sample-native.png)与[暂停菜单](validation/issue-22/win-key-pause-sample-native.png)。它们取自测试窗口的完整 RGBA 帧，使用内存样例磁贴和模拟接管状态；不连接真实应用目录，也不证明原生输入接管。生成方式和实际物理按键验收分别见[测试策略](../technical/testing.md)。
 
 ## 当前设计稿
 
@@ -37,7 +39,7 @@
 
 ## 运行时接入
 
-`ShortcutRail.qml` 采用 64 DIP 栏宽、48×48 DIP 命中区、32 DIP 圆形头像和 24 DIP 图标，并从 qrc 按深浅主题读取 `assets/ui/{theme}/` 中的独立 SVG。头像当前为占位素材，点击进入账户设置；文档、下载和设置分别打开受控系统入口。每项保留键盘焦点、辅助功能名称和完整提示。电源菜单本轮只启用退出 XDStarter，系统关机、重启与注销未启用。
+`ShortcutRail.qml` 采用 64 DIP 栏宽、48×48 DIP 命中区、32 DIP 圆形头像和 24 DIP 图标，并从 qrc 按深浅主题读取 `assets/ui/{theme}/` 中的独立 SVG。头像当前为占位素材，点击进入账户设置；文档、下载和设置分别打开受控系统入口。每项保留键盘焦点、辅助功能名称和完整提示。电源菜单提供 Win 键唤起启用/暂停和退出 XDStarter，系统关机、重启与注销未启用。Win 键接管每次启动默认关闭，等待启用结果时显示忙碌状态；仅支持环境且托盘可用时允许显式启用，不改变现有快捷栏图标和几何。
 
 软件 ICO 已写入 Windows EXE 资源；应用与窗口 `QIcon` 使用 16–1024 px 的多尺寸 PNG，托盘从自带图像创建原生图标。Qt 资源和 EXE 资源均由构建打包，不依赖程序工作目录。中性磁贴底图继续作为开发参考，实际磁贴根据共享网格与主题原生绘制。
 
@@ -47,7 +49,7 @@
 
 [Issue #18](https://github.com/xiaodaozhi/xdstarter/issues/18) 将菜单边框改为主题独立的 `themes.{light,dark}.menuBorder`：浅色为 `#B7BEC8` 中性灰，深色为 `#46505E` 灰蓝，均为不透明颜色，切换主题时立即重绘。浅色参考用户提供的 Windows 11 开始菜单细描边观感，不将参考截图当作固定系统色值。继续使用同一路径上的单层 1 DIP 内描边、12 DIP 圆角和现有阴影；此处是主题 token，不新增用户设置项，也不改变历史设计稿与开发素材。
 
-托盘提供显示/隐藏与文字退出，收起后可恢复；不可用时通过最小化保留任务栏恢复入口。桌面快捷动作与工作区查询在后台服务执行，失败保留窗口；生命周期和支持边界见 [Windows 集成](../technical/windows-integration.md)。当前菜单使用设计的局部组件与几何约定，整张桌面设计稿仍不作为产品窗口的像素验收截图。
+托盘提供显示/隐藏、Win 键唤起启用/暂停/恢复和文字退出，收起后可恢复窗口；不可用时停止接管，并通过最小化保留任务栏恢复入口。托盘提示显示实际 Win 键状态和“开始按钮未接管”，恢复注册不自动重新启用。桌面快捷动作与工作区查询在后台服务执行，失败保留窗口；生命周期和支持边界见 [Windows 集成](../technical/windows-integration.md)，本机结果不扩大为所有 Windows 环境通过。当前菜单使用设计的局部组件与几何约定，整张桌面设计稿仍不作为产品窗口的像素验收截图。
 
 ## 尺寸和颜色
 

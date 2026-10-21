@@ -2,6 +2,7 @@
 
 #include "platform/desktop_platform.h"
 #include "platform/desktop_tray.h"
+#include "platform/win_key_capture.h"
 #include "services/desktop_shell_service.h"
 
 #include <QDebug>
@@ -55,6 +56,9 @@ DesktopWindowHost::DesktopWindowHost(QWindow &window, DesktopShellService &shell
         window.setProperty("dismissalManaged", true);
         connect(&window, SIGNAL(dismissRequested()), this, SLOT(dismissWindow()));
     }
+    if (windowMeta->indexOfSignal("winKeyCaptureToggleRequested()") >= 0)
+        connect(&window, SIGNAL(winKeyCaptureToggleRequested()), this,
+                SLOT(toggleWinKeyCapture()));
     const int blockedProperty = windowMeta->indexOfProperty("dismissalBlocked");
     if (blockedProperty >= 0) {
         const auto property = windowMeta->property(blockedProperty);
@@ -64,6 +68,8 @@ DesktopWindowHost::DesktopWindowHost(QWindow &window, DesktopShellService &shell
         }
     }
     connect(&tray_, &DesktopTray::toggleRequested, this, &DesktopWindowHost::toggleWindow);
+    connect(&tray_, &DesktopTray::winKeyCaptureToggleRequested, this,
+            &DesktopWindowHost::toggleWinKeyCapture);
     connect(&tray_, &DesktopTray::menuRequested, this, [this](QPoint) {
         if (!stopping_) {
             trayMenuActive_ = true;
@@ -170,6 +176,63 @@ void DesktopWindowHost::start(const QImage &icon) {
     showWindow();
 }
 
+void DesktopWindowHost::attachWinKeyCapture(WinKeyCapture &capture) {
+    if (started_ || stopping_ || winKeyCapture_)
+        return;
+    winKeyCapture_ = &capture;
+    winKeyStatus_ = capture.isSupported()
+                        ? QStringLiteral("Win 键唤起未启用；开始按钮保持原生行为。")
+                        : QStringLiteral("当前平台不支持 Win 键唤起。开始按钮保持原生行为。");
+    connect(&capture, &WinKeyCapture::toggleRequested, this, [this] {
+        if (!stopping_ && winKeyRequested_ && winKeyActive_ && winKeyCapture_ &&
+            winKeyCapture_->isActive())
+            toggleWindowFrom(QStringLiteral("win-key"));
+    });
+    connect(&capture, &WinKeyCapture::statusChanged, this,
+            [this](bool active, const QString &message, const QString &errorCode) {
+                if (stopping_)
+                    return;
+                if (active && (!winKeyRequested_ || !recoveryAvailable_)) {
+                    winKeyCapture_->stop();
+                    return;
+                }
+                winKeyActive_ = active;
+                winKeyPending_ = false;
+                if (!active)
+                    winKeyRequested_ = false;
+                winKeyStatus_ = message;
+                publishStatus();
+                qInfo().noquote() << "Win key capture:"
+                                  << QJsonDocument(QJsonObject{
+                                         {QStringLiteral("active"), active},
+                                         {QStringLiteral("errorCode"), errorCode}})
+                                         .toJson(QJsonDocument::Compact);
+            });
+    publishStatus();
+}
+
+void DesktopWindowHost::toggleWinKeyCapture() {
+    if (stopping_ || !started_ || !winKeyCapture_ || !winKeyCapture_->isSupported())
+        return;
+    if (winKeyRequested_ || winKeyActive_ || winKeyPending_) {
+        winKeyRequested_ = false;
+        winKeyPending_ = false;
+        winKeyCapture_->stop();
+        winKeyActive_ = false;
+        winKeyStatus_ = QStringLiteral("Win 键唤起已暂停；系统开始菜单保持原生行为。");
+        publishStatus();
+    } else if (recoveryAvailable_) {
+        winKeyRequested_ = true;
+        winKeyPending_ = true;
+        winKeyStatus_ = QStringLiteral("正在启用 Win 键唤起…开始按钮保持原生行为。");
+        publishStatus();
+        // Publishing tray state can synchronously report lost recovery. Recheck
+        // the request after that notification before installing global input.
+        if (!stopping_ && recoveryAvailable_ && winKeyRequested_ && winKeyPending_ && winKeyCapture_)
+            winKeyCapture_->setEnabled(true);
+    }
+}
+
 void DesktopWindowHost::showWindow() {
     if (stopping_ || !window_)
         return;
@@ -189,10 +252,20 @@ void DesktopWindowHost::showWindow() {
 }
 
 void DesktopWindowHost::toggleWindow() {
+    toggleWindowFrom(QStringLiteral("tray-toggle"));
+}
+
+void DesktopWindowHost::toggleWindowFrom(const QString &source) {
     if (stopping_ || !window_)
         return;
+    qInfo().noquote() << "Menu toggle:"
+                      << QJsonDocument(QJsonObject{
+                             {QStringLiteral("source"), source},
+                             {QStringLiteral("visible"), window_->isVisible()},
+                             {QStringLiteral("pendingReveal"), pendingReveal_}})
+                             .toJson(QJsonDocument::Compact);
     if (pendingReveal_ || (window_->isVisible() && window_->visibility() != QWindow::Minimized))
-        dismiss(QStringLiteral("tray-toggle"));
+        dismiss(source);
     else
         showWindow();
 }
@@ -315,6 +388,12 @@ void DesktopWindowHost::shutdown() {
     pendingReveal_ = false;
     placementRequest_ = 0;
     shell_.invalidateStartButtonAnchor();
+    winKeyRequested_ = false;
+    winKeyPending_ = false;
+    if (winKeyCapture_)
+        winKeyCapture_->stop();
+    winKeyActive_ = false;
+    publishWinKeyCapture();
     tray_.stop();
 }
 
@@ -326,6 +405,13 @@ void DesktopWindowHost::updateRecovery(bool available, const QString &message) {
     if (stopping_)
         return;
     recoveryAvailable_ = available;
+    if (!available && winKeyCapture_ && (winKeyRequested_ || winKeyActive_ || winKeyPending_)) {
+        winKeyRequested_ = false;
+        winKeyPending_ = false;
+        winKeyCapture_->stop();
+        winKeyActive_ = false;
+        winKeyStatus_ = QStringLiteral("托盘恢复入口不可用，Win 键唤起已暂停；系统开始菜单保持原生行为。");
+    }
     QGuiApplication::setQuitOnLastWindowClosed(!available);
     trayStatus_ = available ? QStringLiteral("托盘可显示、收起和退出 XDStarter。")
                             : QStringLiteral("托盘不可用，保留普通窗口及任务栏恢复入口。");
@@ -337,8 +423,24 @@ void DesktopWindowHost::updateRecovery(bool available, const QString &message) {
 }
 
 void DesktopWindowHost::publishStatus() {
+    publishWinKeyCapture();
     if (window_)
         window_->setProperty("integrationStatus", trayStatus_ + QLatin1Char('\n') + anchorStatus_ +
-                                                       QLatin1Char('\n') + appearanceStatus_);
+                                                       QLatin1Char('\n') + appearanceStatus_ +
+                                                       QLatin1Char('\n') + winKeyStatus_);
+}
+
+void DesktopWindowHost::publishWinKeyCapture() {
+    const bool canEnable = !stopping_ && !winKeyPending_ && recoveryAvailable_ &&
+                           winKeyCapture_ && winKeyCapture_->isSupported();
+    if (window_) {
+        window_->setProperty("winKeyCaptureAvailable", canEnable);
+        window_->setProperty("winKeyCaptureActive", winKeyActive_);
+        window_->setProperty("winKeyCaptureBusy", winKeyPending_);
+        window_->setProperty("winKeyCaptureStatus", winKeyStatus_);
+    }
+    // A tray update may reenter updateRecovery(); its newer unavailable state
+    // must be the last state published to QML as well as the notification area.
+    tray_.setWinKeyCaptureState(winKeyActive_, canEnable, winKeyStatus_);
 }
 } // namespace xdstarter

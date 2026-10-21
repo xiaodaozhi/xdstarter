@@ -1,6 +1,6 @@
 # 技术架构
 
-状态：Qt Quick 路线已确认；当前原型已实现拖拽/键盘移动、三档尺寸、布局与主题持久化，以及 Windows 应用目录、系统图标、启动与固定/取消固定。[Issue #14](https://github.com/xiaodaozhi/xdstarter/issues/14) 接入设计素材、桌面动作与托盘；[#15](https://github.com/xiaodaozhi/xdstarter/issues/15) 接入无边框与外部焦点收起。本轮 [#16](https://github.com/xiaodaozhi/xdstarter/issues/16) 改为自绘单层圆角/边框/阴影，统一可见面板工作区边距并在隐藏阶段完成定位。各版本的构建、GUI 与实际窗口证据统一见[测试策略](testing.md)，不由代码接入推断 Windows 支持范围。搜索、分组管理及 [#6 系统输入接管](https://github.com/xiaodaozhi/xdstarter/issues/6) 仍为后续设计。
+状态：Qt Quick 路线已确认；当前原型已实现拖拽/键盘移动、三档尺寸、布局与主题持久化，以及 Windows 应用目录、系统图标、启动与固定/取消固定。[Issue #14](https://github.com/xiaodaozhi/xdstarter/issues/14) 接入设计素材、桌面动作与托盘；[#15](https://github.com/xiaodaozhi/xdstarter/issues/15) 接入无边框与外部焦点收起；[#16](https://github.com/xiaodaozhi/xdstarter/issues/16) 接入自绘外观和隐藏阶段定位。本轮 [#22](https://github.com/xiaodaozhi/xdstarter/issues/22) 增加独立 Win 键接管接口、显式启用/暂停和托盘守护。各版本的构建、GUI 与物理键盘证据统一见[测试策略](testing.md)，不由代码接入推断 Windows 支持范围。搜索、分组管理与 [#6](https://github.com/xiaodaozhi/xdstarter/issues/6) 中开始按钮、材料及其他系统兼容目标继续推进。
 
 ## 模块与依赖方向
 
@@ -21,7 +21,7 @@
 | --- | --- |
 | `xdstarter_core` | 纯 C++ 三档逻辑矩形、范围与溢出校验；由共享 JSON 生成几何常量 |
 | `xdstarter_services` | `PrototypeService` 提供邻接、布局事务、固定/取消固定；`LayoutStore` 校验、原子保存及恢复 schema 1/2；`ApplicationCatalog` 后台读取目录、图标、可用性及启动；`DesktopShellService` 在另一专用 worker 执行受控桌面动作与工作区查询 |
-| `xdstarter_platform` | `PlatformIntegration` 提供集成状态；`ApplicationPlatform` 封装应用目录、图标及启动；`DesktopPlatform` 封装受控 Shell 动作、产品工作区查询、显式 UIA 研究查询、可见面板物理定位和本进程窗口原生装饰抑制；`DesktopTray` 封装 `Shell_NotifyIcon` 与文字菜单。非 Windows 返回明确的不支持结果；当前没有输入 Hook 或开始菜单接管 |
+| `xdstarter_platform` | `PlatformIntegration` 提供集成状态；`ApplicationPlatform` 封装应用目录、图标及启动；`DesktopPlatform` 封装受控 Shell 动作、工作区/UIA 查询、面板物理定位与原生装饰抑制；`DesktopTray` 封装 `Shell_NotifyIcon` 与文字菜单；`WinKeyCapture` 封装默认关闭的单独 Win 键接管及纯 C++ 状态机。Windows Hook 仅显式启用后安装，非支持平台返回明确的不支持结果 |
 | `xdstarter` | `QGuiApplication`、依赖组装、`MenuController`、缓存图像 provider、`DesktopWindowHost` 与 QML；支持应用与磁贴操作、快捷栏、无边框呈现、延后焦点复核及可恢复的托盘收起/显示生命周期 |
 | `xdstarter_core_tests` | 独立核心行为测试，Debug 和 Release 均执行真实检查 |
 | `xdstarter_prototype_service_tests` | 样例布局、稳定标识、方向键邻接、移动/尺寸与非法操作不变性测试 |
@@ -55,17 +55,19 @@
 
 `ShortcutRail` 为 64 DIP 宽；每项命中区为 48×48 DIP，头像显示为 32 DIP 圆形，其他图标为 24 DIP。组件按主题从 qrc 读取独立 SVG，并提供可见焦点、名称与提示。头像是已交付的圆形占位素材，点击进入账户设置，不读取真实用户照片。磁贴仍使用共享网格原生绘制，素材接入不改变三档几何。
 
-`MenuController.requestDesktopAction` 只接收 `documents`、`downloads`、`settings`、`account`。`DesktopShellService` 使用专用 QThread 串行执行这些请求，平台层再次校验白名单；文档和下载通过 Known Folders 解析，设置与账户分别使用固定的 `ms-settings:`、`ms-settings:yourinfo`。不接受路径、URI 或命令串作为界面输入。同一时刻只接受一个桌面动作，完成后通过信号更新忙碌状态与原因；成功收起窗口，失败保留窗口。电源入口显示文字菜单，本轮仅允许退出 XDStarter，未接入系统关机、重启或注销。
+`MenuController.requestDesktopAction` 只接收 `documents`、`downloads`、`settings`、`account`。`DesktopShellService` 使用专用 QThread 串行执行这些请求，平台层再次校验白名单；文档和下载通过 Known Folders 解析，设置与账户分别使用固定的 `ms-settings:`、`ms-settings:yourinfo`。不接受路径、URI 或命令串作为界面输入。同一时刻只接受一个桌面动作，完成后通过信号更新忙碌状态与原因；成功收起窗口，失败保留窗口。电源入口显示文字菜单，提供 Win 键唤起启用/暂停和退出 XDStarter，未接入系统关机、重启或注销。
 
-`DesktopWindowHost` 在 GUI 边界统一管理菜单、托盘、外观与定位。托盘注册成功时设置 `quitOnLastWindowClosed(false)`，关闭或收起窗口后进程保留，托盘可再次显示或退出；注册不可用时恢复系统关闭窗口的退出行为，但主动收起、外部焦点收起及启动成功后收起均采用最小化以保留任务栏恢复入口。退出会失效定位请求、停止焦点计时器和托盘，并执行既有布局 flush 与 worker join。
+`DesktopWindowHost` 在 GUI 边界统一管理菜单、托盘、外观、定位与接管状态。托盘注册成功时设置 `quitOnLastWindowClosed(false)`，关闭或收起窗口后进程保留，托盘可再次显示或退出；注册不可用时恢复系统关闭窗口的退出行为，但主动收起、外部焦点收起及启动成功后收起均采用最小化以保留任务栏恢复入口。host 仅在支持环境且托盘可用时允许启用 Win 键唤起，托盘失效立即停止，注册恢复不自动重新启用。退出会失效定位请求和接管通知，停止焦点计时器、Hook 线程与托盘，并执行既有布局 flush 与 worker join。
 
 Host 监听 `focusWindowChanged`、应用激活状态与窗口激活变化；每轮显示只有实际获得根窗口或其 `transientParent` 家族焦点后才启用外部收起。焦点离开后延后 100 ms 复核，内部临时窗口、短时焦点交接和托盘菜单不会误关。初次激活被拒时不自行隐藏。拖拽且左键按下时仅在待处理的外部失焦期间短时复查，释放后正常收起；编辑模式不成为永久禁止收起的条件。
 
 QML 的尺寸、固定、电源及关于弹层显式使用 `Popup.Item`。`prepareForDismissal` 关闭内部弹层、取消未提交拖拽并暂停迟到的焦点恢复；`prepareForPresentation` 清理暂态并恢复磁贴或可操作控件焦点。Host 调用该呈现契约，不依赖具体 QML 控件类型；已提交布局与当前编辑模式保留。QML 的主动收起信号交给 host 执行恢复策略，standalone smoke 仍可自行关闭。
 
-普通窗口桌面集成的历史阶段边界见 [ADR-0005](adr/0005-desktop-shell-prototype.md)；焦点与可恢复收起见 [ADR-0006](adr/0006-menu-popup.md)，本轮自绘外观、统一边距和隐藏阶段定位见 [ADR-0007](adr/0007-custom-menu-chrome.md)。
+普通窗口桌面集成的历史阶段边界见 [ADR-0005](adr/0005-desktop-shell-prototype.md)；焦点与可恢复收起见 [ADR-0006](adr/0006-menu-popup.md)，自绘外观、统一边距和隐藏阶段定位见 [ADR-0007](adr/0007-custom-menu-chrome.md)，单独 Win 键的显式启用与失败策略见 [ADR-0008](adr/0008-win-key-capture.md)。
 
 Windows 托盘直接使用 `Shell_NotifyIcon`，不引入 Widgets。隐藏的原生宿主接收通知，WndProc 只排队事件；Qt 事件循环中显示带文字的显示/隐藏与退出菜单。停止或重建托盘会失效旧会话回调，原生菜单返回后也检查代次。`TaskbarCreated` 重注册路径已写入代码，Explorer 重启后的实际恢复仍需单独验证。
+
+`WinKeyCapture` 由 app 注入 host，通过 `setEnabled(bool)`、`stop()` 管理会话，以 `isSupported()`、`isActive()` 和 `statusChanged(active, message, errorCode)` 报告能力与实际状态。构造和进程启动均不安装 Hook，开关不进入布局 schema；QML 与托盘分别显示启用/暂停/失败和开始按钮未接管。Windows 专用消息线程维护键盘及鼠标观察 Hook，纯 C++ 状态机区分左右 Win 独按与组合。真实 down 和组合事件放行，独按 up 的固定三条输入派发成功后才消费物理 up、投递 toggle；窗口/焦点操作均在 GUI。会话代次阻止暂停、失败或退出前的旧事件重新开窗。本地 Windows 11 与输入桌面检查只作为原型启用 gate，不等于完整支持矩阵，具体限制见 ADR-0008。
 
 每次用户唤起窗口，host 请求 `DesktopShellService` worker 调用 `DesktopPlatform.queryMenuAnchor()`，Windows 仅读取指针所在显示器名称、物理矩形、工作区和任务栏 DPI，不初始化 COM 或调用 UIA。可见面板统一距工作区左侧和底部 8 DIP，不依据保留兼容用途的 `trusted` 字段改变位置。产品入口将 QML 初始 `visible` 设为 `false`，smoke 与独立 GUI 夹具仍自行显示。查询按代次合并；待显示窗口保持隐藏，当前结果返回后先配置原生装饰抑制、定位再显示，连续切换或取消使旧结果失效，不能重开窗口。GUI 仅对本进程窗口执行短时物理定位，按选定 Qt 窗口的实际渲染 DPR 换算并扣除透明阴影留白，不使用 DWM frame 边界参与布局；返回面板矩形与透明外窗边界分别记录。自动隐藏任务栏、Explorer 重启及混合 DPI 跨屏尚未完成实际验证，详见 [Windows 集成](windows-integration.md)。
 
@@ -75,10 +77,10 @@ CMake 的 `xdstarter_add_ui` 为产品与 GUI 测试编译同一组 QML、contro
 
 ## 数据流
 
-当前数据流如下；搜索及 Win 键/开始按钮接管仍为后续目标：
+当前数据流如下；搜索和开始按钮接管仍为后续目标：
 
 1. 启动：读取偏好与布局 → 预创建菜单窗口 → 后台加载应用目录与图标 → 更新模型。
-2. 菜单唤起：托盘事件 → DesktopWindowHost 清理暂态、保持隐藏并标记待显示 → DesktopShellService 快速读取显示器/工作区/任务栏 DPI → 当前有效结果先抑制原生装饰并定位可见面板，再显示与请求焦点；取消或过期结果不重开窗口，外部焦点持续离开后可恢复地收起。
+2. 菜单唤起：托盘事件或显式启用后的有效 Win 独按通知 → DesktopWindowHost 清理暂态、保持隐藏并标记待显示 → DesktopShellService 快速读取显示器/工作区/任务栏 DPI → 当前有效结果先抑制原生装饰并定位可见面板，再显示与请求焦点；取消或过期结果不重开窗口，外部焦点持续离开后可恢复地收起。
 3. 搜索（规划）：查询 → SearchService → 稳定排序结果模型 → QML 列表。
 4. 编辑与固定：指针/键盘操作或选择应用 → PrototypeService 校验 → 提交内存布局 → 更新模型 → 后台合并保存；分组管理继续按 Issue 开发。
 5. 启动目标：UI 发出 targetId → ApplicationCatalog worker 复核可用性 → ApplicationPlatform 启动 → 成功收起、失败保留菜单。
@@ -93,13 +95,14 @@ CMake 的 `xdstarter_add_ui` 为产品与 GUI 测试编译同一组 QML、contro
 - `ApplicationPlatform`：已实现同步、可替换的 Windows 目录/图标/可用性/启动接口，由 ApplicationCatalog worker 调用。
 - `DesktopShellService` / `DesktopPlatform`：已接入桌面动作、无 COM/UIA 的产品工作区查询、面板物理定位及原生装饰抑制接口；工作区查询与 Shell 在 worker，短时本进程窗口定位与设置在 GUI 边界；原 UIA 开始按钮接口仅保留显式研究用途。
 - `DesktopTray` / `DesktopWindowHost`：已接入原生托盘、菜单恢复/退出、异步定位代次与外部焦点延后复核。
-- `PlatformIntegration`：当前报告普通窗口/模拟状态；材料、系统输入唤起与暂停接管仍待 #6 扩展。
+- `WinKeyCapture`：独立的默认关闭平台接口；Windows 专用消息线程接管单独 Win，stub 返回不支持；不依赖 QML，状态机不依赖 Win32/Qt。实际 Shell 行为需物理键盘验收。
+- `PlatformIntegration`：报告当前平台集成范围与显式启用边界；材料和开始按钮接管仍待 #6 扩展。
 
 具体 C++ 方法签名随各模块 Issue 落地；对持久化格式、错误语义或跨模块职责的变更应更新本设计。
 
 ## 线程与性能
 
-GUI 线程更新布局 QVariantList 和应用 QAbstractListModel，并管理窗口与原生托盘；保存快照在独立后台线程写盘，应用目录/图标/可用性/启动使用另一串行 worker，桌面动作与产品工作区查询再使用独立的 DesktopShellService worker。Windows 产品工作区查询不执行 COM/UIA，显式 UIA 研究 probe 独立于普通唤起。启动布局读取有界进行。队列信号或受控任务返回值不直接修改场景图对象；退出停止新请求并等待 worker 结束。Shell/COM 查询不进入 GUI 或原生消息回调。后续搜索索引也应后台执行。
+GUI 线程更新布局 QVariantList 和应用 QAbstractListModel，并管理窗口与原生托盘；保存快照在独立后台线程写盘，应用目录/图标/可用性/启动使用另一串行 worker，桌面动作与产品工作区查询再使用独立的 DesktopShellService worker。启用 Win 键时另有专用原生消息线程，回调仅更新最小状态、固定有界输入派发与投递通知；每 500 ms 的输入桌面检查在消息循环中执行，暂停时移除 Hook，退出等待线程结束，不将其计时响应当作 Hook 存活证明。Windows 产品工作区查询不执行 COM/UIA，显式 UIA 研究 probe 独立于普通唤起。启动布局读取有界进行。队列信号或受控任务返回值不直接修改场景图对象；退出停止新请求并等待 worker 结束。Shell/COM 查询不进入 GUI 或原生消息回调。后续搜索索引也应后台执行。
 
 图标缓存限制为约 8 MiB，刷新目录时重新加载；异步返回校验当前目标描述和版本，防止旧结果覆盖新目标。单个应用图标加载完成只更新对应模型行和固定磁贴的图片版本，避免全部磁贴重新请求图片；取消固定后清理不再引用的目标与图片版本。
 

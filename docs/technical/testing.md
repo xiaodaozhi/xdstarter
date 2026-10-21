@@ -6,7 +6,38 @@
 
 GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查看 PNG，核对字体、应用图标、长名称、间隙及辅助功能信息的表达。
 
-## 当前：主题菜单边框（Issue #18）
+## 当前：单独 Win 键唤起（Issue #22）
+
+2026-10-21，[#22](https://github.com/xiaodaozhi/xdstarter/issues/22) 承接父任务 [#6](https://github.com/xiaodaozhi/xdstarter/issues/6)，实现默认关闭、不持久化的单独 Win 键接管，以及窗口和托盘的启用/暂停入口。本轮本机验收已完成；机制与已知限制见 [ADR-0008](adr/0008-win-key-capture.md)，开始按钮仍未接管。
+
+正式入口 `./scripts/build-windows.ps1 -Preset app-release` 使用 Qt 6.8.2、MSVC 19.29.30153.0/v142、SDK 10.0.19041.0，完成 Release、QML lint 和 11/11 CTest（最终 21.62 秒）；GUI 33/33、host 21/21，新增 `platform.win-key-capture` 的 245 项无原生输入断言通过。产品真机验收前的日志为本地 `build/issue22-build-final.log`（17.41 秒），追加测试专用截图导出后的最终日志为 `build/issue22-delivery-build.log`，产品 hash 不变。首轮构建期间并行修订使新测试与旧平台库交错，四项生命周期断言失败；冻结代码后完整重建全部通过，不将首轮失败日志作为通过证据。
+
+新增自动检查覆盖左右 Win、重复/组合/修饰键、按住的鼠标按钮、注入隔离、完整与部分输入派发、代次和 QObject 销毁；常规 CTest 不安装全局 Hook。host 检查显式启用、失败保留原生入口、托盘丢失、停止后旧事件失效，以及托盘状态发布重入导致的取消启用；QML 检查默认禁用、显式意图和忙碌/暂停文字。上述结果与真实 Shell 行为分开记录。
+
+| 程序 | SHA-256 |
+| --- | --- |
+| 产品 `xdstarter.exe` | `f7d1562aa486fb57d4fad4f789fa956ab4dbb440d9c7ad47d35620ffe77d014f` |
+| 最终 GUI `xdstarter_ui_tests.exe` | `0f9cd4663d0ceb4a20e38e7f775bd102e1b191ed8afd8355519b5e6b637a9b8f` |
+| Host `xdstarter_desktop_window_host_tests.exe` | `8a0c45e5e5116afdac1e5ea63e83f971ce54387817c83bf7a831cab37ceed921` |
+| 输入平台 `xdstarter_win_key_capture_tests.exe` | `e4d3485ae8d5e93ee09a4c62266e8b30b893c3b1dfbca7e4b41077e35a239448` |
+
+同一最终 GUI 在 Windows QPA 下执行 `winKeyCaptureControlRequiresExplicitIntent`，3/3 通过（含初始化/清理，3.221 秒）。显式设置 `XDSTARTER_WIN_KEY_VALIDATION_DIR` 可从该样例夹具导出[启用菜单](../design/validation/issue-22/win-key-enable-sample-native.png)与[暂停菜单](../design/validation/issue-22/win-key-pause-sample-native.png)：均为直接 `QQuickWindow::grabWindow()` 的 1542×1092 RGBA 完整窗口，已目视核对文字与菜单，不连接真实应用目录、不安装 Hook，不能代替下述真实键盘验收。现有 `XDSTARTER_VALIDATION_DIR` 离屏导出路径不变。首轮原生截图在调整窗口大小后未等待布局新帧，首次菜单点击未打开；测试专用导出补上激活与新帧等待后通过，日志为 `build/issue22-menu-native.log`，首轮失败另存 `build/issue22-menu-native-first.log`。
+
+### 已取得的实际窗口与物理按键证据
+
+同一产品在 Windows `10.0.26300`、Qt 6.8.2、144 DPI / DPR 1.5 的普通桌面权限下，以 `build/validation/issue22-product/layout.json` 隔离布局启动，PID 49412。窗口实际显示 281 项应用与三枚真实磁贴，菜单初始为“启用 Win 键唤起”；通过该明确入口启用后，产品日志记录 `active: true`。定位请求仍为 `(12, 496, 1470, 1020)`，工作区 `(0, 0, 2400, 1528)`，左/底各 8 DIP，不将该请求当作独立测得的桌面外窗边界。
+
+用户按要求执行轻按、长按及可用的左右 Win 键测试，回复“均正常，无闪现或卡键”；同轮日志观察到 11 次 `source: win-key` 的菜单切换。该确认来自用户物理操作，不是工具合成按键，也不将切换数量当作独立测得的每个物理键事件。用户随后按要求验证 Win+E、Win+R、Win+数字、Ctrl 配合 Win 和 Win+L，回复“组合键均通过，已测试锁屏”。日志记录输入桌面切换后 `active: false`、`win-key-input-desktop-changed`，支持本机锁屏后停用的行为；500 ms 观察不能推定所有短暂桌面切换均可检测。
+
+首轮用户测试中的物理 Esc 同时触发桌面自动化工具停止，当轮按工具约束停止继续发送桌面输入。用户随后亲自完成锁屏后托盘恢复并重新启用、暂停后 Win 返回原生 Start、再次启用后从电源菜单退出并确认 Win 返回原生行为，回复“三项均正常，已从电源菜单退出 XDStarter”。核对原 PID 与程序/隔离参数后确认第一实例已结束；未保留首轮进程句柄，不推定其退出代码为 0。
+
+同一产品 hash 以相同隔离文件重启为 PID 53424。实际窗口恢复浅色主题，以及 column 0/2/3、row 0 的 standard/small/standard 三枚磁贴；schema、IDs、targets、groups 和 preferences 与重启前逐对象一致。磁盘仅有主题偏好，没有接管开关，实际电源菜单显示“启用 Win 键唤起”，确认新进程不会自动安装接管。
+
+通过菜单重新显式启用后，打开磁贴右键尺寸菜单，工具发送 Esc 仅关闭子菜单，主窗口仍显示。进入编辑后将同一 standard 磁贴从 column 0 / row 0 拖至 row 2，观察到磁盘保存，再拖回 row 0；编辑状态保留，主窗口未误收起，最后布局与重启前逐对象相同。电源菜单仍显示“暂停 Win 键唤起”。最后从电源菜单退出；保留进程句柄的启动器通过 `WaitForExit` 独立记录 2026-10-21 11:40:46（Asia/Shanghai）正常退出、代码 0。
+
+本地工件为 `build/validation/issue22-product/` 内的 `first-process.json`、`first-exit.json`、`build-evidence.json`、`single-key-user-result.json`、`combination-user-result.json`、`manual-recovery-user-result.json`、`live-key-observation.json`、`restart-process.json`、`restart-layout-result.json`、`restart-interaction-result.json`、`restart-exit.json`、隔离布局快照和产品 stdout/stderr。含真实目标描述的配置、完整应用目录和带私人桌面背景的截图不提交。用户物理键盘/托盘确认、纯状态机结果与工具实际窗口交互分别记录。提权前台、其他 Hook、远程/其他 Windows 构建、Explorer 重启、睡眠与混合 DPI 不在当前通过范围；父 Issue #6 继续开放。远程检查和最终合并状态以本轮 PR 与 Issue #22 的记录为准。
+
+## 历史：主题菜单边框（Issue #18）
 
 2026-10-21，[#18](https://github.com/xiaodaozhi/xdstarter/issues/18) 将菜单外轮廓由两主题共用的半透明品牌蓝改为独立 `menuBorder` token：浅色 `#B7BEC8`，深色 `#46505E`。保持不透明的单层 1 DIP 内描边、12 DIP 圆角、24 DIP 阴影留白及左/底 8 DIP 间距；主题切换会重绘。共享磁贴几何、布局 schema、原生装饰抑制和焦点逻辑没有变更。
 
