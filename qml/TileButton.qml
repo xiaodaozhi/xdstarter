@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Window
 
 Button {
     id: tileButton
@@ -16,6 +17,12 @@ Button {
     readonly property bool applicationTile: tile.targetType !== undefined && tile.targetType !== "prototype"
     readonly property bool targetAvailable: tile.available !== false
     readonly property string iconSource: tile.iconSource || ""
+    readonly property string paletteIdentity: tile.targetId || tile.id || ""
+    readonly property int tokenPaletteIndex: paletteIndex(paletteIdentity)
+    readonly property color baseColor: tokens.tilePalette[tokenPaletteIndex]
+    readonly property color fillTopColor: down ? Qt.darker(baseColor, 1.10) : Qt.lighter(baseColor, hovered ? 1.16 : 1.05)
+    readonly property color fillBottomColor: down ? Qt.darker(baseColor, 1.16) : (hovered ? Qt.lighter(baseColor, 1.06) : Qt.darker(baseColor, 1.04))
+    readonly property int iconSizeDip: tile.small ? 28 : 36
 
     signal selected(string name)
     signal activated(string tileId)
@@ -38,6 +45,16 @@ Button {
     focusPolicy: Qt.StrongFocus
     Accessible.name: tile.name
     Accessible.description: !targetAvailable ? qsTr("%1，目标不可用。%2。Shift 加 F10 取消固定。").arg(tile.dimensions).arg(tile.unavailableReason || qsTr("应用已移除")) : (editMode ? qsTr("%1，编辑模式。按 Ctrl 加方向键移动一格，Shift 加 F10 打开磁贴菜单。").arg(tile.dimensions) : (applicationTile ? qsTr("%1，按 Enter 启动。Shift 加 F10 打开磁贴菜单。").arg(tile.dimensions) : qsTr("%1，仅供布局预览。Shift 加 F10 打开磁贴菜单。").arg(tile.dimensions)))
+
+    function paletteIndex(identity: string): int {
+        // Bounded identity hashing keeps one application's color stable through
+        // renaming, resizing and moving, without claiming a brand association.
+        let hash = 5381;
+        const count = Math.min(identity.length, 256);
+        for (let index = 0; index < count; ++index)
+            hash = ((hash * 33) ^ identity.charCodeAt(index)) >>> 0;
+        return hash % tokens.tilePalette.length;
+    }
 
     function activate(): void {
         if (applicationTile && !editMode)
@@ -92,18 +109,31 @@ Button {
     Keys.onEnterPressed: activate()
 
     ToolTip {
+        id: tileNameTip
+
         objectName: "tileToolTip"
+        width: Math.min(380, implicitWidth)
         parent: tileButton
         visible: !tileButton.dragging && (tileButton.hovered || tileButton.activeFocus)
         text: tileButton.tile.name + " · " + tileButton.tile.dimensions + (tileButton.targetAvailable ? "" : "\n" + (tileButton.tile.unavailableReason || qsTr("应用不可用；可右键取消固定。")))
         timeout: -1
+        contentItem: Text {
+            text: tileNameTip.text
+            textFormat: Text.PlainText
+            color: tileNameTip.palette.toolTipText
+            font: tileNameTip.font
+            wrapMode: Text.Wrap
+        }
     }
 
     background: Rectangle {
         radius: tileButton.tokens.cornerRadiusDip.tile
-        color: tileButton.tokens.brand.ink
+        gradient: Gradient {
+            GradientStop { position: 0; color: tileButton.fillTopColor }
+            GradientStop { position: 1; color: tileButton.fillBottomColor }
+        }
         border.width: tileButton.activeFocus ? 2 : 1
-        border.color: tileButton.activeFocus ? tileButton.tokens.brand.cyan : tileButton.tokens.brand.blue
+        border.color: tileButton.activeFocus ? tileButton.tokens.brand.cyan : Qt.rgba(1, 1, 1, tileButton.hovered ? 0.30 : 0.16)
     }
 
     contentItem: Item {
@@ -111,11 +141,11 @@ Button {
             objectName: "tileSymbol"
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
-            anchors.verticalCenterOffset: tileButton.tile.small ? 0 : -12
+            anchors.verticalCenterOffset: tileButton.tile.small ? 0 : -20
             text: tileButton.tile.symbol
             visible: appIcon.status !== Image.Ready
-            color: tileButton.tokens.themes.dark.foreground
-            font.pixelSize: 24
+            color: "#FFFFFF"
+            font.pixelSize: tileButton.tile.small ? 22 : 26
             font.bold: true
         }
 
@@ -125,12 +155,12 @@ Button {
             objectName: "tileIcon"
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
-            anchors.verticalCenterOffset: tileButton.tile.small ? 0 : -12
-            width: 32
-            height: 32
+            anchors.verticalCenterOffset: tileButton.tile.small ? 0 : -20
+            width: tileButton.iconSizeDip
+            height: tileButton.iconSizeDip
             source: tileButton.iconSource.length > 0 ? tileButton.iconSource + "?g=" + tileButton.iconRevision + "&v=" + (tileButton.iconVersions[tileButton.tile.targetId] || 0) : ""
-            sourceSize.width: 48
-            sourceSize.height: 48
+            sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+            sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
             fillMode: Image.PreserveAspectFit
             asynchronous: true
             cache: true
@@ -162,10 +192,11 @@ Button {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: parent.bottom
-            anchors.margins: 8
+            anchors.margins: 10
             visible: !tileButton.tile.small
             text: tileButton.tile.name
-            color: tileButton.tokens.themes.dark.foreground
+            textFormat: Text.PlainText
+            color: "#FFFFFF"
             font.pixelSize: tileButton.tokens.tileLabelFontDip
             elide: Text.ElideRight
         }

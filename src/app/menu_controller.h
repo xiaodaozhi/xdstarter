@@ -43,10 +43,13 @@ class MenuController : public QObject {
     Q_PROPERTY(bool readOnly READ readOnly NOTIFY readOnlyChanged)
     Q_PROPERTY(bool saving READ saving NOTIFY savingChanged)
     Q_PROPERTY(QString operationMessage READ operationMessage NOTIFY operationMessageChanged)
+    Q_PROPERTY(bool operationError READ operationError NOTIFY operationMessageChanged)
     Q_PROPERTY(QString persistenceStatus READ persistenceStatus NOTIFY persistenceStatusChanged)
+    Q_PROPERTY(bool persistenceError READ persistenceError NOTIFY persistenceStatusChanged)
     Q_PROPERTY(QAbstractItemModel* applications READ applications CONSTANT)
     Q_PROPERTY(bool catalogBusy READ catalogBusy NOTIFY catalogChanged)
     Q_PROPERTY(QString catalogStatus READ catalogStatus NOTIFY catalogChanged)
+    Q_PROPERTY(bool catalogError READ catalogError NOTIFY catalogChanged)
     Q_PROPERTY(bool launchBusy READ launchBusy NOTIFY launchStateChanged)
     Q_PROPERTY(int iconRevision READ iconRevision NOTIFY iconRevisionChanged)
     Q_PROPERTY(QVariantMap iconVersions READ iconVersions NOTIFY iconVersionsChanged)
@@ -58,6 +61,7 @@ class MenuController : public QObject {
     Q_PROPERTY(int maximumGroups READ maximumGroups CONSTANT)
     Q_PROPERTY(int maximumGroupNameLength READ maximumGroupNameLength CONSTANT)
     Q_PROPERTY(bool desktopActionBusy READ desktopActionBusy NOTIFY desktopActionStateChanged)
+    Q_PROPERTY(bool desktopActionError READ desktopActionError NOTIFY desktopActionStateChanged)
     Q_PROPERTY(
         QString desktopActionStatus READ desktopActionStatus NOTIFY desktopActionStateChanged)
 
@@ -86,7 +90,9 @@ class MenuController : public QObject {
     [[nodiscard]] bool readOnly() const;
     [[nodiscard]] bool saving() const;
     [[nodiscard]] QString operationMessage() const;
+    [[nodiscard]] bool operationError() const;
     [[nodiscard]] QString persistenceStatus() const;
+    [[nodiscard]] bool persistenceError() const;
     Q_INVOKABLE QVariantMap previewPlacement(const QString& tileId, const QString& groupId,
                                              int column, int row) const;
     Q_INVOKABLE bool moveTile(const QString& tileId, const QString& groupId, int column, int row);
@@ -97,6 +103,7 @@ class MenuController : public QObject {
     [[nodiscard]] QAbstractItemModel* applications() const;
     [[nodiscard]] bool catalogBusy() const;
     [[nodiscard]] QString catalogStatus() const;
+    [[nodiscard]] bool catalogError() const;
     [[nodiscard]] bool launchBusy() const;
     [[nodiscard]] int iconRevision() const;
     [[nodiscard]] QVariantMap iconVersions() const;
@@ -120,6 +127,7 @@ class MenuController : public QObject {
     Q_INVOKABLE bool removeGroup(const QString& groupId);
     [[nodiscard]] bool desktopActionBusy() const;
     [[nodiscard]] QString desktopActionStatus() const;
+    [[nodiscard]] bool desktopActionError() const;
     Q_INVOKABLE bool requestDesktopAction(const QString& actionId);
     Q_INVOKABLE void requestExit();
 
@@ -148,8 +156,8 @@ class MenuController : public QObject {
 
   private:
     void refreshGroups();
-    void setOperationMessage(QString message);
-    void setPersistenceStatus(QString status);
+    void setOperationMessage(QString message, bool error = false);
+    void setPersistenceStatus(QString status, bool error = false);
     void scheduleSave();
     void startSave();
     void completeSave(quint64 revision, bool success, const QString& message, bool readOnly);
@@ -174,6 +182,9 @@ class MenuController : public QObject {
     bool readOnly_ = false;
     bool saving_ = false;
     QString operationMessage_;
+    bool operationError_ = false;
+    bool persistenceError_ = false;
+    bool desktopActionError_ = false;
     QString persistenceStatus_;
     QTimer saveTimer_;
     QThread saveThread_;

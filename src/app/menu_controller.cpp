@@ -86,6 +86,8 @@ MenuController::MenuController(PrototypeService& prototypeService,
                      .toObject()
                      .value(QStringLiteral("theme"))
                      .toString() != QLatin1String("light");
+    persistenceError_ = readOnly_ || !prototypeService.loadResult().success ||
+                        prototypeService.loadResult().recoveredFromBackup;
     persistenceStatus_ = prototypeService.loadResult().message;
     if (persistenceStatus_.isEmpty()) {
         persistenceStatus_ = prototypeService.configurationPath().isEmpty()
@@ -132,20 +134,29 @@ MenuController::MenuController(PrototypeService& prototypeService,
             emit launchSucceeded();
         });
         connect(catalog_, &ApplicationCatalog::launchFailed, this, [this](const QString& message) {
-            setOperationMessage(message);
+            setOperationMessage(message, true);
             emit launchFailed(message);
         });
     }
     if (desktopShell_) {
         connect(desktopShell_, &DesktopShellService::stateChanged, this, [this] {
-            setOperationMessage(desktopActionStatus());
+            if (desktopShell_ && desktopShell_->busy())
+                desktopActionError_ = false;
+            setOperationMessage(desktopActionStatus(), desktopActionError_);
             emit desktopActionStateChanged();
         });
         connect(desktopShell_, &DesktopShellService::desktopActionSucceeded, this,
-                [this](const QString&) { emit desktopActionSucceeded(); });
+                [this](const QString&) {
+                    desktopActionError_ = false;
+                    setOperationMessage(desktopActionStatus());
+                    emit desktopActionStateChanged();
+                    emit desktopActionSucceeded();
+                });
         connect(desktopShell_, &DesktopShellService::desktopActionFailed, this,
                 [this](const QString&, const QString& message) {
-                    setOperationMessage(message);
+                    desktopActionError_ = true;
+                    setOperationMessage(message, true);
+                    emit desktopActionStateChanged();
                     emit desktopActionFailed(message);
                 });
         connect(desktopShell_, &QObject::destroyed, this,
@@ -264,7 +275,9 @@ bool MenuController::darkTheme() const { return darkTheme_; }
 bool MenuController::readOnly() const { return readOnly_; }
 bool MenuController::saving() const { return saving_; }
 QString MenuController::operationMessage() const { return operationMessage_; }
+bool MenuController::operationError() const { return operationError_; }
 QString MenuController::persistenceStatus() const { return persistenceStatus_; }
+bool MenuController::persistenceError() const { return persistenceError_; }
 
 QAbstractItemModel* MenuController::applications() const {
     return catalog_ ? catalog_->applicationsModel() : nullptr;
@@ -273,6 +286,7 @@ bool MenuController::catalogBusy() const { return catalog_ && catalog_->busy(); 
 QString MenuController::catalogStatus() const {
     return catalog_ ? catalog_->status() : QStringLiteral("当前未连接真实应用目录。");
 }
+bool MenuController::catalogError() const { return catalog_ && catalog_->error(); }
 bool MenuController::launchBusy() const { return catalog_ && catalog_->launchBusy(); }
 int MenuController::iconRevision() const { return iconRevision_; }
 QVariantMap MenuController::iconVersions() const { return iconVersions_; }
@@ -405,11 +419,11 @@ void MenuController::refreshSearchResults() {
 
 bool MenuController::launchSearchResult(const QString& appId) {
     if (!searchActive() || searchBusy() || !searchTargetIds_.contains(appId)) {
-        setOperationMessage(QStringLiteral("搜索结果已更新，请重新选择应用。"));
+        setOperationMessage(QStringLiteral("搜索结果已更新，请重新选择应用。"), true);
         return false;
     }
     if (!catalog_) {
-        setOperationMessage(QStringLiteral("当前未连接真实应用目录。"));
+        setOperationMessage(QStringLiteral("当前未连接真实应用目录。"), true);
         return false;
     }
     const auto target = catalog_->target(appId);
@@ -419,20 +433,23 @@ bool MenuController::launchSearchResult(const QString& appId) {
     }
     const auto available = catalog_->availability(appId);
     if (!available.success) {
-        setOperationMessage(available.message);
+        setOperationMessage(available.message, true);
         return false;
     }
     return launchApplication(appId);
 }
 
 bool MenuController::desktopActionBusy() const { return desktopShell_ && desktopShell_->busy(); }
+bool MenuController::desktopActionError() const { return desktopActionError_; }
 QString MenuController::desktopActionStatus() const {
     return desktopShell_ ? desktopShell_->status() : QStringLiteral("当前未连接桌面快捷入口。");
 }
 bool MenuController::requestDesktopAction(const QString& actionId) {
     if (!desktopShell_) {
         const auto message = QStringLiteral("当前未连接桌面快捷入口。");
-        setOperationMessage(message);
+        desktopActionError_ = true;
+        setOperationMessage(message, true);
+        emit desktopActionStateChanged();
         emit desktopActionFailed(message);
         return false;
     }
@@ -446,7 +463,7 @@ void MenuController::refreshApplications() {
 
 bool MenuController::launchApplication(const QString& appId) {
     if (!catalog_) {
-        setOperationMessage(QStringLiteral("当前未连接真实应用目录。"));
+        setOperationMessage(QStringLiteral("当前未连接真实应用目录。"), true);
         return false;
     }
     setOperationMessage(QStringLiteral("正在启动应用…"));
@@ -467,12 +484,13 @@ bool MenuController::launchTile(const QString& tileId) {
 bool MenuController::pinApplication(const QString& appId, const QString& groupId) {
     if (readOnly_ || !catalog_ || !catalog_->containsApplication(appId)) {
         setOperationMessage(readOnly_ ? QStringLiteral("当前配置只读，不能固定应用。")
-                                      : QStringLiteral("应用目录中找不到该应用，请刷新后重试。"));
+                                      : QStringLiteral("应用目录中找不到该应用，请刷新后重试。"), true);
         return false;
     }
     const auto result =
         prototypeService_.pinApplication(applicationTargetJson(catalog_->target(appId)), groupId);
-    setOperationMessage(result.success ? QStringLiteral("应用已固定到磁贴布局。") : result.message);
+    setOperationMessage(result.success ? QStringLiteral("应用已固定到磁贴布局。") : result.message,
+                        !result.success);
     if (!result.success)
         return false;
     refreshGroups();
@@ -482,12 +500,12 @@ bool MenuController::pinApplication(const QString& appId, const QString& groupId
 
 bool MenuController::unpinTile(const QString& tileId) {
     if (readOnly_) {
-        setOperationMessage(QStringLiteral("当前配置只读，不能取消固定。"));
+        setOperationMessage(QStringLiteral("当前配置只读，不能取消固定。"), true);
         return false;
     }
     const auto result = prototypeService_.unpinTile(tileId);
     setOperationMessage(result.success ? QStringLiteral("已取消固定，不会卸载应用。")
-                                       : result.message);
+                                       : result.message, !result.success);
     if (!result.success)
         return false;
     refreshGroups();
@@ -500,11 +518,11 @@ int MenuController::maximumGroupNameLength() const { return LayoutStore::maximum
 
 bool MenuController::canEditGroups() {
     if (readOnly_) {
-        setOperationMessage(QStringLiteral("当前配置只读，不能编辑分组。"));
+        setOperationMessage(QStringLiteral("当前配置只读，不能编辑分组。"), true);
         return false;
     }
     if (!editMode_) {
-        setOperationMessage(QStringLiteral("请先进入编辑布局再管理分组。"));
+        setOperationMessage(QStringLiteral("请先进入编辑布局再管理分组。"), true);
         return false;
     }
     return true;
@@ -513,7 +531,7 @@ bool MenuController::canEditGroups() {
 bool MenuController::applyGroupResult(const LayoutResult& result, const QJsonObject& before,
                                       const QString& successMessage) {
     if (!result.success) {
-        setOperationMessage(result.message);
+        setOperationMessage(result.message, true);
         return false;
     }
     if (before != prototypeService_.snapshot()) {
@@ -560,7 +578,7 @@ bool MenuController::removeGroup(const QString& groupId) {
 
 void MenuController::setEditMode(bool enabled) {
     if (enabled && readOnly_) {
-        setOperationMessage(QStringLiteral("当前配置只读，不能编辑布局。"));
+        setOperationMessage(QStringLiteral("当前配置只读，不能编辑布局。"), true);
         return;
     }
     if (editMode_ == enabled)
@@ -577,17 +595,19 @@ void MenuController::setDarkTheme(bool enabled) {
     scheduleSave();
 }
 
-void MenuController::setOperationMessage(QString message) {
-    if (operationMessage_ == message)
+void MenuController::setOperationMessage(QString message, bool error) {
+    if (operationMessage_ == message && operationError_ == error)
         return;
     operationMessage_ = std::move(message);
+    operationError_ = error;
     emit operationMessageChanged();
 }
 
-void MenuController::setPersistenceStatus(QString status) {
-    if (persistenceStatus_ == status)
+void MenuController::setPersistenceStatus(QString status, bool error) {
+    if (persistenceStatus_ == status && persistenceError_ == error)
         return;
     persistenceStatus_ = std::move(status);
+    persistenceError_ = error;
     emit persistenceStatusChanged();
 }
 
@@ -624,11 +644,11 @@ QVariantMap MenuController::previewPlacement(const QString& tileId, const QStrin
 
 bool MenuController::moveTile(const QString& tileId, const QString& groupId, int column, int row) {
     if (readOnly_) {
-        setOperationMessage(QStringLiteral("当前配置只读，不能移动磁贴。"));
+        setOperationMessage(QStringLiteral("当前配置只读，不能移动磁贴。"), true);
         return false;
     }
     const auto result = prototypeService_.moveTile(tileId, groupId, column, row);
-    setOperationMessage(result.success ? QStringLiteral("磁贴已移动。") : result.message);
+    setOperationMessage(result.success ? QStringLiteral("磁贴已移动。") : result.message, !result.success);
     if (!result.success)
         return false;
     refreshGroups();
@@ -638,7 +658,7 @@ bool MenuController::moveTile(const QString& tileId, const QString& groupId, int
 
 bool MenuController::moveTileBy(const QString& tileId, int dx, int dy) {
     if (!editMode_ || dx < -1 || dx > 1 || dy < -1 || dy > 1 || (dx != 0 && dy != 0)) {
-        setOperationMessage(QStringLiteral("请进入编辑布局后按 Ctrl 加方向键移动一格。"));
+        setOperationMessage(QStringLiteral("请进入编辑布局后按 Ctrl 加方向键移动一格。"), true);
         return false;
     }
     const auto tile = findTile(tileId);
@@ -653,11 +673,11 @@ bool MenuController::resizeTile(const QString& tileId, const QString& sizeNameVa
     const auto size = parseSize(sizeNameValue);
     if (!size || readOnly_) {
         setOperationMessage(readOnly_ ? QStringLiteral("当前配置只读，不能调整尺寸。")
-                                      : QStringLiteral("未知的磁贴尺寸。"));
+                                      : QStringLiteral("未知的磁贴尺寸。"), true);
         return false;
     }
     const auto result = prototypeService_.resizeTile(tileId, *size);
-    setOperationMessage(result.success ? QStringLiteral("磁贴尺寸已切换。") : result.message);
+    setOperationMessage(result.success ? QStringLiteral("磁贴尺寸已切换。") : result.message, !result.success);
     if (!result.success)
         return false;
     refreshGroups();
@@ -736,7 +756,7 @@ void MenuController::completeSave(quint64 revision, bool success, const QString&
         setEditMode(false);
         emit readOnlyChanged();
     }
-    setPersistenceStatus(success ? QStringLiteral("布局与主题已保存。") : message);
+    setPersistenceStatus(success ? QStringLiteral("布局与主题已保存。") : message, !success);
     // Retry newer edits after a completed write, but do not loop on an IO failure.
     if (success && savedRevision_ < revision_ && !readOnly_)
         saveTimer_.start();

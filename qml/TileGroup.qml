@@ -9,6 +9,16 @@ Item {
     required property var group
     required property var tokens
     required property color titleColor
+    property bool darkTheme: true
+    readonly property var theme: tokens.themes[darkTheme ? "dark" : "light"]
+    readonly property real occupiedGridHeight: {
+        let occupied = 0;
+        for (let index = 0; index < group.tiles.length; ++index) {
+            const tile = group.tiles[index];
+            occupied = Math.max(occupied, tile.y + tile.height);
+        }
+        return occupied;
+    }
     property bool editMode: false
     property bool readOnly: false
     property int iconRevision: 0
@@ -32,7 +42,7 @@ Item {
 
     objectName: "group-" + group.id
     width: group.width
-    height: groupHeader.height + 8 + group.height
+    height: groupHeader.height + 8 + grid.height
 
     function focusTile(tileId: string): bool {
         for (let index = 0; index < tileRepeater.count; ++index) {
@@ -54,7 +64,7 @@ Item {
 
         anchors.left: parent.left
         anchors.right: parent.right
-        height: Math.max(groupLabel.implicitHeight, 32)
+        height: tileGroup.tokens.layout.headerHeight
 
         Label {
             id: groupLabel
@@ -67,8 +77,8 @@ Item {
             text: tileGroup.group.name
             textFormat: Text.PlainText
             color: tileGroup.titleColor
-            font.pixelSize: 18
-            font.bold: true
+            font.pixelSize: 16
+            font.weight: Font.DemiBold
             elide: Text.ElideRight
             Accessible.name: text
 
@@ -104,6 +114,23 @@ Item {
             focusPolicy: Qt.StrongFocus
             Accessible.name: qsTr("管理分组 %1").arg(tileGroup.group.name)
             Accessible.description: qsTr("重命名、调整顺序或删除空分组。Enter 或 Shift+F10 打开。")
+
+            background: Rectangle {
+                radius: 6
+                color: groupActions.down ? tileGroup.theme.pressed : (groupActions.hovered ? tileGroup.theme.hover : "transparent")
+                border.width: groupActions.activeFocus ? 2 : 0
+                border.color: tileGroup.tokens.brand.cyan
+            }
+
+            contentItem: Text {
+                text: groupActions.text
+                color: tileGroup.titleColor
+                font.pixelSize: 20
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                opacity: groupActions.enabled ? 1 : 0.45
+            }
+
             ToolTip {
                 id: actionsToolTip
 
@@ -141,19 +168,22 @@ Item {
         anchors.top: groupHeader.bottom
         anchors.topMargin: 8
         width: tileGroup.group.width
-        height: tileGroup.group.height
+        // Browsing shows the occupied extent. Editing restores the full shared
+        // drop grid; the individual tiles retain the same coordinates and sizes.
+        height: tileGroup.editMode ? tileGroup.group.height : (tileGroup.group.tiles.length === 0 ? 56 : tileGroup.occupiedGridHeight)
 
         Label {
             objectName: "emptyGroupHint"
             anchors.left: parent.left
             anchors.top: parent.top
-            anchors.margins: 12
-            width: Math.min(360, parent.width - 24)
+            anchors.leftMargin: 0
+            anchors.topMargin: 8
+            width: Math.min(360, parent.width)
             visible: tileGroup.group.tiles.length === 0
-            text: qsTr("此分组还没有磁贴。请在“所有应用”中选择应用并固定到这里。")
+            text: tileGroup.editMode ? qsTr("拖入磁贴，或从“所有应用”固定到此分组。") : qsTr("此分组还没有磁贴。可从“所有应用”固定应用。")
             wrapMode: Text.WordWrap
-            color: tileGroup.titleColor
-            opacity: 0.7
+            color: tileGroup.theme.secondary
+            font.pixelSize: 13
         }
 
         Repeater {

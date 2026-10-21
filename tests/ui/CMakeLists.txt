@@ -3,6 +3,8 @@ qt_add_executable(xdstarter_ui_tests
     tst_prototype_window.cpp
     native_chrome_probe.h
     native_chrome_probe.cpp
+    visual_acceptance_probe.h
+    visual_acceptance_probe.cpp
 )
 xdstarter_add_ui(xdstarter_ui_tests "${PROJECT_BINARY_DIR}/test-qml")
 target_link_libraries(xdstarter_ui_tests PRIVATE Qt6::Test)

@@ -123,6 +123,7 @@ QVector<LaunchTarget> ApplicationCatalog::catalogApplications() const { return m
 bool ApplicationCatalog::busy() const { return busy_; }
 bool ApplicationCatalog::launchBusy() const { return launchBusy_; }
 QString ApplicationCatalog::status() const { return status_; }
+bool ApplicationCatalog::error() const { return error_; }
 LaunchTarget ApplicationCatalog::target(const QString& id) const { return targets_.value(id); }
 bool ApplicationCatalog::containsApplication(const QString& id) const {
     return catalogIds_.contains(id);
@@ -142,6 +143,7 @@ void ApplicationCatalog::refreshApplications() {
     if (busy_ || !platform_)
         return;
     busy_ = true;
+    error_ = false;
     ++generation_;
     status_ = QStringLiteral("正在读取应用目录…");
     emit catalogChanged();
@@ -160,6 +162,7 @@ void ApplicationCatalog::refreshApplications() {
                         return;
                     auto& self = *receiver;
                     self.busy_ = false;
+                    self.error_ = !snapshot.success || !snapshot.warnings.isEmpty();
                     if (snapshot.success) {
                         const auto entries = normalizedApplications(snapshot.applications);
                         ++self.iconGeneration_;
