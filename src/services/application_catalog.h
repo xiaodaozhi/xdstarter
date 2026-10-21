@@ -46,6 +46,7 @@ class ApplicationCatalog final : public QObject {
                                 QObject* parent = nullptr);
     ~ApplicationCatalog() override;
     [[nodiscard]] QAbstractItemModel* applicationsModel();
+    [[nodiscard]] QVector<LaunchTarget> catalogApplications() const;
     [[nodiscard]] bool busy() const;
     [[nodiscard]] bool launchBusy() const;
     [[nodiscard]] QString status() const;

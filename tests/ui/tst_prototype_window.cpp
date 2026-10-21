@@ -16,6 +16,7 @@
 #include <QFile>
 #include <QGuiApplication>
 #include <QImage>
+#include <QInputMethodEvent>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -330,6 +331,10 @@ class PrototypeWindowTest : public QObject {
     void futureConfigurationIsReadOnly();
     void applicationDirectoryAndPinning();
     void applicationLaunchLifecycle();
+    void searchFocusCompositionAndEscape();
+    void searchPreservesBrowsing();
+    void searchKeyboardAndLaunchLifecycle();
+    void searchRefreshAliasesAndRestart();
     void applicationLayoutRestoresUnavailableTarget();
     void unrelatedApplicationIconPreservesPinnedTile();
     void shortcutRailAssetsAndTheme();
@@ -533,8 +538,8 @@ void PrototypeWindowTest::keyboardAndMouseSelection() {
     QVERIFY(!firstName.isEmpty());
     QVERIFY(!secondName.isEmpty());
     themeButton->forceActiveFocus(Qt::TabFocusReason);
-    // The application catalogue and refresh action are now in the normal Tab order.
-    for (int count = 0; count < 8 && !first->hasActiveFocus(); ++count) {
+    // Search and catalogue controls are in the normal Tab order before the tiles.
+    for (int count = 0; count < 12 && !first->hasActiveFocus(); ++count) {
         QTest::keyClick(window_, Qt::Key_Tab);
     }
     QTRY_VERIFY(first->hasActiveFocus());
@@ -1152,6 +1157,358 @@ void PrototypeWindowTest::applicationLaunchLifecycle() {
     QVERIFY(state->workerOnly);
 }
 
+void PrototypeWindowTest::searchFocusCompositionAndEscape() {
+    const auto state = std::make_shared<CatalogTestState>();
+    destroyWindow();
+    createWindow({}, true, state);
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 2);
+    auto* field = item(QStringLiteral("searchField"));
+    QVERIFY(field);
+    QTRY_VERIFY(field->hasActiveFocus());
+    auto* accessible = QAccessible::queryAccessibleInterface(field);
+    QVERIFY(accessible);
+    QCOMPARE(accessible->text(QAccessible::Name), QStringLiteral("搜索应用"));
+
+    item(QStringLiteral("themeButton"))->forceActiveFocus(Qt::TabFocusReason);
+    QTest::keyClick(window_, Qt::Key_F, Qt::ControlModifier);
+    QTRY_VERIFY(field->hasActiveFocus());
+    controller_->setEditMode(true);
+    QVERIFY(window_->setProperty("dismissalManaged", true));
+    QSignalSpy dismissRequested(window_, SIGNAL(dismissRequested()));
+
+    // A preedit is not a committed query, regardless of its visible candidate text.
+    QInputMethodEvent preedit(QStringLiteral("ceshi"), {});
+    QCoreApplication::sendEvent(field, &preedit);
+    QTRY_VERIFY(field->property("inputMethodComposing").toBool());
+    QVERIFY(controller_->searchQuery().isEmpty());
+    QVERIFY(!controller_->searchActive());
+    QCOMPARE(state->launches.load(), 0);
+    QInputMethodEvent committed;
+    committed.setCommitString(QStringLiteral("测试"));
+    QCoreApplication::sendEvent(field, &committed);
+    QTRY_VERIFY(!field->property("inputMethodComposing").toBool());
+    QTRY_COMPARE(controller_->searchQuery(), QStringLiteral("测试"));
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_COMPARE(controller_->searchResults().size(), 2);
+    QVERIFY(item(QStringLiteral("searchPanel"))->isVisible());
+    QVERIFY(!item(QStringLiteral("browsePanel"))->isVisible());
+
+    // Popup handling precedes clearing the query; clearing precedes leaving edit mode.
+    click(item(QStringLiteral("shortcut-power")));
+    auto* menu = window_->findChild<QObject*>(QStringLiteral("powerMenu"));
+    QVERIFY(menu);
+    QTRY_VERIFY(menu->property("opened").toBool());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!menu->property("visible").toBool());
+    QCOMPARE(controller_->searchQuery(), QStringLiteral("测试"));
+    QVERIFY(controller_->editMode());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(controller_->searchQuery().isEmpty());
+    QTRY_VERIFY(!controller_->searchActive());
+    QTRY_VERIFY(item(QStringLiteral("browsePanel"))->isVisible());
+    QTRY_VERIFY(field->hasActiveFocus());
+    QVERIFY(controller_->editMode());
+    QCOMPARE(dismissRequested.count(), 0);
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!controller_->editMode());
+    QCOMPARE(dismissRequested.count(), 0);
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_COMPARE(dismissRequested.count(), 1);
+    QCOMPARE(state->launches.load(), 0);
+}
+
+void PrototypeWindowTest::searchPreservesBrowsing() {
+    const auto state = std::make_shared<CatalogTestState>();
+    state->applications.clear();
+    for (int index = 0; index < 40; ++index) {
+        state->applications.append(
+            catalogTarget(QStringLiteral("App %1").arg(index, 2, 10, QLatin1Char('0')),
+                          QStringLiteral("C:/Fixture/App-%1.lnk").arg(index)));
+    }
+    destroyWindow();
+    createWindow({}, true, state);
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 40);
+    auto* field = item(QStringLiteral("searchField"));
+    auto* applications = item(QStringLiteral("applicationList"));
+    auto* groups = item(QStringLiteral("groupsFlickable"));
+    QVERIFY(field);
+    QVERIFY(applications);
+    QVERIFY(groups);
+    QTRY_VERIFY(!window_->property("compactLayout").toBool());
+    QVERIFY(applications->setProperty("contentY", 120.0));
+    QVERIFY(groups->setProperty("contentY", 140.0));
+    QTRY_COMPARE(applications->property("contentY").toReal(), qreal(120));
+    QTRY_COMPARE(groups->property("contentY").toReal(), qreal(140));
+    const auto before = controller_->groups();
+    const auto geometry = tileGeometries();
+
+    QVERIFY(field->setProperty("text", QStringLiteral("App")));
+    QTRY_VERIFY(controller_->searchActive());
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_COMPARE(controller_->searchResults().size(), 40);
+    QVERIFY(!item(QStringLiteral("browsePanel"))->isVisible());
+    click(item(QStringLiteral("clearSearchButton")));
+    QTRY_VERIFY(!controller_->searchActive());
+    QTRY_VERIFY(item(QStringLiteral("browsePanel"))->isVisible());
+    QTRY_COMPARE(applications->property("contentY").toReal(), qreal(120));
+    QTRY_COMPARE(groups->property("contentY").toReal(), qreal(140));
+    QCOMPARE(controller_->groups(), before);
+    QCOMPARE(tileGeometries(), geometry);
+
+    QVERIFY(field->setProperty("text", QStringLiteral("no-such-application")));
+    QTRY_VERIFY(controller_->searchActive());
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_VERIFY(controller_->searchResults().isEmpty());
+    QTRY_VERIFY(item(QStringLiteral("emptySearchHint"))->isVisible());
+    QVERIFY(item(QStringLiteral("emptySearchHint"))
+                ->property("text")
+                .toString()
+                .contains(QStringLiteral("no-such-application")));
+    click(item(QStringLiteral("clearSearchButton")));
+    QTRY_VERIFY(!controller_->searchActive());
+
+    const int shadow = qRound(window_->property("shadowInset").toReal());
+    window_->resize(480 + 2 * shadow, 480 + 2 * shadow);
+    QTRY_VERIFY(item(QStringLiteral("catalogViewButton"))->isVisible());
+    click(item(QStringLiteral("catalogViewButton")));
+    QTRY_VERIFY(window_->property("showApplications").toBool());
+    QTRY_VERIFY(item(QStringLiteral("catalogPanel"))->isVisible());
+    QVERIFY(applications->setProperty("contentY", 180.0));
+    QTRY_COMPARE(applications->property("contentY").toReal(), qreal(180));
+    QVERIFY(field->setProperty("text", QStringLiteral("App 01")));
+    QTRY_VERIFY(controller_->searchActive());
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_COMPARE(controller_->searchResults().size(), 1);
+    click(item(QStringLiteral("clearSearchButton")));
+    QTRY_VERIFY(!controller_->searchActive());
+    QTRY_VERIFY(item(QStringLiteral("catalogPanel"))->isVisible());
+    QVERIFY(window_->property("showApplications").toBool());
+    QVERIFY(!item(QStringLiteral("groupsScroll"))->isVisible());
+    QTRY_COMPARE(applications->property("contentY").toReal(), qreal(180));
+    QCOMPARE(controller_->groups(), before);
+    QCOMPARE(item(QStringLiteral("grid-work"))->width(), qreal(552));
+    QCOMPARE(state->launches.load(), 0);
+}
+
+void PrototypeWindowTest::searchKeyboardAndLaunchLifecycle() {
+    const auto state = std::make_shared<CatalogTestState>();
+    destroyWindow();
+    createWindow({}, false, state);
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 2);
+    auto* field = item(QStringLiteral("searchField"));
+    QVERIFY(field);
+    QInputMethodEvent committed;
+    committed.setCommitString(QStringLiteral("测试"));
+    QCoreApplication::sendEvent(field, &committed);
+    QTRY_VERIFY(controller_->searchActive());
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_COMPARE(controller_->searchResults().size(), 2);
+    const auto firstId = state->applications[0].id;
+    const auto secondId = state->applications[1].id;
+    const auto firstName = QStringLiteral("searchResult-") + firstId;
+    const auto secondName = QStringLiteral("searchResult-") + secondId;
+    QTRY_VERIFY(item(firstName));
+    QTRY_VERIFY(item(secondName));
+    auto* accessible = QAccessible::queryAccessibleInterface(item(firstName));
+    QVERIFY(accessible);
+    QCOMPARE(accessible->text(QAccessible::Name), state->applications[0].name);
+    QTest::keyClick(window_, Qt::Key_Down);
+    QTRY_VERIFY(item(firstName) && item(firstName)->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_Down);
+    QTRY_VERIFY(item(secondName) && item(secondName)->hasActiveFocus());
+    const auto beforeRefresh = controller_->searchResults();
+    QSignalSpy resultsChanged(controller_.get(), &xdstarter::MenuController::searchResultsChanged);
+    emit catalog_->iconReady(firstId);
+    emit catalog_->catalogChanged();
+    QCoreApplication::processEvents();
+    QCOMPARE(controller_->searchQuery(), QStringLiteral("测试"));
+    QCOMPARE(controller_->searchResults(), beforeRefresh);
+    QCOMPARE(resultsChanged.count(), 0);
+    QVERIFY(item(secondName) && item(secondName)->hasActiveFocus());
+    QCOMPARE(item(QStringLiteral("searchResultsList"))->property("currentIndex").toInt(), 1);
+    QVERIFY(controller_->pinApplication(firstId));
+    QTRY_VERIFY(resultsChanged.count() > 0);
+    QTRY_VERIFY(
+        controller_->searchResults().first().toMap().value(QStringLiteral("pinned")).toBool());
+    QTRY_VERIFY(item(secondName) && item(secondName)->hasActiveFocus());
+    QCOMPARE(item(QStringLiteral("searchResultsList"))->property("currentIndex").toInt(), 1);
+    QCOMPARE(controller_->searchQuery(), QStringLiteral("测试"));
+    QTest::keyClick(window_, Qt::Key_Up);
+    QTRY_VERIFY(item(firstName) && item(firstName)->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_Up);
+    QTRY_VERIFY(field->hasActiveFocus());
+
+    // Explicit export uses only fixture names/icons and the QQuickWindow's own pixels.
+    const auto artifactDirectory = qEnvironmentVariable("XDSTARTER_SEARCH_VALIDATION_DIR");
+    if (!artifactDirectory.isEmpty()) {
+        QVERIFY(QDir().mkpath(artifactDirectory));
+        QJsonArray frames;
+        for (const bool dark : {true, false}) {
+            controller_->setDarkTheme(dark);
+            field->forceActiveFocus(Qt::OtherFocusReason);
+            QTest::mouseMove(window_, QPoint(1, 1));
+            window_->requestUpdate();
+            QTest::qWait(80);
+            const auto image = window_->grabWindow();
+            QVERIFY(!image.isNull());
+            const auto name =
+                dark ? QStringLiteral("search-dark.png") : QStringLiteral("search-light.png");
+            QVERIFY(image.save(QDir(artifactDirectory).filePath(name)));
+            frames.append(
+                QJsonObject{{QStringLiteral("file"), name},
+                            {QStringLiteral("widthPx"), image.width()},
+                            {QStringLiteral("heightPx"), image.height()},
+                            {QStringLiteral("devicePixelRatio"), window_->devicePixelRatio()}});
+        }
+        const QJsonObject evidence{
+            {QStringLiteral("fixtureOnly"), true},
+            {QStringLiteral("qtVersion"), QString::fromLatin1(qVersion())},
+            {QStringLiteral("platformName"), QGuiApplication::platformName()},
+            {QStringLiteral("query"), controller_->searchQuery()},
+            {QStringLiteral("resultCount"), controller_->searchResults().size()},
+            {QStringLiteral("frames"), frames}};
+        QFile output(QDir(artifactDirectory).filePath(QStringLiteral("search-render.json")));
+        QVERIFY2(output.open(QIODevice::WriteOnly), qPrintable(output.errorString()));
+        QVERIFY(output.write(QJsonDocument(evidence).toJson()) > 0);
+    }
+
+    QSignalSpy failed(controller_.get(), &xdstarter::MenuController::launchFailed);
+    QSignalSpy succeeded(controller_.get(), &xdstarter::MenuController::launchSucceeded);
+    QTest::keyClick(window_, Qt::Key_Return);
+    QTRY_COMPARE(failed.count(), 1);
+    QTRY_VERIFY(!controller_->launchBusy());
+    QCOMPARE(state->launches.load(), 1);
+    QVERIFY(window_->isVisible());
+    QVERIFY(item(QStringLiteral("selectionStatus"))
+                ->property("text")
+                .toString()
+                .contains(QStringLiteral("测试启动失败")));
+
+    state->launchSucceeds = true;
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_VERIFY(item(secondName));
+    click(item(secondName));
+    QTRY_COMPARE(succeeded.count(), 1);
+    QTRY_VERIFY(!window_->isVisible());
+    QCOMPARE(state->launches.load(), 2);
+    window_->show();
+    QVERIFY(QTest::qWaitForWindowExposed(window_));
+    window_->requestActivate();
+    QVERIFY(QMetaObject::invokeMethod(window_, "prepareForPresentation"));
+    QTRY_VERIFY(field->hasActiveFocus());
+    QCOMPARE(controller_->searchQuery(), QStringLiteral("测试"));
+    QVERIFY(field->setProperty("text", state->applications[0].name));
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_COMPARE(controller_->searchResults().size(), 1);
+    QTest::keyClick(window_, Qt::Key_Return);
+    QTRY_COMPARE(succeeded.count(), 2);
+    QTRY_VERIFY(!window_->isVisible());
+    QCOMPARE(state->launches.load(), 3);
+    QVERIFY(state->workerOnly);
+}
+
+void PrototypeWindowTest::searchRefreshAliasesAndRestart() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = directory.filePath(QStringLiteral("search-layout.json"));
+    const auto state = std::make_shared<CatalogTestState>();
+    const auto firstId = state->applications[0].id;
+    const auto secondId = state->applications[1].id;
+    destroyWindow();
+    createWindow(path, false, state);
+    pinFirstApplication(state);
+    controller_->setSearchQuery(QStringLiteral("测试"));
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_COMPARE(controller_->searchResults().size(), 2);
+    QVERIFY(controller_->flushSave());
+    destroyWindow();
+
+    // A persisted display name may differ from current catalogue metadata. Both
+    // names must match the same launch identity, without duplicating its result.
+    QFile saved(path);
+    QVERIFY(saved.open(QIODevice::ReadOnly));
+    auto document = QJsonDocument::fromJson(saved.readAll()).object();
+    saved.close();
+    auto targets = document.value(QStringLiteral("targets")).toArray();
+    QCOMPARE(targets.size(), 1);
+    auto target = targets[0].toObject();
+    QCOMPARE(target.value(QStringLiteral("id")).toString(), firstId);
+    target.insert(QStringLiteral("name"), QStringLiteral("自定义测试别名"));
+    targets.replace(0, target);
+    document.insert(QStringLiteral("targets"), targets);
+    QVERIFY(saved.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    QVERIFY(saved.write(QJsonDocument(document).toJson()) > 0);
+    saved.close();
+
+    createWindow(path, false, state);
+    QVERIFY(controller_->searchQuery().isEmpty());
+    QVERIFY(!controller_->searchActive());
+    QCOMPARE(item(QStringLiteral("searchField"))->property("text").toString(), QString{});
+    QTRY_VERIFY(!controller_->catalogBusy());
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 2);
+    const auto tileId = service_->previewGroups().first().tiles.first().id;
+    QCOMPARE(tileData(tileId).value(QStringLiteral("name")).toString(),
+             QStringLiteral("自定义测试别名"));
+    controller_->setSearchQuery(QStringLiteral("测试"));
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_COMPARE(controller_->searchResults().size(), 2);
+    int firstMatches = 0;
+    for (const auto& value : controller_->searchResults())
+        firstMatches += value.toMap().value(QStringLiteral("appId")).toString() == firstId;
+    QCOMPARE(firstMatches, 1);
+    controller_->setSearchQuery(QStringLiteral("自定义"));
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_COMPARE(controller_->searchResults().size(), 1);
+    QCOMPARE(controller_->searchResults().first().toMap().value(QStringLiteral("appId")).toString(),
+             firstId);
+    QCOMPARE(controller_->searchResults()
+                 .first()
+                 .toMap()
+                 .value(QStringLiteral("displayName"))
+                 .toString(),
+             state->applications[0].name);
+
+    // Changing the query invalidates the previous result before the worker returns.
+    controller_->setSearchQuery(state->applications[1].name);
+    QVERIFY(controller_->searchBusy());
+    QVERIFY(!controller_->launchSearchResult(firstId));
+    QVERIFY(!controller_->launchSearchResult(QStringLiteral("missing-search-id")));
+    QCOMPARE(state->launches.load(), 0);
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_COMPARE(controller_->searchResults().size(), 1);
+    QCOMPARE(controller_->searchResults().first().toMap().value(QStringLiteral("appId")).toString(),
+             secondId);
+    QVERIFY(!controller_->launchSearchResult(firstId));
+
+    // Removing the catalogue preserves a pinned target as unavailable, while an
+    // unpinned old result disappears. Neither identity can be launched from search.
+    state->includeApplications = false;
+    controller_->refreshApplications();
+    QTRY_VERIFY(!controller_->catalogBusy());
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 0);
+    QTRY_VERIFY(!tileData(tileId).value(QStringLiteral("available")).toBool());
+    QTRY_VERIFY(tileData(tileId)
+                    .value(QStringLiteral("unavailableReason"))
+                    .toString()
+                    .contains(QStringLiteral("测试目标已移除")));
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_VERIFY(controller_->searchResults().isEmpty());
+    QVERIFY(!controller_->launchSearchResult(secondId));
+    controller_->setSearchQuery(QStringLiteral("自定义"));
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_COMPARE(controller_->searchResults().size(), 1);
+    const auto unavailable = controller_->searchResults().first().toMap();
+    QCOMPARE(unavailable.value(QStringLiteral("appId")).toString(), firstId);
+    QVERIFY(!unavailable.value(QStringLiteral("available")).toBool());
+    QVERIFY(unavailable.value(QStringLiteral("unavailableReason"))
+                .toString()
+                .contains(QStringLiteral("测试目标已移除")));
+    QVERIFY(!controller_->launchSearchResult(firstId));
+    QCOMPARE(state->launches.load(), 0);
+    QVERIFY(window_->isVisible());
+    QVERIFY(state->workerOnly);
+}
+
 void PrototypeWindowTest::applicationLayoutRestoresUnavailableTarget() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -1710,7 +2067,8 @@ void PrototypeWindowTest::dismissalCancelsOnlyDragPreview() {
     QVERIFY(QTest::qWaitForWindowExposed(window_));
     window_->requestActivate();
     QVERIFY(QMetaObject::invokeMethod(window_, "prepareForPresentation"));
-    QTRY_VERIFY(item(QStringLiteral("tile-") + tileId)->hasActiveFocus());
+    QTRY_VERIFY(item(QStringLiteral("searchField"))->hasActiveFocus());
+    QCOMPARE(window_->property("focusedTileId").toString(), tileId);
     QVERIFY(!window_->property("internalPopupVisible").toBool());
     QVERIFY(!window_->property("dragActive").toBool());
     QVERIFY(controller_->editMode());

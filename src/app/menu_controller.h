@@ -12,12 +12,15 @@
 #include <QVariantMap>
 #include <QtQml/qqmlregistration.h>
 
+#include <memory>
+
 namespace xdstarter {
 
 class PlatformIntegration;
 class PrototypeService;
 class ApplicationCatalog;
 class DesktopShellService;
+class SearchService;
 
 class MenuController : public QObject {
     Q_OBJECT
@@ -46,6 +49,11 @@ class MenuController : public QObject {
     Q_PROPERTY(bool launchBusy READ launchBusy NOTIFY launchStateChanged)
     Q_PROPERTY(int iconRevision READ iconRevision NOTIFY iconRevisionChanged)
     Q_PROPERTY(QVariantMap iconVersions READ iconVersions NOTIFY iconVersionsChanged)
+    Q_PROPERTY(QString searchQuery READ searchQuery WRITE setSearchQuery NOTIFY searchQueryChanged)
+    Q_PROPERTY(bool searchActive READ searchActive NOTIFY searchChanged)
+    Q_PROPERTY(bool searchBusy READ searchBusy NOTIFY searchChanged)
+    Q_PROPERTY(QString searchStatus READ searchStatus NOTIFY searchChanged)
+    Q_PROPERTY(QVariantList searchResults READ searchResults NOTIFY searchResultsChanged)
     Q_PROPERTY(bool desktopActionBusy READ desktopActionBusy NOTIFY desktopActionStateChanged)
     Q_PROPERTY(
         QString desktopActionStatus READ desktopActionStatus NOTIFY desktopActionStateChanged)
@@ -89,6 +97,13 @@ class MenuController : public QObject {
     [[nodiscard]] bool launchBusy() const;
     [[nodiscard]] int iconRevision() const;
     [[nodiscard]] QVariantMap iconVersions() const;
+    [[nodiscard]] QString searchQuery() const;
+    void setSearchQuery(const QString& query);
+    [[nodiscard]] bool searchActive() const;
+    [[nodiscard]] bool searchBusy() const;
+    [[nodiscard]] QString searchStatus() const;
+    [[nodiscard]] QVariantList searchResults() const;
+    Q_INVOKABLE bool launchSearchResult(const QString& appId);
     Q_INVOKABLE void refreshApplications();
     Q_INVOKABLE bool launchApplication(const QString& appId);
     Q_INVOKABLE bool launchTile(const QString& tileId);
@@ -111,6 +126,10 @@ class MenuController : public QObject {
     void launchStateChanged();
     void iconRevisionChanged();
     void iconVersionsChanged();
+    void searchQueryChanged();
+    void searchChanged();
+    void searchResultsAboutToChange();
+    void searchResultsChanged();
     void launchSucceeded();
     void launchFailed(const QString& message);
     void desktopActionStateChanged();
@@ -127,6 +146,8 @@ class MenuController : public QObject {
     void completeSave(quint64 revision, bool success, const QString& message, bool readOnly);
     [[nodiscard]] QJsonObject currentSnapshot() const;
     [[nodiscard]] QVariantMap findTile(const QString& tileId) const;
+    void rebuildSearchEntries();
+    void refreshSearchResults();
     PrototypeService& prototypeService_;
     QVariantList tiles_;
     QVariantList groups_;
@@ -149,6 +170,10 @@ class MenuController : public QObject {
     quint64 savedRevision_ = 0;
     ApplicationCatalog* catalog_ = nullptr;
     QPointer<DesktopShellService> desktopShell_;
+    std::unique_ptr<SearchService> search_;
+    QVariantList searchSourceState_;
+    QVariantList searchResults_;
+    QSet<QString> searchTargetIds_;
     int iconRevision_ = 0;
     QVariantMap iconVersions_;
     QSet<QString> pinnedTargetIds_;

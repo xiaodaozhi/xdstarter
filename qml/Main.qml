@@ -26,6 +26,15 @@ ApplicationWindow {
     property string winKeyCaptureStatus: qsTr("Win 键唤起未启用；开始按钮保持原生行为。")
     readonly property bool compactLayout: panelWidth - shortcutRail.width - 40 < 260 + 20 + 552 + 16
     property bool showApplications: false
+    property bool browseStateSaved: false
+    property real savedApplicationsY: 0
+    property int savedApplicationIndex: -1
+    property real savedGroupsX: 0
+    property real savedGroupsY: 0
+    property string renderedSearchQuery: ""
+    property string savedSearchResultId: ""
+    property bool savedSearchResultFocus: false
+    property int searchResultsRevision: 0
     property string pinApplicationId: ""
     property string pinApplicationName: ""
     property bool pinApplicationPinned: false
@@ -173,8 +182,127 @@ ApplicationWindow {
     }
 
     function restoreTileFocus(): void {
-        if (visible && !presentationSuspended && !internalPopupVisible && !dragActive)
+        if (visible && !presentationSuspended && !internalPopupVisible && !dragActive && !controller.searchActive && !searchField.activeFocus)
             focusTileById(focusedTileId);
+    }
+
+    function focusSearch(): void {
+        cancelDrag();
+        searchField.forceActiveFocus(Qt.ShortcutFocusReason);
+        searchField.selectAll();
+    }
+
+    function clearSearch(): void {
+        Qt.inputMethod.reset();
+        searchField.clear();
+        controller.searchQuery = "";
+        focusSearch();
+    }
+
+    function updateSearchPresentation(): void {
+        if (controller.searchActive && !browseStateSaved) {
+            savedApplicationsY = applicationsList.contentY;
+            savedApplicationIndex = applicationsList.currentIndex;
+            savedGroupsX = groupsFlickable.contentX;
+            savedGroupsY = groupsFlickable.contentY;
+            browseStateSaved = true;
+            closeInternalPopups();
+            cancelDrag();
+        } else if (!controller.searchActive && browseStateSaved) {
+            Qt.callLater(function () {
+                if (!window.controller.searchActive) {
+                    applicationsList.currentIndex = window.savedApplicationIndex;
+                    applicationsList.contentY = window.savedApplicationsY;
+                    groupsFlickable.contentX = window.savedGroupsX;
+                    groupsFlickable.contentY = window.savedGroupsY;
+                    window.browseStateSaved = false;
+                }
+            });
+        }
+    }
+
+    function focusSearchResultAt(index: int): void {
+        if (controller.searchBusy || searchResultsList.count === 0)
+            return;
+        if (index < 0) {
+            searchField.forceActiveFocus(Qt.BacktabFocusReason);
+            return;
+        }
+        const target = Math.min(index, searchResultsList.count - 1);
+        searchResultsList.currentIndex = target;
+        searchResultsList.positionViewAtIndex(target, ListView.Contain);
+        Qt.callLater(function () {
+            const row = searchResultsList.itemAtIndex(target);
+            if (row)
+                row.forceActiveFocus(Qt.TabFocusReason);
+        });
+    }
+
+    function searchResultsHaveFocus(): bool {
+        let item = activeFocusItem;
+        while (item) {
+            if (item === searchResultsList)
+                return true;
+            item = item.parent;
+        }
+        return false;
+    }
+
+    function rememberSearchSelection(): void {
+        ++searchResultsRevision;
+        savedSearchResultId = "";
+        savedSearchResultFocus = false;
+        const index = searchResultsList.currentIndex;
+        if (!controller.searchActive || renderedSearchQuery !== controller.searchQuery || index < 0 || index >= controller.searchResults.length)
+            return;
+        savedSearchResultId = controller.searchResults[index].appId;
+        savedSearchResultFocus = searchResultsHaveFocus();
+    }
+
+    function restoreSearchSelection(): void {
+        const revision = searchResultsRevision;
+        const query = controller.searchQuery;
+        const resultId = savedSearchResultId;
+        const hadFocus = savedSearchResultFocus;
+        renderedSearchQuery = query;
+        savedSearchResultId = "";
+        savedSearchResultFocus = false;
+        Qt.callLater(function () {
+            if (revision !== window.searchResultsRevision || query !== window.controller.searchQuery || !window.controller.searchActive)
+                return;
+            let index = -1;
+            for (let candidate = 0; candidate < window.controller.searchResults.length; ++candidate) {
+                if (window.controller.searchResults[candidate].appId === resultId) {
+                    index = candidate;
+                    break;
+                }
+            }
+            if (index < 0 && searchResultsList.count > 0)
+                index = 0;
+            searchResultsList.currentIndex = index;
+            if (index >= 0) {
+                searchResultsList.positionViewAtIndex(index, ListView.Contain);
+                searchResultsList.forceLayout();
+            }
+            const focusCanReturn = !window.activeFocusItem || window.activeFocusItem === window.contentItem || window.searchResultsHaveFocus();
+            if (hadFocus && focusCanReturn && window.visible && !window.presentationSuspended && !window.internalPopupVisible && !searchField.inputMethodComposing) {
+                if (index < 0)
+                    searchField.forceActiveFocus(Qt.OtherFocusReason);
+                else {
+                    const row = searchResultsList.itemAtIndex(index);
+                    if (row)
+                        row.forceActiveFocus(Qt.OtherFocusReason);
+                }
+            }
+        });
+    }
+
+    function activateSearchResultAt(index: int): void {
+        if (searchField.inputMethodComposing || controller.searchBusy || index < 0 || index >= controller.searchResults.length)
+            return;
+        const result = controller.searchResults[index];
+        if (result.available !== false && !controller.launchBusy && controller.launchSearchResult(result.appId))
+            selectionStatus = qsTr("正在启动应用…");
     }
 
     function closeInternalPopups(): void {
@@ -195,10 +323,7 @@ ApplicationWindow {
         closeInternalPopups();
         cancelDrag();
         presentationSuspended = false;
-        if (compactLayout && showApplications && applicationsList.count > 0)
-            focusApplicationAt(Math.max(0, applicationsList.currentIndex));
-        else if (!focusTileById(focusedTileId))
-            themeButton.forceActiveFocus(Qt.OtherFocusReason);
+        searchField.forceActiveFocus(Qt.OtherFocusReason);
     }
 
     function requestDismissal(): void {
@@ -221,7 +346,7 @@ ApplicationWindow {
 
     function ensureActiveTileVisible(): void {
         const tileItem = activeFocusItem as TileButton;
-        if (tileItem && !dragActive)
+        if (tileItem && !dragActive && !controller.searchActive)
             ensureTileVisible(tileItem);
     }
 
@@ -332,6 +457,8 @@ ApplicationWindow {
     function handleEscape(): void {
         if (dragActive)
             cancelDrag();
+        else if (controller.searchActive || searchField.text.length > 0)
+            clearSearch();
         else if (controller.editMode)
             controller.editMode = false;
         else
@@ -354,6 +481,24 @@ ApplicationWindow {
 
         function onGroupsChanged(): void {
             Qt.callLater(window.restoreTileFocus);
+        }
+
+        function onSearchQueryChanged(): void {
+            if (!searchField.inputMethodComposing && searchField.text !== window.controller.searchQuery)
+                searchField.text = window.controller.searchQuery;
+            window.updateSearchPresentation();
+        }
+
+        function onSearchChanged(): void {
+            window.updateSearchPresentation();
+        }
+
+        function onSearchResultsAboutToChange(): void {
+            window.rememberSearchSelection();
+        }
+
+        function onSearchResultsChanged(): void {
+            window.restoreSearchSelection();
         }
 
         function onEditModeChanged(): void {
@@ -387,8 +532,15 @@ ApplicationWindow {
     Shortcut {
         sequence: "Escape"
         autoRepeat: false
-        enabled: !resizeMenu.visible && !pinMenu.visible && !powerMenu.visible && !aboutPopup.visible
+        enabled: !resizeMenu.visible && !pinMenu.visible && !powerMenu.visible && !aboutPopup.visible && !searchField.inputMethodComposing
         onActivated: window.handleEscape()
+    }
+
+    Shortcut {
+        sequence: "Ctrl+F"
+        autoRepeat: false
+        enabled: !window.internalPopupVisible
+        onActivated: window.focusSearch()
     }
 
     Timer {
@@ -490,7 +642,7 @@ ApplicationWindow {
                         text: window.controller.editMode ? qsTr("完成编辑") : qsTr("编辑布局")
                         checkable: true
                         checked: window.controller.editMode
-                        enabled: !window.controller.readOnly
+                        enabled: !window.controller.readOnly && !window.controller.searchActive
                         Accessible.description: qsTr("启用磁贴拖拽和 Ctrl 加方向键移动。Esc 退出编辑。")
                         onClicked: window.controller.editMode = !window.controller.editMode
                     }
@@ -529,6 +681,62 @@ ApplicationWindow {
 
                 RowLayout {
                     Layout.fillWidth: true
+                    spacing: 8
+
+                    TextField {
+                        id: searchField
+
+                        objectName: "searchField"
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 40
+                        placeholderText: qsTr("搜索应用、拼音或首字母 (Ctrl+F)")
+                        color: window.theme.foreground
+                        placeholderTextColor: window.theme.secondary
+                        maximumLength: 128
+                        selectByMouse: true
+                        Accessible.name: qsTr("搜索应用")
+                        Accessible.description: qsTr("输入名称、拼音或首字母。向下键选择结果，Enter 启动，Esc 清空搜索。")
+                        onTextChanged: {
+                            if (!inputMethodComposing)
+                                window.controller.searchQuery = text;
+                        }
+                        onInputMethodComposingChanged: {
+                            if (!inputMethodComposing)
+                                window.controller.searchQuery = text;
+                        }
+                        Keys.priority: Keys.BeforeItem
+                        Keys.onPressed: event => {
+                            if (inputMethodComposing)
+                                return;
+                            if (event.key === Qt.Key_Down && window.controller.searchActive) {
+                                window.focusSearchResultAt(0);
+                                event.accepted = true;
+                            } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && window.controller.searchActive) {
+                                window.activateSearchResultAt(Math.max(0, searchResultsList.currentIndex));
+                                event.accepted = true;
+                            }
+                        }
+
+                        background: Rectangle {
+                            radius: 8
+                            color: Qt.alpha(window.tokens.brand.blue, window.darkTheme ? 0.09 : 0.035)
+                            border.width: searchField.activeFocus ? 2 : 1
+                            border.color: searchField.activeFocus ? window.tokens.brand.cyan : window.theme.menuBorder
+                        }
+                    }
+
+                    Button {
+                        objectName: "clearSearchButton"
+                        text: qsTr("清空")
+                        visible: searchField.text.length > 0 || searchField.inputMethodComposing
+                        Accessible.name: qsTr("清空搜索")
+                        onClicked: window.clearSearch()
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    visible: !window.controller.searchActive
 
                     Label {
                         Layout.fillWidth: true
@@ -547,8 +755,12 @@ ApplicationWindow {
                 }
 
                 RowLayout {
+                    id: browsePanel
+
+                    objectName: "browsePanel"
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    visible: !window.controller.searchActive
                     spacing: 20
 
                     ColumnLayout {
@@ -838,10 +1050,168 @@ ApplicationWindow {
                     }
                 }
 
+                ColumnLayout {
+                    objectName: "searchPanel"
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    visible: window.controller.searchActive
+                    spacing: 8
+
+                    Label {
+                        objectName: "searchStatus"
+                        Layout.fillWidth: true
+                        text: window.controller.searchStatus
+                        textFormat: Text.PlainText
+                        color: window.theme.secondary
+                        wrapMode: Text.WordWrap
+                        Accessible.name: text
+                    }
+
+                    ListView {
+                        id: searchResultsList
+
+                        objectName: "searchResultsList"
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        model: window.controller.searchResults
+                        clip: true
+                        spacing: 4
+                        boundsBehavior: Flickable.StopAtBounds
+                        onModelChanged: currentIndex = count > 0 ? 0 : -1
+                        onCountChanged: currentIndex = count > 0 ? 0 : -1
+                        ScrollBar.vertical: ScrollBar {
+                            policy: ScrollBar.AsNeeded
+                            focusPolicy: Qt.NoFocus
+                        }
+
+                        delegate: ItemDelegate {
+                            id: searchRow
+
+                            required property var modelData
+                            required property int index
+                            readonly property string displayType: modelData.kind === "packaged" ? qsTr("打包应用") : qsTr("开始菜单快捷方式")
+
+                            objectName: "searchResult-" + modelData.appId
+                            width: searchResultsList.width
+                            height: 68
+                            padding: 10
+                            opacity: modelData.available === false ? 0.65 : 1
+                            Accessible.name: modelData.displayName
+                            Accessible.description: modelData.available === false ? modelData.unavailableReason : qsTr("%1。按 Enter 启动。").arg(displayType)
+                            onClicked: {
+                                searchResultsList.currentIndex = index;
+                                window.activateSearchResultAt(index);
+                            }
+                            onActiveFocusChanged: {
+                                if (activeFocus) {
+                                    searchResultsList.currentIndex = index;
+                                    searchResultsList.positionViewAtIndex(index, ListView.Contain);
+                                }
+                            }
+                            Keys.onReturnPressed: window.activateSearchResultAt(index)
+                            Keys.onEnterPressed: window.activateSearchResultAt(index)
+                            Keys.onPressed: event => {
+                                if (event.key === Qt.Key_Up || event.key === Qt.Key_Down) {
+                                    window.focusSearchResultAt(index + (event.key === Qt.Key_Up ? -1 : 1));
+                                    event.accepted = true;
+                                }
+                            }
+
+                            ToolTip {
+                                id: searchResultToolTip
+
+                                objectName: "searchResultToolTip"
+                                visible: searchRow.hovered || searchRow.activeFocus
+                                text: searchRow.modelData.displayName + " · " + (searchRow.modelData.available === false ? searchRow.modelData.unavailableReason : searchRow.displayType)
+                                timeout: -1
+                                contentItem: Text {
+                                    text: searchResultToolTip.text
+                                    textFormat: Text.PlainText
+                                    font: searchResultToolTip.font
+                                    wrapMode: Text.Wrap
+                                    color: searchResultToolTip.palette.toolTipText
+                                }
+                            }
+
+                            background: Rectangle {
+                                radius: 6
+                                color: searchRow.hovered || searchRow.down || searchRow.index === searchResultsList.currentIndex ? Qt.alpha(window.tokens.brand.blue, 0.16) : "transparent"
+                                border.width: searchRow.activeFocus ? 2 : 0
+                                border.color: window.tokens.brand.cyan
+                            }
+
+                            contentItem: RowLayout {
+                                spacing: 12
+
+                                Item {
+                                    Layout.preferredWidth: 36
+                                    Layout.preferredHeight: 36
+
+                                    Image {
+                                        id: searchIcon
+
+                                        objectName: "searchResultIcon"
+                                        anchors.fill: parent
+                                        source: searchRow.modelData.iconSource ? searchRow.modelData.iconSource + "?v=" + (window.controller.iconVersions[searchRow.modelData.appId] || 0) : ""
+                                        sourceSize.width: 54
+                                        sourceSize.height: 54
+                                        asynchronous: true
+                                        fillMode: Image.PreserveAspectFit
+                                    }
+
+                                    Label {
+                                        anchors.centerIn: parent
+                                        visible: searchIcon.status !== Image.Ready
+                                        text: searchRow.modelData.displayName.slice(0, 1)
+                                        textFormat: Text.PlainText
+                                        color: window.theme.foreground
+                                        font.pixelSize: 24
+                                        font.bold: true
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 3
+
+                                    Label {
+                                        Layout.fillWidth: true
+                                        text: searchRow.modelData.displayName
+                                        textFormat: Text.PlainText
+                                        color: window.theme.foreground
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Label {
+                                        Layout.fillWidth: true
+                                        text: searchRow.modelData.available === false ? searchRow.modelData.unavailableReason : searchRow.displayType + (searchRow.modelData.pinned ? qsTr(" · 已固定") : "")
+                                        textFormat: Text.PlainText
+                                        color: window.theme.secondary
+                                        font.pixelSize: 12
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                            }
+                        }
+
+                        Label {
+                            objectName: "emptySearchHint"
+                            anchors.fill: parent
+                            anchors.margins: 16
+                            visible: searchResultsList.count === 0
+                            text: window.controller.searchBusy ? qsTr("正在搜索…") : qsTr("未找到与「%1」匹配的应用。可修改关键词或清空搜索。").arg(window.controller.searchQuery)
+                            textFormat: Text.PlainText
+                            color: window.theme.secondary
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+                }
+
                 Label {
                     objectName: "selectionStatus"
                     Layout.fillWidth: true
                     text: window.selectionStatus
+                    textFormat: Text.PlainText
                     visible: text.length > 0
                     color: window.theme.foreground
                     wrapMode: Text.WordWrap

@@ -16,3 +16,8 @@ qt_add_executable(xdstarter_desktop_shell_service_tests desktop_shell_service_te
 target_link_libraries(xdstarter_desktop_shell_service_tests PRIVATE xdstarter_services Qt6::Test)
 add_test(NAME services.desktop_shell COMMAND xdstarter_desktop_shell_service_tests)
 set_tests_properties(services.desktop_shell PROPERTIES TIMEOUT 30)
+
+qt_add_executable(xdstarter_search_service_tests search_service_tests.cpp)
+target_link_libraries(xdstarter_search_service_tests PRIVATE xdstarter_services Qt6::Test)
+add_test(NAME services.search COMMAND xdstarter_search_service_tests)
+set_tests_properties(services.search PROPERTIES TIMEOUT 30)

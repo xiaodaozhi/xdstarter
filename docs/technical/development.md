@@ -73,9 +73,11 @@ $env:PATH = "$env:XDSTARTER_QT_ROOT/bin;$env:PATH"
 
 此前 Windows 11 10.0.26300 / Intel Iris Xe / Direct3D 11 普通窗口、三档磁贴交互和缩放检查使用 Qt 6.8.2、MSVC 19.29.30153，但旧辅助工具为 CMake 3.31.10、Ninja 1.13.0、Python 3.11。那一轮证据只属于当时环境，不能代替新清单完整构建结果；最新实际结果以关联 Issues 和新生成的工具记录为准。
 
-当前原型包含三组共 15 枚固定样例；三档磁贴从共享几何获得外框，小磁贴仅显示图标，ToolTip 和辅助功能保留完整名称，长名称在磁贴内省略。缩小窗口时布局不重排，Tab/Shift+Tab 或方向键聚焦会自动双向滚动到目标。主题与布局可保存恢复；编辑模式支持拖拽/跨组移动、Ctrl+方向键移动和三档尺寸切换。普通启动使用当前用户布局目录，`--layout-file` 可隔离验证；`--smoke-test` 完全禁用布局读写。样例不代表已安装应用，不提供应用启动、搜索、固定/取消固定、分组管理、托盘、原生材料或 Win 键接管。
+当前原型普通启动使用真实应用目录，支持图标、受控启动、固定/取消固定，以及目录与固定目标的离线名称、英文、拼音全拼和首字母搜索；输入框支持 Ctrl+F、方向键和 Enter，查询由专用后台 worker 处理，详见 [ADR-0010](adr/0010-local-application-search.md)。三档磁贴从共享几何获得外框，小磁贴仅显示图标，ToolTip 和辅助功能保留完整名称，长名称在磁贴内省略。缩小窗口时布局不重排，Tab/Shift+Tab 或方向键聚焦会自动双向滚动到目标。主题与布局可保存恢复；编辑模式支持拖拽/跨组移动、Ctrl+方向键移动和三档尺寸切换。普通启动使用当前用户布局目录，`--layout-file` 可隔离验证，查询不写入布局。
 
-应用预设注册 `app.qml_smoke`、`services.prototype`、`services.layout_store`、`ui.prototype`、`core.tile_grid` 五套 CTest。`--smoke-test` 仅加载 QML/视觉资源并短暂运行后退出；`ui.prototype` 使用同一产品 QML 和 controller 检查实际交互与抓帧。CTest 默认将 GUI 检查放在 offscreen/software 环境，该结果不代替原生 Windows 窗口和系统集成验收。
+`--smoke-test` 和 GUI 样例夹具使用三组共 15 枚固定样例。smoke 完全禁用布局读写，不连接真实目录、桌面动作、托盘、定位服务或 Win 键接管；样例名称可使用同一离线匹配逻辑搜索，但不能启动真实应用，也不代表已安装应用。分组管理和原生背景材料仍待后续开发；样例、模拟平台与真实 Windows 行为分别记录。
+
+启用应用与测试的预设当前注册十二套 CTest：`app.qml_smoke`、`core.tile_grid`、`services.prototype`、`services.layout_store`、`services.application_catalog`、`services.desktop_shell`、`services.search`、`platform.applications`、`platform.desktop`、`platform.win-key-capture`、`ui.prototype`、`ui.desktop_window_host`。注册不代表已运行通过；确切版本结果见[测试策略](testing.md)。`--smoke-test` 加载 QML/视觉资源并短暂运行后退出；`ui.prototype` 使用同一产品 QML 和 controller 检查交互与抓帧，本轮增加四个搜索用例，覆盖焦点与输入法、浏览恢复、键盘启动及目录／别名／重启状态。CTest 默认将 GUI 检查放在 offscreen/software 环境，该结果不代替原生 Windows 窗口和系统集成验收。
 
 ## Windows 窗口与缩放截图
 
@@ -107,6 +109,6 @@ MSVC/Ninja 构建在配置与编译阶段统一 `VSLANG`，并按原始字节探
 
 正式构建入口将 Windows 构建子进程的 `TEMP`/`TMP` 指向本项目 `build/tmp/`，避免 MSVC v142 经由 CMake 调用时错误解码中文用户临时目录，导致编译器探测报 C1083。该设置只存在于构建子进程，不改变系统或用户环境变量；实际目录写入工具验证记录。
 
-[应用工作流](../../.github/workflows/application-build.yml) 读取本项目工具清单，定义 Ubuntu 核心构建及额外 MSVC 2022 Windows Qt 构建、lint、CTest；它与原有文档检查并行保留。工作流尚未运行，仓库 Actions 的已有额度阻塞由 [#12](https://github.com/xiaodaozhi/xdstarter/issues/12) 跟踪。
+[应用工作流](../../.github/workflows/application-build.yml) 读取本项目工具清单，定义 Ubuntu 核心构建及额外 MSVC 2022 Windows Qt 构建、lint、CTest；它与原有文档检查并行保留。[#12](https://github.com/xiaodaozhi/xdstarter/issues/12) 保存早期 Actions 额度阻塞及恢复记录，不代表当前 PR 的状态。当前 head 的适用检查以关联 PR 为准，各版本的本地、CI 与真实窗口证据统一见[测试策略](testing.md)，不以历史运行结果替代新提交检查。
 
 官方依据：[Qt 6.8 Windows 支持配置](https://doc.qt.io/qt-6.8/windows.html)、[MSVC 二进制兼容性及 linker 限制](https://learn.microsoft.com/en-us/cpp/porting/binary-compat-2015-2017?view=msvc-170)、[CMake 要求](https://doc.qt.io/qt-6/cmake-supported-cmake-versions.html)。
