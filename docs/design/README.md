@@ -45,6 +45,8 @@
 
 运行时以 `visual.json` 的 `cornerRadiusDip.menu = 12` 和 `menuChrome` 为外观基准：`shadowInsetDip = 24`、`screenGapDip = 8`、`borderWidthDip = 1`。Canvas 使用共享圆角路径绘制主题实色面板、单层边框与阴影，并沿同一路径裁切侧栏背景，正文保留内边距。Windows 原生边框、圆角与阴影被禁用；此轮不修改 255 项开发素材或共享磁贴网格，透明外窗也不代表启用了背景材料。决策见 [ADR-0007](../technical/adr/0007-custom-menu-chrome.md)。
 
+[Issue #18](https://github.com/xiaodaozhi/xdstarter/issues/18) 将菜单边框改为主题独立的 `themes.{light,dark}.menuBorder`：浅色为 `#B7BEC8` 中性灰，深色为 `#46505E` 灰蓝，均为不透明颜色，切换主题时立即重绘。浅色参考用户提供的 Windows 11 开始菜单细描边观感，不将参考截图当作固定系统色值。继续使用同一路径上的单层 1 DIP 内描边、12 DIP 圆角和现有阴影；此处是主题 token，不新增用户设置项，也不改变历史设计稿与开发素材。
+
 托盘提供显示/隐藏与文字退出，收起后可恢复；不可用时通过最小化保留任务栏恢复入口。桌面快捷动作与工作区查询在后台服务执行，失败保留窗口；生命周期和支持边界见 [Windows 集成](../technical/windows-integration.md)。当前菜单使用设计的局部组件与几何约定，整张桌面设计稿仍不作为产品窗口的像素验收截图。
 
 ## 尺寸和颜色

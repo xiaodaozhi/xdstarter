@@ -7,7 +7,7 @@
   "defaultMenuSizeDip": {"width": 980, "height": 680},
   "animationDurationMs": 140,
   "themes": {
-    "dark": {"foreground": "#F4F7FB", "secondary": "#ACBBD0", "opaqueFallback": "#182334"},
-    "light": {"foreground": "#172338", "secondary": "#596A82", "opaqueFallback": "#EFF5FC"}
+    "dark": {"foreground": "#F4F7FB", "secondary": "#ACBBD0", "opaqueFallback": "#182334", "menuBorder": "#46505E"},
+    "light": {"foreground": "#172338", "secondary": "#596A82", "opaqueFallback": "#EFF5FC", "menuBorder": "#B7BEC8"}
   }
 }

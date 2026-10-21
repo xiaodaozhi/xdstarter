@@ -1461,7 +1461,10 @@ void PrototypeWindowTest::customChromePixels() {
                                .value(dark ? QStringLiteral("dark") : QStringLiteral("light"))
                                .toMap();
         const QColor base(theme.value(QStringLiteral("opaqueFallback")).toString());
+        const QColor border(theme.value(QStringLiteral("menuBorder")).toString());
+        QVERIFY(border.isValid());
         QTRY_COMPARE(surface->property("color").value<QColor>(), base);
+        QTRY_COMPARE(surface->property("borderColor").value<QColor>(), border);
         QSignalSpy painted(surface, SIGNAL(painted()));
         QVERIFY(painted.isValid());
         QVERIFY(QMetaObject::invokeMethod(surface, "requestPaint"));
@@ -1523,6 +1526,18 @@ void PrototypeWindowTest::customChromePixels() {
             QCOMPARE(farShadow, expectedFarShadowAlpha);
         }
         QCOMPARE(pixel(0, window_->height() / 2).alpha(), 0);
+        // Sample the straight edges of the rendered outline in both themes,
+        // independently of the panel and rail fills beneath the opaque stroke.
+        for (const QPointF& edge : {QPointF(shadow + 100, shadow + 0.5),
+                                   QPointF(shadow + 100, bottom - 0.5),
+                                   QPointF(shadow + 0.5, window_->height() / 2),
+                                   QPointF(right - 0.5, window_->height() / 2)}) {
+            QVERIFY2(closeColor(pixel(edge.x(), edge.y()), border),
+                     qPrintable(QStringLiteral("Border at (%1, %2): %3, expected %4")
+                                    .arg(edge.x()).arg(edge.y())
+                                    .arg(pixel(edge.x(), edge.y()).name(QColor::HexArgb),
+                                         border.name(QColor::HexArgb))));
+        }
         QVERIFY(closeColor(pixel(shadow + 100, shadow + 12), base));
         const auto railColor = surface->property("railColor").value<QColor>();
         QVERIFY(closeColor(pixel(shadow + 3, shadow + radius + 4), railColor));

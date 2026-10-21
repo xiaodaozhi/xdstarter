@@ -67,7 +67,7 @@ ApplicationWindow {
         color: window.theme.opaqueFallback
         railColor: Qt.darker(window.theme.opaqueFallback, window.darkTheme ? 1.12 : 1.035)
         borderWidth: window.tokens.menuChrome.borderWidthDip
-        borderColor: Qt.alpha(window.tokens.brand.blue, 0.18)
+        borderColor: window.theme.menuBorder
         shadowInset: window.shadowInset
     }
 
