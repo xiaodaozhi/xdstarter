@@ -20,7 +20,25 @@ GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查�
 
 本轮 CTest 默认 GUI 为 offscreen/software。该后端的 `QQuickWindow.grabWindow()` 会返回不含 alpha 的 RGB backing store，因此外观测试通过 Canvas `toDataURL("image/png")` 读取实际绘制的原始 RGBA PNG，未合成透明通道；侧栏透明背景及控件不越过圆角的几何另行检查。这验证 Canvas 绘制结果，不是完整 Windows 合成窗口截图，也不证明 DWM 实际外观。Windows 原生路径要求直接检查完整 `grabWindow()`，不能沿用离屏回退作为其通过证据。
 
-GUI 测试程序已实现显式 `--native-chrome-probe`：真实 Windows QPA/RHI 与工作区查询、模拟托盘 `toggleRequested`，检查十二轮显示/隐藏的位置及深浅主题完整截图；不注册或点击真实系统托盘，不读取用户布局或真实应用目录。本轮尚未运行该 probe，也未运行新版 Windows 缩放矩阵、实际托盘重复唤起或目视外观验收。内部菜单、拖拽、编辑、外部收起及新进程布局恢复仍需用本轮程序作实际回归。下方 #15/#14 的 hash、用户确认与待验收事项保持历史身份，不作为本轮通过结论。
+### Windows 原生渲染与五档缩放
+
+2026-10-21，同一 GUI hash 的显式 `--native-chrome-probe` 在 Windows QPA / Direct3D 11、Qt 6.8.2、kernel `10.0.26300`、DPR 1.5 下通过十二轮显示/隐藏检查。每轮首次可见窗口矩形与稳定后的矩形相同，十二轮位置一致；可见面板左侧和底部均为 8 DIP，透明外窗每侧留 24 DIP。实际工作区查询不执行 COM/UIA。工件为本地 `build/validation/issue16-native/native-chrome-probe.json` 与 `probe.log`。
+
+此 probe 使用真实 Windows 渲染与工作区查询，通过模拟托盘 `toggleRequested` 进入产品 host 路径；没有注册或点击真实系统托盘，也不读取用户布局或真实应用目录。深浅主题的完整 `QQuickWindow.grabWindow()` 均为 1542×1092 RGBA PNG，未使用离屏 Canvas 回退：外窗四角 alpha 为 0，近/远阴影 alpha 分别为 28/3，面板实色像素 alpha 为 255。以下两图使用内存样例磁贴且未连接真实目录，仅用于核对自绘边框、圆角、阴影与主题，不能当作真实应用目录的产品截图：[深色样例](validation/issue-16/dark-native-chrome.png)、[浅色样例](validation/issue-16/light-native-chrome.png)。
+
+同日 Windows QPA / Direct3D 11 的 100/125/150/175/200% Qt 有效缩放均为 GUI 32/32，耗时依次为 24.702/24.234/25.759/26.288/27.961 秒；基础 DPR 1.5，实际 DPR 约为 1/1.25/1.5/1.75/2。30 份 JSON 和 60 张窗口/网格 PNG 的像素检查通过。`build/validation/ui/native-matrix.json` 记录上述 GUI hash；本矩阵未修改 Windows 显示设置，不代替真实系统缩放切换或混合 DPI 验证。
+
+### 实际产品交互与新进程恢复
+
+同日使用上表产品 hash 和 `build/validation/issue16-product/layout.json` 隔离文件启动，真实目录显示 281 个应用。原生定位日志记录面板请求矩形为 `(12, 496, 1470, 1020)`、工作区为 `(0, 0, 2400, 1528)`，左/底间距均为 12 物理像素，即本机 8 DIP；阴影留白为每侧 36 物理像素。这是面板定位请求记录，不将其当作独立测得的桌面外窗边界。
+
+实际鼠标将 Epic Games Launcher 小磁贴从 column 1 拖到 column 0，再用内部右键菜单改为 standard（104×104 DIP）。重新打开菜单后按 Esc 仅关闭子菜单，主窗口仍显示并保留编辑状态；随后切换 dark 主题，经电源菜单明确选择退出 XDStarter。第一进程 PID 12724 正常结束，`first-exit.json` 记录退出代码 0。
+
+新进程 PID 12980 读取同一隔离文件，恢复 dark 主题及 column 0/2/3、row 0 的 standard/small/standard 三枚磁贴；重启前后 schema、IDs、targets、groups 和 preferences 逐对象一致，并可重新进入编辑。激活已有的仓库 Explorer 窗口后，产品日志记录 `external-focus`、`trayRecovery: true`，窗口收起；再次点击外部空白区域仍保持隐藏。上述是产品实际交互与恢复证据，不将 probe 的模拟托盘事件作为真实托盘点击。
+
+用户随后亲自点击通知区 XDStarter 图标恢复，并按要求再完成两轮收起/唤起，目视检查左侧/底部间距、位置稳定、已完成的编辑保留及单层圆角/阴影，最后经电源菜单明确退出；用户回复“均正常，已从菜单退出”。这部分是用户亲自操作和目视确认，不是自动化点击真实托盘。重启进程日志同时记录多次 `tray-toggle`、`explicit` 与 `external-focus`，各次面板定位请求均为 `(12, 496, 1470, 1020)`。`restarted-exit.json` 独立记录 PID 12980 于 2026-10-21 10:02:32（Asia/Shanghai）正常退出，代码 0；连同第一进程代码 0，本轮完成实际产品交互、用户协助真实托盘恢复与新进程布局恢复的本机验收。
+
+工件位于本地 `build/validation/issue16-product/`，包括进程/退出元数据、`interaction-result.json`、重启前后布局快照和 stdout/stderr；不提交含真实目标描述的隔离配置。远程检查仍受 [#12](https://github.com/xiaodaozhi/xdstarter/issues/12) 的账户付款/消费额度问题阻塞：同日手动[运行 39530444397](https://github.com/xiaodaozhi/xdstarter/actions/runs/39530444397) 的 job 未启动、步骤为空，错误注释仍为付款/额度限制；用户表示稍后处理 CI，先完成验收和 PR。本机验收不替代 PR 检查或表示已经合并；混合 DPI、自动隐藏任务栏、Explorer 重启等环境也不在本次通过范围。下方 #15/#14 的 hash、用户确认与待验收事项保持历史身份，不追溯记为本轮结果。
 
 ## 历史：原生外观菜单弹层验证（Issue #15）
 
@@ -190,7 +208,7 @@ $env:XDSTARTER_QT_ROOT = "$PWD/build/Qt/6.8.2/msvc2022_64"
 
 几何抓帧只在测试夹具中把 ToolTip opacity 设为 0，避免浮层遮挡磁贴扫描；JSON 明确记录 `tooltipsHiddenForGeometryCapture: true`。像素取样避开图标字形抗锯齿区域，未修改产品 ToolTip 行为或放宽 1 物理像素容差。ToolTip 可见性与完整文本由独立交互用例验证，不能用这些几何抓帧判定提示浮层表现。
 
-所有截图、JSON 和日志属于本地或 CI 工件，不提交到 Git。失败时保留实际 QPA、图形 API、窗口/屏幕几何、DPR 与像素扫描记录，避免仅凭 JSON 参数或设计稿认定布局通过。
+批量截图、JSON 和日志属于本地或 CI 工件，不提交到 Git。本轮仅将两张无用户数据的内存样例窗口 PNG 作为代表性验证图收录于 `technical/validation/issue-16/`；真实应用目录、布局目标描述和完整构建工件不随其提交。失败时保留实际 QPA、图形 API、窗口/屏幕几何、DPR 与像素扫描记录，避免仅凭 JSON 参数或设计稿认定布局通过。
 
 此矩阵不修改 Windows 显示设置，不能替代系统设置中真实切换缩放、混合 DPI 跨屏拖动、拔插屏幕、原生开始菜单接管或屏幕阅读器焦点验收。其他 Qt 版本、MSVC 2022 应用 CI 与 macOS 构建也仍需各自验证。
 

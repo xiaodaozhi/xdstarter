@@ -49,6 +49,10 @@ Windows 产品唤起调用 `queryMenuAnchor()`，仅后台读取显示器、工�
 ./build/tooling/Scripts/python.exe scripts/check_windows_icon.py --executable ./build/app-release/bin/xdstarter.exe
 ```
 
-[Issue #16](https://github.com/xiaodaozhi/xdstarter/issues/16) 正式 Release、QML lint 与 CTest 10/10 通过（13.64 秒，`build/custom-chrome-check.log`），GUI 为 32/32、host 为 17/17。默认 offscreen/software 的 RGB backing store 不保留 alpha，外观用例通过 Canvas `toDataURL("image/png")` 检查原始 RGBA 绘制结果，侧栏透明与控件圆角内几何另查；该回退不能当作 Windows 完整窗口截图。已实现的 `--native-chrome-probe` 使用真实 Windows QPA/RHI、工作区查询和模拟托盘信号，检查十二轮位置与深浅主题截图，本轮尚未运行；新版 Windows 缩放矩阵、实际托盘重复唤起和目视外观也未验收。精确产品/GUI/host hash 及支持边界见[测试策略](../docs/technical/testing.md)当前章节。
+[Issue #16](https://github.com/xiaodaozhi/xdstarter/issues/16) 正式 Release、QML lint 与 CTest 10/10 通过（13.64 秒，`build/custom-chrome-check.log`），GUI 为 32/32、host 为 17/17。默认 offscreen/software 的 RGB backing store 不保留 alpha，外观用例通过 Canvas `toDataURL("image/png")` 检查原始 RGBA 绘制结果，侧栏透明与控件圆角内几何另查；该回退不能当作 Windows 完整窗口截图。
+
+2026-10-21，同一 GUI hash 的 `--native-chrome-probe` 在真实 Windows QPA/Direct3D 11、DPR 1.5 下通过十二轮，首次可见与稳定后矩形相同、左/底均为 8 DIP；深浅主题直接通过完整 `grabWindow()` 检查 RGBA，不使用离屏回退。此 probe 采用模拟托盘信号，没有注册或点击真实系统托盘；[深色](../docs/technical/validation/issue-16/dark-native-chrome.png)、[浅色](../docs/technical/validation/issue-16/light-native-chrome.png)验证图均为无用户数据的内存样例，不是产品真实目录。五档 Windows QPA 各 32/32，30 份 JSON 与 60 张窗口/网格 PNG 的像素检查通过。
+
+实际产品已验证拖拽、内部尺寸菜单/Esc、主题保存、新进程恢复相同 IDs/targets/groups/preferences 和外部失焦收起。用户亲自点击通知区图标恢复并完成两轮重复收起/唤起，目视确认等距、稳定、编辑保留及单层圆角/阴影，最终回复“均正常，已从菜单退出”；这是用户协助真实托盘验收，与 probe 的模拟信号分别记录。两进程均从电源菜单正常退出，代码均为 0，本轮本机验收完成。远程检查仍受 #12 的账户付款/消费额度问题阻塞，手动运行 39530444397 未执行 job 步骤；用户选择稍后处理 CI，当前本机通过不替代 PR 检查。精确程序 hash、工件与支持边界见[测试策略](../docs/technical/testing.md)当前章节。
 
 历史 [#15](https://github.com/xiaodaozhi/xdstarter/issues/15) 正式 Release、QML lint 与 CTest 为 10/10，GUI 为 30/30、host 为 14/14，五档 Windows QPA 各 30/30；实际焦点、用户协助托盘恢复、受控中断与新进程读取结果分别记录，不将中断当作正常退出。[#14](https://github.com/xiaodaozhi/xdstarter/issues/14) 普通窗口的 10/10 与五档各 26/26 同样保留历史身份，不沿用为本轮通过结论。
