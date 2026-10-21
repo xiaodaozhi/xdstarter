@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "name": "Unicode Unihan",
+    "version": "17.0.0",
+    "archiveUrl": "https://www.unicode.org/Public/17.0.0/ucd/Unihan.zip",
+    "archiveBytes": 8518517,
+    "archiveSha256": "f7a48b2b545acfaa77b2d607ae28747404ce02baefee16396c5d2d7a8ef34b5e",
+    "readingsFile": "Unihan_Readings.txt",
+    "readingsSha256": "575e69c9ad85a4737a889a4f94cbd987042a90a1a6cc16dd3f4ed995c715b17c",
+    "specificationUrl": "https://www.unicode.org/reports/tr38/tr38-39.html",
+    "hashProvenance": "Locally computed SHA256 of the official HTTPS download; not an upstream signature."
+  },
+  "license": {
+    "spdxIdentifier": "Unicode-3.0",
+    "file": "LICENSE.txt",
+    "url": "https://www.unicode.org/license.txt",
+    "applicabilityUrl": "https://www.unicode.org/copyright.html",
+    "retrievedDate": "2026-10-21",
+    "sha256": "e7a93b009565cfce55919a381437ac4db883e9da2126fa28b91d12732bc53d96"
+  },
+  "extraction": {
+    "propertiesInPreferenceOrder": [
+      "kMandarin",
+      "kTGHZ2013",
+      "kXHC1983",
+      "kHanyuPinyin"
+    ],
+    "readingNormalization": "NFC; u-diaeresis tone forms to v; NFD; remove combining tone marks; stable deduplication.",
+    "canonicalFormat": "Uppercase Unicode scalar hexadecimal, TAB, comma-separated ASCII readings, LF; code points ascending.",
+    "variantPropagation": false,
+    "phraseDictionary": false
+  },
+  "statistics": {
+    "codepoints": 44359,
+    "readings": 52982,
+    "polyphonicCodepoints": 6964,
+    "maxReadingsPerCodepoint": 8,
+    "maxReadingLength": 6
+  },
+  "outputs": {
+    "canonicalTsv": {
+      "file": "unihan_pinyin.tsv",
+      "bytes": 454694,
+      "sha256": "843a99cc8cfd56dd891da6ed23d0ca164eefa37f7d465d6dfe73f0a6e4099eae"
+    },
+    "cppInclude": {
+      "file": "unihan_pinyin.inc",
+      "bytes": 854171,
+      "sha256": "c24692cdcb6d2c2f0530dbf63cc4722b5e612a742e86b9e58457d7728dee683d"
+    }
+  }
+}

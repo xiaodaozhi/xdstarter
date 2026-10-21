@@ -1,0 +1,5677 @@
+{
+  "buildAbi": "x86_64-little_endian-llp64",
+  "captures": [
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 528,
+            "width": 240,
+            "x": 112,
+            "y": 152
+          },
+          "visible": true
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 240,
+            "x": 112,
+            "y": 112
+          },
+          "visible": true
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 558,
+            "width": 594,
+            "x": 376,
+            "y": 112
+          },
+          "visible": true
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 0,
+            "width": 0,
+            "x": 112,
+            "y": 48
+          },
+          "visible": false
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 7,
+      "state": "browse",
+      "stateAssertionPassed": true,
+      "theme": "dark",
+      "tiles": [
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-1",
+          "name": "A 笔记"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 112,
+            "y": 0
+          },
+          "id": "visual-2",
+          "name": "B 表格"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-3",
+          "name": "C 演示"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-4",
+          "name": "D 代码编辑器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-5",
+          "name": "E 浏览器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-6",
+          "name": "F 消息"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-7",
+          "name": "G 照片"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-8",
+          "name": "H 计算器"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 0
+          },
+          "id": "visual-9",
+          "name": "I 时钟"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 56
+          },
+          "id": "visual-10",
+          "name": "J 记事本"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 56
+          },
+          "id": "visual-11",
+          "name": "K 设置"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-12",
+          "name": "L 游戏"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-13",
+          "name": "M 音乐"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-14",
+          "name": "N 视频"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-15",
+          "name": "O 终端"
+        }
+      ],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 528,
+            "width": 240,
+            "x": 112,
+            "y": 152
+          },
+          "visible": true
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 240,
+            "x": 112,
+            "y": 112
+          },
+          "visible": true
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 558,
+            "width": 594,
+            "x": 376,
+            "y": 112
+          },
+          "visible": true
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 0,
+            "width": 0,
+            "x": 112,
+            "y": 48
+          },
+          "visible": false
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "themeButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 228,
+            "x": 702,
+            "y": 98
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 10,
+      "state": "more-menu",
+      "stateAssertionPassed": true,
+      "theme": "dark",
+      "tiles": [
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-1",
+          "name": "A 笔记"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 112,
+            "y": 0
+          },
+          "id": "visual-2",
+          "name": "B 表格"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-3",
+          "name": "C 演示"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-4",
+          "name": "D 代码编辑器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-5",
+          "name": "E 浏览器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-6",
+          "name": "F 消息"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-7",
+          "name": "G 照片"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-8",
+          "name": "H 计算器"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 0
+          },
+          "id": "visual-9",
+          "name": "I 时钟"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 56
+          },
+          "id": "visual-10",
+          "name": "J 记事本"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 56
+          },
+          "id": "visual-11",
+          "name": "K 设置"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-12",
+          "name": "L 游戏"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-13",
+          "name": "M 音乐"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-14",
+          "name": "N 视频"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-15",
+          "name": "O 终端"
+        }
+      ],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 528,
+            "width": 240,
+            "x": 112,
+            "y": 152
+          },
+          "visible": false
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 240,
+            "x": 112,
+            "y": 112
+          },
+          "visible": false
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 558,
+            "width": 594,
+            "x": 376,
+            "y": 112
+          },
+          "visible": false
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 868,
+            "x": 112,
+            "y": 112
+          },
+          "visible": true
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 15,
+      "state": "search-results",
+      "stateAssertionPassed": true,
+      "theme": "dark",
+      "tiles": [
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-1",
+          "name": "A 笔记"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 112,
+            "y": 0
+          },
+          "id": "visual-2",
+          "name": "B 表格"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-3",
+          "name": "C 演示"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-4",
+          "name": "D 代码编辑器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-5",
+          "name": "E 浏览器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-6",
+          "name": "F 消息"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-7",
+          "name": "G 照片"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-8",
+          "name": "H 计算器"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 0
+          },
+          "id": "visual-9",
+          "name": "I 时钟"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 56
+          },
+          "id": "visual-10",
+          "name": "J 记事本"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 56
+          },
+          "id": "visual-11",
+          "name": "K 设置"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-12",
+          "name": "L 游戏"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-13",
+          "name": "M 音乐"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-14",
+          "name": "N 视频"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-15",
+          "name": "O 终端"
+        }
+      ],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 528,
+            "width": 240,
+            "x": 112,
+            "y": 152
+          },
+          "visible": false
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 240,
+            "x": 112,
+            "y": 112
+          },
+          "visible": false
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 558,
+            "width": 594,
+            "x": 376,
+            "y": 112
+          },
+          "visible": false
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 868,
+            "x": 112,
+            "y": 112
+          },
+          "visible": true
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 18,
+      "state": "search-empty",
+      "stateAssertionPassed": true,
+      "theme": "dark",
+      "tiles": [
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-1",
+          "name": "A 笔记"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 112,
+            "y": 0
+          },
+          "id": "visual-2",
+          "name": "B 表格"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-3",
+          "name": "C 演示"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-4",
+          "name": "D 代码编辑器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-5",
+          "name": "E 浏览器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-6",
+          "name": "F 消息"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-7",
+          "name": "G 照片"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-8",
+          "name": "H 计算器"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 0
+          },
+          "id": "visual-9",
+          "name": "I 时钟"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 56
+          },
+          "id": "visual-10",
+          "name": "J 记事本"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 56
+          },
+          "id": "visual-11",
+          "name": "K 设置"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-12",
+          "name": "L 游戏"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-13",
+          "name": "M 音乐"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-14",
+          "name": "N 视频"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-15",
+          "name": "O 终端"
+        }
+      ],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 468,
+            "width": 240,
+            "x": 112,
+            "y": 212
+          },
+          "visible": true
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 508,
+            "width": 240,
+            "x": 112,
+            "y": 172
+          },
+          "visible": true
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 498,
+            "width": 594,
+            "x": 376,
+            "y": 172
+          },
+          "visible": true
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 868,
+            "x": 112,
+            "y": 112
+          },
+          "visible": false
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 22,
+      "state": "edit",
+      "stateAssertionPassed": true,
+      "theme": "dark",
+      "tiles": [
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-1",
+          "name": "A 笔记"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 112,
+            "y": 0
+          },
+          "id": "visual-2",
+          "name": "B 表格"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-3",
+          "name": "C 演示"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-4",
+          "name": "D 代码编辑器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-5",
+          "name": "E 浏览器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-6",
+          "name": "F 消息"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-7",
+          "name": "G 照片"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-8",
+          "name": "H 计算器"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 0
+          },
+          "id": "visual-9",
+          "name": "I 时钟"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 56
+          },
+          "id": "visual-10",
+          "name": "J 记事本"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 56
+          },
+          "id": "visual-11",
+          "name": "K 设置"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-12",
+          "name": "L 游戏"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-13",
+          "name": "M 音乐"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-14",
+          "name": "N 视频"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-15",
+          "name": "O 终端"
+        }
+      ],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 468,
+            "width": 240,
+            "x": 112,
+            "y": 212
+          },
+          "visible": true
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 508,
+            "width": 240,
+            "x": 112,
+            "y": 172
+          },
+          "visible": true
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupNameField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 380,
+            "x": 324,
+            "y": 362
+          },
+          "visible": true
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 498,
+            "width": 594,
+            "x": 376,
+            "y": 172
+          },
+          "visible": true
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 868,
+            "x": 112,
+            "y": 112
+          },
+          "visible": false
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 25,
+      "state": "group-name-dialog",
+      "stateAssertionPassed": true,
+      "theme": "dark",
+      "tiles": [
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-1",
+          "name": "A 笔记"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 112,
+            "y": 0
+          },
+          "id": "visual-2",
+          "name": "B 表格"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-3",
+          "name": "C 演示"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-4",
+          "name": "D 代码编辑器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-5",
+          "name": "E 浏览器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-6",
+          "name": "F 消息"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-7",
+          "name": "G 照片"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-8",
+          "name": "H 计算器"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 0
+          },
+          "id": "visual-9",
+          "name": "I 时钟"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 56
+          },
+          "id": "visual-10",
+          "name": "J 记事本"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 56
+          },
+          "id": "visual-11",
+          "name": "K 设置"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-12",
+          "name": "L 游戏"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-13",
+          "name": "M 音乐"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-14",
+          "name": "N 视频"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-15",
+          "name": "O 终端"
+        }
+      ],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 468,
+            "width": 240,
+            "x": 112,
+            "y": 212
+          },
+          "visible": true
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 508,
+            "width": 240,
+            "x": 112,
+            "y": 172
+          },
+          "visible": true
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupRenameAction": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 288,
+            "x": 710,
+            "y": 210
+          },
+          "visible": true
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 498,
+            "width": 594,
+            "x": 376,
+            "y": 172
+          },
+          "visible": true
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 868,
+            "x": 112,
+            "y": 112
+          },
+          "visible": false
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 28,
+      "state": "group-menu",
+      "stateAssertionPassed": true,
+      "theme": "dark",
+      "tiles": [
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-1",
+          "name": "A 笔记"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 112,
+            "y": 0
+          },
+          "id": "visual-2",
+          "name": "B 表格"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-3",
+          "name": "C 演示"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-4",
+          "name": "D 代码编辑器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-5",
+          "name": "E 浏览器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-6",
+          "name": "F 消息"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-7",
+          "name": "G 照片"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-8",
+          "name": "H 计算器"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 0
+          },
+          "id": "visual-9",
+          "name": "I 时钟"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 56
+          },
+          "id": "visual-10",
+          "name": "J 记事本"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 56
+          },
+          "id": "visual-11",
+          "name": "K 设置"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-12",
+          "name": "L 游戏"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-13",
+          "name": "M 音乐"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-14",
+          "name": "N 视频"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-15",
+          "name": "O 终端"
+        }
+      ],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 528,
+            "width": 240,
+            "x": 112,
+            "y": 152
+          },
+          "visible": true
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 240,
+            "x": 112,
+            "y": 112
+          },
+          "visible": true
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 558,
+            "width": 594,
+            "x": 376,
+            "y": 112
+          },
+          "visible": true
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 868,
+            "x": 112,
+            "y": 112
+          },
+          "visible": false
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 35,
+      "state": "unavailable",
+      "stateAssertionPassed": true,
+      "theme": "dark",
+      "tiles": [
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-1",
+          "name": "A 笔记"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 112,
+            "y": 0
+          },
+          "id": "visual-2",
+          "name": "B 表格"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-3",
+          "name": "C 演示"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-4",
+          "name": "D 代码编辑器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-5",
+          "name": "E 浏览器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-6",
+          "name": "F 消息"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-7",
+          "name": "G 照片"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-8",
+          "name": "H 计算器"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 0
+          },
+          "id": "visual-9",
+          "name": "I 时钟"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 56
+          },
+          "id": "visual-10",
+          "name": "J 记事本"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 56
+          },
+          "id": "visual-11",
+          "name": "K 设置"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-12",
+          "name": "L 游戏"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-13",
+          "name": "M 音乐"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-14",
+          "name": "N 视频"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-15",
+          "name": "O 终端"
+        }
+      ],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 328,
+            "width": 240,
+            "x": 112,
+            "y": 212
+          },
+          "visible": false
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 368,
+            "width": 240,
+            "x": 112,
+            "y": 172
+          },
+          "visible": false
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 444,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 356,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 368,
+            "x": 112,
+            "y": 456
+          },
+          "visible": false
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 298,
+            "width": 358,
+            "x": 112,
+            "y": 172
+          },
+          "visible": true
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 480,
+            "width": 480,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 400,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 236,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 868,
+            "x": 112,
+            "y": 112
+          },
+          "visible": false
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 368,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 480,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 528,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 40,
+      "state": "narrow",
+      "stateAssertionPassed": true,
+      "theme": "dark",
+      "tiles": [
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-1",
+          "name": "A 笔记"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 112,
+            "y": 0
+          },
+          "id": "visual-2",
+          "name": "B 表格"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-3",
+          "name": "C 演示"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-4",
+          "name": "D 代码编辑器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-5",
+          "name": "E 浏览器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-6",
+          "name": "F 消息"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-7",
+          "name": "G 照片"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-8",
+          "name": "H 计算器"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 0
+          },
+          "id": "visual-9",
+          "name": "I 时钟"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 56
+          },
+          "id": "visual-10",
+          "name": "J 记事本"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 56
+          },
+          "id": "visual-11",
+          "name": "K 设置"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-12",
+          "name": "L 游戏"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-13",
+          "name": "M 音乐"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-14",
+          "name": "N 视频"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-15",
+          "name": "O 终端"
+        }
+      ],
+      "widthPx": 528,
+      "windowHeightDip": 528,
+      "windowWidthDip": 528
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 528,
+            "width": 240,
+            "x": 112,
+            "y": 152
+          },
+          "visible": true
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 240,
+            "x": 112,
+            "y": 112
+          },
+          "visible": true
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 558,
+            "width": 594,
+            "x": 376,
+            "y": 112
+          },
+          "visible": true
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 0,
+            "width": 0,
+            "x": 112,
+            "y": 48
+          },
+          "visible": false
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 4,
+      "state": "empty",
+      "stateAssertionPassed": true,
+      "theme": "dark",
+      "tiles": [],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 528,
+            "width": 240,
+            "x": 112,
+            "y": 152
+          },
+          "visible": true
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 240,
+            "x": 112,
+            "y": 112
+          },
+          "visible": true
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 558,
+            "width": 594,
+            "x": 376,
+            "y": 112
+          },
+          "visible": true
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 0,
+            "width": 0,
+            "x": 112,
+            "y": 48
+          },
+          "visible": false
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 4,
+      "state": "loading",
+      "stateAssertionPassed": true,
+      "theme": "dark",
+      "tiles": [],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 528,
+            "width": 240,
+            "x": 112,
+            "y": 152
+          },
+          "visible": true
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 240,
+            "x": 112,
+            "y": 112
+          },
+          "visible": true
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 558,
+            "width": 594,
+            "x": 376,
+            "y": 112
+          },
+          "visible": true
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 0,
+            "width": 0,
+            "x": 112,
+            "y": 48
+          },
+          "visible": false
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 7,
+      "state": "browse",
+      "stateAssertionPassed": true,
+      "theme": "light",
+      "tiles": [
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-1",
+          "name": "A 笔记"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 112,
+            "y": 0
+          },
+          "id": "visual-2",
+          "name": "B 表格"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-3",
+          "name": "C 演示"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-4",
+          "name": "D 代码编辑器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-5",
+          "name": "E 浏览器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-6",
+          "name": "F 消息"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-7",
+          "name": "G 照片"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-8",
+          "name": "H 计算器"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 0
+          },
+          "id": "visual-9",
+          "name": "I 时钟"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 56
+          },
+          "id": "visual-10",
+          "name": "J 记事本"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 56
+          },
+          "id": "visual-11",
+          "name": "K 设置"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-12",
+          "name": "L 游戏"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-13",
+          "name": "M 音乐"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-14",
+          "name": "N 视频"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-15",
+          "name": "O 终端"
+        }
+      ],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 528,
+            "width": 240,
+            "x": 112,
+            "y": 152
+          },
+          "visible": true
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 240,
+            "x": 112,
+            "y": 112
+          },
+          "visible": true
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 558,
+            "width": 594,
+            "x": 376,
+            "y": 112
+          },
+          "visible": true
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 0,
+            "width": 0,
+            "x": 112,
+            "y": 48
+          },
+          "visible": false
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "themeButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 228,
+            "x": 702,
+            "y": 98
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 10,
+      "state": "more-menu",
+      "stateAssertionPassed": true,
+      "theme": "light",
+      "tiles": [
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-1",
+          "name": "A 笔记"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 112,
+            "y": 0
+          },
+          "id": "visual-2",
+          "name": "B 表格"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-3",
+          "name": "C 演示"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-4",
+          "name": "D 代码编辑器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-5",
+          "name": "E 浏览器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-6",
+          "name": "F 消息"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-7",
+          "name": "G 照片"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-8",
+          "name": "H 计算器"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 0
+          },
+          "id": "visual-9",
+          "name": "I 时钟"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 56
+          },
+          "id": "visual-10",
+          "name": "J 记事本"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 56
+          },
+          "id": "visual-11",
+          "name": "K 设置"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-12",
+          "name": "L 游戏"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-13",
+          "name": "M 音乐"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-14",
+          "name": "N 视频"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-15",
+          "name": "O 终端"
+        }
+      ],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 528,
+            "width": 240,
+            "x": 112,
+            "y": 152
+          },
+          "visible": false
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 240,
+            "x": 112,
+            "y": 112
+          },
+          "visible": false
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 558,
+            "width": 594,
+            "x": 376,
+            "y": 112
+          },
+          "visible": false
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 868,
+            "x": 112,
+            "y": 112
+          },
+          "visible": true
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 14,
+      "state": "search-results",
+      "stateAssertionPassed": true,
+      "theme": "light",
+      "tiles": [
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-1",
+          "name": "A 笔记"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 112,
+            "y": 0
+          },
+          "id": "visual-2",
+          "name": "B 表格"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-3",
+          "name": "C 演示"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-4",
+          "name": "D 代码编辑器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-5",
+          "name": "E 浏览器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-6",
+          "name": "F 消息"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-7",
+          "name": "G 照片"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-8",
+          "name": "H 计算器"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 0
+          },
+          "id": "visual-9",
+          "name": "I 时钟"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 56
+          },
+          "id": "visual-10",
+          "name": "J 记事本"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 56
+          },
+          "id": "visual-11",
+          "name": "K 设置"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-12",
+          "name": "L 游戏"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-13",
+          "name": "M 音乐"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-14",
+          "name": "N 视频"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-15",
+          "name": "O 终端"
+        }
+      ],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 528,
+            "width": 240,
+            "x": 112,
+            "y": 152
+          },
+          "visible": false
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 240,
+            "x": 112,
+            "y": 112
+          },
+          "visible": false
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 558,
+            "width": 594,
+            "x": 376,
+            "y": 112
+          },
+          "visible": false
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 868,
+            "x": 112,
+            "y": 112
+          },
+          "visible": true
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 17,
+      "state": "search-empty",
+      "stateAssertionPassed": true,
+      "theme": "light",
+      "tiles": [
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-1",
+          "name": "A 笔记"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 112,
+            "y": 0
+          },
+          "id": "visual-2",
+          "name": "B 表格"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-3",
+          "name": "C 演示"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-4",
+          "name": "D 代码编辑器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-5",
+          "name": "E 浏览器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-6",
+          "name": "F 消息"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-7",
+          "name": "G 照片"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-8",
+          "name": "H 计算器"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 0
+          },
+          "id": "visual-9",
+          "name": "I 时钟"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 56
+          },
+          "id": "visual-10",
+          "name": "J 记事本"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 56
+          },
+          "id": "visual-11",
+          "name": "K 设置"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-12",
+          "name": "L 游戏"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-13",
+          "name": "M 音乐"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-14",
+          "name": "N 视频"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-15",
+          "name": "O 终端"
+        }
+      ],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 468,
+            "width": 240,
+            "x": 112,
+            "y": 212
+          },
+          "visible": true
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 508,
+            "width": 240,
+            "x": 112,
+            "y": 172
+          },
+          "visible": true
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 498,
+            "width": 594,
+            "x": 376,
+            "y": 172
+          },
+          "visible": true
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 868,
+            "x": 112,
+            "y": 112
+          },
+          "visible": false
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 21,
+      "state": "edit",
+      "stateAssertionPassed": true,
+      "theme": "light",
+      "tiles": [
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-1",
+          "name": "A 笔记"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 112,
+            "y": 0
+          },
+          "id": "visual-2",
+          "name": "B 表格"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-3",
+          "name": "C 演示"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-4",
+          "name": "D 代码编辑器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-5",
+          "name": "E 浏览器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-6",
+          "name": "F 消息"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-7",
+          "name": "G 照片"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-8",
+          "name": "H 计算器"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 0
+          },
+          "id": "visual-9",
+          "name": "I 时钟"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 56
+          },
+          "id": "visual-10",
+          "name": "J 记事本"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 56
+          },
+          "id": "visual-11",
+          "name": "K 设置"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-12",
+          "name": "L 游戏"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-13",
+          "name": "M 音乐"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-14",
+          "name": "N 视频"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-15",
+          "name": "O 终端"
+        }
+      ],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 468,
+            "width": 240,
+            "x": 112,
+            "y": 212
+          },
+          "visible": true
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 508,
+            "width": 240,
+            "x": 112,
+            "y": 172
+          },
+          "visible": true
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupNameField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 380,
+            "x": 324,
+            "y": 362
+          },
+          "visible": true
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 498,
+            "width": 594,
+            "x": 376,
+            "y": 172
+          },
+          "visible": true
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 868,
+            "x": 112,
+            "y": 112
+          },
+          "visible": false
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 24,
+      "state": "group-name-dialog",
+      "stateAssertionPassed": true,
+      "theme": "light",
+      "tiles": [
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-1",
+          "name": "A 笔记"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 112,
+            "y": 0
+          },
+          "id": "visual-2",
+          "name": "B 表格"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-3",
+          "name": "C 演示"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-4",
+          "name": "D 代码编辑器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-5",
+          "name": "E 浏览器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-6",
+          "name": "F 消息"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-7",
+          "name": "G 照片"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-8",
+          "name": "H 计算器"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 0
+          },
+          "id": "visual-9",
+          "name": "I 时钟"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 56
+          },
+          "id": "visual-10",
+          "name": "J 记事本"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 56
+          },
+          "id": "visual-11",
+          "name": "K 设置"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-12",
+          "name": "L 游戏"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-13",
+          "name": "M 音乐"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-14",
+          "name": "N 视频"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-15",
+          "name": "O 终端"
+        }
+      ],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 468,
+            "width": 240,
+            "x": 112,
+            "y": 212
+          },
+          "visible": true
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 508,
+            "width": 240,
+            "x": 112,
+            "y": 172
+          },
+          "visible": true
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupRenameAction": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 288,
+            "x": 710,
+            "y": 210
+          },
+          "visible": true
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 498,
+            "width": 594,
+            "x": 376,
+            "y": 172
+          },
+          "visible": true
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 868,
+            "x": 112,
+            "y": 112
+          },
+          "visible": false
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 29,
+      "state": "group-menu",
+      "stateAssertionPassed": true,
+      "theme": "light",
+      "tiles": [
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-1",
+          "name": "A 笔记"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 112,
+            "y": 0
+          },
+          "id": "visual-2",
+          "name": "B 表格"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-3",
+          "name": "C 演示"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-4",
+          "name": "D 代码编辑器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-5",
+          "name": "E 浏览器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-6",
+          "name": "F 消息"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-7",
+          "name": "G 照片"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-8",
+          "name": "H 计算器"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 0
+          },
+          "id": "visual-9",
+          "name": "I 时钟"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 56
+          },
+          "id": "visual-10",
+          "name": "J 记事本"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 56
+          },
+          "id": "visual-11",
+          "name": "K 设置"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-12",
+          "name": "L 游戏"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-13",
+          "name": "M 音乐"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-14",
+          "name": "N 视频"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-15",
+          "name": "O 终端"
+        }
+      ],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 528,
+            "width": 240,
+            "x": 112,
+            "y": 152
+          },
+          "visible": true
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 240,
+            "x": 112,
+            "y": 112
+          },
+          "visible": true
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 558,
+            "width": 594,
+            "x": 376,
+            "y": 112
+          },
+          "visible": true
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 868,
+            "x": 112,
+            "y": 112
+          },
+          "visible": false
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 35,
+      "state": "unavailable",
+      "stateAssertionPassed": true,
+      "theme": "light",
+      "tiles": [
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-1",
+          "name": "A 笔记"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 112,
+            "y": 0
+          },
+          "id": "visual-2",
+          "name": "B 表格"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-3",
+          "name": "C 演示"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-4",
+          "name": "D 代码编辑器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-5",
+          "name": "E 浏览器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-6",
+          "name": "F 消息"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-7",
+          "name": "G 照片"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-8",
+          "name": "H 计算器"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 0
+          },
+          "id": "visual-9",
+          "name": "I 时钟"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 56
+          },
+          "id": "visual-10",
+          "name": "J 记事本"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 56
+          },
+          "id": "visual-11",
+          "name": "K 设置"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-12",
+          "name": "L 游戏"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-13",
+          "name": "M 音乐"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-14",
+          "name": "N 视频"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-15",
+          "name": "O 终端"
+        }
+      ],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 328,
+            "width": 240,
+            "x": 112,
+            "y": 212
+          },
+          "visible": false
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 368,
+            "width": 240,
+            "x": 112,
+            "y": 172
+          },
+          "visible": false
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 444,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 356,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 368,
+            "x": 112,
+            "y": 456
+          },
+          "visible": false
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 298,
+            "width": 358,
+            "x": 112,
+            "y": 172
+          },
+          "visible": true
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 480,
+            "width": 480,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 400,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 236,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 868,
+            "x": 112,
+            "y": 112
+          },
+          "visible": false
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 368,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 480,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 528,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 40,
+      "state": "narrow",
+      "stateAssertionPassed": true,
+      "theme": "light",
+      "tiles": [
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-1",
+          "name": "A 笔记"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 112,
+            "y": 0
+          },
+          "id": "visual-2",
+          "name": "B 表格"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-3",
+          "name": "C 演示"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-4",
+          "name": "D 代码编辑器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-5",
+          "name": "E 浏览器"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-6",
+          "name": "F 消息"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-7",
+          "name": "G 照片"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-8",
+          "name": "H 计算器"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 0
+          },
+          "id": "visual-9",
+          "name": "I 时钟"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 448,
+            "y": 56
+          },
+          "id": "visual-10",
+          "name": "J 记事本"
+        },
+        {
+          "boundsDip": {
+            "height": 48,
+            "width": 48,
+            "x": 504,
+            "y": 56
+          },
+          "id": "visual-11",
+          "name": "K 设置"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 216,
+            "x": 0,
+            "y": 0
+          },
+          "id": "visual-12",
+          "name": "L 游戏"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 224,
+            "y": 0
+          },
+          "id": "visual-13",
+          "name": "M 音乐"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 336,
+            "y": 0
+          },
+          "id": "visual-14",
+          "name": "N 视频"
+        },
+        {
+          "boundsDip": {
+            "height": 104,
+            "width": 104,
+            "x": 448,
+            "y": 0
+          },
+          "id": "visual-15",
+          "name": "O 终端"
+        }
+      ],
+      "widthPx": 528,
+      "windowHeightDip": 528,
+      "windowWidthDip": 528
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 528,
+            "width": 240,
+            "x": 112,
+            "y": 152
+          },
+          "visible": true
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 240,
+            "x": 112,
+            "y": 112
+          },
+          "visible": true
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 558,
+            "width": 594,
+            "x": 376,
+            "y": 112
+          },
+          "visible": true
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 0,
+            "width": 0,
+            "x": 112,
+            "y": 48
+          },
+          "visible": false
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 5,
+      "state": "empty",
+      "stateAssertionPassed": true,
+      "theme": "light",
+      "tiles": [],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    },
+    {
+      "bounds": {
+        "applicationList": {
+          "sceneBoundsDip": {
+            "height": 528,
+            "width": 240,
+            "x": 112,
+            "y": 152
+          },
+          "visible": true
+        },
+        "catalogPanel": {
+          "sceneBoundsDip": {
+            "height": 568,
+            "width": 240,
+            "x": 112,
+            "y": 112
+          },
+          "visible": true
+        },
+        "closeMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 944,
+            "y": 50
+          },
+          "visible": true
+        },
+        "editLayoutButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 856,
+            "y": 50
+          },
+          "visible": true
+        },
+        "feedbackPanel": {
+          "sceneBoundsDip": {
+            "height": 24,
+            "width": 868,
+            "x": 112,
+            "y": 656
+          },
+          "visible": false
+        },
+        "groupsFlickable": {
+          "sceneBoundsDip": {
+            "height": 558,
+            "width": 594,
+            "x": 376,
+            "y": 112
+          },
+          "visible": true
+        },
+        "menuPanel": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 980,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        },
+        "moreMenuButton": {
+          "sceneBoundsDip": {
+            "height": 36,
+            "width": 36,
+            "x": 900,
+            "y": 50
+          },
+          "visible": true
+        },
+        "searchField": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 736,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "searchPanel": {
+          "sceneBoundsDip": {
+            "height": 0,
+            "width": 0,
+            "x": 112,
+            "y": 48
+          },
+          "visible": false
+        },
+        "searchToolbar": {
+          "sceneBoundsDip": {
+            "height": 40,
+            "width": 868,
+            "x": 112,
+            "y": 48
+          },
+          "visible": true
+        },
+        "shortcutRail": {
+          "sceneBoundsDip": {
+            "height": 680,
+            "width": 64,
+            "x": 24,
+            "y": 24
+          },
+          "visible": true
+        }
+      },
+      "devicePixelRatio": 1,
+      "freshFramesPassed": true,
+      "fullRgbaWindowFrame": true,
+      "graphicsApi": "Software",
+      "heightPx": 728,
+      "nativeAlphaPassed": true,
+      "nativeAlphaRequired": false,
+      "originalCaptureHasAlphaChannel": false,
+      "originalTransparentCorners": false,
+      "passed": true,
+      "pixelDimensionsPassed": true,
+      "renderedFrameSerial": 5,
+      "state": "loading",
+      "stateAssertionPassed": true,
+      "theme": "light",
+      "tiles": [],
+      "widthPx": 1028,
+      "windowHeightDip": 728,
+      "windowWidthDip": 1028
+    }
+  ],
+  "completedCaptures": 22,
+  "errors": [],
+  "kernelVersion": "10.0.26300",
+  "noRealApplicationCatalogOrLaunch": true,
+  "noTrayOrGlobalInput": true,
+  "noUserLayoutIO": true,
+  "passed": true,
+  "platformName": "offscreen",
+  "qmlWarnings": [],
+  "qtScaleFactorEnvironment": "",
+  "qtScreenScaleFactorsEnvironment": "",
+  "qtVersion": "6.8.2",
+  "requestedCaptures": 22,
+  "scope": "同产品 QML/controller 的隔离固定数据视觉状态；无真实目录、应用启动、托盘、系统接管或用户布局读写。",
+  "systemDisplaySettingsChanged": false,
+  "themesShareTileNamesAndGeometry": true,
+  "executableSha256": "35c4a04c00e72703ef986cb06d66c2fd112e244d4e7bfc477b082c4e21b184ff",
+  "screenshotsStoredInLocalBuildOnly": true
+}

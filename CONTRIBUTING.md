@@ -7,6 +7,9 @@
 3. 使用 `feat/<issue>-<slug>`、`fix/<issue>-<slug>` 或 `docs/<issue>-<slug>` 分支。
 4. 提交前运行适用检查，并在 PR 中写明实际验证环境与结果。
 5. PR 关联 Issue。完成全部验收后使用 `Closes #编号`；仅完成部分时使用 `Refs #编号`。
+6. 已授权的开发交付默认继续创建 PR，等待当前 head 的适用检查与必要审查通过，再使用 merge commit 合并到 `main`，保留原始提交，更新 Issue 并安全同步本地 `main`；“提交推送”无需用户再逐步提醒后续步骤。
+
+用户明确指定只实现、仅提交推送、草稿 PR 或暂不合并时，停在对应边界；纯讨论和只读审查不触发提交与合并。检查失败时先处理失败或说明实际阻塞。执行方式与完成条件见[产研流程](docs/process/workflow.md)。
 
 使用中文撰写项目文档与 Issue，代码标识符使用英文。提交信息使用 Conventional Commits，例如 `docs: initialize product and technical documentation`。
 

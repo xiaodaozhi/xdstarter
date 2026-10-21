@@ -1,0 +1,809 @@
+{
+  "buildAbi": "x86_64-little_endian-llp64",
+  "completedTransitions": 6,
+  "cycles": [
+    {
+      "beforeReveal": {
+        "nativeRectRead": true,
+        "nativeWindowDpi": 96,
+        "nativeWindowVisible": false,
+        "outerPhysicalRect": {
+          "height": 728,
+          "width": 1028,
+          "x": 697,
+          "y": -904
+        },
+        "qtGeometryDip": {
+          "height": 728,
+          "width": 1028,
+          "x": 697,
+          "y": -904
+        },
+        "qtRenderDpr": 1,
+        "qtScreenName": "LEN P24i-20",
+        "qtScreenNativeMonitorMatchesWindow": true,
+        "qtWindowExposed": false,
+        "qtWindowVisible": false
+      },
+      "cycle": 1,
+      "firstVisible": {
+        "bottomGapPhysical": 12,
+        "defaultLogicalSizePreserved": true,
+        "expectedGapPhysical": 12,
+        "leftGapPhysical": 12,
+        "marginsPassed": true,
+        "nativeRectRead": true,
+        "nativeWindowDpi": 144,
+        "nativeWindowVisible": false,
+        "outerPhysicalRect": {
+          "height": 1092,
+          "width": 1542,
+          "x": -24,
+          "y": 460
+        },
+        "panelPhysicalRect": {
+          "height": 1020,
+          "width": 1470,
+          "x": 12,
+          "y": 496
+        },
+        "qtGeometryDip": {
+          "height": 728,
+          "width": 1028,
+          "x": -16,
+          "y": 307
+        },
+        "qtRenderDpr": 1.5,
+        "qtScreenName": "LQ144P1JX01",
+        "qtScreenNativeMonitorMatchesWindow": true,
+        "qtWindowExposed": false,
+        "qtWindowVisible": true,
+        "shadowInsetPhysical": 36,
+        "targetMonitorAndScalePassed": true,
+        "visiblePanelContained": true
+      },
+      "firstVisiblePassed": true,
+      "graphicsApi": "Direct3D11",
+      "hiddenSourceUsesDifferentMonitorAndDpr": true,
+      "revealAndSettledGeometryMatch": true,
+      "rhiPassed": true,
+      "settledAfter1000ms": {
+        "bottomGapPhysical": 12,
+        "defaultLogicalSizePreserved": true,
+        "expectedGapPhysical": 12,
+        "leftGapPhysical": 12,
+        "marginsPassed": true,
+        "nativeRectRead": true,
+        "nativeWindowDpi": 144,
+        "nativeWindowVisible": true,
+        "outerPhysicalRect": {
+          "height": 1092,
+          "width": 1542,
+          "x": -24,
+          "y": 460
+        },
+        "panelPhysicalRect": {
+          "height": 1020,
+          "width": 1470,
+          "x": 12,
+          "y": 496
+        },
+        "qtGeometryDip": {
+          "height": 728,
+          "width": 1028,
+          "x": -16,
+          "y": 307
+        },
+        "qtRenderDpr": 1.5,
+        "qtScreenName": "LQ144P1JX01",
+        "qtScreenNativeMonitorMatchesWindow": true,
+        "qtWindowExposed": true,
+        "qtWindowVisible": true,
+        "shadowInsetPhysical": 36,
+        "targetMonitorAndScalePassed": true,
+        "visiblePanelContained": true
+      },
+      "settledPassed": true,
+      "settledVisiblePassed": true,
+      "targetMonitor": "\\\\.\\DISPLAY1",
+      "targetNativeDpi": 144,
+      "targetQtDpr": 1.5,
+      "targetWorkAreaPhysicalRect": {
+        "height": 1528,
+        "width": 2400,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "beforeReveal": {
+        "nativeRectRead": true,
+        "nativeWindowDpi": 144,
+        "nativeWindowVisible": false,
+        "outerPhysicalRect": {
+          "height": 1092,
+          "width": 1542,
+          "x": -24,
+          "y": 460
+        },
+        "qtGeometryDip": {
+          "height": 728,
+          "width": 1028,
+          "x": -16,
+          "y": 307
+        },
+        "qtRenderDpr": 1.5,
+        "qtScreenName": "LQ144P1JX01",
+        "qtScreenNativeMonitorMatchesWindow": true,
+        "qtWindowExposed": false,
+        "qtWindowVisible": false
+      },
+      "cycle": 2,
+      "firstVisible": {
+        "bottomGapPhysical": 8,
+        "defaultLogicalSizePreserved": true,
+        "expectedGapPhysical": 8,
+        "leftGapPhysical": 8,
+        "marginsPassed": true,
+        "nativeRectRead": true,
+        "nativeWindowDpi": 96,
+        "nativeWindowVisible": false,
+        "outerPhysicalRect": {
+          "height": 728,
+          "width": 1028,
+          "x": 236,
+          "y": -760
+        },
+        "panelPhysicalRect": {
+          "height": 680,
+          "width": 980,
+          "x": 260,
+          "y": -736
+        },
+        "qtGeometryDip": {
+          "height": 728,
+          "width": 1028,
+          "x": 236,
+          "y": -760
+        },
+        "qtRenderDpr": 1,
+        "qtScreenName": "LEN P24i-20",
+        "qtScreenNativeMonitorMatchesWindow": true,
+        "qtWindowExposed": false,
+        "qtWindowVisible": true,
+        "shadowInsetPhysical": 24,
+        "targetMonitorAndScalePassed": true,
+        "visiblePanelContained": true
+      },
+      "firstVisiblePassed": true,
+      "graphicsApi": "Direct3D11",
+      "hiddenSourceUsesDifferentMonitorAndDpr": true,
+      "revealAndSettledGeometryMatch": true,
+      "rhiPassed": true,
+      "settledAfter1000ms": {
+        "bottomGapPhysical": 8,
+        "defaultLogicalSizePreserved": true,
+        "expectedGapPhysical": 8,
+        "leftGapPhysical": 8,
+        "marginsPassed": true,
+        "nativeRectRead": true,
+        "nativeWindowDpi": 96,
+        "nativeWindowVisible": true,
+        "outerPhysicalRect": {
+          "height": 728,
+          "width": 1028,
+          "x": 236,
+          "y": -760
+        },
+        "panelPhysicalRect": {
+          "height": 680,
+          "width": 980,
+          "x": 260,
+          "y": -736
+        },
+        "qtGeometryDip": {
+          "height": 728,
+          "width": 1028,
+          "x": 236,
+          "y": -760
+        },
+        "qtRenderDpr": 1,
+        "qtScreenName": "LEN P24i-20",
+        "qtScreenNativeMonitorMatchesWindow": true,
+        "qtWindowExposed": true,
+        "qtWindowVisible": true,
+        "shadowInsetPhysical": 24,
+        "targetMonitorAndScalePassed": true,
+        "visiblePanelContained": true
+      },
+      "settledPassed": true,
+      "settledVisiblePassed": true,
+      "targetMonitor": "\\\\.\\DISPLAY2",
+      "targetNativeDpi": 96,
+      "targetQtDpr": 1,
+      "targetWorkAreaPhysicalRect": {
+        "height": 1032,
+        "width": 1920,
+        "x": 252,
+        "y": -1080
+      }
+    },
+    {
+      "beforeReveal": {
+        "nativeRectRead": true,
+        "nativeWindowDpi": 96,
+        "nativeWindowVisible": false,
+        "outerPhysicalRect": {
+          "height": 728,
+          "width": 1028,
+          "x": 236,
+          "y": -760
+        },
+        "qtGeometryDip": {
+          "height": 728,
+          "width": 1028,
+          "x": 236,
+          "y": -760
+        },
+        "qtRenderDpr": 1,
+        "qtScreenName": "LEN P24i-20",
+        "qtScreenNativeMonitorMatchesWindow": true,
+        "qtWindowExposed": false,
+        "qtWindowVisible": false
+      },
+      "cycle": 3,
+      "firstVisible": {
+        "bottomGapPhysical": 12,
+        "defaultLogicalSizePreserved": true,
+        "expectedGapPhysical": 12,
+        "leftGapPhysical": 12,
+        "marginsPassed": true,
+        "nativeRectRead": true,
+        "nativeWindowDpi": 144,
+        "nativeWindowVisible": false,
+        "outerPhysicalRect": {
+          "height": 1092,
+          "width": 1542,
+          "x": -24,
+          "y": 460
+        },
+        "panelPhysicalRect": {
+          "height": 1020,
+          "width": 1470,
+          "x": 12,
+          "y": 496
+        },
+        "qtGeometryDip": {
+          "height": 728,
+          "width": 1028,
+          "x": -16,
+          "y": 307
+        },
+        "qtRenderDpr": 1.5,
+        "qtScreenName": "LQ144P1JX01",
+        "qtScreenNativeMonitorMatchesWindow": true,
+        "qtWindowExposed": false,
+        "qtWindowVisible": true,
+        "shadowInsetPhysical": 36,
+        "targetMonitorAndScalePassed": true,
+        "visiblePanelContained": true
+      },
+      "firstVisiblePassed": true,
+      "graphicsApi": "Direct3D11",
+      "hiddenSourceUsesDifferentMonitorAndDpr": true,
+      "revealAndSettledGeometryMatch": true,
+      "rhiPassed": true,
+      "settledAfter1000ms": {
+        "bottomGapPhysical": 12,
+        "defaultLogicalSizePreserved": true,
+        "expectedGapPhysical": 12,
+        "leftGapPhysical": 12,
+        "marginsPassed": true,
+        "nativeRectRead": true,
+        "nativeWindowDpi": 144,
+        "nativeWindowVisible": true,
+        "outerPhysicalRect": {
+          "height": 1092,
+          "width": 1542,
+          "x": -24,
+          "y": 460
+        },
+        "panelPhysicalRect": {
+          "height": 1020,
+          "width": 1470,
+          "x": 12,
+          "y": 496
+        },
+        "qtGeometryDip": {
+          "height": 728,
+          "width": 1028,
+          "x": -16,
+          "y": 307
+        },
+        "qtRenderDpr": 1.5,
+        "qtScreenName": "LQ144P1JX01",
+        "qtScreenNativeMonitorMatchesWindow": true,
+        "qtWindowExposed": true,
+        "qtWindowVisible": true,
+        "shadowInsetPhysical": 36,
+        "targetMonitorAndScalePassed": true,
+        "visiblePanelContained": true
+      },
+      "settledPassed": true,
+      "settledVisiblePassed": true,
+      "targetMonitor": "\\\\.\\DISPLAY1",
+      "targetNativeDpi": 144,
+      "targetQtDpr": 1.5,
+      "targetWorkAreaPhysicalRect": {
+        "height": 1528,
+        "width": 2400,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "beforeReveal": {
+        "nativeRectRead": true,
+        "nativeWindowDpi": 144,
+        "nativeWindowVisible": false,
+        "outerPhysicalRect": {
+          "height": 1092,
+          "width": 1542,
+          "x": -24,
+          "y": 460
+        },
+        "qtGeometryDip": {
+          "height": 728,
+          "width": 1028,
+          "x": -16,
+          "y": 307
+        },
+        "qtRenderDpr": 1.5,
+        "qtScreenName": "LQ144P1JX01",
+        "qtScreenNativeMonitorMatchesWindow": true,
+        "qtWindowExposed": false,
+        "qtWindowVisible": false
+      },
+      "cycle": 4,
+      "firstVisible": {
+        "bottomGapPhysical": 8,
+        "defaultLogicalSizePreserved": true,
+        "expectedGapPhysical": 8,
+        "leftGapPhysical": 8,
+        "marginsPassed": true,
+        "nativeRectRead": true,
+        "nativeWindowDpi": 96,
+        "nativeWindowVisible": false,
+        "outerPhysicalRect": {
+          "height": 728,
+          "width": 1028,
+          "x": 236,
+          "y": -760
+        },
+        "panelPhysicalRect": {
+          "height": 680,
+          "width": 980,
+          "x": 260,
+          "y": -736
+        },
+        "qtGeometryDip": {
+          "height": 728,
+          "width": 1028,
+          "x": 236,
+          "y": -760
+        },
+        "qtRenderDpr": 1,
+        "qtScreenName": "LEN P24i-20",
+        "qtScreenNativeMonitorMatchesWindow": true,
+        "qtWindowExposed": false,
+        "qtWindowVisible": true,
+        "shadowInsetPhysical": 24,
+        "targetMonitorAndScalePassed": true,
+        "visiblePanelContained": true
+      },
+      "firstVisiblePassed": true,
+      "graphicsApi": "Direct3D11",
+      "hiddenSourceUsesDifferentMonitorAndDpr": true,
+      "revealAndSettledGeometryMatch": true,
+      "rhiPassed": true,
+      "settledAfter1000ms": {
+        "bottomGapPhysical": 8,
+        "defaultLogicalSizePreserved": true,
+        "expectedGapPhysical": 8,
+        "leftGapPhysical": 8,
+        "marginsPassed": true,
+        "nativeRectRead": true,
+        "nativeWindowDpi": 96,
+        "nativeWindowVisible": true,
+        "outerPhysicalRect": {
+          "height": 728,
+          "width": 1028,
+          "x": 236,
+          "y": -760
+        },
+        "panelPhysicalRect": {
+          "height": 680,
+          "width": 980,
+          "x": 260,
+          "y": -736
+        },
+        "qtGeometryDip": {
+          "height": 728,
+          "width": 1028,
+          "x": 236,
+          "y": -760
+        },
+        "qtRenderDpr": 1,
+        "qtScreenName": "LEN P24i-20",
+        "qtScreenNativeMonitorMatchesWindow": true,
+        "qtWindowExposed": true,
+        "qtWindowVisible": true,
+        "shadowInsetPhysical": 24,
+        "targetMonitorAndScalePassed": true,
+        "visiblePanelContained": true
+      },
+      "settledPassed": true,
+      "settledVisiblePassed": true,
+      "targetMonitor": "\\\\.\\DISPLAY2",
+      "targetNativeDpi": 96,
+      "targetQtDpr": 1,
+      "targetWorkAreaPhysicalRect": {
+        "height": 1032,
+        "width": 1920,
+        "x": 252,
+        "y": -1080
+      }
+    },
+    {
+      "beforeReveal": {
+        "nativeRectRead": true,
+        "nativeWindowDpi": 96,
+        "nativeWindowVisible": false,
+        "outerPhysicalRect": {
+          "height": 728,
+          "width": 1028,
+          "x": 236,
+          "y": -760
+        },
+        "qtGeometryDip": {
+          "height": 728,
+          "width": 1028,
+          "x": 236,
+          "y": -760
+        },
+        "qtRenderDpr": 1,
+        "qtScreenName": "LEN P24i-20",
+        "qtScreenNativeMonitorMatchesWindow": true,
+        "qtWindowExposed": false,
+        "qtWindowVisible": false
+      },
+      "cycle": 5,
+      "firstVisible": {
+        "bottomGapPhysical": 12,
+        "defaultLogicalSizePreserved": true,
+        "expectedGapPhysical": 12,
+        "leftGapPhysical": 12,
+        "marginsPassed": true,
+        "nativeRectRead": true,
+        "nativeWindowDpi": 144,
+        "nativeWindowVisible": false,
+        "outerPhysicalRect": {
+          "height": 1092,
+          "width": 1542,
+          "x": -24,
+          "y": 460
+        },
+        "panelPhysicalRect": {
+          "height": 1020,
+          "width": 1470,
+          "x": 12,
+          "y": 496
+        },
+        "qtGeometryDip": {
+          "height": 728,
+          "width": 1028,
+          "x": -16,
+          "y": 307
+        },
+        "qtRenderDpr": 1.5,
+        "qtScreenName": "LQ144P1JX01",
+        "qtScreenNativeMonitorMatchesWindow": true,
+        "qtWindowExposed": false,
+        "qtWindowVisible": true,
+        "shadowInsetPhysical": 36,
+        "targetMonitorAndScalePassed": true,
+        "visiblePanelContained": true
+      },
+      "firstVisiblePassed": true,
+      "graphicsApi": "Direct3D11",
+      "hiddenSourceUsesDifferentMonitorAndDpr": true,
+      "revealAndSettledGeometryMatch": true,
+      "rhiPassed": true,
+      "settledAfter1000ms": {
+        "bottomGapPhysical": 12,
+        "defaultLogicalSizePreserved": true,
+        "expectedGapPhysical": 12,
+        "leftGapPhysical": 12,
+        "marginsPassed": true,
+        "nativeRectRead": true,
+        "nativeWindowDpi": 144,
+        "nativeWindowVisible": true,
+        "outerPhysicalRect": {
+          "height": 1092,
+          "width": 1542,
+          "x": -24,
+          "y": 460
+        },
+        "panelPhysicalRect": {
+          "height": 1020,
+          "width": 1470,
+          "x": 12,
+          "y": 496
+        },
+        "qtGeometryDip": {
+          "height": 728,
+          "width": 1028,
+          "x": -16,
+          "y": 307
+        },
+        "qtRenderDpr": 1.5,
+        "qtScreenName": "LQ144P1JX01",
+        "qtScreenNativeMonitorMatchesWindow": true,
+        "qtWindowExposed": true,
+        "qtWindowVisible": true,
+        "shadowInsetPhysical": 36,
+        "targetMonitorAndScalePassed": true,
+        "visiblePanelContained": true
+      },
+      "settledPassed": true,
+      "settledVisiblePassed": true,
+      "targetMonitor": "\\\\.\\DISPLAY1",
+      "targetNativeDpi": 144,
+      "targetQtDpr": 1.5,
+      "targetWorkAreaPhysicalRect": {
+        "height": 1528,
+        "width": 2400,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "beforeReveal": {
+        "nativeRectRead": true,
+        "nativeWindowDpi": 144,
+        "nativeWindowVisible": false,
+        "outerPhysicalRect": {
+          "height": 1092,
+          "width": 1542,
+          "x": -24,
+          "y": 460
+        },
+        "qtGeometryDip": {
+          "height": 728,
+          "width": 1028,
+          "x": -16,
+          "y": 307
+        },
+        "qtRenderDpr": 1.5,
+        "qtScreenName": "LQ144P1JX01",
+        "qtScreenNativeMonitorMatchesWindow": true,
+        "qtWindowExposed": false,
+        "qtWindowVisible": false
+      },
+      "cycle": 6,
+      "firstVisible": {
+        "bottomGapPhysical": 8,
+        "defaultLogicalSizePreserved": true,
+        "expectedGapPhysical": 8,
+        "leftGapPhysical": 8,
+        "marginsPassed": true,
+        "nativeRectRead": true,
+        "nativeWindowDpi": 96,
+        "nativeWindowVisible": false,
+        "outerPhysicalRect": {
+          "height": 728,
+          "width": 1028,
+          "x": 236,
+          "y": -760
+        },
+        "panelPhysicalRect": {
+          "height": 680,
+          "width": 980,
+          "x": 260,
+          "y": -736
+        },
+        "qtGeometryDip": {
+          "height": 728,
+          "width": 1028,
+          "x": 236,
+          "y": -760
+        },
+        "qtRenderDpr": 1,
+        "qtScreenName": "LEN P24i-20",
+        "qtScreenNativeMonitorMatchesWindow": true,
+        "qtWindowExposed": false,
+        "qtWindowVisible": true,
+        "shadowInsetPhysical": 24,
+        "targetMonitorAndScalePassed": true,
+        "visiblePanelContained": true
+      },
+      "firstVisiblePassed": true,
+      "graphicsApi": "Direct3D11",
+      "hiddenSourceUsesDifferentMonitorAndDpr": true,
+      "revealAndSettledGeometryMatch": true,
+      "rhiPassed": true,
+      "settledAfter1000ms": {
+        "bottomGapPhysical": 8,
+        "defaultLogicalSizePreserved": true,
+        "expectedGapPhysical": 8,
+        "leftGapPhysical": 8,
+        "marginsPassed": true,
+        "nativeRectRead": true,
+        "nativeWindowDpi": 96,
+        "nativeWindowVisible": true,
+        "outerPhysicalRect": {
+          "height": 728,
+          "width": 1028,
+          "x": 236,
+          "y": -760
+        },
+        "panelPhysicalRect": {
+          "height": 680,
+          "width": 980,
+          "x": 260,
+          "y": -736
+        },
+        "qtGeometryDip": {
+          "height": 728,
+          "width": 1028,
+          "x": 236,
+          "y": -760
+        },
+        "qtRenderDpr": 1,
+        "qtScreenName": "LEN P24i-20",
+        "qtScreenNativeMonitorMatchesWindow": true,
+        "qtWindowExposed": true,
+        "qtWindowVisible": true,
+        "shadowInsetPhysical": 24,
+        "targetMonitorAndScalePassed": true,
+        "visiblePanelContained": true
+      },
+      "settledPassed": true,
+      "settledVisiblePassed": true,
+      "targetMonitor": "\\\\.\\DISPLAY2",
+      "targetNativeDpi": 96,
+      "targetQtDpr": 1,
+      "targetWorkAreaPhysicalRect": {
+        "height": 1032,
+        "width": 1920,
+        "x": 252,
+        "y": -1080
+      }
+    }
+  ],
+  "errors": [],
+  "hiddenSource": {
+    "nativeRectRead": true,
+    "nativeWindowDpi": 96,
+    "nativeWindowVisible": false,
+    "outerPhysicalRect": {
+      "height": 728,
+      "width": 1028,
+      "x": 697,
+      "y": -904
+    },
+    "qtGeometryDip": {
+      "height": 728,
+      "width": 1028,
+      "x": 697,
+      "y": -904
+    },
+    "qtRenderDpr": 1,
+    "qtScreenName": "LEN P24i-20",
+    "qtScreenNativeMonitorMatchesWindow": true,
+    "qtWindowExposed": false,
+    "qtWindowVisible": false
+  },
+  "kernelVersion": "10.0.26300",
+  "monitors": [
+    {
+      "defaultPanelFits": true,
+      "matchingQtScreens": 1,
+      "monitorPhysicalRect": {
+        "height": 1600,
+        "width": 2400,
+        "x": 0,
+        "y": 0
+      },
+      "name": "\\\\.\\DISPLAY1",
+      "nativeEffectiveDpi": 144,
+      "qtScreenDpr": 1.5,
+      "qtScreenName": "LQ144P1JX01",
+      "workAreaPhysicalRect": {
+        "height": 1528,
+        "width": 2400,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "defaultPanelFits": true,
+      "matchingQtScreens": 1,
+      "monitorPhysicalRect": {
+        "height": 1080,
+        "width": 1920,
+        "x": 252,
+        "y": -1080
+      },
+      "name": "\\\\.\\DISPLAY2",
+      "nativeEffectiveDpi": 96,
+      "qtScreenDpr": 1,
+      "qtScreenName": "LEN P24i-20",
+      "workAreaPhysicalRect": {
+        "height": 1032,
+        "width": 1920,
+        "x": 252,
+        "y": -1080
+      }
+    }
+  ],
+  "nativeMeasurement": "GetWindowRect; not placement output",
+  "noApplicationCatalog": true,
+  "noGlobalInput": true,
+  "noRealTrayRegistrationOrClicks": true,
+  "noUserLayoutIO": true,
+  "passed": true,
+  "platformName": "windows",
+  "prerequisitesAvailable": true,
+  "qmlWarnings": [],
+  "qtScreens": [
+    {
+      "availableGeometryDip": {
+        "height": 1019,
+        "width": 1600,
+        "x": 0,
+        "y": 0
+      },
+      "devicePixelRatio": 1.5,
+      "geometryDip": {
+        "height": 1067,
+        "width": 1600,
+        "x": 0,
+        "y": 0
+      },
+      "name": "LQ144P1JX01",
+      "nativeDeviceName": "\\\\.\\DISPLAY1",
+      "nativeMonitorInfoRead": true
+    },
+    {
+      "availableGeometryDip": {
+        "height": 1032,
+        "width": 1920,
+        "x": 252,
+        "y": -1080
+      },
+      "devicePixelRatio": 1,
+      "geometryDip": {
+        "height": 1080,
+        "width": 1920,
+        "x": 252,
+        "y": -1080
+      },
+      "name": "LEN P24i-20",
+      "nativeDeviceName": "\\\\.\\DISPLAY2",
+      "nativeMonitorInfoRead": true
+    }
+  ],
+  "qtVersion": "6.8.2",
+  "requestedTransitions": 6,
+  "scope": "Real Windows QPA/RHI, real monitor geometry, simulated tray signals and anchor selection.",
+  "evidenceIdentity": {
+    "date": "2026-10-21",
+    "sourceCommit": "550f5d476816e5663e50670647e690cd13e7973b",
+    "guiSha256": "e03c5ad960bbce417aafc29397c1af4df69ad189c2ce61a5c432bfcba021fdfa",
+    "productSha256": "079c5202f3ff01a53187354c0133b71124dafc674ba2acce505f0a030da28066",
+    "measurementBoundary": "Qt visibleChanged synchronous geometry and after 1000 ms; not continuous frame sampling; product tray acceptance recorded separately.",
+    "command": "xdstarter_ui_tests.exe --native-screen-transition-probe",
+    "rawResultLastWriteTimeUtc": "2026-10-21T08:20:55Z"
+  }
+}

@@ -59,7 +59,7 @@ def png_size(path):
 
 design = ROOT / 'docs/design'
 for name in ('dark', 'light'):
-    require(png_size(design / f'mockups/v2/xdstarter-desktop-{name}-v2.png') == (1920, 1080), f'{name}: incorrect canvas')
+    require(png_size(design / f'mockups/v2/xdstarter-desktop-{name}-v2.png') == (1920, 1200), f'{name}: incorrect canvas')
 require(png_size(design / 'mockups/v2/xdstarter-tile-grid-v2.png') == (1600, 1080), 'grid: incorrect canvas')
 require(png_size(design / 'brand/xdstarter-brand-board.png') == (1920, 1080), 'brand: incorrect canvas')
 
@@ -94,5 +94,8 @@ if errors:
     print('\n'.join(errors), file=sys.stderr)
     sys.exit(1)
 subprocess.run([sys.executable, str(design / 'source/verify_tile_grid.py')], check=True)
+subprocess.run([sys.executable, str(design / 'source/verify_menu_design.py')], check=True)
+subprocess.run([sys.executable, str(design / 'source/verify_development_assets.py')], check=True)
+subprocess.run([sys.executable, str(ROOT / 'scripts/check_pinyin_data.py')], check=True)
 print(f'PASS: {len(FILES)} repository files; local links, formats, current canvases, logo alpha, forms and shared tile geometry.')
 print('Qt application builds and Windows integration tests are not part of this check.')

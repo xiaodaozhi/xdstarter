@@ -1,11 +1,18 @@
 {
   "brand": {"blue": "#368BFF", "cyan": "#36D6CB", "ink": "#142138"},
+  "status": {"error": "#ED7777"},
   "cornerRadiusDip": {"menu": 12, "tile": 6},
+  "menuChrome": {"shadowInsetDip": 24, "screenGapDip": 8, "borderWidthDip": 1},
   "tileLabelFontDip": 14,
   "defaultMenuSizeDip": {"width": 980, "height": 680},
+  "designRevision": "2.2",
+  "referenceCanvas": {"width": 1920, "height": 1200, "scale": 1.5, "taskbarHeightDip": 48},
+  "layout": {"railWidth": 64, "contentMargin": 24, "contentSpacing": 24, "searchHeight": 40, "headerHeight": 32, "catalogWidth": 240, "catalogRowHeight": 44, "catalogSectionHeight": 20, "groupSpacing": 24, "controlSize": 36},
+  "font": {"body": 14, "caption": 12, "heading": 16, "section": 12},
+  "tilePalette": ["#245CA6", "#206747", "#9B482A", "#244E79", "#1E617B", "#3B4D63", "#404F9A", "#8B5020"],
   "animationDurationMs": 140,
   "themes": {
-    "dark": {"foreground": "#F4F7FB", "secondary": "#ACBBD0", "opaqueFallback": "#182334"},
-    "light": {"foreground": "#172338", "secondary": "#596A82", "opaqueFallback": "#EFF5FC"}
+    "dark": {"foreground": "#F4F7FB", "errorForeground": "#FF9696", "secondary": "#ACBBD0", "opaqueFallback": "#182334", "menuBorder": "#46505E", "surface": "#223148", "searchBackground": "#23334A", "hover": "#2B3E57", "pressed": "#344B68", "controlBorder": "#3B4B61", "separator": "#324258"},
+    "light": {"foreground": "#172338", "errorForeground": "#B42318", "secondary": "#596A82", "opaqueFallback": "#EFF5FC", "menuBorder": "#B7BEC8", "surface": "#F8FAFE", "searchBackground": "#FFFFFF", "hover": "#E2EAF5", "pressed": "#D5E1F0", "controlBorder": "#D1DAE6", "separator": "#D4DEEB"}
   }
 }

@@ -1,0 +1,49 @@
+{
+  "date": "2026-10-21",
+  "productSha256": "079c5202f3ff01a53187354c0133b71124dafc674ba2acce505f0a030da28066",
+  "sameProductAcrossThreeProcesses": true,
+  "allThreeExitsZero": true,
+  "schemaVersion": 2,
+  "finalGroupCount": 2,
+  "finalTileCount": 4,
+  "groupNameAndOrderRestored": true,
+  "emptyGroupDeletionRestored": true,
+  "stableGroupIdsPreserved": true,
+  "targetsTilesAndPreferencesUnchangedExceptGroupEdits": true,
+  "finalRestartBeforeAfterDeepEqual": true,
+  "actualWindowObserved": {
+    "theme": "light",
+    "editMode": false,
+    "query": "",
+    "groupNames": [
+      "学习与资料 Learning",
+      "常用应用"
+    ],
+    "tileCount": 4
+  },
+  "userAssistedTray": "position and size normal; edit mode observed after restore",
+  "userAssistedDeletion": "temporary empty group deleted and normal exit confirmed",
+  "scope": "Isolated layout file with real application catalog; no normal-user layout modification. No screenshots or target descriptors published.",
+  "sourceCommit": "550f5d476816e5663e50670647e690cd13e7973b",
+  "sessions": [
+    {
+      "tag": "first",
+      "startedAt": "2026-10-21T16:21:37.0781478+08:00",
+      "exitedAt": "2026-10-21T16:38:43.0317594+08:00",
+      "exitCode": 0
+    },
+    {
+      "tag": "restart",
+      "startedAt": "2026-10-21T16:39:27.0393172+08:00",
+      "exitedAt": "2026-10-21T16:43:30.1358179+08:00",
+      "exitCode": 0
+    },
+    {
+      "tag": "verify",
+      "startedAt": "2026-10-21T16:43:44.7333121+08:00",
+      "exitedAt": "2026-10-21T16:45:10.5469205+08:00",
+      "exitCode": 0
+    }
+  ],
+  "restartRecoveryBoundary": "One restart entered the existing minimized fallback with trayRecovery false. Final verification activated the returned product window; no assertion of always-successful tray registration or Explorer restart compatibility."
+}

@@ -1,0 +1,77 @@
+cmake_minimum_required(VERSION 3.25)
+
+# Keep MSVC's /showIncludes prefix consistent with Ninja's dependency parser.
+if(CMAKE_HOST_WIN32)
+    set(ENV{VSLANG} "1033")
+endif()
+
+project(XDStarter VERSION 0.1.0 LANGUAGES CXX)
+
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/toolchain.json" XDSTARTER_TOOLCHAIN_JSON)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/toolchain.json")
+string(JSON XDSTARTER_QT_VERSION GET "${XDSTARTER_TOOLCHAIN_JSON}" qt version)
+string(JSON XDSTARTER_MSVC_VERSION GET "${XDSTARTER_TOOLCHAIN_JSON}" windows compilerVersion)
+string(JSON XDSTARTER_WINDOWS_SDK_VERSION GET "${XDSTARTER_TOOLCHAIN_JSON}" windows sdkVersion)
+
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
+    message(FATAL_ERROR "Use an out-of-source build, for example cmake --preset core-debug.")
+endif()
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(MSVC)
+    add_compile_options(/utf-8 /W4 /permissive-)
+    if(CMAKE_GENERATOR MATCHES "Ninja")
+        list(PREPEND CMAKE_CXX_COMPILER_LAUNCHER "${CMAKE_COMMAND}" -E env VSLANG=1033)
+        include(cmake/msvc_dependencies.cmake)
+    endif()
+else()
+    add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+option(XDSTARTER_BUILD_APP "Build the Qt Quick desktop prototype" ON)
+option(XDSTARTER_ALLOW_ALTERNATE_MSVC "Validate an additional MSVC toolchain instead of the declared baseline" OFF)
+include(CTest)
+
+add_subdirectory(src/core)
+
+if(XDSTARTER_BUILD_APP)
+    if(WIN32 AND (NOT MSVC OR MSVC_VERSION LESS 1929))
+        message(FATAL_ERROR "The Windows application requires MSVC 2019 16.11 or newer and a compatible Qt MSVC x64 kit.")
+    endif()
+    if(WIN32 AND NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+        message(FATAL_ERROR "The Windows application requires an x64 toolchain.")
+    endif()
+    if(WIN32 AND NOT XDSTARTER_ALLOW_ALTERNATE_MSVC AND
+       NOT CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL XDSTARTER_MSVC_VERSION)
+        message(FATAL_ERROR "The declared Windows baseline requires MSVC ${XDSTARTER_MSVC_VERSION}. Use scripts/build-windows.ps1 or explicitly enable XDSTARTER_ALLOW_ALTERNATE_MSVC for additional compatibility validation.")
+    endif()
+    if(WIN32 AND NOT XDSTARTER_ALLOW_ALTERNATE_MSVC)
+        string(REPLACE "." "\\." windows_sdk_pattern "${XDSTARTER_WINDOWS_SDK_VERSION}")
+        file(TO_CMAKE_PATH "${CMAKE_RC_COMPILER}" windows_rc_compiler)
+        if(NOT windows_rc_compiler MATCHES "/${windows_sdk_pattern}/")
+            message(FATAL_ERROR "The declared Windows baseline requires SDK ${XDSTARTER_WINDOWS_SDK_VERSION}; use scripts/build-windows.ps1 to select it.")
+        endif()
+    endif()
+
+    find_package(Qt6 ${XDSTARTER_QT_VERSION} EXACT REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Svg)
+    qt_standard_project_setup(REQUIRES 6.8)
+
+    add_subdirectory(src/platform)
+    add_subdirectory(src/services)
+    add_subdirectory(src/app)
+    # Optional design tooling uses the same Qt SVG renderer as the product.
+    add_subdirectory(docs/design/source/renderer EXCLUDE_FROM_ALL)
+    if(BUILD_TESTING)
+        add_subdirectory(tests/platform)
+        add_subdirectory(tests/services)
+        add_subdirectory(tests/ui)
+    endif()
+endif()
+
+if(BUILD_TESTING)
+    add_subdirectory(tests/core)
+endif()

@@ -1,16 +1,39 @@
+# docs/design/source/build_desktop_grid.py
+
 """Native SVG mockups: both themes share the exact tile-grid.json geometry."""
 import json
 from pathlib import Path
-import subprocess
 from html import escape
+from render_svg import render_svg
+from ui_symbols import STROKE_WIDTH, THEME_COLORS, avatar_body, brand_mark, glyph_paths
 
 ROOT = Path(__file__).resolve().parents[1]
 GRID = json.loads((ROOT/'tokens/tile-grid.json').read_text())
+VISUAL = json.loads((ROOT/'tokens/visual.json').read_text())
 COLORS = {'Word':'#174DA3','Excel':'#14613D','PowerPoint':'#973F20','VS Code':'#123A68',
           'Edge':'#105779','WeChat':'#145F43','Photos':'#263D94','Steam':'#153B67',
           'Spotify':'#145636','VLC':'#914711','Terminal':'#35475C',
           'Calculator':'#175E85','Clock':'#35475C','Notepad':'#145D80','Settings':'#35475C'}
 LABELS = {'WeChat':'微信','Photos':'照片'}
+
+# Desktop context uses physical pixels; the complete menu is authored in DIP.
+# Menu left and bottom gap are independent of the illustrated Start button.
+SCALE = VISUAL['referenceCanvas']['scale']
+CANVAS_WIDTH = VISUAL['referenceCanvas']['width']
+CANVAS_HEIGHT = VISUAL['referenceCanvas']['height']
+START_X = 24
+TASKBAR_HEIGHT = VISUAL['referenceCanvas']['taskbarHeightDip'] * SCALE
+TASKBAR_TOP = CANVAS_HEIGHT - TASKBAR_HEIGHT
+MENU_LEFT = VISUAL['menuChrome']['screenGapDip'] * SCALE
+MENU_WIDTH = VISUAL['defaultMenuSizeDip']['width']
+MENU_HEIGHT = VISUAL['defaultMenuSizeDip']['height']
+MENU_TOP = TASKBAR_TOP - VISUAL['menuChrome']['screenGapDip'] * SCALE - MENU_HEIGHT * SCALE
+
+
+def ui_glyph(name, x, y, size=36, color='#FFFFFF'):
+    return (f'<g data-ui-symbol="{name}" transform="translate({x} {y}) scale({size / 24})" '
+            f'fill="none" stroke="{color}" stroke-width="{STROKE_WIDTH}" '
+            f'stroke-linecap="round" stroke-linejoin="round">{glyph_paths(name)}</g>')
 
 def r(x,y,w,h,fill,rx=6,extra=''):
     return f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{rx}" fill="{fill}" {extra}/>'
@@ -79,70 +102,150 @@ def icon(name,x,y,size,color='#FFFFFF'):
     else: p=circle(32,32,26,'#368BFF')+t(32,42,name[:1],28,'#FFFFFF',600,'text-anchor="middle"')
     return f'<g transform="translate({x} {y}) scale({size/64})">{p}</g>'
 
+def tile_color(identity):
+    """Match the bounded unsigned UTF-16 identity hash used by QML."""
+    value = 5381
+    encoded = identity.encode('utf-16-le')[:512]
+    for offset in range(0, len(encoded), 2):
+        value = ((value * 33) ^ int.from_bytes(encoded[offset:offset + 2], 'little')) & 0xffffffff
+    return VISUAL['tilePalette'][value % len(VISUAL['tilePalette'])]
+
+
+def shade(color, factor):
+    """The approved palette stays below clipping when made 1.05 times lighter."""
+    return '#' + ''.join(f'{min(255, int(int(color[offset:offset + 2], 16) * factor + .5)):02X}'
+                         for offset in (1, 3, 5))
+
+
 def build(theme):
-    light=theme=='light'
-    fg='#172338' if light else '#F4F7FB'
-    muted='#596A82' if light else '#ACBBD0'
-    border='#CDDAEB' if light else '#46617F'
-    p=f'''<defs>
+    light = theme == 'light'
+    colors = VISUAL['themes'][theme]
+    fg, muted = colors['foreground'], colors['secondary']
+    layout = VISUAL['layout']
+    margin, rail = layout['contentMargin'], layout['railWidth']
+    content_left = rail + margin
+    content_right = MENU_WIDTH - margin
+    body_top = margin + layout['searchHeight'] + layout['contentSpacing']
+    tiles_left = content_left + layout['catalogWidth'] + layout['contentSpacing']
+    radius = VISUAL['cornerRadiusDip']['menu']
+    p = f'''<defs>
     <linearGradient id="desktop" x2="1" y2="1"><stop stop-color="{'#D4E8FF' if light else '#11284C'}"/><stop offset="1" stop-color="{'#91B9EF' if light else '#050E20'}"/></linearGradient>
     <linearGradient id="fold" x2=".6" y2="1"><stop stop-color="{'#EDF6FF' if light else '#275BBB'}"/><stop offset="1" stop-color="{'#78A5E2' if light else '#0A244C'}"/></linearGradient>
-    <linearGradient id="panel" x2="1" y2="1"><stop stop-color="{'#F5FAFF' if light else '#21334A'}"/><stop offset="1" stop-color="{'#E3EFFC' if light else '#111F32'}"/></linearGradient>
-    <linearGradient id="tile" x2="0" y2="1"><stop stop-color="white" stop-opacity=".05"/><stop offset="1" stop-color="black" stop-opacity=".06"/></linearGradient>
-    <filter id="shadow" x="-10%" y="-10%" width="125%" height="130%"><feDropShadow dx="0" dy="12" stdDeviation="15" flood-color="#061224" flood-opacity="{'0.12' if light else '0.35'}"/></filter>
     </defs>'''
-    p+=r(0,0,1920,1080,'url(#desktop)',0)
+    p += r(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT, 'url(#desktop)', 0)
     for d in ['M780-100C1610 40 1300 370 2040 440L2040 780C1310 570 1470 130 780-100Z',
               'M1260-100C2050 130 1240 450 1940 600L1940 850C1230 650 1900 280 1260-100Z',
-              'M890 1180C1440 540 1680 450 2070 640L2070 850C1620 660 1480 860 1270 1180Z']:
-        p+=path(d,'url(#fold)', '#BBD6FA' if light else '#23559A',1)
-    p+=r(44,88,1362,910,'url(#panel)',20,f'stroke="{border}" filter="url(#shadow)"')
-    p+=path('M144 88V998M516 164V998','none',border,1,'opacity=".35"')
-    p+=circle(94,144,26,'#B4D0F2')+path('M69 153L85 132 104 148 117 141 119 162H69Z','#547A93')
-    p+=r(176,110,1200,54,'#FFFFFF' if light else '#263B55',16,f'stroke="{border}" fill-opacity=".5"')
-    p+=circle(205,135,9,'none',f'stroke="{muted}" stroke-width="2"')+path('M212 142L219 149','none',muted,2)
-    p+=t(236,146,'搜索应用或快捷方式',21,muted)
-    p+=t(176,219,'所有应用',24,fg,600)+t(399,217,'A–Z  ⌄',18,muted)
-    rows=[('B','Blender',300),('C','Chrome',392),('D','Discord',484),('E','Edge',576),('F','Figma',668),('M','Microsoft Excel',793),('','Microsoft Word',852),('V','VS Code',947)]
-    for letter,label,yy in rows:
-        if letter:p+=t(178,yy-37,letter,18,muted)
-        key={'Microsoft Excel':'Excel','Microsoft Word':'Word'}.get(label,label)
-        p+=icon(key,178,yy-22,42)+t(244,yy+8,label,21,fg)
-    for name,yy in [('Folder',713),('Download',797),('Settings',879)]:
-        p+=icon(name,77,yy,34,muted)
-    p+=path('M94 936V952M82 943A17 17 0 1 0 106 943','none',muted,2.5)
-
-    for group,title,top in [('work','工作',238),('daily','日常',492),('entertainment','娱乐',740)]:
-        p+=t(546,top-22,title,24,fg,600)+t(1355,top-24,'···',25,muted)
-        # Geometry is in DIP, rendered at 150% without per-tile rounding.
-        p+=f'<g data-group="{group}" transform="translate(546 {top}) scale(1.5)">'
-        for app in GRID['groups'][group]:
-            size=GRID['sizes'][app['size']]
-            x=app['column']*(GRID['cell']+GRID['gap'])
-            y=app['row']*(GRID['cell']+GRID['gap'])
-            w=size['columns']*GRID['cell']+(size['columns']-1)*GRID['gap']
-            h=size['rows']*GRID['cell']+(size['rows']-1)*GRID['gap']
-            name=app['app']
-            p+=f'<g data-app="{name}" data-size="{app["size"]}">'
-            p+=r(x,y,w,h,COLORS[name],6,'stroke="#FFFFFF" stroke-opacity=".12" stroke-width=".7"')+r(x,y,w,h,'url(#tile)')
-            if app['size']=='small':p+=icon(name,x+9,y+9,30)
+              'M890 1300C1440 660 1680 570 2070 760L2070 970C1620 780 1480 980 1270 1300Z']:
+        p += path(d, 'url(#fold)', '#BBD6FA' if light else '#23559A', 1)
+    # Bounded concentric shadow, no platform frame, blur material or SVG filter dependency.
+    for inset in range(24, 0, -1):
+        p += r(MENU_LEFT - inset * SCALE, MENU_TOP - inset * SCALE,
+               (MENU_WIDTH + inset * 2) * SCALE, (MENU_HEIGHT + inset * 2) * SCALE,
+               '#071321', (radius + inset) * SCALE,
+               f'data-role="menu-shadow" fill-opacity="{0.004 if light else 0.007}"')
+    p += (f'<g id="menu-window" data-left-px="{MENU_LEFT:g}" data-left-dip="8" '
+          f'data-bottom-gap-dip="8" transform="translate({MENU_LEFT:g} {MENU_TOP:g}) scale({SCALE})">')
+    p += r(0, 0, MENU_WIDTH, MENU_HEIGHT, colors['opaqueFallback'], radius,
+           'data-role="menu-surface"')
+    # A single inset outline remains the only visible border; the rail follows the same corner path.
+    p += path(f'M{radius} 0H{rail}V{MENU_HEIGHT}H{radius}Q0 {MENU_HEIGHT} 0 {MENU_HEIGHT-radius}V{radius}Q0 0 {radius} 0Z',
+              colors['surface'])
+    p += path(f'M{rail} 16V{MENU_HEIGHT-16}', 'none', colors['separator'], .7)
+    p += r(.5, .5, MENU_WIDTH - 1, MENU_HEIGHT - 1, 'none', radius - .5,
+           f'data-role="menu-border" stroke="{colors["menuBorder"]}" stroke-width="1"')
+    p += '<g data-role="user-avatar" data-size-dip="32" transform="translate(16 24) scale(.5)">'
+    p += '<title>用户账户：圆形默认头像</title>' + avatar_body(theme, 'menu-avatar-circle') + '</g>'
+    for index, (name, label) in enumerate([('documents', '文档'), ('downloads', '下载'),
+                                            ('settings', '设置'), ('power', '电源与退出')]):
+        top = MENU_HEIGHT - 16 - (4 - index) * 56
+        p += f'<g data-shortcut="{name}" data-hit-size-dip="48" role="button" aria-label="{label}"><title>{label}</title>'
+        p += r(8, top, 48, 48, colors['hover'], 8,
+               'data-role="shortcut-hit-area" fill-opacity="0"')
+        p += ui_glyph(name, 20, top + 12, 24, THEME_COLORS[theme]) + '</g>'
+    search_width = content_right - content_left - 3 * layout['controlSize'] - 3 * GRID['gap']
+    p += r(content_left, margin, search_width, layout['searchHeight'], colors['searchBackground'], 8,
+           f'data-role="search-field" stroke="{colors["controlBorder"]}" stroke-width="1"')
+    p += ui_glyph('search', content_left + 12, margin + 10, 20, muted)
+    p += t(content_left + 40, margin + 26, '搜索应用、拼音或首字母', VISUAL['font']['body'], muted)
+    for index, (name, label) in enumerate([('apps', '编辑布局'), ('more', '更多操作'), ('close', '收起菜单')]):
+        x = content_left + search_width + GRID['gap'] + index * (layout['controlSize'] + GRID['gap'])
+        p += f'<g data-toolbar="{name}" role="button" aria-label="{label}"><title>{label}</title>'
+        p += r(x, margin + 2, layout['controlSize'], layout['controlSize'], colors['hover'], 8,
+               'data-role="toolbar-hit-area" fill-opacity="0"')
+        p += ui_glyph(name, x + 6, margin + 8, 24, fg) + '</g>'
+    p += t(content_left, body_top + 22, '所有应用', VISUAL['font']['heading'], fg, 600)
+    refresh_left = content_left + layout['catalogWidth'] - 28
+    p += t(refresh_left - 8, body_top + 21, 'A–Z', 12, muted, 400, 'text-anchor="end"')
+    p += '<g data-catalog-action="refresh" role="button" aria-label="刷新应用目录"><title>刷新应用目录</title>'
+    p += r(refresh_left, body_top + 2, 28, 28, colors['hover'], 6,
+           'data-role="catalog-refresh-hit-area" fill-opacity="0"')
+    p += t(refresh_left + 14, body_top + 23, '↻', 20, fg, 400, 'text-anchor="middle"') + '</g>'
+    rows = [('B', 'Blender', 'Blender'), ('C', 'Chrome', 'Chrome'), ('D', 'Discord', 'Discord'),
+            ('E', 'Edge', 'Microsoft Edge'), ('F', 'Figma', 'Figma'),
+            ('M', 'Excel', 'Microsoft Excel'), ('', 'Word', 'Microsoft Word'), ('V', 'VS Code', 'VS Code')]
+    row_top = body_top + layout['headerHeight'] + GRID['gap']
+    for letter, key, label in rows:
+        if letter:
+            p += t(content_left + 6, row_top + 13, letter, VISUAL['font']['section'], muted, 600)
+            row_top += layout['catalogSectionHeight']
+        p += f'<g data-catalog-app="{key}" data-row-height-dip="{layout["catalogRowHeight"]}">'
+        p += r(content_left, row_top, layout['catalogWidth'], layout['catalogRowHeight'], colors['hover'], 6,
+               'fill-opacity="0"')
+        p += icon(key, content_left + 6, row_top + 6, 32)
+        p += t(content_left + 46, row_top + 27, label, VISUAL['font']['body'], fg)
+        p += '</g>'
+        row_top += layout['catalogRowHeight']
+    group_top = body_top
+    for group, title in [('work', '工作'), ('daily', '日常'), ('entertainment', '娱乐')]:
+        p += t(tiles_left, group_top + 22, title, VISUAL['font']['heading'], fg, 600)
+        grid_top = group_top + layout['headerHeight'] + GRID['gap']
+        p += f'<g data-group="{group}" transform="translate({tiles_left} {grid_top})">'
+        occupied_height = 0
+        for index, app in enumerate(GRID['groups'][group]):
+            span = GRID['sizes'][app['size']]
+            x = app['column'] * (GRID['cell'] + GRID['gap'])
+            y = app['row'] * (GRID['cell'] + GRID['gap'])
+            w = span['columns'] * (GRID['cell'] + GRID['gap']) - GRID['gap']
+            h = span['rows'] * (GRID['cell'] + GRID['gap']) - GRID['gap']
+            occupied_height = max(occupied_height, y + h)
+            name = app['app']
+            p += f'<g data-app="{name}" data-size="{app["size"]}" data-palette-identity="{name}">'
+            base = tile_color(name)
+            gradient = f'tile-{group}-{index}'
+            p += (f'<defs><linearGradient id="{gradient}" x1="0" y1="0" x2="0" y2="1">'
+                  f'<stop stop-color="{shade(base, 1.05)}"/>'
+                  f'<stop offset="1" stop-color="{shade(base, 1 / 1.04)}"/></linearGradient></defs>')
+            p += r(x, y, w, h, f'url(#{gradient})', VISUAL['cornerRadiusDip']['tile'],
+                   f'data-base-color="{base}" stroke="#FFFFFF" stroke-opacity=".12" stroke-width=".7"')
+            if app['size'] == 'small':
+                p += icon(name, x + 10, y + 10, 28)
             else:
-                p+=icon(name,x+(w-50)/2,y+15,50)
-                p+=t(x+10,y+h-12,LABELS.get(name,name),14,'#FFFFFF',400)
-            p+='</g>'
-        p+='</g>'
-    p+=r(1237,935,138,44,'none',22,f'stroke="{border}"')+t(1254,964,'＋ 添加应用',18,fg)
-    p+=r(0,1014,1920,66,'#E4F0FC' if light else '#112440',0,'fill-opacity=".95"')
-    for xx in (28,48):
-        for yy in (1030,1050):p+=r(xx,yy,17,17,'#48BDF4',2)
-    p+=circle(110,1048,11,'none',f'stroke="{fg}" stroke-width="3"')+path('M118 1056L128 1066','none',fg,3)
-    p+=icon('Folder',162,1026,44)+icon('Edge',230,1026,44)+icon('VS Code',298,1026,44)
-    p+=path('M1688 1048L1696 1040 1704 1048M1725 1043Q1737 1032 1749 1043M1730 1048Q1737 1042 1744 1048','none',fg,2)
-    p+=circle(1737,1054,2,fg)+path('M1765 1043H1771L1779 1036V1058L1771 1051H1765ZM1786 1040Q1796 1048 1786 1056','none',fg,2)
-    p+=t(1885,1044,'09:41',17,fg,400,'text-anchor="end"')+t(1885,1067,'2026/10/20',16,fg,400,'text-anchor="end"')
-    out=ROOT/f'mockups/v2/xdstarter-desktop-{theme}-v2.svg'
-    out.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080"><g font-family="Arial, Hiragino Sans GB, sans-serif">'+p+'</g></svg>')
-    subprocess.run(['rsvg-convert',str(out),'-o',str(out.with_suffix('.png'))],check=True)
-    print(f'{theme}: exact shared grid, 1920x1080 PNG + editable SVG')
+                p += icon(name, x + (w - 36) / 2, y + 14, 36)
+                # QML uses a 10 DIP bounding-box bottom inset; SVG positions the font baseline separately.
+                p += t(x + 10, y + h - 14, LABELS.get(name, name), VISUAL['tileLabelFontDip'], '#FFFFFF')
+            p += '</g>'
+        p += '</g>'
+        group_top = grid_top + occupied_height + layout['groupSpacing']
+    p += '</g>'
+    p += r(0, TASKBAR_TOP, CANVAS_WIDTH, TASKBAR_HEIGHT, '#E4F0FC' if light else '#112440', 0)
+    p += f'<g id="start-button" data-left-px="{START_X}" data-hit-size-dip="48"><title>原生开始按钮示意；位置不作为菜单锚点</title>'
+    p += r(START_X, TASKBAR_TOP, 48 * SCALE, 48 * SCALE, '#C2D9F5' if light else '#284769', 10,
+           'data-role="start-hit-area" fill-opacity=".65"')
+    p += f'<g transform="translate({START_X + 18} {TASKBAR_TOP + 18}) scale({36/256})">{brand_mark()}</g></g>'
+    p += ui_glyph('search', 114, TASKBAR_TOP + 18, 36, fg)
+    p += icon('Folder', 170, TASKBAR_TOP + 14, 44)
+    p += icon('Edge', 238, TASKBAR_TOP + 14, 44) + icon('VS Code', 306, TASKBAR_TOP + 14, 44)
+    p += path(f'M1688 {TASKBAR_TOP+40}L1696 {TASKBAR_TOP+32} 1704 {TASKBAR_TOP+40}', 'none', fg, 2)
+    p += t(1885, TASKBAR_TOP + 34, '09:41', 17, fg, 400, 'text-anchor="end"')
+    p += t(1885, TASKBAR_TOP + 57, '2026/10/21', 16, fg, 400, 'text-anchor="end"')
+    out = ROOT / f'mockups/v2/xdstarter-desktop-{theme}-v2.svg'
+    out.write_text(f'<svg xmlns="http://www.w3.org/2000/svg" width="{CANVAS_WIDTH}" height="{CANVAS_HEIGHT}" '
+                   f'viewBox="0 0 {CANVAS_WIDTH} {CANVAS_HEIGHT}" data-design-revision="{VISUAL["designRevision"]}" '
+                   f'data-reference-scale="{SCALE}"><g font-family="Segoe UI Variable">' + p + '</g></svg>', encoding='utf-8')
+    render_svg(out, out.with_suffix('.png'))
+    print(f'{theme}: revision 2.2; 980x680 DIP panel, symmetric 8 DIP gap; shared 10-column grid')
 
-for theme in ('dark','light'):build(theme)
+
+if __name__ == '__main__':
+    for variant in ('dark', 'light'):
+        build(variant)
