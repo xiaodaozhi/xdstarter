@@ -335,6 +335,10 @@ class PrototypeWindowTest : public QObject {
     void searchPreservesBrowsing();
     void searchKeyboardAndLaunchLifecycle();
     void searchRefreshAliasesAndRestart();
+    void groupManagementLifecycle();
+    void groupNameCompositionAndCancellation();
+    void groupCatalogMoveAndRestart();
+    void groupChangesPreserveSearchFocus();
     void applicationLayoutRestoresUnavailableTarget();
     void unrelatedApplicationIconPreservesPinnedTile();
     void shortcutRailAssetsAndTheme();
@@ -366,6 +370,9 @@ class PrototypeWindowTest : public QObject {
     void openSizeMenu(const QString& tileId, bool keyboard);
     void chooseSize(const QString& itemName, bool keyboard = false);
     void pinFirstApplication(const std::shared_ptr<CatalogTestState>& state);
+    void openGroupMenu(const QString& groupId);
+    void chooseGroupAction(const QString& itemName);
+    void submitGroupName(const QString& name);
     QVariant modelValue(int row, const QByteArray& role) const;
 
     xdstarter::TileGrid grid_;
@@ -981,6 +988,12 @@ void PrototypeWindowTest::futureConfigurationIsReadOnly() {
     createWindow(path);
     QVERIFY(controller_->readOnly());
     QVERIFY(!item(QStringLiteral("editLayoutButton"))->isEnabled());
+    QVERIFY(!item(QStringLiteral("newGroupButton"))->isVisible());
+    QVERIFY(!item(QStringLiteral("newGroupButton"))->isEnabled());
+    QVERIFY(controller_->createGroup(QStringLiteral("不可写")).isEmpty());
+    QVERIFY(!controller_->renameGroup(QStringLiteral("work"), QStringLiteral("不可写")));
+    QVERIFY(!controller_->moveGroupBy(QStringLiteral("work"), 1));
+    QVERIFY(!controller_->removeGroup(QStringLiteral("work")));
     QVERIFY(!item(QStringLiteral("saveLayoutButton"))->isEnabled());
     controller_->setEditMode(true);
     QVERIFY(!controller_->editMode());
@@ -1509,6 +1522,349 @@ void PrototypeWindowTest::searchRefreshAliasesAndRestart() {
     QVERIFY(state->workerOnly);
 }
 
+void PrototypeWindowTest::openGroupMenu(const QString& groupId) {
+    const auto buttonName = QStringLiteral("groupActions-") + groupId;
+    QTRY_VERIFY(item(buttonName));
+    QVERIFY(item(buttonName)->isVisible());
+    item(buttonName)->forceActiveFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(item(buttonName)->hasActiveFocus());
+    QTRY_VERIFY(viewportScene().adjusted(-1, -1, 1, 1).contains(
+        item(buttonName)->mapRectToScene(item(buttonName)->boundingRect())));
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    auto* menu = window_->findChild<QObject*>(QStringLiteral("groupMenu"));
+    QVERIFY(menu);
+    QTRY_VERIFY(menu->property("opened").toBool());
+    QVERIFY(window_->property("internalPopupVisible").toBool());
+    QVERIFY(window_->property("dismissalBlocked").toBool());
+}
+
+void PrototypeWindowTest::chooseGroupAction(const QString& itemName) {
+    auto* action = item(itemName);
+    QVERIFY(action);
+    QVERIFY(action->isEnabled());
+    action->forceActiveFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(action->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_Return);
+}
+
+void PrototypeWindowTest::submitGroupName(const QString& name) {
+    auto* dialog = window_->findChild<QObject*>(QStringLiteral("groupNameDialog"));
+    QVERIFY(dialog);
+    QTRY_VERIFY(dialog->property("opened").toBool());
+    auto* field = item(QStringLiteral("groupNameField"));
+    QVERIFY(field);
+    QTRY_VERIFY(field->hasActiveFocus());
+    QVERIFY(field->setProperty("text", name));
+    QTest::keyClick(window_, Qt::Key_Return);
+    QTRY_VERIFY(!dialog->property("visible").toBool());
+}
+
+void PrototypeWindowTest::groupManagementLifecycle() {
+    const auto geometry = tileGeometries();
+    QVERIFY(!item(QStringLiteral("newGroupButton"))->isVisible());
+    click(item(QStringLiteral("editLayoutButton")));
+    QVERIFY(controller_->editMode());
+    auto* create = item(QStringLiteral("newGroupButton"));
+    QVERIFY(create && create->isVisible() && create->isEnabled());
+    create->forceActiveFocus(Qt::TabFocusReason);
+    QTest::keyClick(window_, Qt::Key_Return);
+    submitGroupName(QStringLiteral("  我的工具 Tools  "));
+    QTRY_COMPARE(controller_->groups().size(), 4);
+    const auto groupId = controller_->groups().last().toMap().value(QStringLiteral("id")).toString();
+    QCOMPARE(controller_->groups().last().toMap().value(QStringLiteral("name")).toString(),
+             QStringLiteral("我的工具 Tools"));
+    QCOMPARE(tileGeometries(), geometry);
+    QTRY_VERIFY(item(QStringLiteral("groupActions-") + groupId)->hasActiveFocus());
+
+    openGroupMenu(groupId);
+    QVERIFY(!item(QStringLiteral("groupMoveDownAction"))->isEnabled());
+    QVERIFY(item(QStringLiteral("groupDeleteAction"))->isEnabled());
+    chooseGroupAction(QStringLiteral("groupRenameAction"));
+    const auto longName = QStringLiteral("<b>中文 Tools & 长名称</b> ") + QString(90, QChar(u'组'));
+    QVERIFY(longName.size() <= controller_->maximumGroupNameLength());
+    submitGroupName(longName);
+    auto* label = item(QStringLiteral("groupTitle-") + groupId);
+    QVERIFY(label);
+    QCOMPARE(label->property("text").toString(), longName);
+    QCOMPARE(label->property("textFormat").toInt(), 0); // Text.PlainText.
+    QTRY_VERIFY(label->property("truncated").toBool());
+    QVERIFY(label->width() <= item(QStringLiteral("grid-") + groupId)->width());
+    auto* accessible = QAccessible::queryAccessibleInterface(
+        item(QStringLiteral("groupActions-") + groupId));
+    QVERIFY(accessible);
+    QVERIFY(accessible->text(QAccessible::Name).contains(longName));
+    QSignalSpy groupsChanged(controller_.get(), &xdstarter::MenuController::groupsChanged);
+    QVERIFY(controller_->renameGroup(groupId, longName));
+    QCOMPARE(groupsChanged.count(), 0);
+
+    openGroupMenu(groupId);
+    chooseGroupAction(QStringLiteral("groupMoveUpAction"));
+    QTRY_COMPARE(controller_->groups()[2].toMap().value(QStringLiteral("id")).toString(), groupId);
+    const auto focusDescription = [this] {
+        const auto* focused = window_->activeFocusItem();
+        return focused ? focused->objectName() + QStringLiteral(" (") +
+                             QString::fromLatin1(focused->metaObject()->className()) + u')'
+                       : QStringLiteral("no active focus item");
+    };
+    QTRY_VERIFY2(item(QStringLiteral("groupActions-") + groupId)->hasActiveFocus(),
+                 qPrintable(focusDescription()));
+    openGroupMenu(groupId);
+    chooseGroupAction(QStringLiteral("groupMoveDownAction"));
+    QTRY_COMPARE(controller_->groups().last().toMap().value(QStringLiteral("id")).toString(), groupId);
+    QCOMPARE(tileGeometries(), geometry);
+
+    openGroupMenu(QStringLiteral("work"));
+    QVERIFY(!item(QStringLiteral("groupDeleteAction"))->isEnabled());
+    QVERIFY(item(QStringLiteral("groupDeleteHint"))->property("text").toString().contains(
+        QStringLiteral("移至其他分组")));
+    QVERIFY(!item(QStringLiteral("groupMoveUpAction"))->isEnabled());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    openGroupMenu(groupId);
+    chooseGroupAction(QStringLiteral("groupDeleteAction"));
+    QTRY_COMPARE(controller_->groups().size(), 3);
+    QTRY_VERIFY(!item(QStringLiteral("groupActions-") + groupId));
+    QTRY_VERIFY(item(QStringLiteral("groupActions-entertainment"))->hasActiveFocus());
+    QCOMPARE(tileGeometries(), geometry);
+    QVERIFY(controller_->editMode());
+}
+
+void PrototypeWindowTest::groupNameCompositionAndCancellation() {
+    destroyWindow();
+    createWindow({}, false);
+    controller_->setEditMode(true);
+    openGroupMenu(QStringLiteral("default"));
+    QVERIFY(!item(QStringLiteral("groupDeleteAction"))->isEnabled());
+    QVERIFY(item(QStringLiteral("groupDeleteHint"))->property("text").toString().contains(
+        QStringLiteral("至少保留")));
+    QTest::keyClick(window_, Qt::Key_Escape);
+    click(item(QStringLiteral("newGroupButton")));
+    auto* dialog = window_->findChild<QObject*>(QStringLiteral("groupNameDialog"));
+    QVERIFY(dialog);
+    QTRY_VERIFY(dialog->property("opened").toBool());
+    auto* field = item(QStringLiteral("groupNameField"));
+    QVERIFY(field);
+    QTRY_VERIFY(field->hasActiveFocus());
+    QInputMethodEvent preedit(QStringLiteral("fenzu"), {});
+    QCoreApplication::sendEvent(field, &preedit);
+    QTRY_VERIFY(field->property("inputMethodComposing").toBool());
+    QVERIFY(!item(QStringLiteral("groupNameSaveButton"))->isEnabled());
+    QTest::keyClick(window_, Qt::Key_Return);
+    QCOMPARE(controller_->groups().size(), 1);
+    QVERIFY(dialog->property("visible").toBool());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QVERIFY(dialog->property("visible").toBool());
+    QVERIFY(controller_->editMode());
+    QInputMethodEvent endComposition;
+    QCoreApplication::sendEvent(field, &endComposition);
+    QTRY_VERIFY(!field->property("inputMethodComposing").toBool());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!dialog->property("visible").toBool());
+    QCOMPARE(controller_->groups().size(), 1);
+    QVERIFY(controller_->editMode());
+
+    click(item(QStringLiteral("newGroupButton")));
+    QTRY_VERIFY(dialog->property("opened").toBool());
+    QVERIFY(field->setProperty("text", QStringLiteral("  ")));
+    QTest::keyClick(window_, Qt::Key_Return);
+    QVERIFY(dialog->property("visible").toBool());
+    QTRY_VERIFY(item(QStringLiteral("groupNameError"))->isVisible());
+    QCOMPARE(controller_->groups().size(), 1);
+    QVERIFY(field->setProperty("text", QString(QChar(0x0085)) + QStringLiteral("不接受控制字符")));
+    QTest::keyClick(window_, Qt::Key_Return);
+    QVERIFY(dialog->property("visible").toBool());
+    QCOMPARE(controller_->groups().size(), 1);
+    QVERIFY(field->setProperty("text", QStringLiteral("未保存的分组")));
+    QTest::keyClick(window_, Qt::Key_Tab);
+    QTRY_VERIFY(item(QStringLiteral("groupNameCancelButton"))->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_Return);
+    QTRY_VERIFY(!dialog->property("visible").toBool());
+    QCOMPARE(controller_->groups().size(), 1);
+
+    click(item(QStringLiteral("newGroupButton")));
+    QTRY_VERIFY(dialog->property("opened").toBool());
+    QVERIFY(field->setProperty("text", QStringLiteral("失焦不提交")));
+    QVERIFY(QMetaObject::invokeMethod(window_, "prepareForDismissal"));
+    QTRY_VERIFY(!dialog->property("visible").toBool());
+    QCOMPARE(controller_->groups().size(), 1);
+    QVERIFY(field->property("text").toString().isEmpty());
+    QVERIFY(QMetaObject::invokeMethod(window_, "prepareForPresentation"));
+    QTRY_VERIFY(item(QStringLiteral("searchField"))->hasActiveFocus());
+    QVERIFY(controller_->editMode());
+
+    while (controller_->groups().size() < controller_->maximumGroups()) {
+        QVERIFY(!controller_->createGroup(QStringLiteral("同名分组")).isEmpty());
+    }
+    QTRY_VERIFY(!item(QStringLiteral("newGroupButton"))->isEnabled());
+    QCOMPARE(controller_->groups().size(), 32);
+}
+
+void PrototypeWindowTest::groupCatalogMoveAndRestart() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = directory.filePath(QStringLiteral("layout.json"));
+    const auto state = std::make_shared<CatalogTestState>();
+    destroyWindow();
+    createWindow(path, false, state);
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 2);
+    controller_->setEditMode(true);
+    click(item(QStringLiteral("newGroupButton")));
+    submitGroupName(QStringLiteral("工具 Tools"));
+    const auto newId = controller_->groups().last().toMap().value(QStringLiteral("id")).toString();
+    const auto applicationId = state->applications.first().id;
+    click(item(QStringLiteral("pinButton-") + applicationId));
+    auto* pinMenu = window_->findChild<QObject*>(QStringLiteral("pinApplicationMenu"));
+    QVERIFY(pinMenu);
+    QTRY_VERIFY(pinMenu->property("opened").toBool());
+    auto* pinToNewGroup = item(QStringLiteral("pinToGroup-") + newId);
+    QVERIFY(pinToNewGroup && pinToNewGroup->isEnabled());
+    QCOMPARE(pinToNewGroup->property("text").toString(), QStringLiteral("工具 Tools"));
+    pinToNewGroup->forceActiveFocus(Qt::TabFocusReason);
+    QTest::keyClick(window_, Qt::Key_Return);
+    QTRY_COMPARE(tileGeometries().size(), 1);
+    const auto tileId = service_->previewGroups().last().tiles.first().id;
+    QCOMPARE(tileData(tileId).value(QStringLiteral("groupId")).toString(), newId);
+
+    beginMouseDrag(tileId);
+    moveMouseToGrid(QStringLiteral("default"), QPointF(52, 52));
+    QVERIFY(window_->property("dragValid").toBool());
+    QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier,
+                       gridPosition(QStringLiteral("default"), QPointF(52, 52)));
+    QTRY_COMPARE(tileData(tileId).value(QStringLiteral("groupId")).toString(),
+                 QStringLiteral("default"));
+    openGroupMenu(newId);
+    chooseGroupAction(QStringLiteral("groupDeleteAction"));
+    QTRY_COMPARE(controller_->groups().size(), 1);
+    openGroupMenu(QStringLiteral("default"));
+    chooseGroupAction(QStringLiteral("groupRenameAction"));
+    submitGroupName(QStringLiteral("日常应用 Daily"));
+    click(item(QStringLiteral("newGroupButton")));
+    submitGroupName(QStringLiteral("学习与资料 Learning"));
+    const auto archiveId = controller_->groups().last().toMap().value(QStringLiteral("id")).toString();
+    openGroupMenu(archiveId);
+    chooseGroupAction(QStringLiteral("groupMoveUpAction"));
+    QTRY_COMPARE(controller_->groups().first().toMap().value(QStringLiteral("id")).toString(),
+                 archiveId);
+    const auto beforeRestart = controller_->groups();
+    const auto savedTile = tileData(tileId);
+    QCOMPARE(savedTile.value(QStringLiteral("targetId")).toString(), applicationId);
+    QCOMPARE(savedTile.value(QStringLiteral("column")).toInt(), 0);
+    QCOMPARE(savedTile.value(QStringLiteral("row")).toInt(), 0);
+
+    const auto artifactDirectory = qEnvironmentVariable("XDSTARTER_GROUP_VALIDATION_DIR");
+    if (!artifactDirectory.isEmpty()) {
+        QVERIFY(QDir().mkpath(artifactDirectory));
+        QJsonArray frames;
+        for (const bool dark : {true, false}) {
+            controller_->setDarkTheme(dark);
+            item(QStringLiteral("editLayoutButton"))->forceActiveFocus(Qt::TabFocusReason);
+            QTest::mouseMove(window_, QPoint(1, 1));
+            window_->requestUpdate();
+            QTest::qWait(80);
+            const auto image = window_->grabWindow();
+            QVERIFY(!image.isNull());
+            const auto name = dark ? QStringLiteral("groups-dark.png")
+                                   : QStringLiteral("groups-light.png");
+            QVERIFY(image.save(QDir(artifactDirectory).filePath(name)));
+            frames.append(QJsonObject{{QStringLiteral("file"), name},
+                                      {QStringLiteral("widthPx"), image.width()},
+                                      {QStringLiteral("heightPx"), image.height()},
+                                      {QStringLiteral("devicePixelRatio"), window_->devicePixelRatio()}});
+        }
+        const QJsonObject evidence{
+            {QStringLiteral("fixtureOnly"), true},
+            {QStringLiteral("qtVersion"), QString::fromLatin1(qVersion())},
+            {QStringLiteral("platformName"), QGuiApplication::platformName()},
+            {QStringLiteral("groupCount"), controller_->groups().size()},
+            {QStringLiteral("tileCount"), tileGeometries().size()},
+            {QStringLiteral("frames"), frames}};
+        QFile output(QDir(artifactDirectory).filePath(QStringLiteral("groups-render.json")));
+        QVERIFY2(output.open(QIODevice::WriteOnly), qPrintable(output.errorString()));
+        QVERIFY(output.write(QJsonDocument(evidence).toJson()) > 0);
+    }
+
+    QVERIFY(controller_->flushSave());
+    const auto savedTheme = controller_->darkTheme();
+    destroyWindow();
+    createWindow(path, false, state);
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 2);
+    QTRY_COMPARE(controller_->groups(), beforeRestart);
+    QCOMPARE(controller_->darkTheme(), savedTheme);
+    QVERIFY(controller_->searchQuery().isEmpty());
+    QVERIFY(!controller_->editMode());
+    QCOMPARE(tileData(tileId), savedTile);
+    QCOMPARE(state->launches.load(), 0);
+    destroyWindow();
+}
+
+void PrototypeWindowTest::groupChangesPreserveSearchFocus() {
+    const auto state = std::make_shared<CatalogTestState>();
+    destroyWindow();
+    createWindow({}, false, state);
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 2);
+    controller_->setEditMode(true);
+    const auto groupId = controller_->createGroup(QStringLiteral("另一组"));
+    QVERIFY(!groupId.isEmpty());
+    QVERIFY(controller_->pinApplication(state->applications.first().id, QStringLiteral("default")));
+    QTRY_COMPARE(tileGeometries().size(), 1);
+    const auto pinnedTileId = service_->previewGroups().first().tiles.first().id;
+    QTRY_VERIFY(tileData(pinnedTileId).value(QStringLiteral("available")).toBool());
+    openGroupMenu(groupId);
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(item(QStringLiteral("groupActions-") + groupId)->hasActiveFocus());
+    QSignalSpy availabilityChanged(catalog_.get(), &xdstarter::ApplicationCatalog::availabilityChanged);
+    QSignalSpy groupsChanged(controller_.get(), &xdstarter::MenuController::groupsChanged);
+    const auto scansBefore = state->scans.load();
+    state->includeApplications = false;
+    controller_->refreshApplications();
+    QTRY_VERIFY(state->scans.load() > scansBefore);
+    QTRY_VERIFY(!controller_->catalogBusy());
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 0);
+    QTRY_VERIFY(availabilityChanged.count() > 0);
+    QTRY_VERIFY(groupsChanged.count() > 0);
+    QTRY_VERIFY(!tileData(pinnedTileId).value(QStringLiteral("available")).toBool());
+    QTRY_VERIFY(item(QStringLiteral("groupActions-") + groupId)->hasActiveFocus());
+    const auto availabilityEvents = availabilityChanged.count();
+    state->includeApplications = true;
+    controller_->refreshApplications();
+    QTRY_VERIFY(!controller_->catalogBusy());
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 2);
+    QTRY_VERIFY(availabilityChanged.count() > availabilityEvents);
+    QTRY_VERIFY(tileData(pinnedTileId).value(QStringLiteral("available")).toBool());
+    QTRY_VERIFY(item(QStringLiteral("groupActions-") + groupId)->hasActiveFocus());
+    auto* themeButton = item(QStringLiteral("themeButton"));
+    themeButton->forceActiveFocus(Qt::TabFocusReason);
+    QVERIFY(controller_->renameGroup(groupId, QStringLiteral("后台更新")));
+    QCoreApplication::processEvents();
+    QVERIFY(themeButton->hasActiveFocus());
+    auto* launchButton = item(QStringLiteral("applicationLaunch-") + state->applications.first().id);
+    QVERIFY(launchButton);
+    launchButton->forceActiveFocus(Qt::TabFocusReason);
+    QVERIFY(controller_->moveGroupBy(groupId, -1));
+    QCoreApplication::processEvents();
+    QVERIFY(launchButton->hasActiveFocus());
+    controller_->setSearchQuery(QStringLiteral("测试"));
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_COMPARE(controller_->searchResults().size(), 2);
+    auto* field = item(QStringLiteral("searchField"));
+    field->forceActiveFocus(Qt::OtherFocusReason);
+    QTRY_VERIFY(field->hasActiveFocus());
+    const auto before = controller_->searchResults();
+    QSignalSpy resultsChanged(controller_.get(), &xdstarter::MenuController::searchResultsChanged);
+    bool becameBusy = false;
+    QObject busyObserver;
+    connect(controller_.get(), &xdstarter::MenuController::searchChanged, &busyObserver,
+            [this, &becameBusy] { becameBusy = becameBusy || controller_->searchBusy(); });
+    QVERIFY(controller_->renameGroup(groupId, QStringLiteral("已改名")));
+    QVERIFY(controller_->moveGroupBy(groupId, 1));
+    QVERIFY(controller_->removeGroup(groupId));
+    QCoreApplication::processEvents();
+    QVERIFY(!becameBusy);
+    QCOMPARE(resultsChanged.count(), 0);
+    QCOMPARE(controller_->searchResults(), before);
+    QVERIFY(field->hasActiveFocus());
+    QCOMPARE(controller_->searchQuery(), QStringLiteral("测试"));
+}
+
 void PrototypeWindowTest::applicationLayoutRestoresUnavailableTarget() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -2019,7 +2375,8 @@ void PrototypeWindowTest::internalPopupsGuardAndCleanup() {
     controller_->setEditMode(true);
     const auto before = controller_->groups();
     QVERIFY(!window_->property("dismissalBlocked").toBool());
-    for (const auto* name : {"tileSizeMenu", "pinApplicationMenu", "powerMenu", "aboutPopup"}) {
+    for (const auto* name : {"tileSizeMenu", "pinApplicationMenu", "powerMenu", "aboutPopup",
+                             "groupMenu", "groupNameDialog"}) {
         auto* popup = window_->findChild<QObject*>(QLatin1String(name));
         QVERIFY(popup);
         // Popup.Item is deliberate: opening an internal menu must not create another

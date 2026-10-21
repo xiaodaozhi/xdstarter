@@ -339,6 +339,12 @@ void MenuController::rebuildSearchEntries() {
                 entry.aliases.append(tile.name);
         }
     }
+    // Group order is presentation state, not a change to application search identity.
+    std::sort(entries.begin(), entries.end(), [](const SearchEntry& left, const SearchEntry& right) {
+        return left.targetId < right.targetId;
+    });
+    for (auto& entry : entries)
+        entry.aliases.sort(Qt::CaseSensitive);
     QVariantList state;
     state.reserve(entries.size());
     for (const auto& entry : entries)
@@ -487,6 +493,69 @@ bool MenuController::unpinTile(const QString& tileId) {
     refreshGroups();
     scheduleSave();
     return true;
+}
+
+int MenuController::maximumGroups() const { return LayoutStore::maximumGroups; }
+int MenuController::maximumGroupNameLength() const { return LayoutStore::maximumGroupNameLength; }
+
+bool MenuController::canEditGroups() {
+    if (readOnly_) {
+        setOperationMessage(QStringLiteral("当前配置只读，不能编辑分组。"));
+        return false;
+    }
+    if (!editMode_) {
+        setOperationMessage(QStringLiteral("请先进入编辑布局再管理分组。"));
+        return false;
+    }
+    return true;
+}
+
+bool MenuController::applyGroupResult(const LayoutResult& result, const QJsonObject& before,
+                                      const QString& successMessage) {
+    if (!result.success) {
+        setOperationMessage(result.message);
+        return false;
+    }
+    if (before != prototypeService_.snapshot()) {
+        refreshGroups();
+        scheduleSave();
+    }
+    setOperationMessage(successMessage);
+    return true;
+}
+
+QString MenuController::createGroup(const QString& name) {
+    if (!canEditGroups())
+        return {};
+    const auto before = prototypeService_.snapshot();
+    const auto result = prototypeService_.createGroup(name);
+    if (!applyGroupResult(result, before, QStringLiteral("已新建分组。")))
+        return {};
+    return result.groupId;
+}
+
+bool MenuController::renameGroup(const QString& groupId, const QString& name) {
+    if (!canEditGroups())
+        return false;
+    const auto before = prototypeService_.snapshot();
+    return applyGroupResult(prototypeService_.renameGroup(groupId, name), before,
+                            QStringLiteral("分组名称已更新。"));
+}
+
+bool MenuController::moveGroupBy(const QString& groupId, int delta) {
+    if (!canEditGroups())
+        return false;
+    const auto before = prototypeService_.snapshot();
+    return applyGroupResult(prototypeService_.moveGroupBy(groupId, delta), before,
+                            QStringLiteral("分组顺序已更新。"));
+}
+
+bool MenuController::removeGroup(const QString& groupId) {
+    if (!canEditGroups())
+        return false;
+    const auto before = prototypeService_.snapshot();
+    return applyGroupResult(prototypeService_.removeGroup(groupId), before,
+                            QStringLiteral("已删除空分组。"));
 }
 
 void MenuController::setEditMode(bool enabled) {
