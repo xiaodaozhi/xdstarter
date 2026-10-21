@@ -6,13 +6,16 @@
 
 XDStarter 是一款面向 Windows 11 的自定义磁贴开始菜单项目：保留 Windows 10 的应用列表与磁贴分组，结合 Windows 11 的现代视觉，支持整理常用应用、键盘搜索与快速启动。
 
-> 当前处于工程原型阶段。Qt Quick 原型已实现真实应用目录、系统图标、启动与固定/取消固定、三档磁贴编辑，以及布局与主题保存恢复。无边框菜单已接入快捷栏、圆形头像、软件图标、托盘恢复与外部焦点收起，并采用自绘单层圆角、边框、阴影及隐藏阶段定位。单独 Win 键提供默认关闭、可显式启用及暂停的局部原型，系统开始按钮保持原生入口。应用名称、英文、拼音全拼与首字母支持离线搜索；本轮 [#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 接入分组新建、重命名、排序与空组删除。构建、自动检查和实际 Windows 窗口证据按版本记录于[测试记录](docs/technical/testing.md)，历史结果不替代本轮验收。磁贴显示名称编辑与其余系统接管继续开发，尚未提供可安装的软件。下面展示的是设计稿。
+> 当前处于工程原型阶段。Qt Quick 原型已实现真实应用目录、系统图标、启动与固定/取消固定、三档磁贴编辑，以及布局与主题保存恢复。无边框菜单已接入快捷栏、圆形头像、软件图标、托盘恢复与外部焦点收起，并采用自绘单层圆角、边框、阴影及隐藏阶段定位。单独 Win 键提供默认关闭、可显式启用及暂停的局部原型，系统开始按钮保持原生入口。应用名称、英文、拼音全拼与首字母支持离线搜索；[#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 接入分组新建、重命名、排序与空组删除。构建、自动检查和实际 Windows 窗口证据按版本记录于[测试记录](docs/technical/testing.md)，历史结果不替代本轮验收。磁贴显示名称编辑与其余系统接管继续开发，尚未提供可安装的软件。下面展示的是设计稿。
 
 ![XDStarter 深色界面设计稿](docs/design/mockups/v2/xdstarter-desktop-dark-v2.png)
 
-[浅色设计稿](docs/design/mockups/v2/xdstarter-desktop-light-v2.png) · [磁贴尺寸规范](docs/design/mockups/v2/xdstarter-tile-grid-v2.png) · [完整设计资产](docs/design/README.md)
+[浅色设计稿](docs/design/mockups/v2/xdstarter-desktop-light-v2.png) · [磁贴尺寸规范](docs/design/mockups/v2/xdstarter-tile-grid-v2.png) · [完整设计资产](docs/design/README.md) · [运行时视觉验收](docs/design/validation/issue-29/README.md)
 
-当前设计稿为 v2 修订 2.1，侧栏使用统一线描图标与圆形头像。图中的开始按钮左对齐为历史画布约定；按本轮用户要求，运行时可见面板距工作区左侧和底部任务栏统一为 8 DIP，不随按钮识别结果切换位置。[开发素材](docs/design/assets/README.md)提供深浅主题、多缩放透明 PNG/SVG、三档磁贴底图和 [Windows 多帧软件图标](docs/design/assets/app/xdstarter.ico)，逐项规格见[素材清单](docs/design/assets/manifest.json)。快捷栏、头像及软件图标已接入运行窗口；QML 自绘 12 DIP 圆角、单层边框和阴影，Windows 原生装饰被禁用。外窗透明区仅容纳阴影与圆角，面板保持主题实色；背景材料仍待后续研究，设计稿与实际窗口证据分别记录。
+当前设计稿为 **v2 修订 2.2**，将顶部搜索、紧凑应用目录、分组磁贴和工具入口统一为完整布局；[Issue #29](https://github.com/xiaodaozhi/xdstarter/issues/29) 跟踪实际 QML 落地与视觉验收。参考画布为 1920×1200、150% 缩放，默认面板 980×680 DIP。可见面板距工作区左侧和底部任务栏均为 8 DIP，不随开始按钮位置切换。旧修订已[归档](docs/design/archive/v2-revision-2.1/README.md)。
+
+[开发素材](docs/design/assets/README.md)提供深浅主题、多缩放透明 PNG/SVG、三档磁贴底图和 [Windows 多帧软件图标](docs/design/assets/app/xdstarter.ico)，共255项，规格见[素材清单](docs/design/assets/manifest.json)。快捷栏、圆形头像及软件图标已接入运行窗口；QML自绘12 DIP圆角、单层主题边框与阴影，Windows原生装饰被禁用。外窗透明区容纳阴影与圆角，面板采用主题实色；背景材料继续由系统集成研究跟踪。设计导出与实际运行证据分别记录。
+
 
 ## 我们准备做什么
 

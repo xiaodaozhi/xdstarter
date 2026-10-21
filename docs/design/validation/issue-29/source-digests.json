@@ -1,0 +1,18 @@
+{
+  "algorithm": "SHA-256 of UTF-8 text with LF newlines",
+  "files": {
+    "qml/Main.qml": "45c6f749668218185e476583b6580c753993cf860e488811de9491baecc45910",
+    "qml/TileButton.qml": "d39f4202c329ebbd899a9e487b19dad91ee3fbddf087cc204f2d208de2509a5c",
+    "qml/TileGroup.qml": "cd7ab3f04042f5b916200f7a1a7df0b11050217f8a7eb4a29364f2483c23e8d2",
+    "qml/ShortcutRail.qml": "f6e2257cef10d503604eb64c85467abb092961668072b969682d07716beca602",
+    "docs/design/tokens/visual.json": "0a3f0eaabf26cf15f20851aa15eb645092b0483d5867fcbe01c9042b7c611f3e",
+    "docs/design/tokens/tile-grid.json": "8a83a7666059540a81df87b807bbccb7533b3c281917e840d2214930872937a2",
+    "src/app/menu_controller.cpp": "b7474c3eef10250f8562ce51095f4c74176f21f2d8278a845414b26755d75f73",
+    "src/app/menu_controller.h": "fccd8cbb7c7b999b901ee89ec883471e0a515be068c8553bc7c911784661cdaa",
+    "src/services/application_catalog.cpp": "a84fccf42ffd5d56caf7d8a062676f5466707c177bad123460037ba396939610",
+    "src/services/application_catalog.h": "508a060e700654a754758d15a8d25e00d919b7eac616ee2dca5945e255aecf7d",
+    "tests/ui/tst_prototype_window.cpp": "7bf09bbe891c971b95b4ffbd22c53bbf0e808dc99e72678e887be8d544bed21b",
+    "tests/ui/visual_acceptance_probe.cpp": "03344c6743d952338ea5abde0358d88254a3339ceb8b3d5c56285e55092fc147",
+    "tests/ui/visual_acceptance_probe.h": "e2601175ffb6b0caf6ed71fbb31ca17222e529006d8725dfcbe6c64a7dbb0915"
+  }
+}

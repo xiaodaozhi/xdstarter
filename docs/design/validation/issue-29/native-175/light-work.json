@@ -1,0 +1,164 @@
+{
+  "compiler": "MSVC 192930153",
+  "compoundPixelChecks": {
+    "twoStandardOuterWidthPx": 378
+  },
+  "dropAreaGeometryWindowDip": {
+    "height": 104,
+    "width": 552,
+    "x": 376,
+    "y": 152
+  },
+  "graphicsApi": "Direct3D11",
+  "graphicsApiValue": 4,
+  "gridCropPx": {
+    "height": 182,
+    "width": 966,
+    "x": 658,
+    "y": 266
+  },
+  "gridGeometryWindowDip": {
+    "height": 104,
+    "width": 552,
+    "x": 376,
+    "y": 152
+  },
+  "gridScreenshot": "light-work-grid.png",
+  "group": "work",
+  "imageHeightPx": 1274,
+  "imageHeightRatio": 1.75,
+  "imageWidthPx": 1799,
+  "imageWidthRatio": 1.75,
+  "kernelType": "winnt",
+  "kernelVersion": "10.0.26300",
+  "lowerScanlineRunsPx": [
+    {
+      "startPx": 0,
+      "widthPx": 182
+    },
+    {
+      "startPx": 196,
+      "widthPx": 182
+    },
+    {
+      "startPx": 392,
+      "widthPx": 182
+    },
+    {
+      "startPx": 588,
+      "widthPx": 378
+    }
+  ],
+  "operatingSystem": "Windows 11 Version 26H2",
+  "pixelScanPassed": true,
+  "platformName": "windows",
+  "qtVersion": "6.8.2",
+  "requestedScaleFactor": "1",
+  "screenAvailableGeometryDip": {
+    "height": 873,
+    "width": 1371,
+    "x": 0,
+    "y": 0
+  },
+  "screenDevicePixelRatio": 1.75,
+  "screenGeometryDip": {
+    "height": 914,
+    "width": 1371,
+    "x": 0,
+    "y": 0
+  },
+  "screenLogicalDpi": 96,
+  "screenPhysicalDpi": 114.92871287128712,
+  "smallVerticalScanlineRunsPx": [],
+  "theme": "light",
+  "tiles": [
+    {
+      "accessibleName": "标准磁贴示例一",
+      "id": "work-standard-1",
+      "labelTruncated": true,
+      "labelVisible": true,
+      "renderedGeometryDip": {
+        "height": 104,
+        "width": 104,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "accessibleName": "标准磁贴长名称示例：中文与 English 名称保持固定网格尺寸",
+      "id": "work-standard-long",
+      "labelTruncated": true,
+      "labelVisible": true,
+      "renderedGeometryDip": {
+        "height": 104,
+        "width": 104,
+        "x": 112,
+        "y": 0
+      }
+    },
+    {
+      "accessibleName": "标准磁贴示例三",
+      "id": "work-standard-3",
+      "labelTruncated": true,
+      "labelVisible": true,
+      "renderedGeometryDip": {
+        "height": 104,
+        "width": 104,
+        "x": 224,
+        "y": 0
+      }
+    },
+    {
+      "accessibleName": "宽磁贴长名称示例：中文与 English 文本省略后仍可查看完整提示",
+      "id": "work-wide-long",
+      "labelTruncated": true,
+      "labelVisible": true,
+      "renderedGeometryDip": {
+        "height": 104,
+        "width": 216,
+        "x": 336,
+        "y": 0
+      }
+    }
+  ],
+  "tooltipCaptureOpacity": 0,
+  "tooltipsHiddenForGeometryCapture": true,
+  "topScanlineRunsPx": [
+    {
+      "startPx": 0,
+      "widthPx": 182
+    },
+    {
+      "startPx": 196,
+      "widthPx": 182
+    },
+    {
+      "startPx": 392,
+      "widthPx": 182
+    },
+    {
+      "startPx": 588,
+      "widthPx": 378
+    }
+  ],
+  "verticalScanlineRunsPx": [
+    {
+      "startPx": 0,
+      "widthPx": 182
+    }
+  ],
+  "windowDevicePixelRatio": 1.75,
+  "windowFrameGeometryDip": {
+    "height": 728,
+    "width": 1028,
+    "x": 171,
+    "y": 72
+  },
+  "windowGeometryDip": {
+    "height": 728,
+    "width": 1028,
+    "x": 171,
+    "y": 72
+  },
+  "windowScreenshot": "light-work-window.png"
+}

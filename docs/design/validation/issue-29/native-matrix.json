@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "mode": "Final GUI renderedGroups only; Windows QPA per-screen Qt override for both connected displays, QT_SCALE_FACTOR=1, no system setting changes",
+  "executableSha256": "35c4a04c00e72703ef986cb06d66c2fd112e244d4e7bfc477b082c4e21b184ff",
+  "nativeBaseDpr": 1.0,
+  "passed": true,
+  "scales": [
+    {
+      "percent": 100,
+      "effectiveDpr": 1,
+      "graphicsApi": "Direct3D11",
+      "captures": 6,
+      "pixelScanPassed": true,
+      "qtestPassed": 3
+    },
+    {
+      "percent": 125,
+      "effectiveDpr": 1.25,
+      "graphicsApi": "Direct3D11",
+      "captures": 6,
+      "pixelScanPassed": true,
+      "qtestPassed": 3
+    },
+    {
+      "percent": 150,
+      "effectiveDpr": 1.5,
+      "graphicsApi": "Direct3D11",
+      "captures": 6,
+      "pixelScanPassed": true,
+      "qtestPassed": 3
+    },
+    {
+      "percent": 175,
+      "effectiveDpr": 1.75,
+      "graphicsApi": "Direct3D11",
+      "captures": 6,
+      "pixelScanPassed": true,
+      "qtestPassed": 3
+    },
+    {
+      "percent": 200,
+      "effectiveDpr": 2,
+      "graphicsApi": "Direct3D11",
+      "captures": 6,
+      "pixelScanPassed": true,
+      "qtestPassed": 3
+    }
+  ]
+}

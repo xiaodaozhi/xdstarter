@@ -1,0 +1,224 @@
+{
+  "compiler": "MSVC 192930153",
+  "compoundPixelChecks": {
+    "fourSmallEqualsStandard": true,
+    "fourSmallOuterHeightPx": 182,
+    "fourSmallOuterWidthPx": 182,
+    "standardHeightPx": 182,
+    "standardWidthPx": 182,
+    "twoStandardOuterWidthPx": 378,
+    "wideEqualsTwoStandard": true,
+    "wideWidthPx": 378
+  },
+  "dropAreaGeometryWindowDip": {
+    "height": 104,
+    "width": 552,
+    "x": 376,
+    "y": 320
+  },
+  "graphicsApi": "Direct3D11",
+  "graphicsApiValue": 4,
+  "gridCropPx": {
+    "height": 182,
+    "width": 966,
+    "x": 658,
+    "y": 560
+  },
+  "gridGeometryWindowDip": {
+    "height": 104,
+    "width": 552,
+    "x": 376,
+    "y": 320
+  },
+  "gridScreenshot": "dark-daily-grid.png",
+  "group": "daily",
+  "imageHeightPx": 1274,
+  "imageHeightRatio": 1.75,
+  "imageWidthPx": 1799,
+  "imageWidthRatio": 1.75,
+  "kernelType": "winnt",
+  "kernelVersion": "10.0.26300",
+  "lowerScanlineRunsPx": [
+    {
+      "startPx": 0,
+      "widthPx": 378
+    },
+    {
+      "startPx": 392,
+      "widthPx": 182
+    },
+    {
+      "startPx": 588,
+      "widthPx": 182
+    },
+    {
+      "startPx": 784,
+      "widthPx": 84
+    },
+    {
+      "startPx": 882,
+      "widthPx": 84
+    }
+  ],
+  "operatingSystem": "Windows 11 Version 26H2",
+  "pixelScanPassed": true,
+  "platformName": "windows",
+  "qtVersion": "6.8.2",
+  "requestedScaleFactor": "1",
+  "screenAvailableGeometryDip": {
+    "height": 873,
+    "width": 1371,
+    "x": 0,
+    "y": 0
+  },
+  "screenDevicePixelRatio": 1.75,
+  "screenGeometryDip": {
+    "height": 914,
+    "width": 1371,
+    "x": 0,
+    "y": 0
+  },
+  "screenLogicalDpi": 96,
+  "screenPhysicalDpi": 114.92871287128712,
+  "smallVerticalScanlineRunsPx": [
+    {
+      "startPx": 0,
+      "widthPx": 84
+    },
+    {
+      "startPx": 98,
+      "widthPx": 84
+    }
+  ],
+  "theme": "dark",
+  "tiles": [
+    {
+      "accessibleName": "宽磁贴示例",
+      "id": "daily-wide",
+      "labelTruncated": false,
+      "labelVisible": true,
+      "renderedGeometryDip": {
+        "height": 104,
+        "width": 216,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "accessibleName": "标准磁贴示例四",
+      "id": "daily-standard-1",
+      "labelTruncated": true,
+      "labelVisible": true,
+      "renderedGeometryDip": {
+        "height": 104,
+        "width": 104,
+        "x": 224,
+        "y": 0
+      }
+    },
+    {
+      "accessibleName": "标准磁贴示例五",
+      "id": "daily-standard-2",
+      "labelTruncated": true,
+      "labelVisible": true,
+      "renderedGeometryDip": {
+        "height": 104,
+        "width": 104,
+        "x": 336,
+        "y": 0
+      }
+    },
+    {
+      "accessibleName": "小磁贴示例一",
+      "id": "daily-small-1",
+      "labelTruncated": true,
+      "labelVisible": false,
+      "renderedGeometryDip": {
+        "height": 48,
+        "width": 48,
+        "x": 448,
+        "y": 0
+      }
+    },
+    {
+      "accessibleName": "小磁贴示例二",
+      "id": "daily-small-2",
+      "labelTruncated": true,
+      "labelVisible": false,
+      "renderedGeometryDip": {
+        "height": 48,
+        "width": 48,
+        "x": 504,
+        "y": 0
+      }
+    },
+    {
+      "accessibleName": "小磁贴示例三",
+      "id": "daily-small-3",
+      "labelTruncated": true,
+      "labelVisible": false,
+      "renderedGeometryDip": {
+        "height": 48,
+        "width": 48,
+        "x": 448,
+        "y": 56
+      }
+    },
+    {
+      "accessibleName": "小磁贴示例四",
+      "id": "daily-small-4",
+      "labelTruncated": true,
+      "labelVisible": false,
+      "renderedGeometryDip": {
+        "height": 48,
+        "width": 48,
+        "x": 504,
+        "y": 56
+      }
+    }
+  ],
+  "tooltipCaptureOpacity": 0,
+  "tooltipsHiddenForGeometryCapture": true,
+  "topScanlineRunsPx": [
+    {
+      "startPx": 0,
+      "widthPx": 378
+    },
+    {
+      "startPx": 392,
+      "widthPx": 182
+    },
+    {
+      "startPx": 588,
+      "widthPx": 182
+    },
+    {
+      "startPx": 784,
+      "widthPx": 84
+    },
+    {
+      "startPx": 882,
+      "widthPx": 84
+    }
+  ],
+  "verticalScanlineRunsPx": [
+    {
+      "startPx": 0,
+      "widthPx": 182
+    }
+  ],
+  "windowDevicePixelRatio": 1.75,
+  "windowFrameGeometryDip": {
+    "height": 728,
+    "width": 1028,
+    "x": 171,
+    "y": 72
+  },
+  "windowGeometryDip": {
+    "height": 728,
+    "width": 1028,
+    "x": 171,
+    "y": 72
+  },
+  "windowScreenshot": "dark-daily-window.png"
+}

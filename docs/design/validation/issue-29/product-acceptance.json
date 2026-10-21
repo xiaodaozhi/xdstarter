@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-21",
+  "productSha256": "34f18e80c19b5d81356ad71dec76c6fc7870c32c34e26d86ca2cf46d9131cb23",
+  "sourceCommit": "57ed29eb0e70de2cd9a52080fe4c8a11cf3546d8",
+  "scope": "Real application catalog and icons, isolated acceptance layout, two independent product processes; no daily user configuration changes.",
+  "qtVersion": "6.8.2",
+  "windowsKernelVersion": "10.0.26300",
+  "graphicsApi": "Direct3D11",
+  "phases": [
+    {
+      "tag": "first",
+      "startedAt": "2026-10-21T17:58:15.2810127+08:00",
+      "exitedAt": "2026-10-21T18:02:08.6217347+08:00",
+      "exitCode": 0
+    },
+    {
+      "tag": "restart",
+      "startedAt": "2026-10-21T18:02:14.5740588+08:00",
+      "exitedAt": "2026-10-21T18:08:16.7857637+08:00",
+      "exitCode": 0
+    }
+  ],
+  "toolObserved": {
+    "lightAndDarkThemeSwitch": true,
+    "realPinyinSearchHuatuReturnsOnePaint": true,
+    "clearSearchRestoresBrowsing": true,
+    "editModeAndGroupDialogEscape": true,
+    "dialogDoesNotDismissMenu": true,
+    "crossGroupMouseDragCommitted": true,
+    "standardToWideSizeChangeCommitted": true,
+    "firstProcessFallbackActivationPreservesEditMode": true,
+    "restartRestoresDarkTheme": true,
+    "restartStartsNonEditingWithEmptyQuery": true,
+    "restartRestoresGroupOrderAndAllFourTiles": true,
+    "normalDesktopProcessShowsRealPackagedIcons": true,
+    "normalDesktopProcessTrayRecoveryAvailable": true
+  },
+  "layoutChecks": {
+    "schemaVersionRemains2": true,
+    "onlyExpectedThemeGroupAndSizeChanges": true,
+    "allTargetsAndStableIdsPreserved": true,
+    "otherThreeTilesUnchanged": true,
+    "restartBeforeAndAfterDeepEqual": true,
+    "tileCount": 4,
+    "groupCount": 2
+  },
+  "userConfirmed": {
+    "trayClickRestoresWindow": true,
+    "positionAndSizeStable": true,
+    "currentProcessQueryPreserved": true,
+    "powerMenuExitCompleted": true,
+    "result": "恢复正常，查询保留，已从菜单退出"
+  },
+  "environmentBoundary": "The first restricted launcher showed generic packaged-app icons and trayRecovery=false; the same executable in the ordinary desktop launcher showed real icons and trayRecovery=true. This does not establish compatibility for every launch environment.",
+  "privateArtifactsExcluded": [
+    "full layouts and real target descriptors",
+    "full catalog",
+    "desktop background screenshots",
+    "PID and machine paths",
+    "raw process logs"
+  ],
+  "notCovered": [
+    "system display-setting changes",
+    "display hotplug",
+    "Explorer restart",
+    "remote desktop",
+    "screen reader",
+    "Mica/Acrylic",
+    "new Win-key or Start-button capture acceptance"
+  ]
+}
