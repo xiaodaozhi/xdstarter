@@ -6,6 +6,28 @@
 
 GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查看 PNG，核对字体、应用图标、长名称、间隙及辅助功能信息的表达。
 
+## 本轮候选：布局导入与上一份备份恢复（Issue #10）
+
+2026-10-21，导入候选复用严格 schema 1／2／3 校验及现有保存 worker，加入文件选择、不可变预览、确认替换和备份恢复，决定见 [ADR-0012](adr/0012-layout-import-transaction.md)。本轮暂以草稿 PR 交付；下面是固定版本的构建与离屏结果，Windows 实际产品验收仍待协调，不能据此关闭 [#10](https://github.com/xiaodaozhi/xdstarter/issues/10)。
+
+正式入口 `scripts/build-windows.ps1 -Preset app-release` 使用 Qt **6.8.2**、MSVC **19.29.30153.0／v142**、SDK **10.0.19041.0**。最终 `build/issue10-build-release-final.log` 完成 Release、QML lint 和 **13/13 CTest（32.08 秒）**，GUI **53/53**、host **34/34**；新增导入服务单独同环境复核 **27/27**，日志为 `build/issue10-import-service-baseline.txt`。仓库检查与工具脚本 **13/13** 另行通过。SDK `FileDialogOptions` 在 Qt 6.8.2 qmltypes 中缺少完整类型／ReadOnly 元数据，仅对公共 options 绑定做局部 lint 注释；实际窗口对象同时断言 ReadOnly 与 DontUseNativeDialog 标志，未导入私有 API。Qt SDK 既有 C4702 警告与 QML lint 诊断分开记录。
+
+| 最终候选程序 | SHA-256 |
+| --- | --- |
+| 产品 `xdstarter.exe` | `0d09838f084495540a94fac2d1c04813f8bc6be63569e2ceb3201d4f4e33d348` |
+| GUI `xdstarter_ui_tests.exe` | `9716a9b77fb901be977d4423def2de0126fbac9b966bc2a09560d884ee23b60c` |
+| host `xdstarter_desktop_window_host_tests.exe` | `ed1ff766be1ac6c998928a5d27fa864079462c2de9cbc761e42889991fcca4fa` |
+
+服务回归覆盖选中坏 JSON 且有有效同名 `.bak` 仍拒绝、1 MiB 超限／未来版本／未知字段／非法引用／重叠、schema 1／2 规范化与原字节不变、空布局、不可变快照、两份预验证、dirty 两步写入及故障、clean 仅替换一次、schema 1／2 原字节备份与真实备份失败拒覆盖。GUI 回归覆盖取消、预览修订失效、样例／只读／未来目的配置拒绝、确认后有效磁贴所有布局操作门控、自动保存旧回调隔离、立即退出 flush 屏障、同 fixture 重建恢复及不启动导入目标。
+
+可选环境变量 `XDSTARTER_LAYOUT_IMPORT_VALIDATION_DIR` 令既有 GUI 用例在至少两次真实 `afterRendering` 后抓帧，并记录实际逻辑 bounds、DPR、QPA；不使用固定睡眠等待图像。本轮 `build/validation/issue10/offscreen/` 保存深浅主题的预览、480×480 DIP 最小面板及错误状态共 **6 PNG＋6 JSON**，汇总与程序／帧散列位于 `build/validation/issue10/final-offscreen.json`。实际为 offscreen／software／DPR 1，抓帧仅含隔离测试配置路径，不入库、不上传，也不作为原生 alpha 证据。
+
+最小面板外窗为 528×528（每侧阴影 24），文件名独占一行、目录最多两行、32 组计数可见；最终浅色按钮 bounds 为 y=372.5…408.5 DIP，均完整位于面板内，错误状态的关闭按钮同样可达。完整来源通过 PlainText 提示和实际 QAccessible Description 验证；同版显示单个格式版本，旧版才显示迁移箭头。按钮保持 36 DIP 高、6 DIP 圆角、2 DIP 焦点，Return／Enter 提交与取消以及提交期禁用均有回归。鼠标悬停使用公共 HoverHandler。
+
+同轮对导入可带入的 `symbol` 补 PlainText；负向离屏实测合法 16 个 W 的旧 Text 为 (-76,17,256×30)，越出 104×104 磁贴。限制在原有 28／36 DIP 图标槽后，标准、小、宽磁贴均断言文字 bounds 在磁贴内，所有外框几何保持；字号与中心偏移不变。
+
+尚未验证：当前候选的原生深浅色文件选择与确认、原生外部焦点／Esc／托盘、真实目标导入后的不可用状态与启动、独立产品进程退出和重启，以及当前候选的混合 DPI／多屏与部署完整性。测试 fixture 重建或离屏 transient 归属不能替代这些结果。先前轮次哈希与原生证据保持原身份，依赖 PR 合入／retarget 后若 head 改变，须重新检查适用项。
+
 ## 当前开发验证：磁贴显示名称与搜索别名（Issue #9）
 
 2026-10-21，[#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 剩余的磁贴显示名称编辑已接入右键／Shift+F10 菜单、内部命名弹层、controller、布局与搜索。当前写入 schema 3，严格兼容读取 schema 1/2；旧文件只读取时原字节不变，首次保存保留旧版原字节备份。每枚磁贴可有独立覆盖，原 target 名称与启动描述不变。契约见 [ADR-0011](adr/0011-tile-display-names.md)；此处只记录本分支已执行的检查，不沿用下方旧版本的原生窗口、托盘及产品重启结论。

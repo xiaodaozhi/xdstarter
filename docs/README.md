@@ -1,6 +1,6 @@
 # 文档导航
 
-本目录保存稳定的产品规格、设计、技术决策和协作规范。Qt Quick 原型已实现真实应用目录、图标、启动与固定/取消固定，三档磁贴编辑及 schemaVersion 3 布局与主题恢复（兼容读取1/2），并接入快捷栏、圆形头像、软件图标、托盘和无边框菜单焦点交互。[#16](https://github.com/xiaodaozhi/xdstarter/issues/16) 统一可见面板左侧/底部 8 DIP 边距，接入自绘外观与隐藏阶段定位；[#22](https://github.com/xiaodaozhi/xdstarter/issues/22) 接入默认关闭、可显式启用及暂停的单独 Win 键原型，系统开始按钮保持原生入口。[#8](https://github.com/xiaodaozhi/xdstarter/issues/8) 增加目录与固定目标的离线名称、英文、拼音和首字母搜索，使用独立后台索引与有界结果列表；[#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 增加编辑模式的分组新建、重命名、排序及空组删除。验收发现的 [#28](https://github.com/xiaodaozhi/xdstarter/issues/28) 另补隐藏窗口跨屏迁移、逻辑尺寸保持和有界稳定后显示；本机 96/144 DPI 原生往返测量与实际产品验收分别记录。[#29](https://github.com/xiaodaozhi/xdstarter/issues/29) 将 v2 修订 2.2 的完整布局和视觉细节接入 QML，作为 M2-Alpha 的视觉验收门槛。当前与历史构建、实际窗口证据及未覆盖环境统一见[测试策略](technical/testing.md)，历史结果不替代新版本验收。正式工具清单与 xdzip 核实的版本对齐，继续使用本项目 Qt 6.8.2 的获取与构建入口。磁贴显示名称覆盖与搜索别名使用严格 schema 3（[ADR-0011](technical/adr/0011-tile-display-names.md)）；导入界面、透明背景材料与其余系统接管继续按 Issues 推进，父 [#6](https://github.com/xiaodaozhi/xdstarter/issues/6) 不因局部原型交付关闭。
+本目录保存稳定的产品规格、设计、技术决策和协作规范。Qt Quick 原型已实现真实应用目录、图标、启动与固定/取消固定，三档磁贴编辑及 schemaVersion 3 布局与主题恢复（兼容读取1/2），并接入快捷栏、圆形头像、软件图标、托盘和无边框菜单焦点交互。[#16](https://github.com/xiaodaozhi/xdstarter/issues/16) 统一可见面板左侧/底部 8 DIP 边距，接入自绘外观与隐藏阶段定位；[#22](https://github.com/xiaodaozhi/xdstarter/issues/22) 接入默认关闭、可显式启用及暂停的单独 Win 键原型，系统开始按钮保持原生入口。[#8](https://github.com/xiaodaozhi/xdstarter/issues/8) 增加目录与固定目标的离线名称、英文、拼音和首字母搜索，使用独立后台索引与有界结果列表；[#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 增加编辑模式的分组新建、重命名、排序及空组删除。验收发现的 [#28](https://github.com/xiaodaozhi/xdstarter/issues/28) 另补隐藏窗口跨屏迁移、逻辑尺寸保持和有界稳定后显示；本机 96/144 DPI 原生往返测量与实际产品验收分别记录。[#29](https://github.com/xiaodaozhi/xdstarter/issues/29) 将 v2 修订 2.2 的完整布局和视觉细节接入 QML，作为 M2-Alpha 的视觉验收门槛。当前与历史构建、实际窗口证据及未覆盖环境统一见[测试策略](technical/testing.md)，历史结果不替代新版本验收。正式工具清单与 xdzip 核实的版本对齐，继续使用本项目 Qt 6.8.2 的获取与构建入口。磁贴显示名称覆盖与搜索别名使用严格 schema 3（[ADR-0011](technical/adr/0011-tile-display-names.md)）；[#10](https://github.com/xiaodaozhi/xdstarter/issues/10) 接入严格导入预览与备份恢复，实际窗口验收单独记录。透明背景材料与其余系统接管继续按 Issues 推进，父 [#6](https://github.com/xiaodaozhi/xdstarter/issues/6) 不因局部原型交付关闭。
 
 开始按钮后续方案由 [Issue #24](https://github.com/xiaodaozhi/xdstarter/issues/24) 先验证原生窗口身份与只读命中，见 [ADR-0009](technical/adr/0009-start-button-hit-probe.md)。研究查询与产品唤起分开；一次可信矩形或命中候选不表示已可接管点击。
 
@@ -35,6 +35,7 @@
 | [ADR-0007：自绘菜单与统一边距](technical/adr/0007-custom-menu-chrome.md) | 自绘圆角/边框/阴影、透明外窗、对称工作区间距与隐藏阶段定位 |
 | [ADR-0008：单独 Win 键原型](technical/adr/0008-win-key-capture.md) | 默认关闭、专用输入线程、组合键放行、有界释放派发与失败停用 |
 | [ADR-0009：开始按钮命中研究](technical/adr/0009-start-button-hit-probe.md) | 显式只读原生身份与采样、共享窗口降级及后续接管门槛 |
+| [ADR-0012：导入替换事务](technical/adr/0012-layout-import-transaction.md) | 严格文件预览、修订失效、后台提交及退出屏障 |
 | [ADR-0010：离线应用搜索](technical/adr/0010-local-application-search.md) | Qt Core 后台索引、名称与多音拼音匹配、查询代次及 Unicode 数据许可 |
 | [ADR-0011：磁贴显示名称](technical/adr/0011-tile-display-names.md) | 每磁贴显示覆盖、严格 schema 3 迁移、原名与覆盖搜索别名 |
 

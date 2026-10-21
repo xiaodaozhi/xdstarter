@@ -106,7 +106,7 @@ CMake 的 `xdstarter_add_ui` 为产品与 GUI 测试编译同一组 QML、contro
 - `ApplicationCatalog`：已实现异步目录快照、图标缓存与启动结果；返回稳定 appId、名称、目标和图标键；自动增量扫描待开发。
 - `LayoutEngine`：以格坐标计算矩形、校验占用、生成落点；不读取屏幕物理坐标。
 - `SearchIndex` / `SearchService`：Qt Core 的离线名称和拼音匹配；输入值快照与查询，后台返回稳定目标 id、名称、排序等级与匹配总数，双版本校验阻止旧查询或旧目录覆盖当前状态。
-- `LayoutStore`：已实现严格 schema 1/2/3 的读取、严格校验、原子保存、备份恢复与未来版本保护；支持真实目标和空布局，导入 UI 待后续扩展。
+- `LayoutStore`：已实现严格 schema 1/2/3 的读取、严格校验、原子保存、备份恢复与未来版本保护；支持真实目标和空布局。`layout_import` 严格读取用户单独选择的文件并规范化为 schema 3；controller 缓存预览、跟踪修订失效并复用现有保存 worker 完成替换，成功落盘后才发布内存，退出屏障防止旧快照回写；见 [ADR-0012](adr/0012-layout-import-transaction.md)。
 - `ApplicationPlatform`：已实现同步、可替换的 Windows 目录/图标/可用性/启动接口，由 ApplicationCatalog worker 调用。
 - `DesktopShellService` / `DesktopPlatform`：已接入桌面动作、无 COM/UIA 的产品工作区查询、面板物理定位及原生装饰抑制接口；工作区查询与 Shell 在 worker，短时本进程窗口定位与设置在 GUI 边界；原 UIA 开始按钮接口仅保留显式研究用途。
 - `DesktopTray` / `DesktopWindowHost`：已接入原生托盘、菜单恢复/退出、异步定位代次与外部焦点延后复核。
