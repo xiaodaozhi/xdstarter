@@ -2,14 +2,16 @@
 
 对应 [Issue #29](https://github.com/xiaodaozhi/xdstarter/issues/29)。本目录保存 Qt 6.8.2 的匿名运行时证据，设计基准见[设计说明](../../README.md)，正式构建与真实产品交互见[测试记录](../../../technical/testing.md)。这些图片由产品 QML/controller 实际渲染，没有将设计整图贴入窗口，也没有读取用户布局或真实应用目录。
 
-## 同一最终程序
+## 视觉及产品验收程序
 
 | 程序 | SHA-256 |
 | --- | --- |
 | 产品 | `34f18e80c19b5d81356ad71dec76c6fc7870c32c34e26d86ca2cf46d9131cb23` |
 | GUI 及显式视觉探针 | `35c4a04c00e72703ef986cb06d66c2fd112e244d4e7bfc477b082c4e21b184ff` |
 
-[源码摘要](source-digests.json) 按 UTF-8、LF 换行规范化后计算 SHA-256，覆盖相关 QML、controller、目录状态、tokens 和测试源文件。程序散列来自本机最终正式 Release；附加 MSVC 2022 CI 的输出属于另一构建，不应具有相同二进制散列。
+[源码摘要](source-digests.json) 按 UTF-8、LF 换行规范化后计算 SHA-256，覆盖相关 QML、controller、目录状态、tokens 和测试源文件。程序散列来自本机视觉验收时的正式 Release；附加 MSVC 2022 CI 的输出属于另一构建，不应具有相同二进制散列。
+
+后续 CI 暴露跨组滚动用例缺少稳定的几何前提，追加的[测试修正](ci-scroll-regression.json)只控制该用例的窗口高度及目标越界前提，没有改变产品、QML 或显式视觉探针。以下图片和元数据保留实际抓帧程序 `35c4a04c…` 的身份；修正后的最终 GUI 与构建结果另见[测试记录](../../../technical/testing.md)，产品散列保持相同。
 
 ## 深浅主题与状态
 

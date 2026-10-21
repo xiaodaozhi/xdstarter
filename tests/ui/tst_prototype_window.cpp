@@ -741,6 +741,12 @@ void PrototypeWindowTest::mouseDragWithinGroup() {
 
 void PrototypeWindowTest::mouseDragAcrossGroups() {
     controller_->setEditMode(true);
+    // The compact browsing chrome can leave the second group inside the default
+    // viewport. Keep this case an actual edge-scroll scenario on every font kit.
+    window_->resize(window_->width(), window_->minimumHeight());
+    QTRY_COMPARE(item(QStringLiteral("grid-work"))->height(), 216.0);
+    QTRY_VERIFY(!viewportScene().adjusted(0, 48, 0, -48).contains(
+        gridPosition(QStringLiteral("daily"), QPointF(52, 164))));
     QSignalSpy changed(controller_.get(), &xdstarter::MenuController::groupsChanged);
     beginMouseDrag(QStringLiteral("work-standard-1"));
     moveMouseToGrid(QStringLiteral("daily"), QPointF(52, 164));

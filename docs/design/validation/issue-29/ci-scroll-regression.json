@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-21",
+  "failedCiHead": "72d13d492693b184dc7543b6dcc2a6b7a746ce06",
+  "failedCiJob": "https://github.com/xiaodaozhi/xdstarter/actions/runs/39583500992/job/119166601916",
+  "observedFailure": "mouseDragAcrossGroups asserted contentY > 0 without a stable off-viewport target precondition; 43 GUI cases passed and one failed.",
+  "scope": "Test-only geometry precondition; no product, QML, platform or explicit visual-probe changes.",
+  "fix": [
+    "Resize the test window to its minimum height in edit mode.",
+    "Wait until the edit grid height is 216 DIP.",
+    "Require the destination to lie outside the viewport's 48 DIP safe margin before dragging."
+  ],
+  "retainedAssertions": [
+    "Production MouseArea grab and edge-scroll Timer",
+    "Nonzero contentY after edge scrolling",
+    "Valid destination and no premature commit",
+    "Exactly one group change after release",
+    "Destination group, row 2, all 15 tiles and restored focus"
+  ],
+  "finalLocalBuild": {
+    "qtVersion": "6.8.2",
+    "compiler": "MSVC 19.29.30153.0 / v142",
+    "sdk": "10.0.19041.0",
+    "ctestPassed": 12,
+    "ctestFailed": 0,
+    "seconds": 30.49,
+    "guiPassed": 44,
+    "hostPassed": 34,
+    "qmlLintPassed": true,
+    "guiSha256": "d36940ee0efa19f77c272c84eda1d96cb95d8357276676c00f68d87aba772085",
+    "productSha256": "34f18e80c19b5d81356ad71dec76c6fc7870c32c34e26d86ca2cf46d9131cb23",
+    "productAndHostHashesUnchanged": true
+  },
+  "isolatedRepeat": {
+    "platformName": "offscreen",
+    "backend": "software",
+    "case": "mouseDragAcrossGroups",
+    "freshProcesses": 10,
+    "passedProcesses": 10,
+    "failedProcesses": 0,
+    "qtestPassedPerProcess": 3
+  },
+  "nativeVisualEvidenceIdentity": {
+    "guiSha256": "35c4a04c00e72703ef986cb06d66c2fd112e244d4e7bfc477b082c4e21b184ff",
+    "sourceCommit": "57ed29eb0e70de2cd9a52080fe4c8a11cf3546d8",
+    "notRelabeledAsNewGui": true,
+    "productSha256MatchesFinalLocalBuild": true
+  }
+}

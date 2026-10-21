@@ -12,19 +12,20 @@ GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查�
 
 ### 正式构建与自动检查
 
-最终正式入口 `./scripts/build-windows.ps1 -Preset app-release` 使用 Qt **6.8.2**、MSVC **19.29.30153.0／v142**、Windows SDK **10.0.19041.0**。`build/issue29-build-rounded-overlay.log` 记录 Release、QML lint 和 **12/12 CTest 通过（38.63 秒）**，其中 GUI **44/44**、host **34/34**。此次 QML lint 没有诊断：`Qt.inputMethod.reset` 使用局部类型抑制，搜索／输入法运行回归仍保留；Qt SDK 头文件的既有 MSVC C4702 警告没有消除，不把它写为整个构建零警告。
+正式入口 `./scripts/build-windows.ps1 -Preset app-release` 使用 Qt **6.8.2**、MSVC **19.29.30153.0／v142**、Windows SDK **10.0.19041.0**。视觉及真机验收前的 `build/issue29-build-rounded-overlay.log` 为 **12/12 CTest（38.63 秒）**。后续仅修正跨组滚动用例的几何前提，最终 `build/issue29-build-ci-scroll-precondition.log` 再次完成 Release、QML lint 和 **12/12 CTest（30.49 秒）**，GUI **44/44**、host **34/34**。产品及 host 散列没有变化。此次 QML lint 没有诊断：`Qt.inputMethod.reset` 使用局部类型抑制，搜索／输入法运行回归仍保留；Qt SDK 头文件的既有 MSVC C4702 警告没有消除，不把它写为整个构建零警告。
 
-| 最终程序 | SHA-256 |
+| 程序及证据版本 | SHA-256 |
 | --- | --- |
 | 产品 `xdstarter.exe` | `34f18e80c19b5d81356ad71dec76c6fc7870c32c34e26d86ca2cf46d9131cb23` |
-| GUI `xdstarter_ui_tests.exe` | `35c4a04c00e72703ef986cb06d66c2fd112e244d4e7bfc477b082c4e21b184ff` |
+| 原生视觉证据 GUI `xdstarter_ui_tests.exe` | `35c4a04c00e72703ef986cb06d66c2fd112e244d4e7bfc477b082c4e21b184ff` |
+| 滚动用例修正后最终 GUI | `d36940ee0efa19f77c272c84eda1d96cb95d8357276676c00f68d87aba772085` |
 | host `xdstarter_desktop_window_host_tests.exe` | `d5cbb03068876e11dccbe65df382256ab85c1571e4c14934dad3ac4629999785` |
 
 本轮新增三条 GUI 用例，覆盖完整搜索工具栏及更多菜单入口、深浅主题与浏览／编辑切换、共享网格和图标／文字对比；结构化错误反馈在定时器结束后仍可见，失败后重试可清零；磁贴名含 `<b>literal</b>` 等标记时，标签与有界提示仍按 PlainText 原样显示。原有目录、搜索、拖放、分组、只读保护、持久化和焦点回归继续执行。布局改变只调整浏览容器的占用高度，编辑使用 service 的完整拖放空间，磁贴坐标和尺寸前后相同。
 
 包含公开验收工件的仓库文档／素材检查通过，255 项开发素材及其清单未重建；`tests/tooling` **13/13** 通过（本地 `build/issue29-tooling-tests.log`）。独立只读审查发现 TileButton 标签及提示的 AutoText 遗漏，已显式改为 PlainText、提示宽度上限 380 DIP，并补充字面文本回归；其余主题、错误状态、内部菜单、分组高度与滚动路径未留下已确认 P1/P2。
 
-### 同一最终 GUI 的离屏状态抓帧
+### 视觉证据 GUI 的离屏状态抓帧
 
 显式 `--visual-acceptance-probe` 在 `offscreen/software` 下取得 **22/22** 张状态图并通过状态断言，`errors` 与 `qmlWarnings` 均为空，DPR 为 1。深浅主题各含浏览、更多菜单、搜索有／无结果、编辑、组名弹层、分组菜单、失效、窄面板、空布局／目录及加载 11 状态；运行方法见[开发环境](development.md)。本地工件为 `build/validation/issue29/offscreen/` 中的 PNG 和 `visual-acceptance-probe.json`；公开[离屏摘要](../design/validation/issue-29/offscreen-summary.json)保留 22 帧断言与元数据，删除未提交 PNG 的截图字段，并明确图片仅保存在本地 build 目录。
 
@@ -34,7 +35,7 @@ GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查�
 
 早期版本曾以 GUI `e71627b56b0c715c83108f77dc76dd7e086f6e2d64e7bceda3bc078ec005effc`、对应当时产品 `b449…` 执行五档完整 GUI，每档 44/44；其结果属于图标等待及圆角蒙层修正之前的程序，历史矩阵保留为 `native-matrix-before-icon-wait.json`。另有 GUI `824edb6336f2501267f06047e0f23bb2f824c2d5972b6c762c231e156db3ac9f` 的 `renderedGroups` 像素专项，保留为 `native-matrix-before-rounded-overlay.json`。两者都不作为上表最终 GUI 的五档完整回归证据。
 
-最终 GUI `35c4a04c…` 的五档像素专项 **全部通过**，结果见[原生矩阵](../design/validation/issue-29/native-matrix.json)。此次仅运行 `renderedGroups`，不是每档重新执行完整 44 项 GUI。每档初始化／抓帧／清理共 **3/3**；深浅主题 × 三组得到 6 份 group JSON，每份包含完整窗口与网格裁剪两张 PNG，共 12 PNG，像素扫描均通过。完整本地工件位于 `build/validation/issue29/final-native-pixels/`，公开矩阵保留程序 hash、实际 DPR、图形 API 与结果。
+原生视觉证据 GUI `35c4a04c…` 的五档像素专项 **全部通过**，结果见[原生矩阵](../design/validation/issue-29/native-matrix.json)。此次仅运行 `renderedGroups`，不是每档重新执行完整 44 项 GUI。每档初始化／抓帧／清理共 **3/3**；深浅主题 × 三组得到 6 份 group JSON，每份包含完整窗口与网格裁剪两张 PNG，共 12 PNG，像素扫描均通过。完整本地工件位于 `build/validation/issue29/final-native-pixels/`，公开矩阵保留程序 hash、实际 DPR、图形 API 与结果。
 
 | Qt 有效缩放 | 实际 DPR | 图形后端 | QTest | 六组像素扫描 |
 | --- | --- | --- | --- | --- |
@@ -84,6 +85,8 @@ GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查�
 上述首受限与普通桌面两个启动上下文的差别不证明所有启动方式均兼容。本轮没有重新验收 Win 键或开始按钮接管、Explorer 重启、远程桌面、物理系统缩放切换、显示器热插拔、屏幕阅读器及 Mica／Acrylic；前轮结果继续保留各自程序身份，父 #5／#6 与相关后续任务保持各自范围。
 
 ### 失败与修正记录
+
+PR 初次 head `72d13d4` 的[附加 MSVC 2022 检查](https://github.com/xiaodaozhi/xdstarter/actions/runs/39583500992/job/119166601916) 为 11/12 CTest、GUI 43 通过／1 失败：跨组用例断言 `contentY > 0`，却没有先建立并等待目标必须离开视口的几何前提。新布局的浏览／编辑组高不同，原用例依赖默认尺寸及重排时机，CI 没有记录当时的实际目标矩形，不能进一步认定生产 Timer 有缺陷。修正仅在该用例缩到最小窗高，等待编辑网格为 216 DIP 并明确目标位于安全区之外；随后继续使用生产边缘滚动 Timer 和原来的非零滚动、单次跨组提交、坐标、15 枚磁贴及焦点断言。最终正式 CTest 及独立重复结果见[修正摘要](../design/validation/issue-29/ci-scroll-regression.json)。这项变更没有修改产品、QML 或显式视觉探针，原生图片保留实际抓帧 GUI `35c4a04c…` 和源码 `57ed29e` 的身份，不重标为新的 GUI hash；相同产品 `34f18e80…` 的真机证据仍保持准确。
 
 - 初轮 `build/issue29-build-initial.log` 为 **11/12 CTest，GUI 40 通过／3 失败**：旧测试仍要求历史高亮色、260 DIP 目录及常驻品牌图标。核对修订 2.2 后调整这三条视觉期待，保留其可读性、入口及实际几何断言，没有把失败记为通过。
 - 离屏探针初次缺少系统字体目录，保留 `offscreen-initial-fonts.json` 和启动日志。随后用空 TextInput 的 `boundingRect()` 衡量布局框，得到的是文本／光标 ink 边界而假失败；改用 `size()` 测布局外框，保留 `offscreen-ink-bounds-failed.json`。
