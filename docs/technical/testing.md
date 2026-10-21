@@ -53,7 +53,9 @@ GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查�
 
 首进程通过菜单退出，保留进程句柄的启动器记录 2026-10-21 14:36:19（Asia/Shanghai）退出代码 0。以同一文件和产品 hash 重启为 PID 27908，实际窗口恢复浅色主题，以及 column 0/2/3、row 0 的 standard/small/standard 三枚磁贴；搜索框为空。schemaVersion、IDs、targets、groups、preferences 与重启前逐对象一致，没有保存搜索查询。环境为 Windows kernel `10.0.26300`、Direct3D 11 / Intel Iris Xe；重启首次呈现日志为 render DPR 1／任务栏 DPI 96，后续托盘唤回日志出现 DPI 144、render DPR 从 1 到 1.5，最终间距请求为 12 物理像素。定位请求成功并禁用原生装饰；没有独立测量跨屏实际位置或稳定性，不把这些日志作为混合 DPI 兼容通过的结论。重启窗口失焦后收起并记录 `trayRecovery: true`，最后同样正常退出，时间 14:39:43、代码 0。
 
-实际托盘唤回及查询保留的用户确认仍待补录；正常退出记录不单独证明唤回时的可见查询。所有工件位于本地 `build/validation/issue8-product/`：`first/restart-process.json`、`first/restart-exit.json`、隔离布局前后快照、`search-observations.json`、`restart-layout-result.json` 和日志。物理 IME、其他设备、系统缩放／混合 DPI、屏幕阅读器以及本轮未重测的 Win 键／开始按钮接管不在当前通过范围；当前远程检查与最终合并状态以关联 PR／Issue 为准。
+用户在获得本轮程序路径与隔离布局启动命令后，确认“从托盘唤回后，huatu 查询是仍然保留的”，补齐真实托盘唤回时的人工观察。这符合 [ADR-0010](adr/0010-local-application-search.md)：当前进程收起再唤回保留查询，清空按钮或 Esc 清除查询，退出后重启从空查询开始。人工确认与上述自动化启动的两个进程及退出记录分别保存，不额外推定手动实例的 PID 或退出码。
+
+本地工件位于 `build/validation/issue8-product/`：`first/restart-process.json`、`first/restart-exit.json`、隔离布局前后快照、`search-observations.json`、`restart-layout-result.json`、`tray-query-user-result.json` 和日志。本轮必要搜索、启动、托盘查询保留及重启恢复验收已完成。物理 IME、其他设备、系统缩放／混合 DPI、屏幕阅读器以及本轮未重测的 Win 键／开始按钮接管不在当前通过范围；当前远程检查与最终合并状态以关联 PR／Issue 为准。
 
 ## 历史：开始按钮只读命中研究（Issue #24）
 
