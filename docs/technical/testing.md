@@ -6,7 +6,38 @@
 
 GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查看 PNG，核对字体、应用图标、长名称、间隙及辅助功能信息的表达。
 
-## 当前：开始按钮只读命中研究（Issue #24）
+## 当前：离线应用搜索（Issue #8）
+
+2026-10-21，[#8](https://github.com/xiaodaozhi/xdstarter/issues/8) 接入名称／英文、拼音全拼和首字母搜索，机制、容量与数据许可见 [ADR-0010](adr/0010-local-application-search.md)。本节区分已完成自动检查与仍待协调的实际桌面验收。
+
+正式入口 `./scripts/build-windows.ps1 -Preset app-release` 使用 Qt 6.8.2、MSVC 19.29.30153.0/v142、SDK 10.0.19041.0，最终 Release、QML lint 与 **12/12 CTest** 通过（17.87 秒），GUI **37/37**，包含四个新增搜索用例。最终日志为本地 `build/issue8-build-final.log`。首轮编译及 lint 通过，GUI 两项唯一结果断言失败：单字母查询还会命中另一名称／别名的拼音；修正为完整唯一名称后，保留原本结果数量与旧目标拒绝启动的断言并完整重跑。首轮日志保留 `build/issue8-build-initial.log`。
+
+服务检查覆盖稳定排序、别名去重、多音、大小写／NFKC、`ü/u:/v`、符号和未知字断点、结果截断与总数、最新查询／目录胜出，以及后台线程退出。GUI 检查覆盖合成 IME 预编辑和提交、Ctrl+F、上下键／Enter、Esc 分层、宽窄视图滚动恢复、启动失败保留／成功隐藏、目录刷新移除旧目标、固定失效目标不可启动、重建窗口清空查询。独立审查发现结果元数据变化可重置当前选中行，已按 appId 与查询／修订恢复，并增加实际固定状态变化后的第二行焦点回归；图标／状态通知也检查不重发模型、不抢焦点。两轮独立静态审查未留下 P1/P2 问题。
+
+仓库检查新增离线拼音检查器，校验许可、固定哈希、44,359 码点及常见多音字；从本地固定 Unihan ZIP 执行 `generate_pinyin_data.py --source-zip ... --check` 也通过。普通检查、构建及运行均不下载字音数据。GUI 在 `offscreen/software` 下直接导出完整窗口的[深色](../design/validation/issue-8/search-dark-offscreen.png)和[浅色](../design/validation/issue-8/search-light-offscreen.png)样例，1028×728、DPR 1；已目视核对搜索框、状态、两行名称、固定提示及主题。两图只含夹具名称和图标，不能证明原生 D3D、透明阴影或真实应用目录兼容。
+
+| 最终程序 | SHA-256 |
+| --- | --- |
+| 产品 `xdstarter.exe` | `43eb1294a35ab5ec33d751de1c88814ee11bf44158992e5cce7d3ffaf93d6544` |
+| GUI `xdstarter_ui_tests.exe` | `92df31add8e95367d11d0047cb3df93b931f35148eb643bebac84b4a69a224ab` |
+| 搜索 `xdstarter_search_service_tests.exe` | `49553068d76c9376281a988b3ede84ac59cb0fa10e632c3795aa1a49dc95ee7a` |
+
+### 参考搜索延迟
+
+同一最终 Release 的显式 `xdstarter_search_service_tests.exe --search-benchmark` 在本机 Intel Core i7-11370H / Windows 桌面、Qt 6.8.2 上运行。固定数据集为 `synthetic-offline-applications-v1`：4096 个目标、每目标一个别名，混合中文、英文、多音与混合名称；`ten-families-ten-numbers-v2` 含 100 个互异查询，覆盖字面、全拼、首字母、别名和无结果，两路径各预热 20 次。最终测量未并行启动本项目其他测试；原始统计为[benchmark.json](../design/validation/issue-8/benchmark.json)。
+
+| 边界 | P50 | P95 | 最大 |
+| --- | --- | --- | --- |
+| `SearchIndex::search` 直接查询 | 18.99 ms | 23.78 ms | 43.91 ms |
+| `SearchService::setQuery` 到 GUI 接受结果，含 worker 排队 | 19.10 ms | 23.02 ms | 33.76 ms |
+
+直接建索引为 80.63 ms；服务索引就绪探测为 86.62 ms，未计入热查询分位。direct/service 的匹配总数校验和均为 1909，每次超时上限 5 秒。该参考数据集的热搜索 P95 小于 PRD-012 的 100 ms 目标；计时不含 QML 布局／绘制、真实 Shell 扫描或图标加载，也不是键盘到屏幕呈现的 P95。单次参考运行不代表所有设备、系统负载或 8192×16×256 容量上限组合；多音状态匹配仍受查询长度及读音候选影响，正在执行的任务不会因新查询即时终止。
+
+### 待完成的真机边界
+
+本轮尚未执行原生 Windows QPA 抓帧、真实目录中的名称／拼音搜索、实际应用启动、托盘唤回及同一布局文件重启验收；已发出桌面协调请求，等待可测试时段。合成 IME 事件不等同于物理输入法兼容性；不重用前一轮产品 hash 的 Windows 验收结果作为本轮通过。上述必要窗口验收完成后再按项目流程合并并关闭 #8，当前远程检查和交付状态以关联 PR／Issue 为准。
+
+## 历史：开始按钮只读命中研究（Issue #24）
 
 2026-10-21，[#24](https://github.com/xiaodaozhi/xdstarter/issues/24) 按 [ADR-0009](adr/0009-start-button-hit-probe.md) 为后续开始按钮接管验证身份前提。新增显式 `xdstarter_desktop_platform_tests.exe --probe-start-hit`，输出有限原生窗口与五点采样 JSON；产品唤起不调用该接口，不安装新 Hook、不调用控件动作或发送输入。`captureReady` 固定为 false，CLI 退出 0 表示完成诊断，不表示存在可接管目标。
 

@@ -26,10 +26,19 @@ xdzip 根 CMake 最低要求 3.24，其 CI 的 CMake/Ninja/Python 依赖 runner�
 | Ninja | [1.13.2 Python 分发](https://pypi.org/project/ninja/1.13.2/) | 构建后端，Apache 2.0；本机可执行文件版本带 `.git.kitware.jobserver-pipe-1` 后缀，记录完整输出，不把后缀当作另一个 PyPI 包版本 |
 | aqtinstall | [3.3.0](https://pypi.org/project/aqtinstall/3.3.0/) | 获取 Qt，MIT；不改变 Qt 组件许可，不进入产品运行时 |
 | py7zr | [1.1.4](https://pypi.org/project/py7zr/1.1.4/) | Qt 下载包解压，LGPL-2.1-or-later；仅开发工具 |
+| Unicode Unihan 字音数据 | [17.0.0 官方固定包](https://www.unicode.org/Public/17.0.0/ucd/Unihan.zip) | 本地搜索的逐字多音数据；Unicode License v3（`Unicode-3.0`）。入库规范 TSV 与编译表，不引入拼音运行库；[完整许可、来源及 manifest](../../third_party/unicode/README.md)随表保留 |
 
 Python 包通过 PyPI 精确版本取得，项目工具保存在忽略的 `build/tooling/`；默认 Qt 缓存在 `build/Qt/`。版本检查同时核对包元数据、CMake/Ninja 可执行文件及 qmake 返回的 Qt 版本；本地结果保存在 `build/<preset>/toolchain-validation.json`。脚本不把所有传递依赖逐一固定，也未增加完整下载哈希锁，因此不能称作完整离线/位级可复现环境。首次获取需要网络，已安装相同工具和 SDK 时无需重复下载。
 
 应用 CI 固定 actions/checkout、actions/setup-python 与 Windows 使用的 astral-sh/setup-uv 提交；Python 补丁与工具版本由清单读取。Python 3.12.13 为仅源码安全版本，官方不提供该版 Windows 安装器；Windows CI 通过固定版本 uv 获取与本机相同渠道的 CPython，显式定位解释器后传入现有构建入口，严格版本检查保持不变。Linux 核心任务继续使用 setup-python。`windows-2022` runner 的 MSVC 2022/SDK 随镜像变化，仅作为显式附加兼容验证，不冒充上述 v142/19041 精确基线；实际日志记录其选择结果。Ubuntu 核心检查使用 runner 的 C++20 编译器，不提供 Qt/Windows 验收结论。Actions 恢复和检查证据见 [#12](https://github.com/xiaodaozhi/xdstarter/issues/12) 与 [PR #17](https://github.com/xiaodaozhi/xdstarter/pull/17)。
+
+## 离线拼音数据
+
+[Issue #8](https://github.com/xiaodaozhi/xdstarter/issues/8) 选定 Unihan 17.0.0 的 `kMandarin`、`kTGHZ2013`、`kXHC1983`、`kHanyuPinyin` 四字段，按顺序合并并去声调；`ü` 保留为 `v`。规范表含 44,359 个码点、52,982 个字音，编译时逐记录包含到 `services`，普通构建和运行无需下载源数据。没有词级消歧、运行时网络或简繁变体传播，不承诺所有汉字及读音完整覆盖。
+
+原始官方压缩包为 8,518,517 字节，SHA256 `f7a48b2b545acfaa77b2d607ae28747404ce02baefee16396c5d2d7a8ef34b5e`；这是本地下载固定值，不是上游签名。[manifest](../../third_party/unicode/manifest.json)另记录所选文本、许可、规范 TSV 与生成 C++ 表的哈希和统计。[生成器](../../scripts/generate_pinyin_data.py)可从已入库 TSV 离线重建，或用明确指定、校验固定哈希的本地源 ZIP 复现；原始 8 MiB ZIP 不提交。[检查器](../../scripts/check_pinyin_data.py)核对许可、表、生成结果和常见多音字，校验不发起网络请求。
+
+Unicode 数据完整许可及源版权通知随派生表保留在 `third_party/unicode/`；产品后续分发需携带这些材料。它不替代 Qt 部署许可，也不为项目代码和原创资产确定授权。具体取舍见 [ADR-0010](adr/0010-local-application-search.md)。
 
 ## 支持与升级边界
 
@@ -37,4 +46,4 @@ Qt 官方 6.8 Windows 支持配置列出 MSVC 2022；本项目按所有者要求
 
 固定版本不是永久冻结：补丁、安全更新或工具链变更通过依赖 PR 更新清单、文档及适用回归；Qt 升级至少覆盖布局、焦点、输入与部署。当前没有第三方二进制入库或应用安装包，不将工具缓存捆绑入产品。
 
-应用、文档及原创资产的许可仍由 [#3](https://github.com/xiaodaozhi/xdstarter/issues/3) 决定；本表不替代[发行许可审查](../governance/licensing.md)，也不为项目添加授权。尚未引入拼音库、运行时应用图标集合或字体包。
+应用、文档及原创资产的许可仍由 [#3](https://github.com/xiaodaozhi/xdstarter/issues/3) 决定；本表不替代[发行许可审查](../governance/licensing.md)，也不为项目添加授权。拼音采用上述有完整通知的派生数据表，未引入其他拼音运行库、应用图标集合或字体包。
