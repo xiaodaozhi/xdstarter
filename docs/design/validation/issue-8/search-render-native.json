@@ -1,0 +1,23 @@
+{
+  "fixtureOnly": true,
+  "frames": [
+    {
+      "devicePixelRatio": 1,
+      "file": "search-dark-native.png",
+      "heightPx": 728,
+      "widthPx": 1028,
+      "originalExportFile": "search-dark.png"
+    },
+    {
+      "devicePixelRatio": 1,
+      "file": "search-light-native.png",
+      "heightPx": 728,
+      "widthPx": 1028,
+      "originalExportFile": "search-light.png"
+    }
+  ],
+  "platformName": "windows",
+  "qtVersion": "6.8.2",
+  "query": "测试",
+  "resultCount": 2
+}

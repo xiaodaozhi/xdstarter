@@ -8,7 +8,7 @@ GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查�
 
 ## 当前：离线应用搜索（Issue #8）
 
-2026-10-21，[#8](https://github.com/xiaodaozhi/xdstarter/issues/8) 接入名称／英文、拼音全拼和首字母搜索，机制、容量与数据许可见 [ADR-0010](adr/0010-local-application-search.md)。本节区分已完成自动检查与仍待协调的实际桌面验收。
+2026-10-21，[#8](https://github.com/xiaodaozhi/xdstarter/issues/8) 接入名称／英文、拼音全拼和首字母搜索，机制、容量与数据许可见 [ADR-0010](adr/0010-local-application-search.md)。自动检查、原生样例抓帧及真实目录／窗口交互分别记录如下。
 
 正式入口 `./scripts/build-windows.ps1 -Preset app-release` 使用 Qt 6.8.2、MSVC 19.29.30153.0/v142、SDK 10.0.19041.0，最终 Release、QML lint 与 **12/12 CTest** 通过（17.87 秒），GUI **37/37**，包含四个新增搜索用例。最终日志为本地 `build/issue8-build-final.log`。首轮编译及 lint 通过，GUI 两项唯一结果断言失败：单字母查询还会命中另一名称／别名的拼音；修正为完整唯一名称后，保留原本结果数量与旧目标拒绝启动的断言并完整重跑。首轮日志保留 `build/issue8-build-initial.log`。
 
@@ -33,9 +33,27 @@ GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查�
 
 直接建索引为 80.63 ms；服务索引就绪探测为 86.62 ms，未计入热查询分位。direct/service 的匹配总数校验和均为 1909，每次超时上限 5 秒。该参考数据集的热搜索 P95 小于 PRD-012 的 100 ms 目标；计时不含 QML 布局／绘制、真实 Shell 扫描或图标加载，也不是键盘到屏幕呈现的 P95。单次参考运行不代表所有设备、系统负载或 8192×16×256 容量上限组合；多音状态匹配仍受查询长度及读音候选影响，正在执行的任务不会因新查询即时终止。
 
-### 待完成的真机边界
+### 本轮 Windows 真机证据
 
-本轮尚未执行原生 Windows QPA 抓帧、真实目录中的名称／拼音搜索、实际应用启动、托盘唤回及同一布局文件重启验收；已发出桌面协调请求，等待可测试时段。合成 IME 事件不等同于物理输入法兼容性；不重用前一轮产品 hash 的 Windows 验收结果作为本轮通过。上述必要窗口验收完成后再按项目流程合并并关闭 #8，当前远程检查和交付状态以关联 PR／Issue 为准。
+用户确认开始桌面验收后，使用同一 GUI hash、Windows QPA 执行 `searchKeyboardAndLaunchLifecycle`，3/3 通过（含初始化／清理，2.617 秒），日志为本地 `build/issue8-render-native.log`。该用例直接导出[原生浅色样例](../design/validation/issue-8/search-light-native.png)和[原生深色样例](../design/validation/issue-8/search-dark-native.png)，均为 1028×728 RGBA、DPR 1，四角 alpha 为 0；已目视核对搜索框、结果名称、图标占位、固定状态、单层边框和主题。[抓帧元数据](../design/validation/issue-8/search-render-native.json)标明 `fixtureOnly: true`，没有读取用户目录或启动真实应用，不以此替代下述产品验收。
+
+产品以同一 `43eb1294…` hash 和 `build/validation/issue8-product/layout.json` 隔离布局运行，首进程 PID 46088，真实目录显示 281 项。Computer Use 在实际窗口观察到：
+
+| 输入／动作 | 实际结果 |
+| --- | --- |
+| `huatu` | 仅一项画图，真实系统图标及“已固定”状态可见 |
+| `ht` | 三项，包含画图；英文名称的字面包含匹配排在拼音首字母前 |
+| `画图` | 同一目标仅一项，目录与固定目标未产生重复 |
+| Ctrl+F 后输入 `EXCEL` | 原查询被选中替换，找到一项 Excel，不区分大小写 |
+| `xdstarter-no-such-application-20261021` | 无结果与清空入口可见，没有启动操作 |
+| 清空 → 刷新目录 → 再搜 `huatu` | 恢复三枚磁贴浏览，目录仍为 281 项，同一画图目标仍只出现一次 |
+| Ctrl+F → Down → Enter | 结果行可见焦点，实际打开“无标题 - 画图”，XDStarter 收起；检查空白画布后关闭本轮画图 |
+
+查询由工具输入或通过编辑控件设置，中文名称检查没有使用物理输入法。工具的焦点字段未准确跟随 Qt 控件，键盘结果按可见焦点、选中文字与实际目标窗口判定；不声明屏幕阅读器焦点兼容已通过。完整目录、实际目标配置及含私人桌面背景的截图只保留本地，不提交。
+
+首进程通过菜单退出，保留进程句柄的启动器记录 2026-10-21 14:36:19（Asia/Shanghai）退出代码 0。以同一文件和产品 hash 重启为 PID 27908，实际窗口恢复浅色主题，以及 column 0/2/3、row 0 的 standard/small/standard 三枚磁贴；搜索框为空。schemaVersion、IDs、targets、groups、preferences 与重启前逐对象一致，没有保存搜索查询。环境为 Windows kernel `10.0.26300`、Direct3D 11 / Intel Iris Xe；重启首次呈现日志为 render DPR 1／任务栏 DPI 96，后续托盘唤回日志出现 DPI 144、render DPR 从 1 到 1.5，最终间距请求为 12 物理像素。定位请求成功并禁用原生装饰；没有独立测量跨屏实际位置或稳定性，不把这些日志作为混合 DPI 兼容通过的结论。重启窗口失焦后收起并记录 `trayRecovery: true`，最后同样正常退出，时间 14:39:43、代码 0。
+
+实际托盘唤回及查询保留的用户确认仍待补录；正常退出记录不单独证明唤回时的可见查询。所有工件位于本地 `build/validation/issue8-product/`：`first/restart-process.json`、`first/restart-exit.json`、隔离布局前后快照、`search-observations.json`、`restart-layout-result.json` 和日志。物理 IME、其他设备、系统缩放／混合 DPI、屏幕阅读器以及本轮未重测的 Win 键／开始按钮接管不在当前通过范围；当前远程检查与最终合并状态以关联 PR／Issue 为准。
 
 ## 历史：开始按钮只读命中研究（Issue #24）
 
