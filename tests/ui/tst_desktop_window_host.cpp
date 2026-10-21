@@ -1,6 +1,7 @@
 #include "app/desktop_window_host.h"
 #include "platform/desktop_platform.h"
 #include "platform/desktop_tray.h"
+#include "platform/win_key_capture.h"
 #include "services/desktop_shell_service.h"
 
 #include <QGuiApplication>
@@ -112,9 +113,19 @@ class FakeTray final : public xdstarter::DesktopTray {
     }
     bool isAvailable() const override { return available; }
     void showContextMenu() override { ++menus; }
+    void setWinKeyCaptureState(bool active, bool canEnable, const QString& status) override {
+        captureActive = active;
+        captureCanEnable = canEnable;
+        captureStatus = status;
+        if (failNextStateUpdate && available) {
+            failNextStateUpdate = false;
+            setRegistration(false);
+        }
+    }
     void toggle() { emit toggleRequested(); }
     void requestMenu() { emit menuRequested(QPoint(10, 20)); }
     void requestQuit() { emit quitRequested(); }
+    void requestWinKeyToggle() { emit winKeyCaptureToggleRequested(); }
     void setRegistration(bool registered) {
         available = registered;
         emit registrationChanged(registered, QStringLiteral("Fake registration change"));
@@ -126,6 +137,39 @@ class FakeTray final : public xdstarter::DesktopTray {
     int starts = 0;
     int stops = 0;
     int menus = 0;
+    bool captureActive = false;
+    bool captureCanEnable = false;
+    bool failNextStateUpdate = false;
+    QString captureStatus;
+};
+
+class FakeWinKeyCapture final : public xdstarter::WinKeyCapture {
+  public:
+    void setEnabled(bool enabled) override {
+        ++requests;
+        if (!enabled) {
+            stop();
+            return;
+        }
+        active = !fails;
+        emit statusChanged(active, active ? QStringLiteral("Win 键唤起已启用。")
+                                          : QStringLiteral("测试安装失败，保留原生输入。"),
+                           fails ? QStringLiteral("fixture-failed") : QString{});
+    }
+    void stop() override {
+        ++stops;
+        active = false;
+        emit statusChanged(false, QStringLiteral("Win 键唤起已停止。"), {});
+    }
+    bool isActive() const override { return active; }
+    bool isSupported() const override { return supported; }
+    void toggle() { emit toggleRequested(); }
+
+    bool active = false;
+    bool fails = false;
+    bool supported = true;
+    int requests = 0;
+    int stops = 0;
 };
 
 QImage trayIcon() {
@@ -188,6 +232,10 @@ class DesktopWindowHostTest : public QObject {
     void repeatedRevealPlacesHiddenAtStableMargins();
     void pendingRevealCanBeCanceled();
     void visibleReactivationDoesNotMoveAgain();
+    void winKeyCaptureRequiresOptInAndStops();
+    void winKeyCaptureFailureAndTrayLoss();
+    void unsupportedWinKeyCaptureStaysDisabled();
+    void trayFailureDuringEnableDoesNotInstallCapture();
 
   private:
     bool originalQuitOnClose_ = false;
@@ -200,6 +248,124 @@ void DesktopWindowHostTest::init() {
 
 void DesktopWindowHostTest::cleanup() {
     QGuiApplication::setQuitOnLastWindowClosed(originalQuitOnClose_);
+}
+
+void DesktopWindowHostTest::winKeyCaptureRequiresOptInAndStops() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    QWindow window;
+    window.resize(640, 480);
+    PlacementPlatform placement;
+    FakeTray tray;
+    FakeWinKeyCapture capture;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.attachWinKeyCapture(capture);
+    host.start(trayIcon());
+    QTRY_VERIFY(window.isVisible());
+    QCOMPARE(capture.requests, 0);
+    QVERIFY(!capture.isActive());
+    QVERIFY(tray.captureCanEnable);
+    capture.toggle();
+    QVERIFY(window.isVisible());
+
+    tray.requestWinKeyToggle();
+    QCOMPARE(capture.requests, 1);
+    QVERIFY(capture.isActive());
+    QVERIFY(window.property("winKeyCaptureActive").toBool());
+    QVERIFY(tray.captureActive);
+    capture.toggle();
+    QVERIFY(!window.isVisible());
+    capture.toggle();
+    QTRY_VERIFY(window.isVisible());
+    host.toggleWinKeyCapture();
+    QVERIFY(!capture.isActive());
+    QVERIFY(!tray.captureActive);
+    capture.toggle();
+    QVERIFY(window.isVisible());
+    host.shutdown();
+    QVERIFY(!tray.captureCanEnable);
+    const auto requests = capture.requests;
+    tray.requestWinKeyToggle();
+    QCOMPARE(capture.requests, requests);
+}
+
+void DesktopWindowHostTest::winKeyCaptureFailureAndTrayLoss() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    QWindow window;
+    window.resize(640, 480);
+    PlacementPlatform placement;
+    FakeTray tray;
+    FakeWinKeyCapture capture;
+    capture.fails = true;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.attachWinKeyCapture(capture);
+    host.start(trayIcon());
+    QTRY_VERIFY(window.isVisible());
+    host.toggleWinKeyCapture();
+    QVERIFY(!capture.isActive());
+    QVERIFY(window.property("integrationStatus").toString().contains(QStringLiteral("安装失败")));
+    QVERIFY(!window.property("winKeyCaptureBusy").toBool());
+    capture.fails = false;
+    host.toggleWinKeyCapture();
+    QVERIFY(capture.isActive());
+    window.hide();
+    tray.setRegistration(false);
+    QVERIFY(!capture.isActive());
+    QVERIFY(!tray.captureCanEnable);
+    QTRY_COMPARE(window.visibility(), QWindow::Minimized);
+    const auto requests = capture.requests;
+    tray.setRegistration(true);
+    QCOMPARE(capture.requests, requests);
+    QVERIFY(!capture.isActive());
+    QVERIFY(tray.captureCanEnable);
+    host.toggleWinKeyCapture();
+    QVERIFY(capture.isActive());
+    host.shutdown();
+    QVERIFY(!capture.isActive());
+    capture.toggle();
+    QVERIFY(!tray.captureActive);
+}
+
+void DesktopWindowHostTest::unsupportedWinKeyCaptureStaysDisabled() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    QWindow window;
+    window.resize(640, 480);
+    PlacementPlatform placement;
+    FakeTray tray;
+    FakeWinKeyCapture capture;
+    capture.supported = false;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.attachWinKeyCapture(capture);
+    host.start(trayIcon());
+    QTRY_VERIFY(window.isVisible());
+    QVERIFY(!tray.captureCanEnable);
+    tray.requestWinKeyToggle();
+    QCOMPARE(capture.requests, 0);
+    QVERIFY(!capture.isActive());
+}
+
+void DesktopWindowHostTest::trayFailureDuringEnableDoesNotInstallCapture() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    QWindow window;
+    window.resize(640, 480);
+    PlacementPlatform placement;
+    FakeTray tray;
+    FakeWinKeyCapture capture;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.attachWinKeyCapture(capture);
+    host.start(trayIcon());
+    QTRY_VERIFY(window.isVisible());
+    tray.failNextStateUpdate = true;
+    host.toggleWinKeyCapture();
+    QCOMPARE(capture.requests, 0);
+    QVERIFY(!capture.isActive());
+    QVERIFY(!window.property("winKeyCaptureAvailable").toBool());
+    QVERIFY(!window.property("winKeyCaptureBusy").toBool());
+    QVERIFY(!tray.captureActive);
+    QVERIFY(!tray.captureCanEnable);
 }
 
 void DesktopWindowHostTest::trayRestoresClosedWindow() {

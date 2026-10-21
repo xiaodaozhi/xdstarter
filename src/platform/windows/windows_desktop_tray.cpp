@@ -3,7 +3,6 @@
 #include <QMetaObject>
 #include <QThread>
 
-#include <algorithm>
 #include <cstring>
 #include <iterator>
 
@@ -19,6 +18,7 @@ constexpr UINT trayCallbackMessage = WM_APP + 0x270;
 constexpr UINT trayIconId = 1;
 constexpr UINT toggleCommand = 1;
 constexpr UINT quitCommand = 2;
+constexpr UINT winKeyCaptureCommand = 3;
 
 HICON createNativeIcon(const QImage& source) {
     // The application supplies its bundled image, not a machine-local icon path.
@@ -83,8 +83,28 @@ class WindowsDesktopTray::Impl {
         data.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP | NIF_SHOWTIP;
         data.uCallbackMessage = trayCallbackMessage;
         data.hIcon = icon;
-        constexpr wchar_t tooltip[] = L"XDStarter — 未接管系统开始菜单";
-        std::copy(std::begin(tooltip), std::end(tooltip), std::begin(data.szTip));
+        QString captureState;
+        if (winKeyActive) {
+            captureState = QStringLiteral("Win 键唤起已启用");
+        } else if (!winKeyCanEnable) {
+            captureState = QStringLiteral("Win 键唤起不可用");
+        } else if (winKeyWasEnabled) {
+            captureState = QStringLiteral("Win 键唤起已暂停");
+        } else {
+            captureState = QStringLiteral("Win 键唤起未启用");
+        }
+        QString tooltip = QStringLiteral("XDStarter — %1\n开始按钮未接管").arg(captureState);
+        if (!winKeyStatus.isEmpty()) {
+            tooltip += QLatin1Char('\n') + winKeyStatus;
+        }
+        // NOTIFYICONDATA's tooltip is a fixed UTF-16 buffer. Preserve the two
+        // state lines even for a long diagnostic, and never split a surrogate.
+        tooltip.truncate(static_cast<qsizetype>(std::size(data.szTip)) - 1);
+        if (!tooltip.isEmpty() && tooltip.at(tooltip.size() - 1).isHighSurrogate()) {
+            tooltip.chop(1);
+        }
+        tooltip.toWCharArray(data.szTip);
+        data.szTip[tooltip.size()] = L'\0';
         return data;
     }
 
@@ -116,7 +136,7 @@ class WindowsDesktopTray::Impl {
                 emit owner->registrationChanged(
                     restored, restored
                                   ? QStringLiteral("托盘入口已恢复。")
-                                  : QStringLiteral("托盘入口恢复失败；系统开始菜单保持原有行为。"));
+                                  : QStringLiteral("托盘入口恢复失败；可从窗口退出 XDStarter。"));
             });
             return;
         }
@@ -163,6 +183,10 @@ class WindowsDesktopTray::Impl {
     UINT taskbarCreatedMessage = 0;
     bool available = false;
     bool menuOpen = false;
+    bool winKeyActive = false;
+    bool winKeyCanEnable = false;
+    bool winKeyWasEnabled = false;
+    QString winKeyStatus;
     QPoint menuPosition;
 };
 
@@ -205,10 +229,10 @@ DesktopActionResult WindowsDesktopTray::start(const QImage& image) {
     if (!impl_->window || !impl_->taskbarCreatedMessage || !impl_->registerIcon()) {
         const QString error = trayError(QStringLiteral("tray-register"));
         stop();
-        return {false, QStringLiteral("托盘入口不可用；系统开始菜单保持原有行为。"), error};
+        return {false, QStringLiteral("托盘入口不可用；可从窗口退出 XDStarter。"), error};
     }
     beginEventSession();
-    emit registrationChanged(true, QStringLiteral("托盘入口已就绪，系统开始菜单保持原有行为。"));
+    emit registrationChanged(true, QStringLiteral("托盘入口已就绪，开始按钮未接管。"));
     return {true, QStringLiteral("托盘入口已就绪。"), {}};
 }
 
@@ -232,6 +256,24 @@ void WindowsDesktopTray::stop() {
 
 bool WindowsDesktopTray::isAvailable() const { return impl_->available; }
 
+void WindowsDesktopTray::setWinKeyCaptureState(bool active, bool canEnable, const QString& status) {
+    if (QThread::currentThread() != thread()) {
+        return;
+    }
+    impl_->winKeyActive = active;
+    impl_->winKeyCanEnable = canEnable;
+    impl_->winKeyWasEnabled = impl_->winKeyWasEnabled || active;
+    impl_->winKeyStatus = status.left(512).simplified();
+    if (impl_->available) {
+        NOTIFYICONDATAW data = impl_->notification();
+        if (!Shell_NotifyIconW(NIM_MODIFY, &data)) {
+            impl_->available = false;
+            emit registrationChanged(false,
+                                     QStringLiteral("托盘状态更新失败；可从窗口退出 XDStarter。"));
+        }
+    }
+}
+
 void WindowsDesktopTray::showContextMenu() {
     if (!impl_->available || impl_->menuOpen || QThread::currentThread() != thread()) {
         return;
@@ -240,7 +282,13 @@ void WindowsDesktopTray::showContextMenu() {
     if (!menu) {
         return;
     }
+    const wchar_t* captureLabel =
+        impl_->winKeyActive ? L"暂停 Win 键唤起"
+                           : impl_->winKeyWasEnabled ? L"恢复 Win 键唤起" : L"启用 Win 键唤起";
+    const UINT captureFlags =
+        MF_STRING | (impl_->winKeyActive || impl_->winKeyCanEnable ? MF_ENABLED : MF_GRAYED);
     if (!AppendMenuW(menu, MF_STRING, toggleCommand, L"显示/隐藏 XDStarter") ||
+        !AppendMenuW(menu, captureFlags, winKeyCaptureCommand, captureLabel) ||
         !AppendMenuW(menu, MF_STRING, quitCommand, L"退出 XDStarter")) {
         DestroyMenu(menu);
         return;
@@ -262,6 +310,9 @@ void WindowsDesktopTray::showContextMenu() {
     }
     if (command == toggleCommand) {
         emit toggleRequested();
+    } else if (command == winKeyCaptureCommand &&
+               (impl_->winKeyActive || impl_->winKeyCanEnable)) {
+        emit winKeyCaptureToggleRequested();
     } else if (command == quitCommand) {
         emit quitRequested();
     }

@@ -12,6 +12,8 @@
 
 namespace xdstarter {
 
+void DesktopTray::setWinKeyCaptureState(bool, bool, const QString&) {}
+
 void DesktopTray::beginEventSession() {
     ++eventGeneration_;
     sessionActive_ = true;

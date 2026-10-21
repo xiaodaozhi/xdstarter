@@ -20,6 +20,10 @@ ApplicationWindow {
     property bool darkTheme: controller.darkTheme
     property string selectionStatus: ""
     property string integrationStatus: ""
+    property bool winKeyCaptureAvailable: false
+    property bool winKeyCaptureActive: false
+    property bool winKeyCaptureBusy: false
+    property string winKeyCaptureStatus: qsTr("Win 键唤起未启用；开始按钮保持原生行为。")
     readonly property bool compactLayout: panelWidth - shortcutRail.width - 40 < 260 + 20 + 552 + 16
     property bool showApplications: false
     property string pinApplicationId: ""
@@ -51,6 +55,7 @@ ApplicationWindow {
     readonly property bool dismissalBlocked: dragActive || internalPopupVisible
 
     signal dismissRequested
+    signal winKeyCaptureToggleRequested
 
     objectName: "prototypeWindow"
     width: tokens.defaultMenuSizeDip.width + 2 * shadowInset
@@ -963,6 +968,27 @@ ApplicationWindow {
         popupType: Popup.Item
         title: qsTr("电源与退出")
         width: 240
+
+        MenuItem {
+            objectName: "winKeyCaptureItem"
+            text: window.winKeyCaptureBusy ? qsTr("正在启用 Win 键唤起…") : window.winKeyCaptureActive ? qsTr("暂停 Win 键唤起") : qsTr("启用 Win 键唤起")
+            enabled: !window.winKeyCaptureBusy && (window.winKeyCaptureAvailable || window.winKeyCaptureActive)
+            Accessible.description: window.winKeyCaptureStatus
+            onTriggered: {
+                powerMenu.close();
+                window.winKeyCaptureToggleRequested();
+            }
+            Keys.onReturnPressed: {
+                powerMenu.close();
+                window.winKeyCaptureToggleRequested();
+            }
+            Keys.onEnterPressed: {
+                powerMenu.close();
+                window.winKeyCaptureToggleRequested();
+            }
+        }
+
+        MenuSeparator {}
 
         MenuItem {
             text: qsTr("系统电源操作暂未启用")
