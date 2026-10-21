@@ -1,0 +1,18 @@
+add_executable(xdstarter_prototype_service_tests prototype_service_tests.cpp)
+target_link_libraries(xdstarter_prototype_service_tests PRIVATE xdstarter_services)
+add_test(NAME services.prototype COMMAND xdstarter_prototype_service_tests)
+
+add_executable(xdstarter_layout_store_tests layout_store_tests.cpp)
+target_link_libraries(xdstarter_layout_store_tests PRIVATE xdstarter_services)
+add_test(NAME services.layout_store COMMAND xdstarter_layout_store_tests)
+
+find_package(Qt6 REQUIRED COMPONENTS Test)
+qt_add_executable(xdstarter_application_catalog_tests application_catalog_tests.cpp)
+target_link_libraries(xdstarter_application_catalog_tests PRIVATE xdstarter_services Qt6::Test)
+add_test(NAME services.application_catalog COMMAND xdstarter_application_catalog_tests)
+set_tests_properties(services.application_catalog PROPERTIES TIMEOUT 60)
+
+qt_add_executable(xdstarter_desktop_shell_service_tests desktop_shell_service_tests.cpp)
+target_link_libraries(xdstarter_desktop_shell_service_tests PRIVATE xdstarter_services Qt6::Test)
+add_test(NAME services.desktop_shell COMMAND xdstarter_desktop_shell_service_tests)
+set_tests_properties(services.desktop_shell PROPERTIES TIMEOUT 30)

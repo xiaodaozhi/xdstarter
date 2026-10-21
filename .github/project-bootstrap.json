@@ -133,7 +133,7 @@
     {
       "key": "qt-scaffold",
       "title": "[原型] 建立 Qt Quick / C++20 / CMake 应用工程",
-      "body": "按 ADR-0001 建立真实可配置、构建、测试的 Qt 6.12.0 工程。\n\n验收：\n- [ ] QGuiApplication + QML 可运行，Windows 使用 MSVC 2022 x64\n- [ ] core / services / platform 接口与 QML 分层，macOS 有明确标识的 stub\n- [ ] CMake Presets 不包含开发者机器路径，补充实际构建/运行命令\n- [ ] CI 增加真实应用构建与核心测试；当前文档检查继续保留\n\n依据：docs/technical/development.md、architecture.md。",
+      "body": "按 ADR-0001 与 ADR-0002 建立真实可配置、构建、测试的 Qt Quick 工程；以本项目 toolchain.json 独立固定与 xdzip 核实的 Qt 6.8.2 及 Windows 构建工具版本。\n\n验收：\n- [ ] QGuiApplication + QML 可运行；正式 Windows 基线为 MSVC 19.29.30153.0/v142 x64、SDK 10.0.19041.0，MSVC 2022 CI 另作附加兼容验证\n- [ ] core / services / platform 接口与 QML 分层，macOS 有明确标识的 stub\n- [ ] 项目自有依赖声明、获取与构建入口，Presets 不包含开发者机器路径，Qt 精确匹配 6.8.2\n- [ ] CI 增加真实应用构建与核心测试；当前文档检查继续保留\n\n依据：docs/technical/development.md、dependencies.md、architecture.md、adr/0002-toolchain-baseline.md。",
       "milestone": "M1-Prototype",
       "labels": [
         "type:feature",
@@ -205,7 +205,7 @@
     {
       "key": "persistence",
       "title": "[功能] 布局配置、原子保存与恢复",
-      "body": "对应 PRD-007。保存稳定 targetId/tileId/groupId 与整数格坐标，目录缓存可重建。\n\n验收：\n- [ ] schemaVersion=1 的配置校验、QSaveFile 原子保存和有效备份\n- [ ] 重启还原布局，失效应用保留占位并提示\n- [ ] 损坏/写盘失败/较新 schema 不破坏原始数据\n- [ ] 导入校验与恢复路径可测试，不自动执行导入目标\n\n依据：docs/technical/data-persistence.md。",
+      "body": "对应 PRD-007。保存稳定 targetId/tileId/groupId 与整数格坐标，目录缓存可重建。\n\n验收：\n- [ ] schemaVersion=2 的配置校验、兼容读取 schema 1、QSaveFile 原子保存和有效备份\n- [ ] 重启还原布局，失效应用保留占位并提示\n- [ ] 损坏/写盘失败/较新 schema 不破坏原始数据\n- [ ] 导入校验与恢复路径可测试，不自动执行导入目标\n\n依据：docs/technical/data-persistence.md。",
       "milestone": "M2-Alpha",
       "labels": [
         "type:feature",

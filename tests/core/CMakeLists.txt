@@ -1,0 +1,3 @@
+add_executable(xdstarter_core_tests tile_grid_tests.cpp)
+target_link_libraries(xdstarter_core_tests PRIVATE xdstarter_core)
+add_test(NAME core.tile_grid COMMAND xdstarter_core_tests)

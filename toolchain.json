@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "alignment": {
+    "repository": "https://github.com/xiaodaozhi/xdzip",
+    "revision": "78472b345561ebc8b687e419d9168e96d29fed07",
+    "observedDate": "2026-10-20",
+    "basis": "Qt pin and actual native Windows build environment; not an upstream complete environment lock"
+  },
+  "python": {"version": "3.12.13", "compatibleMinimum": "3.11"},
+  "packages": {
+    "cmake": "4.4.4",
+    "ninja": "1.13.2",
+    "aqtinstall": "3.3.0",
+    "py7zr": "1.1.4"
+  },
+  "qt": {
+    "version": "6.8.2",
+    "host": "windows",
+    "target": "desktop",
+    "architecture": "win64_msvc2022_64",
+    "directory": "msvc2022_64",
+    "modules": ["Core", "Gui", "Qml", "Quick", "QuickControls2", "Svg"],
+    "testModules": ["Test"]
+  },
+  "windows": {
+    "visualStudioMajor": "16",
+    "toolsetVersion": "14.29.30133",
+    "compilerVersion": "19.29.30153.0",
+    "linkerVersion": "14.29.30153.0",
+    "sdkVersion": "10.0.19041.0",
+    "architecture": "x64",
+    "additionalValidationVisualStudioMajor": "17"
+  },
+  "ciAcquisition": {"uvVersion": "0.13.4"},
+  "cmakeMinimum": "3.25",
+  "cache": {"tools": "build/tooling", "qt": "build/Qt"}
+}
