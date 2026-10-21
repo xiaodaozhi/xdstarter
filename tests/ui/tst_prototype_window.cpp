@@ -2426,7 +2426,7 @@ void PrototypeWindowTest::internalPopupsGuardAndCleanup() {
     const auto before = controller_->groups();
     QVERIFY(!window_->property("dismissalBlocked").toBool());
     for (const auto* name : {"tileSizeMenu", "pinApplicationMenu", "powerMenu", "aboutPopup",
-                             "groupMenu", "groupNameDialog", "moreMenu"}) {
+                             "groupMenu", "groupNameDialog", "tileNameDialog", "moreMenu"}) {
         auto* popup = window_->findChild<QObject*>(QLatin1String(name));
         QVERIFY(popup);
         // Popup.Item is deliberate: opening an internal menu must not create another
@@ -2896,6 +2896,7 @@ void PrototypeWindowTest::tileDisplayNameEditingAndRestart() {
     QVERIFY(field->setProperty("text", QStringLiteral("  ") + name + QStringLiteral("  ")));
     QTest::keyClick(window_, Qt::Key_Return);
     QTRY_VERIFY(!dialog->property("visible").toBool());
+    QTRY_VERIFY(item(QStringLiteral("tile-") + tileId)->hasActiveFocus());
     QCOMPARE(tileData(tileId).value(QStringLiteral("name")).toString(), name);
     QCOMPARE(tileData(tileId).value(QStringLiteral("displayName")).toString(), name);
     QCOMPARE(service_->targetForTile(tileId), targetBefore);
@@ -2947,6 +2948,7 @@ void PrototypeWindowTest::tileDisplayNameEditingAndRestart() {
     reset->forceActiveFocus(Qt::TabFocusReason);
     QTest::keyClick(window_, Qt::Key_Return);
     QTRY_COMPARE(tileData(tileId).value(QStringLiteral("name")).toString(), targetBefore.value(QStringLiteral("name")).toString());
+    QTRY_VERIFY(item(QStringLiteral("tile-") + tileId)->hasActiveFocus());
     QVERIFY(tileData(tileId).value(QStringLiteral("displayName")).toString().isEmpty());
     QCOMPARE(service_->targetForTile(tileId), targetBefore);
     controller_->setSearchQuery(QStringLiteral("办公工具"));
@@ -2990,6 +2992,7 @@ void PrototypeWindowTest::tileDisplayNameValidationAndCancellation() {
     QVERIFY(field->setProperty("text", QStringLiteral("未提交的显示名")));
     QTest::keyClick(window_, Qt::Key_Escape);
     QTRY_VERIFY(!dialog->property("visible").toBool());
+    QTRY_VERIFY(item(QStringLiteral("tile-") + tileId)->hasActiveFocus());
     QCOMPARE(service_->snapshot(), before);
     openSizeMenu(tileId, true);
     click(item(QStringLiteral("renameTileItem")));
@@ -2997,6 +3000,7 @@ void PrototypeWindowTest::tileDisplayNameValidationAndCancellation() {
     QVERIFY(field->setProperty("text", QStringLiteral("取消按钮草稿")));
     click(item(QStringLiteral("tileNameCancelButton")));
     QTRY_VERIFY(!dialog->property("visible").toBool());
+    QTRY_VERIFY(item(QStringLiteral("tile-") + tileId)->hasActiveFocus());
     QCOMPARE(service_->snapshot(), before);
     openSizeMenu(tileId, true);
     click(item(QStringLiteral("renameTileItem")));
