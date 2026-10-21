@@ -1,0 +1,76 @@
+{
+  "allFixtureDaclsRestored": true,
+  "directoryDenial": {
+    "allDeniedSuccess": false,
+    "allDeniedWarnings": 2,
+    "mixedRootSuccess": true,
+    "nativeError": 5,
+    "partialApplications": 1,
+    "partialSuccess": true,
+    "partialWarnings": 1
+  },
+  "documentAssociationAvailabilityPreserved": true,
+  "executeDenial": {
+    "availabilityCode": "access-denied",
+    "helperMarkerAbsent": true,
+    "launchCode": "access-denied",
+    "nativeError": 5
+  },
+  "fixtureCleaned": true,
+  "kernelVersion": "10.0.26300",
+  "missingTargetCode": "target-missing",
+  "ownedBuildFixtureValidated": true,
+  "passed": true,
+  "qtVersion": "6.8.2",
+  "removedShortcutCode": "shortcut-missing",
+  "scope": "真实 Windows API 的 build 内隔离快捷方式、受控 helper 与 DACL；不修改用户应用或开始菜单。",
+  "shortcutReadDenial": {
+    "availabilityCode": "access-denied",
+    "launchCode": "access-denied",
+    "nativeError": 5
+  },
+  "uninstalledEquivalentAumidCode": "application-missing",
+  "binarySha256": {
+    "product": "7eb32ad1a33c50ad075a47100f047bb40fb882fdfaf4182ea7906fa085404f95",
+    "platformTests": "20e93c8137ed8570337738aa76e94301d6b4e4439e3ce51b9b3721130f87f337",
+    "serviceTests": "3fbb02b994ecb620b57501dcddad1af395b74eadf35e3dab9eebe163747a2528",
+    "controlledHelper": "4751d8f0f22f4fc5c752b46d93ec40a97e982e71c4932538736002009e7b4c16"
+  },
+  "baseCommit": "61c937688bd91e26faac0594135b557037781b89",
+  "sourceSha256": {
+    "src/platform/windows/windows_application_platform.cpp": "e902dae717cd1f6e28adbacc4baf598fbb10db3528fff25c0b2515456652d593",
+    "tests/platform/CMakeLists.txt": "5c79b5c60a2e6ce3b7712989b3d80ed73339a4a0874b2e4cbc3789b8c34ded33",
+    "tests/platform/application_platform_tests.cpp": "82e0671daaaf0025cbbad4a9b4ced025a5b531275de7d07f68b9ffe78641b34e",
+    "tests/platform/restricted_fixture.h": "25e0e0f252b4730a19729bf37cdb85df97e8bccf13f07cbbc9b3a593629e6502",
+    "tests/services/application_catalog_tests.cpp": "606e2f1bad08515c69058c64481ce38842e650e517a7a42f5be469a3f9b64d8b"
+  },
+  "toolchain": {
+    "compilerVersion": "19.29.30153.0",
+    "linkerVersion": "14.29.30153.0",
+    "toolset": "14.29.30133",
+    "sdk": "10.0.19041.0",
+    "preset": "app-release"
+  },
+  "formalValidation": {
+    "ctestPassed": 12,
+    "ctestFailed": 0,
+    "ctestTotalSeconds": 31.83,
+    "qmlLintPassed": true,
+    "nativeDesktopInteractionPerformed": false
+  },
+  "serviceRegression": {
+    "passed": 12,
+    "failed": 0,
+    "skipped": 0,
+    "durationMilliseconds": 1743,
+    "platform": "injected fixture, not a real DACL provider",
+    "cases": [
+      "full refresh failure keeps existing entries",
+      "partial refresh retains usable entries and warning",
+      "shortcut-missing/access-denied/application-missing retain pinned layout, reject launch, allow unpin"
+    ],
+    "guiThreadPlatformCalls": 0
+  },
+  "sourceCommit": "c114f8c5387851ff6f46cbabe60cccbc9cb66cbd",
+  "sourceDigestFormat": "SHA-256 of committed Git blob bytes; text uses repository LF normalization."
+}
