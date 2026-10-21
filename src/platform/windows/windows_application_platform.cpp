@@ -1,7 +1,6 @@
 #include "windows_application_platform.h"
 
 #include <QDir>
-#include <QDirIterator>
 #include <QFileInfo>
 #include <QSet>
 
@@ -102,6 +101,26 @@ LaunchResult failure(const QString& code, const QString& description) {
     return {false, description, code};
 }
 
+bool accessDenied(HRESULT result) {
+    return result == E_ACCESSDENIED || result == STG_E_ACCESSDENIED ||
+           result == HRESULT_FROM_WIN32(ERROR_PRIVILEGE_NOT_HELD);
+}
+
+LaunchResult fileUnavailable(DWORD error, const QString& missingCode,
+                             const QString& missingDescription,
+                             const QString& unavailableDescription) {
+    const auto result = HRESULT_FROM_WIN32(error);
+    if (accessDenied(result)) {
+        return failure(QStringLiteral("access-denied"),
+                       QStringLiteral("没有权限访问应用或快捷方式：") + errorDescription(result));
+    }
+    if (error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND) {
+        return failure(missingCode, missingDescription);
+    }
+    return failure(QStringLiteral("target-unavailable"),
+                   unavailableDescription + errorDescription(result));
+}
+
 QString nativePath(const QString& path) { return QDir::toNativeSeparators(path); }
 
 QString displayName(IShellItem* item, const QString& fallback) {
@@ -126,9 +145,14 @@ HRESULT shellItem(const LaunchTarget& target, IShellItem** item) {
 LaunchResult shortcutAvailable(const LaunchTarget& target) {
     const QString path = nativePath(target.shortcutPath);
     const DWORD attributes = GetFileAttributesW(reinterpret_cast<LPCWSTR>(path.utf16()));
-    if (attributes == INVALID_FILE_ATTRIBUTES || attributes & FILE_ATTRIBUTE_DIRECTORY) {
-        return failure(QStringLiteral("shortcut-missing"),
-                       QStringLiteral("快捷方式已移动或删除。"));
+    if (attributes == INVALID_FILE_ATTRIBUTES) {
+        return fileUnavailable(GetLastError(), QStringLiteral("shortcut-missing"),
+                               QStringLiteral("快捷方式已移动或删除。"),
+                               QStringLiteral("无法访问快捷方式："));
+    }
+    if (attributes & FILE_ATTRIBUTE_DIRECTORY) {
+        return failure(QStringLiteral("shortcut-invalid"),
+                       QStringLiteral("快捷方式路径指向目录，不能启动。"));
     }
     ComPtr<IShellLinkW> link;
     HRESULT result =
@@ -141,7 +165,8 @@ LaunchResult shortcutAvailable(const LaunchTarget& target) {
         result = fileLink->Load(reinterpret_cast<LPCWSTR>(path.utf16()), STGM_READ);
     }
     if (FAILED(result)) {
-        return failure(QStringLiteral("shortcut-invalid"),
+        return failure(accessDenied(result) ? QStringLiteral("access-denied")
+                                            : QStringLiteral("shortcut-invalid"),
                        QStringLiteral("无法读取快捷方式：") + errorDescription(result));
     }
     wchar_t rawPath[32768] = {};
@@ -149,10 +174,35 @@ LaunchResult shortcutAvailable(const LaunchTarget& target) {
     if (SUCCEEDED(link->GetPath(rawPath, 32768, &data, SLGP_RAWPATH)) && rawPath[0]) {
         wchar_t expandedPath[32768] = {};
         const DWORD length = ExpandEnvironmentStringsW(rawPath, expandedPath, 32768);
-        if (!length || length > 32768 ||
-            GetFileAttributesW(expandedPath) == INVALID_FILE_ATTRIBUTES) {
-            return failure(QStringLiteral("target-missing"),
-                           QStringLiteral("快捷方式指向的应用已移动、删除或不可访问。"));
+        if (!length || length > 32768) {
+            return failure(QStringLiteral("shortcut-invalid"),
+                           QStringLiteral("快捷方式目标路径无法展开。"));
+        }
+        const auto targetAttributes = GetFileAttributesW(expandedPath);
+        if (targetAttributes == INVALID_FILE_ATTRIBUTES) {
+            return fileUnavailable(GetLastError(), QStringLiteral("target-missing"),
+                                   QStringLiteral("快捷方式指向的应用已移动或删除。"),
+                                   QStringLiteral("无法访问快捷方式指向的应用："));
+        }
+        const auto suffix = QFileInfo(QString::fromWCharArray(expandedPath)).suffix();
+        if (!(targetAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) &&
+            (suffix.compare(QStringLiteral("exe"), Qt::CaseInsensitive) == 0 ||
+             suffix.compare(QStringLiteral("com"), Qt::CaseInsensitive) == 0)) {
+            // ShellExecute can collapse an execution DACL denial into E_FAIL.
+            // A definite native execute denial is useful before dispatch; other
+            // open errors still belong to Shell (including app execution aliases).
+            const HANDLE executable = CreateFileW(
+                expandedPath, FILE_EXECUTE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (executable == INVALID_HANDLE_VALUE) {
+                const auto error = HRESULT_FROM_WIN32(GetLastError());
+                if (accessDenied(error))
+                    return failure(QStringLiteral("access-denied"),
+                                   QStringLiteral("没有权限启动快捷方式指向的应用：") +
+                                       errorDescription(error));
+            } else {
+                CloseHandle(executable);
+            }
         }
     } else {
         CoMemory<ITEMIDLIST> idList;
@@ -170,7 +220,8 @@ LaunchResult packagedAvailable(const LaunchTarget& target) {
     ComPtr<IShellItem> item;
     const HRESULT result = shellItem(target, item.put());
     if (FAILED(result)) {
-        return failure(QStringLiteral("application-missing"),
+        return failure(accessDenied(result) ? QStringLiteral("access-denied")
+                                            : QStringLiteral("application-missing"),
                        QStringLiteral("打包应用已卸载或不可访问：") + errorDescription(result));
     }
     return {true, QStringLiteral("应用可用。"), {}};
@@ -265,50 +316,84 @@ QImage iconImage(HICON icon, int size) {
     return drawn ? image : QImage();
 }
 
-void scanShortcutDirectory(const QString& path, int depth, int& directories, int& entriesInspected,
+bool scanShortcutDirectory(const QString& path, int depth, int& directories, int& entriesInspected,
                            bool& truncated, CatalogSnapshot& snapshot, QSet<QString>& visited) {
     if (depth > maxDepth || directories >= maxDirectories ||
         snapshot.applications.size() >= maxApplications || entriesInspected >= maxEntries) {
         truncated = true;
-        return;
+        return false;
     }
     const QString native = nativePath(path);
     const DWORD attributes = GetFileAttributesW(reinterpret_cast<LPCWSTR>(native.utf16()));
-    if (attributes == INVALID_FILE_ATTRIBUTES || attributes & FILE_ATTRIBUTE_REPARSE_POINT) {
-        return;
+    if (attributes == INVALID_FILE_ATTRIBUTES) {
+        snapshot.warnings.append(QStringLiteral("无法读取开始菜单目录：") + path +
+                                 QStringLiteral("：") +
+                                 errorDescription(HRESULT_FROM_WIN32(GetLastError())));
+        return false;
     }
+    if (!(attributes & FILE_ATTRIBUTE_DIRECTORY) || attributes & FILE_ATTRIBUTE_REPARSE_POINT)
+        return false;
     const QString identity = QDir::cleanPath(path).toCaseFolded();
-    if (visited.contains(identity)) {
-        return;
-    }
-    visited.insert(identity);
+    if (visited.contains(identity))
+        return true;
     ++directories;
-    QDirIterator entries(path, QDir::Files | QDir::Dirs | QDir::System | QDir::NoDotAndDotDot);
-    while (entries.hasNext()) {
-        if (snapshot.applications.size() >= maxApplications || entriesInspected >= maxEntries) {
-            truncated = true;
+    const QString pattern = nativePath(QDir(path).filePath(QStringLiteral("*")));
+    WIN32_FIND_DATAW data = {};
+    const HANDLE search = FindFirstFileW(reinterpret_cast<LPCWSTR>(pattern.utf16()), &data);
+    if (search == INVALID_HANDLE_VALUE) {
+        const DWORD error = GetLastError();
+        if (error == ERROR_FILE_NOT_FOUND) {
+            visited.insert(identity);
+            return true;
+        }
+        snapshot.warnings.append(QStringLiteral("无法枚举开始菜单目录：") + path +
+                                 QStringLiteral("：") +
+                                 errorDescription(HRESULT_FROM_WIN32(error)));
+        return false;
+    }
+    struct SearchHandle {
+        HANDLE value;
+        ~SearchHandle() { FindClose(value); }
+    } searchHandle{search};
+    visited.insert(identity);
+    while (true) {
+        const QString name = QString::fromWCharArray(data.cFileName);
+        if (name != QLatin1String(".") && name != QLatin1String("..")) {
+            if (snapshot.applications.size() >= maxApplications || entriesInspected >= maxEntries) {
+                truncated = true;
+                break;
+            }
+            ++entriesInspected;
+            const QFileInfo entry(QDir(path).filePath(name));
+            if (!(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
+                entry.suffix().compare(QStringLiteral("lnk"), Qt::CaseInsensitive) == 0) {
+                LaunchTarget target;
+                target.type = QStringLiteral("shortcut");
+                target.shortcutPath = QDir::fromNativeSeparators(entry.absoluteFilePath());
+                target.id = applicationTargetId(target.type, target.shortcutPath);
+                ComPtr<IShellItem> item;
+                target.name = SUCCEEDED(shellItem(target, item.put()))
+                                  ? displayName(item.get(), entry.completeBaseName())
+                                  : entry.completeBaseName();
+                target.symbol = target.name.first(1);
+                target.iconKey = target.id;
+                snapshot.applications.append(std::move(target));
+            } else if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY &&
+                       !(data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+                scanShortcutDirectory(entry.absoluteFilePath(), depth + 1, directories,
+                                      entriesInspected, truncated, snapshot, visited);
+            }
+        }
+        if (!FindNextFileW(search, &data)) {
+            const auto error = GetLastError();
+            if (error != ERROR_NO_MORE_FILES)
+                snapshot.warnings.append(QStringLiteral("开始菜单目录读取不完整：") + path +
+                                         QStringLiteral("：") +
+                                         errorDescription(HRESULT_FROM_WIN32(error)));
             break;
         }
-        ++entriesInspected;
-        entries.next();
-        const QFileInfo entry = entries.fileInfo();
-        if (entry.suffix().compare(QStringLiteral("lnk"), Qt::CaseInsensitive) == 0) {
-            LaunchTarget target;
-            target.type = QStringLiteral("shortcut");
-            target.shortcutPath = QDir::fromNativeSeparators(entry.absoluteFilePath());
-            target.id = applicationTargetId(target.type, target.shortcutPath);
-            ComPtr<IShellItem> item;
-            target.name = SUCCEEDED(shellItem(target, item.put()))
-                              ? displayName(item.get(), entry.completeBaseName())
-                              : entry.completeBaseName();
-            target.symbol = target.name.first(1);
-            target.iconKey = target.id;
-            snapshot.applications.append(std::move(target));
-        } else if (entry.isDir()) {
-            scanShortcutDirectory(entry.absoluteFilePath(), depth + 1, directories,
-                                  entriesInspected, truncated, snapshot, visited);
-        }
     }
+    return true;
 }
 
 bool scanPackagedApplications(CatalogSnapshot& snapshot) {
@@ -395,8 +480,9 @@ CatalogSnapshot WindowsApplicationPlatform::scanApplications() {
             snapshot.warnings.append(QStringLiteral("开始菜单目录不可用：") + root);
             continue;
         }
-        readableRoot = true;
-        scanShortcutDirectory(root, 0, directories, entriesInspected, truncated, snapshot, visited);
+        readableRoot = scanShortcutDirectory(root, 0, directories, entriesInspected, truncated,
+                                             snapshot, visited) ||
+                       readableRoot;
     }
     const bool packagedRead = includePackaged_ && scanPackagedApplications(snapshot);
     snapshot.success = readableRoot || packagedRead;
@@ -479,9 +565,10 @@ LaunchResult WindowsApplicationPlatform::launch(const LaunchTarget& target) {
         execution.lpFile = reinterpret_cast<LPCWSTR>(path.utf16());
         execution.nShow = SW_SHOWNORMAL;
         if (!ShellExecuteExW(&execution)) {
-            return failure(QStringLiteral("shell-execute"),
-                           QStringLiteral("应用启动失败：") +
-                               errorDescription(HRESULT_FROM_WIN32(GetLastError())));
+            const auto result = HRESULT_FROM_WIN32(GetLastError());
+            return failure(accessDenied(result) ? QStringLiteral("access-denied")
+                                                : QStringLiteral("shell-execute"),
+                           QStringLiteral("应用启动失败：") + errorDescription(result));
         }
     } else {
         ComPtr<IApplicationActivationManager> activation;
@@ -493,7 +580,8 @@ LaunchResult WindowsApplicationPlatform::launch(const LaunchTarget& target) {
                 reinterpret_cast<LPCWSTR>(target.aumid.utf16()), nullptr, AO_NOERRORUI, &process);
         }
         if (FAILED(result)) {
-            return failure(QStringLiteral("application-activation"),
+            return failure(accessDenied(result) ? QStringLiteral("access-denied")
+                                                : QStringLiteral("application-activation"),
                            QStringLiteral("打包应用启动失败：") + errorDescription(result));
         }
     }

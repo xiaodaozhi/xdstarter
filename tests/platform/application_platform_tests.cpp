@@ -9,6 +9,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSet>
+#include <QSysInfo>
 #include <QTemporaryDir>
 #include <QThread>
 
@@ -20,6 +21,7 @@
 
 #include <windows.h>
 
+#include "restricted_fixture.h"
 #include <shlobj.h>
 #include <shobjidl.h>
 #endif
@@ -90,6 +92,11 @@ bool createShortcut(const QString& path, const QString& executable, const QStrin
 int main(int argc, char* argv[]) {
     QCoreApplication application(argc, argv);
     TestContext test;
+    QJsonObject evidence{
+        {QStringLiteral("qtVersion"), QString::fromLatin1(qVersion())},
+        {QStringLiteral("kernelVersion"), QSysInfo::kernelVersion()},
+        {QStringLiteral("scope"), QStringLiteral("真实 Windows API 的 build 内隔离快捷方式、受控 "
+                                                 "helper 与 DACL；不修改用户应用或开始菜单。")}};
     auto first = shortcut(QStringLiteral("C:/目录/应用.lnk"), QStringLiteral("应用"));
     auto same = shortcut(QStringLiteral("c:\\目录\\应用.LNK"), QStringLiteral("重复名称"));
     auto other =
@@ -118,7 +125,8 @@ int main(int argc, char* argv[]) {
                 "structured packaged AUMID is valid");
     auto trailingNewline = packaged;
     trailingNewline.aumid.append(QLatin1Char('\n'));
-    trailingNewline.id = xdstarter::applicationTargetId(trailingNewline.type, trailingNewline.aumid);
+    trailingNewline.id =
+        xdstarter::applicationTargetId(trailingNewline.type, trailingNewline.aumid);
     test.expect(!xdstarter::isValidApplicationTarget(trailingNewline),
                 "AUMID does not accept a trailing newline");
     packaged.aumid = QStringLiteral("shell:AppsFolder\\anything");
@@ -131,6 +139,14 @@ int main(int argc, char* argv[]) {
     if (application.arguments().size() != 2) {
         return 1;
     }
+    const auto currentDirectory = QDir::fromNativeSeparators(QDir::current().canonicalPath());
+    const bool ownedBuildRoot =
+        !currentDirectory.isEmpty() &&
+        currentDirectory.contains(QStringLiteral("/build/"), Qt::CaseInsensitive);
+    test.expect(ownedBuildRoot, "native ACL fixtures require an absolute build working directory");
+    if (!ownedBuildRoot)
+        return 1;
+    evidence.insert(QStringLiteral("ownedBuildFixtureValidated"), true);
     QTemporaryDir fixture(QDir::current().filePath(QStringLiteral("platform-fixture-XXXXXX")));
     test.expect(fixture.isValid(), "isolated fixture directory available");
     if (!fixture.isValid()) {
@@ -168,8 +184,14 @@ int main(int argc, char* argv[]) {
     auto uninstalled = packaged;
     uninstalled.aumid = QStringLiteral("XDStarter.MissingPackage_0000000000000!App");
     uninstalled.id = xdstarter::applicationTargetId(uninstalled.type, uninstalled.aumid);
-    test.expect(!platform.checkAvailability(uninstalled).success,
+    const auto packageMissing = platform.checkAvailability(uninstalled);
+    test.expect(!packageMissing.success &&
+                    packageMissing.errorCode == QStringLiteral("application-missing"),
                 "uninstalled packaged application is unavailable");
+    test.expect(!platform.launch(uninstalled).success,
+                "uninstalled packaged application cannot activate");
+    evidence.insert(QStringLiteral("missingTargetCode"), missingResult.errorCode);
+    evidence.insert(QStringLiteral("uninstalledEquivalentAumidCode"), packageMissing.errorCode);
     test.expect(!platform.loadIcon(target, 64).isNull(), "Shell icon loads without Qt Widgets");
     test.expect(platform.loadIcon(target, 4096).isNull(), "icon extraction has a bounded size");
     test.expect(platform.launch(target).success, "controlled helper starts via original shortcut");
@@ -192,12 +214,208 @@ int main(int argc, char* argv[]) {
     test.expect(QFile::remove(linkPath), "fixture shortcut removed");
     test.expect(!platform.checkAvailability(target).success,
                 "removed shortcut becomes unavailable");
+    evidence.insert(QStringLiteral("removedShortcutCode"),
+                    platform.checkAvailability(target).errorCode);
+
+    // Read denial is real NTFS access enforcement, rather than a fake platform result.
+    const auto restrictedLink = QDir(root).filePath(QStringLiteral("权限拒绝.lnk"));
+    const auto deniedReadTarget = shortcut(restrictedLink, QStringLiteral("权限拒绝"));
+    test.expect(createShortcut(restrictedLink, helper, {}, root), "read-denial shortcut created");
+    test.expect(platform.checkAvailability(deniedReadTarget).success,
+                "read-denial target initially available");
+    bool allRestored = true;
+    {
+        RestrictedFixture restriction(fixture.path(), restrictedLink, FILE_READ_DATA);
+        test.expect(restriction.pathValidated() && restriction.active(),
+                    "read denial restricted to owned build fixture");
+        if (restriction.active()) {
+            const auto native = QDir::toNativeSeparators(restrictedLink);
+            const HANDLE handle =
+                CreateFileW(reinterpret_cast<LPCWSTR>(native.utf16()), GENERIC_READ,
+                            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
+                            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+            const auto nativeError =
+                handle == INVALID_HANDLE_VALUE ? GetLastError() : ERROR_SUCCESS;
+            if (handle != INVALID_HANDLE_VALUE)
+                CloseHandle(handle);
+            test.expect(nativeError == ERROR_ACCESS_DENIED,
+                        "native shortcut read reports ERROR_ACCESS_DENIED");
+            const auto available = platform.checkAvailability(deniedReadTarget);
+            const auto launched = platform.launch(deniedReadTarget);
+            test.expect(!available.success &&
+                            available.errorCode == QStringLiteral("access-denied"),
+                        "read denial is not reported as missing or invalid");
+            test.expect(!launched.success && launched.errorCode == QStringLiteral("access-denied"),
+                        "read denial prevents launch");
+            evidence.insert(QStringLiteral("shortcutReadDenial"),
+                            QJsonObject{{QStringLiteral("nativeError"), int(nativeError)},
+                                        {QStringLiteral("availabilityCode"), available.errorCode},
+                                        {QStringLiteral("launchCode"), launched.errorCode}});
+        }
+        const bool restored = restriction.restore();
+        allRestored = allRestored && restored;
+        test.expect(restored, "shortcut DACL restored");
+    }
+    test.expect(platform.checkAvailability(deniedReadTarget).success,
+                "shortcut becomes readable after DACL restoration");
+
+    const auto documentPath = fixture.filePath(QStringLiteral("关联文档.txt"));
+    QFile document(documentPath);
+    test.expect(document.open(QIODevice::WriteOnly), "association fixture document created");
+    test.expect(document.write("fixture") == 7, "association fixture content written");
+    document.close();
+    const auto documentLink = QDir(root).filePath(QStringLiteral("关联文档.lnk"));
+    test.expect(createShortcut(documentLink, documentPath, {}, root),
+                "association fixture shortcut created");
+    {
+        RestrictedFixture restriction(fixture.path(), documentPath, FILE_EXECUTE);
+        test.expect(restriction.pathValidated() && restriction.active(),
+                    "document execute restriction confined to fixture");
+        if (restriction.active()) {
+            const bool associationAvailable =
+                platform.checkAvailability(shortcut(documentLink, QStringLiteral("关联文档")))
+                    .success;
+            test.expect(associationAvailable,
+                        "document association does not require executable access");
+            evidence.insert(QStringLiteral("documentAssociationAvailabilityPreserved"),
+                            associationAvailable);
+        }
+        const bool restored = restriction.restore();
+        allRestored = allRestored && restored;
+        test.expect(restored, "document DACL restored without opening its associated application");
+    }
+
+    const auto copiedHelper = fixture.filePath(QStringLiteral("受控程序.exe"));
+    const auto executableLink = QDir(root).filePath(QStringLiteral("执行拒绝.lnk"));
+    const auto deniedMarker = fixture.filePath(QStringLiteral("must-not-launch.json"));
+    test.expect(QFile::copy(helper, copiedHelper), "controlled helper copied inside build fixture");
+    test.expect(createShortcut(executableLink, copiedHelper,
+                               QStringLiteral("\"%1\"").arg(deniedMarker), root),
+                "execution-denial shortcut created");
+    const auto deniedExecuteTarget = shortcut(executableLink, QStringLiteral("执行拒绝"));
+    {
+        RestrictedFixture restriction(fixture.path(), copiedHelper, FILE_EXECUTE);
+        test.expect(restriction.pathValidated() && restriction.active(),
+                    "execution denial restricted to copied helper");
+        if (restriction.active()) {
+            const auto native = QDir::toNativeSeparators(copiedHelper);
+            const HANDLE handle =
+                CreateFileW(reinterpret_cast<LPCWSTR>(native.utf16()), FILE_EXECUTE,
+                            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
+                            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+            const auto nativeError =
+                handle == INVALID_HANDLE_VALUE ? GetLastError() : ERROR_SUCCESS;
+            if (handle != INVALID_HANDLE_VALUE)
+                CloseHandle(handle);
+            test.expect(nativeError == ERROR_ACCESS_DENIED,
+                        "native execute open reports ERROR_ACCESS_DENIED");
+            test.expect(GetFileAttributesW(reinterpret_cast<LPCWSTR>(native.utf16())) !=
+                            INVALID_FILE_ATTRIBUTES,
+                        "execution-denied target still has readable metadata");
+            const auto availability = platform.checkAvailability(deniedExecuteTarget);
+            test.expect(!availability.success &&
+                            availability.errorCode == QStringLiteral("access-denied"),
+                        "native executable access denial is classified before Shell dispatch");
+            const auto launchResult = platform.launch(deniedExecuteTarget);
+            test.expect(!launchResult.success &&
+                            launchResult.errorCode == QStringLiteral("access-denied"),
+                        "execution-denied helper cannot launch");
+            test.expect(!QFileInfo::exists(deniedMarker), "denied helper did not execute");
+            evidence.insert(
+                QStringLiteral("executeDenial"),
+                QJsonObject{
+                    {QStringLiteral("nativeError"), int(nativeError)},
+                    {QStringLiteral("availabilityCode"), availability.errorCode},
+                    {QStringLiteral("launchCode"), launchResult.errorCode},
+                    {QStringLiteral("helperMarkerAbsent"), !QFileInfo::exists(deniedMarker)}});
+        }
+        const bool restored = restriction.restore();
+        allRestored = allRestored && restored;
+        test.expect(restored, "copied helper DACL restored");
+    }
+
+    const auto readable = fixture.filePath(QStringLiteral("readable-scan"));
+    const auto denied = QDir(readable).filePath(QStringLiteral("denied-child"));
+    test.expect(QDir().mkpath(readable) && QDir().mkpath(denied), "isolated scan roots created");
+    test.expect(
+        createShortcut(QDir(readable).filePath(QStringLiteral("可读.lnk")), helper, {}, root) &&
+            createShortcut(QDir(denied).filePath(QStringLiteral("受限.lnk")), helper, {}, root),
+        "scan-root fixture shortcuts created");
+    {
+        RestrictedFixture restriction(fixture.path(), denied, FILE_LIST_DIRECTORY);
+        test.expect(restriction.pathValidated() && restriction.active(),
+                    "directory listing denial restricted to owned build fixture");
+        if (restriction.active()) {
+            const auto native = QDir::toNativeSeparators(denied);
+            const HANDLE handle =
+                CreateFileW(reinterpret_cast<LPCWSTR>(native.utf16()), FILE_LIST_DIRECTORY,
+                            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
+                            OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+            const auto nativeError =
+                handle == INVALID_HANDLE_VALUE ? GetLastError() : ERROR_SUCCESS;
+            if (handle != INVALID_HANDLE_VALUE)
+                CloseHandle(handle);
+            test.expect(nativeError == ERROR_ACCESS_DENIED,
+                        "native directory listing reports ERROR_ACCESS_DENIED");
+            const auto partial =
+                xdstarter::WindowsApplicationPlatform({readable}).scanApplications();
+            const auto failed =
+                xdstarter::WindowsApplicationPlatform({denied, denied}).scanApplications();
+            const auto mixed =
+                xdstarter::WindowsApplicationPlatform({denied, readable}).scanApplications();
+            test.expect(partial.success && partial.applications.size() == 1 &&
+                            !partial.warnings.isEmpty(),
+                        "partially denied scan keeps readable applications and warning");
+            test.expect(mixed.success && mixed.applications.size() == 1 &&
+                            !mixed.warnings.isEmpty(),
+                        "mixed denied and readable roots keep usable applications");
+            test.expect(!failed.success && failed.applications.isEmpty() &&
+                            !failed.warnings.isEmpty(),
+                        "all-denied roots never masquerade as successful empty scan");
+            evidence.insert(
+                QStringLiteral("directoryDenial"),
+                QJsonObject{{QStringLiteral("nativeError"), int(nativeError)},
+                            {QStringLiteral("partialSuccess"), partial.success},
+                            {QStringLiteral("partialApplications"), partial.applications.size()},
+                            {QStringLiteral("partialWarnings"), partial.warnings.size()},
+                            {QStringLiteral("allDeniedSuccess"), failed.success},
+                            {QStringLiteral("allDeniedWarnings"), failed.warnings.size()},
+                            {QStringLiteral("mixedRootSuccess"), mixed.success}});
+        }
+        const bool restored = restriction.restore();
+        allRestored = allRestored && restored;
+        test.expect(restored, "directory DACL restored");
+    }
+    const auto recovered = xdstarter::WindowsApplicationPlatform({denied}).scanApplications();
+    test.expect(recovered.success && recovered.applications.size() == 1 &&
+                    recovered.warnings.isEmpty(),
+                "restored directory scans normally");
+    evidence.insert(QStringLiteral("allFixtureDaclsRestored"), allRestored);
+    if (allRestored) {
+        const bool cleaned = fixture.remove();
+        test.expect(cleaned, "owned build fixture cleaned after DACL restoration");
+        evidence.insert(QStringLiteral("fixtureCleaned"), cleaned);
+    } else {
+        fixture.setAutoRemove(false);
+        evidence.insert(QStringLiteral("fixtureCleaned"), false);
+    }
 #else
     auto platform = xdstarter::createApplicationPlatform();
     test.expect(platform->scanApplications().applications.isEmpty(),
                 "stub has no fake real applications");
     test.expect(!platform->launch(first).success, "stub never launches Windows targets");
 #endif
+    const auto evidenceDirectory = qEnvironmentVariable("XDSTARTER_CATALOG_VALIDATION_DIR");
+    if (!evidenceDirectory.isEmpty()) {
+        test.expect(QDir::isAbsolutePath(evidenceDirectory) && QDir().mkpath(evidenceDirectory),
+                    "absolute evidence directory available");
+        evidence.insert(QStringLiteral("passed"), test.failures == 0);
+        QFile evidenceFile(QDir(evidenceDirectory).filePath(QStringLiteral("catalog-errors.json")));
+        const auto bytes = QJsonDocument(evidence).toJson();
+        test.expect(evidenceFile.open(QIODevice::WriteOnly) &&
+                        evidenceFile.write(bytes) == bytes.size(),
+                    "catalog error evidence written");
+    }
     if (test.failures == 0) {
         std::cout << "PASS: application identity, catalog fixtures, availability, icons and "
                      "controlled launch.\n";
