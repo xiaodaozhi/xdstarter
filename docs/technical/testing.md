@@ -12,13 +12,21 @@ GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查�
 
 ### 正式构建与覆盖范围
 
-正式入口 `./scripts/build-windows.ps1 -Preset app-release` 使用 Qt **6.8.2**、MSVC **19.29.30153.0／v142**、Windows SDK **10.0.19041.0**。最终本地日志 `build/issue9-tile-names-delivery-final.log` 完成 Release、QML lint 与 **12/12 CTest（27.80 秒）**；GUI **47/47**，host **34/34**。QML lint 没有诊断；没有将 Qt SDK 既有编译警告写为整个构建零警告。文档／素材检查通过，255 项开发素材未重建；`tests/tooling` **13/13** 通过。
+正式入口 `./scripts/build-windows.ps1 -Preset app-release` 使用 Qt **6.8.2**、MSVC **19.29.30153.0／v142**、Windows SDK **10.0.19041.0**。合入 PR #38 前的日志 `build/issue9-tile-names-delivery-final.log` 完成 Release、QML lint 与 **12/12 CTest（27.80 秒）**；GUI **47/47**，host **34/34**。QML lint 没有诊断；没有将 Qt SDK 既有编译警告写为整个构建零警告。文档／素材检查通过，255 项开发素材未重建；`tests/tooling` **13/13** 通过。
 
 | 合入 PR #38 前的显示名称程序 | SHA-256 |
 | --- | --- |
 | 产品 `xdstarter.exe` | `2353d99abf657662b4a82bccd9f7980f3b3e461326031b9f490bf6d5abdef464` |
 | GUI `xdstarter_ui_tests.exe` | `c7eb92cdf7d492d2bf42ed8c6d3cbf222340c17ea11619c4a72118100d22ce1a` |
 | host `xdstarter_desktop_window_host_tests.exe` | `3933c64f29cccf46e437874d72d0ba872adf4442c15da6363f89b17615a12a69` |
+
+合入 main `2303aef`（应用权限／目录错误 PR #38）后，`build/issue9-tile-names-main-sync.log` 再次完成 **12/12 CTest（30.39 秒）**。独立只读审查未发现已确认 P1/P2，并建议补足命名弹层的通用收起保护及返回焦点断言；随后只增加测试：`internalPopupsGuardAndCleanup` 包含 `tileNameDialog`，提交、恢复原名、Esc 和取消按钮结束后，实际磁贴必须重新取得 active focus。追加后的 `build/issue9-tile-names-focus-guard.log` 完成 Release、QML lint 与 **12/12 CTest（30.57 秒）**，GUI **47/47**、host **34/34**。仓库 **610 文件／255 素材** 与 tooling **13/13** 通过。产品代码未因追加焦点断言改变，最终程序如下；普通离屏 host 的 `raise()` 不支持及有意超时场景警告不作为真实托盘验收。
+
+| 合入 PR #38 并补足焦点断言后的程序 | SHA-256 |
+| --- | --- |
+| 产品 `xdstarter.exe` | `269c800746293a35e75e8afd0ed79eca99b0cd702daa17bd1da8290e531363ec` |
+| GUI `xdstarter_ui_tests.exe` | `d0e025ff89f7c2515e801e8c632edb5c2d095f54b63fbdd22c456f2ca9c4ae13` |
+| host `xdstarter_desktop_window_host_tests.exe` | `ccca0159bc9982b9995609d87510bb7a13326d7f20e403fd46cb90bd11f54b1a` |
 
 服务与保存检查覆盖 trim、空白／129 字符／控制字符／换行／行段分隔符／无效 UTF-16 拒绝、128 代码单元 emoji 边界、未知 id、只读与失败不变性；名称修改和恢复保留目标数组、稳定标识、坐标及尺寸。schema 1/2 的新字段拒绝、旧主配置原字节备份、schema 3 严格字段和重建恢复均有检查。搜索保留每目标 16 个普通名称的原预算，另以整个索引共享的 512 条预算覆盖所有有效磁贴名称；首项、末项、全局超限及恢复后移除旧别名有明确断言。
 

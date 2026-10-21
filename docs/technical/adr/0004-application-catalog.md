@@ -2,6 +2,8 @@
 
 日期：2026-10-20。状态：已接受，实施与验收由 [#7](https://github.com/xiaodaozhi/xdstarter/issues/7)、[#9](https://github.com/xiaodaozhi/xdstarter/issues/9)、[#10](https://github.com/xiaodaozhi/xdstarter/issues/10) 跟踪。
 
+本 ADR 记录应用目标接入时的 schema 2 决定；当前显示名称覆盖及 schema 3 读取／写入规则由 [ADR-0011](0011-tile-display-names.md) 延续，原目标类型、启动语义及权限分类继续适用。
+
 ## 背景
 
 普通 Qt Quick 窗口已有三档磁贴、编辑与 schema 1 样例快照，需要接入真实 Windows 应用并保存用户固定状态。直接用可执行文件路径代替快捷方式会丢失参数与工作目录；让 QML 请求图标时执行 Shell IO 会阻塞界面。新目标必须与样例明确区分，并保留旧数据和未来版本保护。
