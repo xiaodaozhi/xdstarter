@@ -62,19 +62,20 @@
           "name": "Read declared Python baseline",
           "id": "toolchain",
           "shell": "pwsh",
-          "run": "$baseline = Get-Content toolchain.json -Raw | ConvertFrom-Json\n\"python=$($baseline.python.version)\" >> $env:GITHUB_OUTPUT"
+          "run": "$baseline = Get-Content toolchain.json -Raw | ConvertFrom-Json\n\"python=$($baseline.python.version)\" >> $env:GITHUB_OUTPUT\n\"uv=$($baseline.ciAcquisition.uvVersion)\" >> $env:GITHUB_OUTPUT"
         },
         {
-          "name": "Set up Python",
-          "uses": "actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+          "name": "Set up pinned Python acquisition tool",
+          "uses": "astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884",
           "with": {
-            "python-version": "${{ steps.toolchain.outputs.python }}"
+            "version": "${{ steps.toolchain.outputs.uv }}",
+            "enable-cache": false
           }
         },
         {
           "name": "Acquire declared tools and Qt, build, lint and test",
           "shell": "pwsh",
-          "run": "./scripts/build-windows.ps1 -Toolchain MSVC2022 -InstallTools -Python (Get-Command python).Source -Fresh"
+          "run": "$pythonVersion = '${{ steps.toolchain.outputs.python }}'\nuv python install $pythonVersion\nif ($LASTEXITCODE -ne 0) { throw 'Declared Python acquisition failed.' }\n$pythonPath = (uv python find --managed-python $pythonVersion).Trim()\nif ($LASTEXITCODE -ne 0 -or !$pythonPath) { throw 'Cannot locate declared managed Python.' }\n./scripts/build-windows.ps1 -Toolchain MSVC2022 -InstallTools -Python $pythonPath -Fresh"
         }
       ],
       "name": "Additional MSVC 2022 compatibility (not the v142 baseline)"

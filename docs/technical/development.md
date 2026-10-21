@@ -49,6 +49,8 @@ ctest --preset core-debug
 
 先安装清单中的 Python 3.12.13、VS 2019 C++ x64/v142 工具集与 Windows SDK 10.0.19041.0。在 PowerShell 中执行以下正式入口，`-Python` 指向所装解释器或使用已正确配置的 `python`：
 
+Python 3.12.13 是[仅源码的安全版本](https://www.python.org/downloads/release/python-31213/)，没有官方 Windows 安装器。本机使用 uv 管理的兼容分发；Windows CI 也通过清单固定的 uv 获取精确版本，以 `uv python find --managed-python 3.12.13` 返回的解释器路径传给 `-Python`。这只调整获取渠道，不降低 Python 版本，也不改变 Qt、MSVC 或 SDK 基线，来源见[依赖记录](dependencies.md)。
+
 ```powershell
 ./scripts/build-windows.ps1 -InstallTools -Python python -Preset app-release -Fresh
 ```
@@ -93,7 +95,7 @@ Debug 构建使用 `-Preset app-debug`。脚本复用已构建的 `xdstarter_ui_
 
 验证脚本仅临时为当前进程和测试子进程设置 `TEMP`/`TMP=build/validation/ui/temp/`，供隔离布局文件夹具使用，并在 finally 中恢复原环境，避免受管桌面默认临时目录不可写；不改变系统设置或产品保存路径。几何抓帧在测试夹具中隐藏 ToolTip，JSON 标记 `tooltipsHiddenForGeometryCapture`，提示交互另行测试。
 
-此矩阵覆盖当前屏幕上的 Qt 有效缩放，不证明更改 Windows 系统缩放后的行为、混合 DPI 跨屏切换、原生系统接管或屏幕阅读器焦点已通过。原生交互验证需要可见 Windows 桌面；其他 Qt 版本、MSVC 2022 应用 CI 与 macOS 构建也仍需各自验证。
+此矩阵覆盖当前屏幕上的 Qt 有效缩放，不证明更改 Windows 系统缩放后的行为、混合 DPI 跨屏切换、原生系统接管或屏幕阅读器焦点已通过。原生交互验证需要可见 Windows 桌面；其他 Qt 版本、MSVC 2022 应用 CI 与 macOS 构建的结果须按各自环境单独记录，不能由本机矩阵推断。
 
 macOS 可使用对应的 Qt 6.8.2 Kit 和相同 app presets，界面明确标记模拟平台；当前尚未进行 macOS 构建验证。
 

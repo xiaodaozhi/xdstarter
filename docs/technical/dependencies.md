@@ -21,6 +21,7 @@ xdzip 根 CMake 最低要求 3.24，其 CI 的 CMake/Ninja/Python 依赖 runner�
 | MSVC / linker | VS 2019 16.11、v142 14.29.30133；编译器 19.29.30153.0、linker 14.29.30153.0；Microsoft Visual Studio Installer | Windows x64 构建工具，不捆绑 IDE/工具到应用；VC 运行时的发行许可及部署仍需单独核对 |
 | Windows SDK | Microsoft Windows SDK 10.0.19041.0 | Windows 头文件、资源编译器及工具；仅构建期使用，不将整个 SDK 复制入产品 |
 | Python | [3.12.13](https://www.python.org/downloads/release/python-31213/) | 构建工具环境；PSF 许可。可使用兼容分发提供的该解释器，项目入口核对实际版本；普通仓库脚本仍支持 Python 3.11+ |
+| uv（Windows CI 获取工具） | [0.13.4](https://github.com/astral-sh/uv/releases/tag/0.13.4)，由 `ciAcquisition.uvVersion` 声明 | 仅用于获取并定位精确的 CPython 3.12.13，不进入产品；Python 来自 Astral 的 [python-build-standalone](https://github.com/astral-sh/python-build-standalone)。uv 与解释器的许可材料见各自官方仓库 |
 | CMake | [4.4.4 Python 分发](https://pypi.org/project/cmake/4.4.4/) | 配置与构建；CMake 为 BSD 3-Clause，Python 分发封装为 Apache 2.0，随附第三方许可保留 |
 | Ninja | [1.13.2 Python 分发](https://pypi.org/project/ninja/1.13.2/) | 构建后端，Apache 2.0；本机可执行文件版本带 `.git.kitware.jobserver-pipe-1` 后缀，记录完整输出，不把后缀当作另一个 PyPI 包版本 |
 | aqtinstall | [3.3.0](https://pypi.org/project/aqtinstall/3.3.0/) | 获取 Qt，MIT；不改变 Qt 组件许可，不进入产品运行时 |
@@ -28,7 +29,7 @@ xdzip 根 CMake 最低要求 3.24，其 CI 的 CMake/Ninja/Python 依赖 runner�
 
 Python 包通过 PyPI 精确版本取得，项目工具保存在忽略的 `build/tooling/`；默认 Qt 缓存在 `build/Qt/`。版本检查同时核对包元数据、CMake/Ninja 可执行文件及 qmake 返回的 Qt 版本；本地结果保存在 `build/<preset>/toolchain-validation.json`。脚本不把所有传递依赖逐一固定，也未增加完整下载哈希锁，因此不能称作完整离线/位级可复现环境。首次获取需要网络，已安装相同工具和 SDK 时无需重复下载。
 
-应用 CI 固定 actions/checkout 与 actions/setup-python 的提交；Python 补丁与工具版本由清单读取。`windows-2022` runner 的 MSVC 2022/SDK 随镜像变化，仅作为显式附加兼容验证，不冒充上述 v142/19041 精确基线；实际日志记录其选择结果。Ubuntu 核心检查使用 runner 的 C++20 编译器，不提供 Qt/Windows 验收结论。Actions 额度阻塞由 [#12](https://github.com/xiaodaozhi/xdstarter/issues/12) 跟踪。
+应用 CI 固定 actions/checkout、actions/setup-python 与 Windows 使用的 astral-sh/setup-uv 提交；Python 补丁与工具版本由清单读取。Python 3.12.13 为仅源码安全版本，官方不提供该版 Windows 安装器；Windows CI 通过固定版本 uv 获取与本机相同渠道的 CPython，显式定位解释器后传入现有构建入口，严格版本检查保持不变。Linux 核心任务继续使用 setup-python。`windows-2022` runner 的 MSVC 2022/SDK 随镜像变化，仅作为显式附加兼容验证，不冒充上述 v142/19041 精确基线；实际日志记录其选择结果。Ubuntu 核心检查使用 runner 的 C++20 编译器，不提供 Qt/Windows 验收结论。Actions 恢复和检查证据见 [#12](https://github.com/xiaodaozhi/xdstarter/issues/12) 与 [PR #17](https://github.com/xiaodaozhi/xdstarter/pull/17)。
 
 ## 支持与升级边界
 

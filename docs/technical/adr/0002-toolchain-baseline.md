@@ -15,6 +15,7 @@
 - Qt 使用官方 `win64_msvc2022_64` Kit；CMake 精确匹配 6.8.2，Qt CMake 策略要求仍为 6.8。Kit 名称表示分发包，其自身由 MSVC 19.39.33520 构建，不表示产品正在调用 MSVC 2022。
 - 默认工具环境和 SDK 缓存为本项目忽略的 `build/tooling/`、`build/Qt/`，提供正式下载与构建入口。允许 `XDSTARTER_QT_ROOT` 或 `-QtPrefix` 指向已有相同 SDK，只改变缓存位置，不改变依赖版本，也不写机器路径到公开配置。
 - 保留 MSVC 2022 CI 作为显式附加兼容验证，结果与精确 v142 基线分别记录。使用 `-Toolchain MSVC2022` 或手工 `XDSTARTER_ALLOW_ALTERNATE_MSVC=ON` 才绕过基线编译器/SDK 版本约束；Qt 精确版本不改变。
+- 2026-10-21 的首次实际 Windows CI 证明 setup-python 无法获取仅源码安全版 3.12.13。Windows CI 改由清单固定版本的 uv 获取并定位该 CPython，沿用本机已核实的分发渠道和严格版本校验；此补充不改变正式依赖版本，具体 action 与获取工具见依赖记录。
 - 保留 Qt Quick / QML + C++20、模块边界、最低 CMake 3.25，以及普通仓库脚本的 Python 3.11+ 兼容范围；不引入 xdzip 独有的 Rust、格式后端或安装器依赖。
 - 升级通过依赖 PR 更新清单、许可记录和兼容回归，不永久冻结这些版本。工具安装器仍解析传递依赖，当前不是逐传递依赖与哈希的完整环境锁。
 

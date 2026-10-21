@@ -31,6 +31,7 @@
     "architecture": "x64",
     "additionalValidationVisualStudioMajor": "17"
   },
+  "ciAcquisition": {"uvVersion": "0.13.4"},
   "cmakeMinimum": "3.25",
   "cache": {"tools": "build/tooling", "qt": "build/Qt"}
 }

@@ -38,7 +38,13 @@ GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查�
 
 用户随后亲自点击通知区 XDStarter 图标恢复，并按要求再完成两轮收起/唤起，目视检查左侧/底部间距、位置稳定、已完成的编辑保留及单层圆角/阴影，最后经电源菜单明确退出；用户回复“均正常，已从菜单退出”。这部分是用户亲自操作和目视确认，不是自动化点击真实托盘。重启进程日志同时记录多次 `tray-toggle`、`explicit` 与 `external-focus`，各次面板定位请求均为 `(12, 496, 1470, 1020)`。`restarted-exit.json` 独立记录 PID 12980 于 2026-10-21 10:02:32（Asia/Shanghai）正常退出，代码 0；连同第一进程代码 0，本轮完成实际产品交互、用户协助真实托盘恢复与新进程布局恢复的本机验收。
 
-工件位于本地 `build/validation/issue16-product/`，包括进程/退出元数据、`interaction-result.json`、重启前后布局快照和 stdout/stderr；不提交含真实目标描述的隔离配置。远程检查仍受 [#12](https://github.com/xiaodaozhi/xdstarter/issues/12) 的账户付款/消费额度问题阻塞：同日手动[运行 39530444397](https://github.com/xiaodaozhi/xdstarter/actions/runs/39530444397) 的 job 未启动、步骤为空，错误注释仍为付款/额度限制；用户表示稍后处理 CI，先完成验收和 PR。本机验收不替代 PR 检查或表示已经合并；混合 DPI、自动隐藏任务栏、Explorer 重启等环境也不在本次通过范围。下方 #15/#14 的 hash、用户确认与待验收事项保持历史身份，不追溯记为本轮结果。
+工件位于本地 `build/validation/issue16-product/`，包括进程/退出元数据、`interaction-result.json`、重启前后布局快照和 stdout/stderr；不提交含真实目标描述的隔离配置。本机验收不替代 PR 检查或表示已经合并；混合 DPI、自动隐藏任务栏、Explorer 重启等环境也不在本次通过范围。下方 #15/#14 的 hash、用户确认与待验收事项保持历史身份，不追溯记为本轮结果。
+
+### 远程检查进展
+
+本轮真机验收结束时，CI 受账户付款/消费额度限制阻塞：2026-10-21 手动[运行 39530444397](https://github.com/xiaodaozhi/xdstarter/actions/runs/39530444397) 的 job 未启动、步骤为空；用户当时选择先完成验收和 PR。随后用户恢复 Actions 额度并要求重跑，[PR #17](https://github.com/xiaodaozhi/xdstarter/pull/17) 的仓库检查和 Linux 核心检查已实际成功。恢复后的首轮 Windows 检查在 `setup-python` 获取 Python 3.12.13 时失败：该版本是仅源码安全版本，没有官方 Windows 二进制。
+
+Windows 获取修复由 PR #17 跟踪：仅该 job 使用固定提交的 `setup-uv` 和清单中的 uv 版本获取精确 Python 3.12.13，将 managed 解释器路径传入既有构建入口；正式 Qt、Python、编译器与 SDK 基线不变。获取步骤的修改本身不构成 Windows 构建通过证据；最终远程结果以 PR #17 和 [Issue #12](https://github.com/xiaodaozhi/xdstarter/issues/12) 的实际运行记录为准。
 
 ## 历史：原生外观菜单弹层验证（Issue #15）
 
@@ -135,7 +141,7 @@ Windows QPA / Direct3D 11 的 100/125/150/175/200% Qt 有效缩放均为 GUI 26/
 
 GUI 用例保留小磁贴 ToolTip/QAccessible 名称、长名称省略、480×480 双向滚动、方向导航和主题几何回归，覆盖鼠标组内/跨组拖拽、非法落点与 Esc 取消、右键/Shift+F10 三档尺寸、冲突拒绝、Ctrl+方向键编辑、重建窗口恢复布局与主题、保存失败重试、未来配置只读，以及深浅主题下尺寸菜单的高亮/按下文字与勾选对比度（至少 4.5）。目录固定/取消固定、启动成功/失败生命周期及失效目标恢复继续保留；桌面集成新增主题资源、圆形头像和快捷栏几何/键盘提示、受控动作结果、电源文字退出及关于状态检查。GUI 使用注入平台，真实 Shell 启动另在平台和产品窗口验证。测试使用隔离文件，不改日常布局；QML warnings 使测试失败。辅助功能名称检查不代表屏幕阅读器焦点已经验收。
 
-[应用 CI](../../.github/workflows/application-build.yml) 读取同一工具清单，Ubuntu job 构建核心；Windows 2022 job 明确作为附加 MSVC 2022 兼容验证，不冒充 v142 精确基线。工作流尚未推送运行，Actions 额度问题仍由 [#12](https://github.com/xiaodaozhi/xdstarter/issues/12) 跟踪。
+[应用 CI](../../.github/workflows/application-build.yml) 读取同一工具清单，Ubuntu job 构建核心；Windows 2022 job 明确作为附加 MSVC 2022 兼容验证，不冒充 v142 精确基线。工作流已经推送，额度恢复、实际运行及最终检查结果由 [PR #17](https://github.com/xiaodaozhi/xdstarter/pull/17) 与 [#12](https://github.com/xiaodaozhi/xdstarter/issues/12) 跟踪；仅采用各次实际执行结果，不以配置存在代表通过。
 
 ## 历史：真实应用目录与固定操作验证
 
