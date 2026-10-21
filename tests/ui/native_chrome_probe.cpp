@@ -380,6 +380,9 @@ struct ProbeWindowSample {
     HMONITOR monitor = nullptr;
     HMONITOR qtScreenMonitor = nullptr;
     bool valid = false;
+    bool nativeVisible = false;
+    bool qtVisible = false;
+    bool qtExposed = false;
 };
 
 ProbeWindowSample sampleProbeWindow(QQuickWindow& window) {
@@ -396,8 +399,13 @@ ProbeWindowSample sampleProbeWindow(QQuickWindow& window) {
     sample.nativeDpi = GetDpiForWindow(handle);
     sample.screenName = window.screen() ? window.screen()->name() : QString();
     sample.qtScreenMonitor = probeScreenMonitor(window.screen());
+    sample.nativeVisible = IsWindowVisible(handle) != FALSE;
+    sample.qtVisible = window.isVisible();
+    sample.qtExposed = window.isExposed();
     sample.json = {{QStringLiteral("nativeRectRead"), sample.valid},
-                   {QStringLiteral("nativeWindowVisible"), IsWindowVisible(handle) != FALSE},
+                   {QStringLiteral("nativeWindowVisible"), sample.nativeVisible},
+                   {QStringLiteral("qtWindowVisible"), sample.qtVisible},
+                   {QStringLiteral("qtWindowExposed"), sample.qtExposed},
                    {QStringLiteral("outerPhysicalRect"), rectangleJson(sample.physicalRect)},
                    {QStringLiteral("qtGeometryDip"), rectangleJson(window.geometry())},
                    {QStringLiteral("qtRenderDpr"), sample.renderDpr},
@@ -689,8 +697,11 @@ int runNativeScreenTransitionProbe() {
             auto settled = sampleProbeWindow(*window);
             const bool firstPassed =
                 validateProbeSample(firstVisible, target, shadow, gap, expectedLogicalSize);
+            const bool settledVisible =
+                settled.nativeVisible && settled.qtVisible && settled.qtExposed;
             const bool settledPassed =
-                validateProbeSample(settled, target, shadow, gap, expectedLogicalSize);
+                validateProbeSample(settled, target, shadow, gap, expectedLogicalSize) &&
+                settledVisible;
             const bool stable = firstVisible.physicalRect == settled.physicalRect &&
                                 firstVisible.logicalSize == settled.logicalSize &&
                                 std::abs(firstVisible.renderDpr - settled.renderDpr) < 0.001;
@@ -711,6 +722,7 @@ int runNativeScreenTransitionProbe() {
                             {QStringLiteral("settledAfter1000ms"), settled.json},
                             {QStringLiteral("firstVisiblePassed"), firstPassed},
                             {QStringLiteral("settledPassed"), settledPassed},
+                            {QStringLiteral("settledVisiblePassed"), settledVisible},
                             {QStringLiteral("revealAndSettledGeometryMatch"), stable},
                             {QStringLiteral("graphicsApi"), apiName(api)},
                             {QStringLiteral("rhiPassed"), rhi}});

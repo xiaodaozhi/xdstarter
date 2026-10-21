@@ -90,6 +90,10 @@ DesktopWindowHost::DesktopWindowHost(QWindow &window, DesktopShellService &shell
             &DesktopWindowHost::scheduleFocusCheck);
     connect(&window, &QWindow::activeChanged, this, &DesktopWindowHost::scheduleFocusCheck);
     connect(&window, &QWindow::visibilityChanged, this, &DesktopWindowHost::scheduleFocusCheck);
+    connect(&window, &QWindow::widthChanged, this,
+            &DesktopWindowHost::rememberVisibleWindowSize);
+    connect(&window, &QWindow::heightChanged, this,
+            &DesktopWindowHost::rememberVisibleWindowSize);
     // Plain QWindow fixtures have no QML contract. Check before connecting so
     // headless tests and unsupported hosts produce no spurious Qt warnings.
     const auto *windowMeta = window.metaObject();
@@ -159,6 +163,8 @@ void DesktopWindowHost::beginRevealPreparation(const DesktopAnchorResult &anchor
     configureAppearance(); // Creates the native surface, still hidden.
     if (!isCurrentReveal(request))
         return;
+    if (intendedWindowSize_.isEmpty())
+        intendedWindowSize_ = window_->size();
     if (targetScreen_) {
         // setScreen() does not move an existing HWND on a virtual desktop.
         // Moving the hidden surface to the target monitor delivers its DPI
@@ -192,16 +198,6 @@ void DesktopWindowHost::checkRevealPreparation() {
         !revealDeadline_.isValid())
         return;
     const quint64 request = placementRequest_;
-    const qreal renderDpr = window_->devicePixelRatio();
-    const qreal screenDpr = targetScreen_ ? targetScreen_->devicePixelRatio() : renderDpr;
-    const auto native = placement_.queryWindowMetrics(window_->winId());
-    if (!isCurrentReveal(request))
-        return;
-    if (readiness_.observe(targetScreen_ && window_->screen() == targetScreen_,
-                           screenDpr, renderDpr, window_->size(), native)) {
-        finishRevealPreparation();
-        return;
-    }
     if (revealDeadline_.elapsed() >= 1500) {
         cancelRevealPreparation();
         pendingReveal_ = false;
@@ -212,6 +208,28 @@ void DesktopWindowHost::checkRevealPreparation() {
         qWarning().noquote() << "Desktop placement preparation timed out; window remains hidden.";
         if (!stopping_ && !pendingReveal_ && !placementRequest_ && !recoveryAvailable_ && window_)
             window_->showMinimized();
+        return;
+    }
+    const qreal renderDpr = window_->devicePixelRatio();
+    const qreal screenDpr = targetScreen_ ? targetScreen_->devicePixelRatio() : renderDpr;
+    if (targetScreen_ && window_->screen() == targetScreen_ &&
+        qFuzzyCompare(renderDpr, screenDpr) && !intendedWindowSize_.isEmpty() &&
+        window_->size() != intendedWindowSize_) {
+        // Windows can preserve the physical HWND size during a hidden monitor
+        // move, changing Qt's logical size. Restore the user's DIP size only
+        // after Qt has adopted the target render scale, then settle again.
+        readiness_.reset();
+        window_->resize(intendedWindowSize_);
+        if (isCurrentReveal(request))
+            revealTimer_.start();
+        return;
+    }
+    const auto native = placement_.queryWindowMetrics(window_->winId());
+    if (!isCurrentReveal(request))
+        return;
+    if (readiness_.observe(targetScreen_ && window_->screen() == targetScreen_,
+                           screenDpr, renderDpr, window_->size(), native)) {
+        finishRevealPreparation();
         return;
     }
     revealTimer_.start();
@@ -349,6 +367,9 @@ void DesktopWindowHost::toggleWinKeyCapture() {
 void DesktopWindowHost::showWindow() {
     if (stopping_ || !window_)
         return;
+    rememberVisibleWindowSize();
+    if (intendedWindowSize_.isEmpty() && !window_->size().isEmpty())
+        intendedWindowSize_ = window_->size();
     focusTimer_.stop();
     focusArmed_ = false;
     if (window_->visibility() == QWindow::Minimized)
@@ -362,6 +383,14 @@ void DesktopWindowHost::showWindow() {
         return;
     }
     requestPlacement();
+}
+
+void DesktopWindowHost::rememberVisibleWindowSize() {
+    // A hidden or minimized native DPI transition is not a user resize. In
+    // particular, cancellation must retain the size from before that move.
+    if (!stopping_ && !pendingReveal_ && window_ && window_->isVisible() &&
+        window_->visibility() != QWindow::Minimized && !window_->size().isEmpty())
+        intendedWindowSize_ = window_->size();
 }
 
 void DesktopWindowHost::toggleWindow() {
@@ -384,11 +413,14 @@ void DesktopWindowHost::toggleWindowFrom(const QString &source) {
 }
 
 bool DesktopWindowHost::eventFilter(QObject *object, QEvent *event) {
-    if (object == window_ && event->type() == QEvent::Close && pendingReveal_) {
-        cancelRevealPreparation();
-        pendingReveal_ = false;
-        placementRequest_ = 0;
-        shell_.invalidateStartButtonAnchor();
+    if (object == window_ && event->type() == QEvent::Close) {
+        rememberVisibleWindowSize();
+        if (pendingReveal_) {
+            cancelRevealPreparation();
+            pendingReveal_ = false;
+            placementRequest_ = 0;
+            shell_.invalidateStartButtonAnchor();
+        }
     }
     return QObject::eventFilter(object, event);
 }
@@ -454,6 +486,9 @@ void DesktopWindowHost::prepareWindow(const char *method) {
 void DesktopWindowHost::dismiss(const QString &reason) {
     if (stopping_ || !window_)
         return;
+    // Resize notifications can still be queued when the user immediately
+    // dismisses the menu. Capture the current visible DIP size before hiding.
+    rememberVisibleWindowSize();
     focusTimer_.stop();
     cancelRevealPreparation();
     focusArmed_ = false;

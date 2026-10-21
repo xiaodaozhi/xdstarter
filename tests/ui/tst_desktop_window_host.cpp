@@ -286,6 +286,8 @@ class DesktopWindowHostTest : public QObject {
     void nativePreparationRejectsReentrantCancellation();
     void nativeScreenIdentityIsResolvedByPlatform();
     void missingNativeScreenDoesNotUsePreviousScreen();
+    void hiddenMigrationPreservesLogicalWindowSize();
+    void canceledMigrationRetainsIntendedWindowSize();
     void winKeyCaptureRequiresOptInAndStops();
     void winKeyCaptureFailureAndTrayLoss();
     void unsupportedWinKeyCaptureStaysDisabled();
@@ -999,6 +1001,67 @@ void DesktopWindowHostTest::missingNativeScreenDoesNotUsePreviousScreen() {
     QCOMPARE(placement.screenMappings, 1);
     QCOMPARE(placement.placements, 0);
     QVERIFY(!window.isVisible());
+}
+
+void DesktopWindowHostTest::hiddenMigrationPreservesLogicalWindowSize() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    const QSize initialSize(688, 528);
+    window.resize(initialSize);
+    PlacementPlatform placement;
+    placement.observedWindow = &window;
+    placement.reportNativeSize = true;
+    // Reproduce the logical-size side effect independently of a physical
+    // monitor: the real mixed-DPI probe covers Qt's native DPI transition.
+    placement.afterConfigure = [&] { window.resize(500, 400); };
+    FakeTray tray;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.start(trayIcon());
+    QTRY_VERIFY(window.isVisible());
+    QCOMPARE(window.size(), initialSize);
+    QCOMPARE(placement.placements, 1);
+    QVERIFY(!placement.placedWhileVisible);
+
+    // A genuine visible resize becomes the next reveal's intended DIP size.
+    const QSize userSize(812, 612);
+    window.resize(userSize);
+    QCOMPARE(window.size(), userSize);
+    host.dismissWindow();
+    host.showWindow();
+    QTRY_VERIFY(window.isVisible());
+    QCOMPARE(window.size(), userSize);
+    QCOMPARE(placement.placements, 2);
+    QVERIFY(!placement.placedWhileVisible);
+}
+
+void DesktopWindowHostTest::canceledMigrationRetainsIntendedWindowSize() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    const QSize intendedSize(744, 568);
+    window.resize(intendedSize);
+    PlacementPlatform placement;
+    placement.observedWindow = &window;
+    placement.reportNativeSize = true;
+    FakeTray tray;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    placement.afterConfigure = [&] {
+        window.resize(500, 400);
+        host.dismissWindow();
+    };
+    host.start(trayIcon());
+    QTRY_VERIFY(window.dismissals > 0);
+    QVERIFY(!window.isVisible());
+    QCOMPARE(window.size(), QSize(500, 400));
+    QCOMPARE(placement.placements, 0);
+
+    placement.afterConfigure = {};
+    host.showWindow();
+    QTRY_VERIFY(window.isVisible());
+    QCOMPARE(window.size(), intendedSize);
+    QCOMPARE(placement.placements, 1);
+    QVERIFY(!placement.placedWhileVisible);
 }
 
 // Opt-in, inert second application window for reproducible native focus tests.
