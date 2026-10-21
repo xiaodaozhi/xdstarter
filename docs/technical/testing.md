@@ -14,7 +14,7 @@ GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查�
 
 正式入口 `./scripts/build-windows.ps1 -Preset app-release` 使用 Qt **6.8.2**、MSVC **19.29.30153.0／v142**、Windows SDK **10.0.19041.0**。最终本地日志 `build/issue9-tile-names-delivery-final.log` 完成 Release、QML lint 与 **12/12 CTest（27.80 秒）**；GUI **47/47**，host **34/34**。QML lint 没有诊断；没有将 Qt SDK 既有编译警告写为整个构建零警告。文档／素材检查通过，255 项开发素材未重建；`tests/tooling` **13/13** 通过。
 
-| 本分支最终程序 | SHA-256 |
+| 合入 PR #38 前的显示名称程序 | SHA-256 |
 | --- | --- |
 | 产品 `xdstarter.exe` | `2353d99abf657662b4a82bccd9f7980f3b3e461326031b9f490bf6d5abdef464` |
 | GUI `xdstarter_ui_tests.exe` | `c7eb92cdf7d492d2bf42ed8c6d3cbf222340c17ea11619c4a72118100d22ce1a` |
@@ -32,6 +32,44 @@ GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查�
 - `build/issue9-tile-names-delivery.log` 为 **11/12**：未修改的 `platform.applications` 夹具中，Shell 返回成功、标记文件存在，但随后的文件打开失败，连带参数与工作目录断言失败。单次原因未确定，没有据此修改平台实现或放宽严格断言。带明确 Qt DLL 路径的独立复测 `build/issue9-platform-launch-with-qt.log` 为 **1/1（1.67 秒）**；同一程序随后完成上面的正式 **12/12**。另一次手动 CTest 未设置 Qt DLL 路径，30 秒超时，保留为 `build/issue9-platform-launch-recheck.log`，属于启动器环境错误。
 
 本轮新功能的原生窗口交互、真实托盘与独立产品进程恢复需要在最终集成程序上协调验收；上述离屏及受控服务证据不宣称这些范围已经通过。下方 #29 及更早章节保留各自二进制身份与历史边界。
+
+## 应用目录异常验收（Issue #7）
+
+2026-10-21，本轮在从 `61c9376` 建立的独立工作树补充 [#7](https://github.com/xiaodaozhi/xdstarter/issues/7) 的权限与不可用目标验收，并修正实际发现的分类问题。仅使用 build 内新建的快捷方式、复制的受控 helper 和新目录，不改真实开始菜单、不卸载用户应用、不改日常布局或系统权限。普通产品窗口没有在本轮操作；此前真实目录、画图启动及失败窗口证据继续保留原版身份，不改标为当前程序。
+
+正式 `app-release` 使用 Qt **6.8.2**、MSVC **19.29.30153.0／v142**、链接器 **14.29.30153.0** 与 SDK **10.0.19041.0**。最终日志 `build/issue7-build-delivery.log` 的 Release、QML lint、**12/12 CTest（31.83 秒）** 通过；其中原生平台 2.48 秒，后台目录服务 1.73 秒，既有离屏 GUI 44/44 和 host 34/34 通过。离屏 GUI 没有读取真实目录，也不等于当前产品的真机交互验收。
+
+| 最终程序 | SHA-256 |
+| --- | --- |
+| 产品 | `7eb32ad1a33c50ad075a47100f047bb40fb882fdfaf4182ea7906fa085404f95` |
+| 应用平台测试 | `20e93c8137ed8570337738aa76e94301d6b4e4439e3ce51b9b3721130f87f337` |
+| 后台目录服务测试 | `3fbb02b994ecb620b57501dcddad1af395b74eadf35e3dab9eebe163747a2528` |
+| 受控启动 helper | `4751d8f0f22f4fc5c752b46d93ec40a97e982e71c4932538736002009e7b4c16` |
+
+### 真实 Windows API 与隔离 DACL
+
+同一最终平台测试在 Windows kernel `10.0.26300` 下独立运行，退出 **0**；[公开结果](validation/issue-7/catalog-errors.json)包含程序／源码散列、结构化错误和恢复结果，不含机器路径或真实应用清单。完整本地日志为 `build/validation/issue7/native-platform.log`，原始 JSON 位于 `build/validation/issue7/final/`。
+
+| 受控场景 | 实际断言与结果 |
+| --- | --- |
+| 中文、空格及 `&` 的快捷方式 | 仍由原 `.lnk` 启动构建的 helper，中文参数、含 `&` 的单个字面参数和工作目录逐项一致；不同参数的快捷方式保留独立身份，原生 Shell 图标可取。 |
+| 缺失文件与未注册包 | 缺失目标 `target-missing`，删除 fixture `.lnk` 后为 `shortcut-missing`；匿名、语法有效但未安装的 AUMID 返回 `application-missing`，启动失败。这验证卸载后注册项缺失的等价状态，没有实际卸载任何应用。 |
+| `.lnk` 读拒绝 | 只对新建快捷方式增加当前用户的 `FILE_READ_DATA` deny；原生打开返回 `ERROR_ACCESS_DENIED = 5`，可用性及启动均返回 `access-denied`；恢复原 DACL 后可用性恢复。 |
+| 普通 `.exe` 执行拒绝 | 仅限制复制的受控 helper；元数据仍可读，原生 `FILE_EXECUTE` 打开返回 5，明确执行权限预检及启动均返回 `access-denied`，helper 没有产生启动标记。 |
+| 关联文档保持原语义 | 新建 `.txt` 被禁止 `FILE_EXECUTE` 后，其 `.lnk` 可用性仍通过，没有打开其关联程序。重解析文件／应用别名不加入普通可执行文件预检。 |
+| 根目录及子目录读拒绝 | 原生 `FILE_LIST_DIRECTORY` 打开返回 5。可读根下有拒绝子目录时保留 1 个有效项目与 warnings；拒绝根与可读根混合时仍成功并保留有效结果；全部拒绝且根重复时 `success=false`，不会伪装成成功空目录。恢复 DACL 后受限子目录正常扫描。 |
+
+ACL 安全门先用文件句柄取得实际路径，再确认它是当前绝对 build 工作目录中新建 fixture 的非重解析子项；不会通过 Qt 的 `.lnk` 目标解析给外部程序修改权限。原 DACL 由 RAII 保存并恢复，最终 `allFixtureDaclsRestored=true`、`fixtureCleaned=true`。权限修改或原生拒绝不能建立时测试失败，不跳过、不降级为模拟通过；恢复失败时保留隔离目录并报告失败。
+
+服务的独立回归 **12/12，1.743 秒**，见本地 `build/validation/issue7/catalog-service.txt`。这部分明确使用注入平台：全失败刷新保留已有目录；部分成功保留可读项并显示错误标志；`shortcut-missing`／`access-denied`／`application-missing` 三类固定目标均保留描述和布局，启动失败且不进入底层 launch，仍可取消固定，平台调用不在 GUI 线程执行。它与上面的真实 DACL 证据互补，不能把假平台结果称为真实系统权限验收。
+
+### 失败记录与边界
+
+首轮 `build/issue7-build-initial.log` 为 **11/12 CTest（30.10 秒）**。ACL 安全门最初调用 `QFileInfo::canonicalFilePath()`，Windows 会解析 `.lnk` 的目的程序，因超出 fixture 路径被安全门拒绝；随后改用实际文件句柄核对快捷方式本体。初始原始结果 `build/validation/issue7/initial/catalog-errors.json` 的 `passed=false` 保留。
+
+第二轮 `build/issue7-build-diagnostics.log` 仍只有执行拒绝分类失败：原生执行打开返回 5，但本机 Shell 将同一拒绝折为 `E_FAIL`／“未指定的错误”。没有把一般 `E_FAIL` 一概解释成权限拒绝，而是增加仅针对普通 `.exe`／`.com` 文件的明确执行权限预检；关联文档、重解析文件／应用别名及其他打开错误继续交给原 Shell 路径。中间的 `build/issue7-build-final.log` 为 12/12（27.76 秒）；补充文档关联保护后再次正式构建，最终结果以 delivery 日志及上表散列为准。
+
+权限预检不是授权或安全边界，外部 ACL 仍可能在检查之后变化，最终启动结果继续由 Shell／应用激活接口返回。本轮没有新增原生产品窗口的权限提示交互、真实安装／卸载监听、重绑定目标、完整 Windows 版本矩阵、远程桌面或发行验证；原有真实窗口与本轮平台／服务结果分别记录。
 
 ## 历史：高保真界面落地与视觉验收（Issue #29）
 
