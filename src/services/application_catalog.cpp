@@ -119,6 +119,7 @@ ApplicationCatalog::~ApplicationCatalog() {
     thread_.wait();
 }
 QAbstractItemModel* ApplicationCatalog::applicationsModel() { return &model_; }
+QVector<LaunchTarget> ApplicationCatalog::catalogApplications() const { return model_.entries(); }
 bool ApplicationCatalog::busy() const { return busy_; }
 bool ApplicationCatalog::launchBusy() const { return launchBusy_; }
 QString ApplicationCatalog::status() const { return status_; }
