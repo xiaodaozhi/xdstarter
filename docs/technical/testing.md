@@ -8,13 +8,31 @@ GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查�
 
 ## 本轮候选：布局导入与上一份备份恢复（Issue #10）
 
-2026-10-22，按用户要求将文件选择改为 Windows 系统原生对话框优先：仅请求公开 `ReadOnly` 选项，明确菜单 `parentWindow` 和 `Qt.WindowModal`，不再强制 Quick 选择器；预览与确认继续使用软件内弹层。文件选择用例改为验证公开选项／父窗口／模态和可见状态，不将 Qt 私有 Quick 对象或 QWindow transient 链当作 Windows 原生焦点证据。此修订尚未构建或进行实际窗口验收；下方 `32.08 秒` 及其他既有 hash 只代表此前强制 Quick 选择器的候选，不能改标为新版本通过。
+2026-10-22，按用户要求将文件选择改为 Windows 系统原生对话框优先：仅请求公开 `ReadOnly` 选项，明确菜单 `parentWindow` 和 `Qt.WindowModal`，不再强制 Quick 选择器；预览与确认继续使用软件内弹层。文件选择用例改为验证公开选项／父窗口／模态和可见状态，不将 Qt 私有 Quick 对象或 QWindow transient 链当作 Windows 原生焦点证据。
+
+修订源码为 `8f2a1cc21425fa7cf8a1474b1b3d0483aeca8a21`，正常合入已验收 main `db4a5e0` 后候选为 `b238d506d708d8d8ec74d2786f9da5d29788f6b9`，未改写原始提交。正式 Qt **6.8.2**／MSVC **19.29.30153.0 v142**／SDK **10.0.19041.0** Release、QML lint、**13/13 CTest（60.92 秒）**通过，GUI **55/55**、host **34/34**；仓库检查 **620 文件／255 素材**及 `git diff --check` 通过。日志为本地 `build/issue10-native-picker-main-final.log` 与 `build/issue10-native-picker-main-repository.log`。QML lint 无诊断，SDK 既有 C4702 警告保留。
+
+| 原生优先候选程序 | SHA-256 |
+| --- | --- |
+| 产品 `xdstarter.exe` | `8e40d0ab424e5958711a94d84102d2523b69920cc8efc6dd68cc79b48bf1f64c` |
+| GUI `xdstarter_ui_tests.exe` | `8fe73f4709d9cf33d72b88498b3e1de7d0c217b7467e30ad5c3952e55123b7f3` |
+| host `xdstarter_desktop_window_host_tests.exe` | `ed1ff766be1ac6c998928a5d27fa864079462c2de9cbc761e42889991fcca4fa` |
+
+本次 GUI 为 `offscreen/software`，该环境可能由 Qt 使用回退实现；公开选项与保存恢复检查通过不能证明 Windows 原生文件选择器、真实模态焦点、取消／Esc、托盘或独立产品重启已经通过。这些项目由同一固定程序的后续真机证据记录；含私人桌面背景的截图不入库。下方 `32.08 秒` 及其他既有 hash 只代表此前强制 Quick 选择器的候选，不改标为新版本。
+
+### 原生文件选择首轮失败与补修门槛
+
+同一 `b238d506`／产品 `8e40d0ab…` 实际点击“更多 → 导入布局…”后，host 日志记录 `external-focus` 收起，原生选择器没有保持可操作，工具随后没有可截图的产品窗口。磁盘主布局散列前后相同。该轮标记为 `import-native1`，属于真实失败；没有将点击入口或公开 ReadOnly 选项视为原生选择、取消或导入通过。随后用户退出，独立 watcher 取得退出码 **0**，并确认没有残留产品进程；正常退出不改变该轮原生流程失败结论。
+
+已定位现有 host 只识别 Qt 的焦点窗口及 `transientParent` 链，不能单靠这条链识别没有 Qt 窗口对象的原生模态对话框。补修需由 Windows 平台模块进行短时、只读的精确 HWND owner 归属判断；同进程的一般窗口不能因此获得菜单内部焦点待遇。host 仅在原生 owned 交接需要时短时复核，真正外部焦点仍收起，QML 与通用布局不依赖 Win32，也不恢复强制 Quick 选择器。
+
+补修提交、正式构建与实际模态焦点尚待完成；须用新的固定程序重新验证原生取消返回、坏 JSON（存在有效同名备份仍拒绝）、有效预览取消／确认、上一份备份预览／恢复、不自动启动目标、用户主动启动画图及正常退出／独立重启。此前 `60.92 秒` 的离屏结果保留原身份，不能替代补修后的结果。
 
 2026-10-21，导入候选复用严格 schema 1／2／3 校验及现有保存 worker，加入文件选择、不可变预览、确认替换和备份恢复，决定见 [ADR-0012](adr/0012-layout-import-transaction.md)。本轮暂以草稿 PR 交付；下面是固定版本的构建与离屏结果，Windows 实际产品验收仍待协调，不能据此关闭 [#10](https://github.com/xiaodaozhi/xdstarter/issues/10)。
 
 此前强制 Quick 选择器的正式入口 `scripts/build-windows.ps1 -Preset app-release` 使用 Qt **6.8.2**、MSVC **19.29.30153.0／v142**、SDK **10.0.19041.0**。当时 `build/issue10-build-release-final.log` 完成 Release、QML lint 和 **13/13 CTest（32.08 秒）**，GUI **53/53**、host **34/34**；新增导入服务单独同环境复核 **27/27**，日志为 `build/issue10-import-service-baseline.txt`。仓库检查与工具脚本 **13/13** 另行通过。SDK `FileDialogOptions` 在 Qt 6.8.2 qmltypes 中缺少完整类型／ReadOnly 元数据，仅对公共 options 绑定做局部 lint 注释；该旧候选曾断言 ReadOnly 与 DontUseNativeDialog，现已改为上方原生优先策略。Qt SDK 既有 C4702 警告与 QML lint 诊断分开记录。
 
-| 最终候选程序 | SHA-256 |
+| 此前强制 Quick 候选程序 | SHA-256 |
 | --- | --- |
 | 产品 `xdstarter.exe` | `0d09838f084495540a94fac2d1c04813f8bc6be63569e2ceb3201d4f4e33d348` |
 | GUI `xdstarter_ui_tests.exe` | `9716a9b77fb901be977d4423def2de0126fbac9b966bc2a09560d884ee23b60c` |
