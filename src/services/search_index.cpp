@@ -146,6 +146,7 @@ bool containsReading(const QVector<QStringList>& tokens, const QString& pattern,
 void SearchIndex::setEntries(QVector<SearchEntry> entries) {
     entries_.clear();
     QHash<QString, qsizetype> positions;
+    QVector<std::pair<qsizetype, QString>> tileNames;
     for (qsizetype index = 0; index < std::min(entries.size(), qsizetype(maximumEntries));
          ++index) {
         const auto& entry = entries.at(index);
@@ -159,6 +160,13 @@ void SearchIndex::setEntries(QVector<SearchEntry> entries) {
                              boundedText(entry.displayName, maximumNameLength),
                              normalizedName(entry.displayName),
                              {}});
+        }
+        // The normal 16-name budget is unchanged. All tile overrides share one
+        // separate global budget, bounded by the layout's 512 total tiles.
+        for (const auto& name : entry.tileDisplayNames) {
+            if (tileNames.size() == maximumTileDisplayNames)
+                break;
+            tileNames.append({position, name});
         }
         auto& destination = entries_[position];
         QStringList names{entry.displayName};
@@ -178,6 +186,17 @@ void SearchIndex::setEntries(QVector<SearchEntry> entries) {
                 destination.names.append({normalized, readingTokens(normalized, false),
                                           readingTokens(normalized, true)});
         }
+    }
+    for (const auto& [position, name] : tileNames) {
+        const auto normalized = normalizedName(name);
+        if (normalized.isEmpty())
+            continue;
+        auto& destination = entries_[position];
+        const auto duplicate = std::any_of(destination.names.cbegin(), destination.names.cend(),
+            [&normalized](const IndexedName& existing) { return existing.normalized == normalized; });
+        if (!duplicate)
+            destination.names.append({normalized, readingTokens(normalized, false),
+                                      readingTokens(normalized, true)});
     }
 }
 

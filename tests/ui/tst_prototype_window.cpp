@@ -361,6 +361,11 @@ class PrototypeWindowTest : public QObject {
     void highFidelityLayoutAndActions();
     void feedbackFailuresRemainVisible();
     void tileNamesAreLiteralText();
+    void tileDisplayNameEditingAndRestart();
+    void tileDisplayNameValidationAndCancellation();
+    void tileDisplayNameSharedTargetAliases();
+    void contextMenuShortcutsRespectFocus();
+    void tileNameMouseContextFromSearchRestoresFocus();
 
   private:
     QQuickItem* item(const QString& name) const;
@@ -1019,7 +1024,7 @@ void PrototypeWindowTest::futureConfigurationIsReadOnly() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
     const auto path = directory.filePath(QStringLiteral("layout.json"));
-    const QByteArray original = "{\"schemaVersion\":3,\"futureData\":\"keep\"}";
+    const QByteArray original = "{\"schemaVersion\":4,\"futureData\":\"keep\"}";
     QFile file(path);
     QVERIFY(file.open(QIODevice::WriteOnly));
     QCOMPARE(file.write(original), qint64(original.size()));
@@ -1036,12 +1041,16 @@ void PrototypeWindowTest::futureConfigurationIsReadOnly() {
     QVERIFY(!controller_->renameGroup(QStringLiteral("work"), QStringLiteral("不可写")));
     QVERIFY(!controller_->moveGroupBy(QStringLiteral("work"), 1));
     QVERIFY(!controller_->removeGroup(QStringLiteral("work")));
+    QVERIFY(!controller_->renameTile(QStringLiteral("work-standard-1"), QStringLiteral("拒绝")));
+    QVERIFY(!controller_->resetTileDisplayName(QStringLiteral("work-standard-1")));
     QVERIFY(!item(QStringLiteral("saveLayoutButton"))->isEnabled());
     controller_->setEditMode(true);
     QVERIFY(!controller_->editMode());
     QVERIFY(!controller_->moveTile(QStringLiteral("work-standard-1"), QStringLiteral("work"), 0, 2));
     openSizeMenu(QStringLiteral("work-standard-1"), true);
     QVERIFY(!item(QStringLiteral("sizeSmallItem"))->isEnabled());
+    QVERIFY(!item(QStringLiteral("renameTileItem"))->isEnabled());
+    QVERIFY(!item(QStringLiteral("resetTileNameItem"))->isEnabled());
     QTest::keyClick(window_, Qt::Key_Escape);
     QVERIFY(!controller_->flushSave());
     destroyWindow();
@@ -2517,7 +2526,7 @@ void PrototypeWindowTest::internalPopupsGuardAndCleanup() {
     const auto before = controller_->groups();
     QVERIFY(!window_->property("dismissalBlocked").toBool());
     for (const auto* name : {"tileSizeMenu", "pinApplicationMenu", "powerMenu", "aboutPopup",
-                             "groupMenu", "groupNameDialog", "moreMenu"}) {
+                             "groupMenu", "groupNameDialog", "tileNameDialog", "moreMenu"}) {
         auto* popup = window_->findChild<QObject*>(QLatin1String(name));
         QVERIFY(popup);
         // Popup.Item is deliberate: opening an internal menu must not create another
@@ -2958,6 +2967,356 @@ void PrototypeWindowTest::tileNamesAreLiteralText() {
     tile->forceActiveFocus(Qt::TabFocusReason);
     QTRY_VERIFY(tooltip->property("visible").toBool());
     QVERIFY(tooltip->property("width").toReal() <= 380);
+}
+
+void PrototypeWindowTest::tileDisplayNameEditingAndRestart() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = directory.filePath(QStringLiteral("tile-names.json"));
+    const auto state = std::make_shared<CatalogTestState>();
+    destroyWindow();
+    createWindow(path, false, state);
+    pinFirstApplication(state);
+    const auto tileId = service_->previewGroups().first().tiles.first().id;
+    const auto targetBefore = service_->targetForTile(tileId);
+    const auto geometryBefore = tileGeometries();
+    const auto colorBefore = item(QStringLiteral("tile-") + tileId)->property("baseColor");
+    openSizeMenu(tileId, true);
+    auto* rename = item(QStringLiteral("renameTileItem"));
+    QVERIFY(rename && rename->isEnabled());
+    rename->forceActiveFocus(Qt::TabFocusReason);
+    QTest::keyClick(window_, Qt::Key_Return);
+    auto* dialog = window_->findChild<QObject*>(QStringLiteral("tileNameDialog"));
+    QVERIFY(dialog);
+    QTRY_VERIFY(dialog->property("opened").toBool());
+    auto* field = item(QStringLiteral("tileNameField"));
+    QVERIFY(field);
+    QTRY_VERIFY(field->hasActiveFocus());
+    const auto name = QStringLiteral("<b>办公工具</b>");
+    QVERIFY(field->setProperty("text", QStringLiteral("  ") + name + QStringLiteral("  ")));
+    QTest::keyClick(window_, Qt::Key_Return);
+    QTRY_VERIFY(!dialog->property("visible").toBool());
+    QTRY_VERIFY(item(QStringLiteral("tile-") + tileId)->hasActiveFocus());
+    QCOMPARE(tileData(tileId).value(QStringLiteral("name")).toString(), name);
+    QCOMPARE(tileData(tileId).value(QStringLiteral("displayName")).toString(), name);
+    QCOMPARE(service_->targetForTile(tileId), targetBefore);
+    QCOMPARE(tileGeometries(), geometryBefore);
+    auto* tile = item(QStringLiteral("tile-") + tileId);
+    QCOMPARE(tile->property("baseColor"), colorBefore);
+    auto* label = visualItem(tile, QStringLiteral("tileLabel"));
+    QVERIFY(label);
+    QCOMPARE(label->property("text").toString(), name);
+    QCOMPARE(label->property("textFormat").toInt(), int(Qt::PlainText));
+    auto* accessible = QAccessible::queryAccessibleInterface(tile);
+    QVERIFY(accessible);
+    QCOMPARE(accessible->text(QAccessible::Name), name);
+    for (const auto& query : {state->applications.first().name, QStringLiteral("办公工具"),
+                              QStringLiteral("bangonggongju"), QStringLiteral("bggj")}) {
+        controller_->setSearchQuery(query);
+        QTRY_VERIFY(!controller_->searchBusy());
+        QTRY_COMPARE(controller_->searchResults().size(), 1);
+        QCOMPARE(controller_->searchResults().first().toMap().value(QStringLiteral("appId")).toString(),
+                 state->applications.first().id);
+        QCOMPARE(controller_->searchResults().first().toMap().value(QStringLiteral("displayName")).toString(),
+                 state->applications.first().name);
+    }
+    QSignalSpy unchanged(controller_.get(), &xdstarter::MenuController::groupsChanged);
+    QVERIFY(controller_->renameTile(tileId, name));
+    QCOMPARE(unchanged.count(), 0);
+    controller_->setSearchQuery({});
+    QVERIFY(controller_->flushSave());
+    QFile savedFile(path);
+    QVERIFY(savedFile.open(QIODevice::ReadOnly));
+    const auto saved = QJsonDocument::fromJson(savedFile.readAll()).object();
+    savedFile.close();
+    destroyWindow();
+    createWindow(path, false, state);
+    QTRY_VERIFY(!controller_->catalogBusy());
+    QCOMPARE(service_->snapshot(), saved);
+    QCOMPARE(tileData(tileId).value(QStringLiteral("name")).toString(), name);
+    QCOMPARE(service_->targetForTile(tileId), targetBefore);
+    QVERIFY(controller_->searchQuery().isEmpty());
+    QVERIFY(!controller_->editMode());
+    // Wait for the fresh restart's deferred presentation and scene update before
+    // opening a menu; the presentation callback intentionally clears old popups.
+    QSignalSpy presented(window_, &QQuickWindow::frameSwapped);
+    window_->requestUpdate();
+    QTRY_VERIFY(presented.count() > 0);
+    openSizeMenu(tileId, true);
+    auto* reset = item(QStringLiteral("resetTileNameItem"));
+    QVERIFY(reset && reset->isEnabled());
+    reset->forceActiveFocus(Qt::TabFocusReason);
+    QTest::keyClick(window_, Qt::Key_Return);
+    QTRY_COMPARE(tileData(tileId).value(QStringLiteral("name")).toString(), targetBefore.value(QStringLiteral("name")).toString());
+    QTRY_VERIFY(item(QStringLiteral("tile-") + tileId)->hasActiveFocus());
+    QVERIFY(tileData(tileId).value(QStringLiteral("displayName")).toString().isEmpty());
+    QCOMPARE(service_->targetForTile(tileId), targetBefore);
+    controller_->setSearchQuery(QStringLiteral("办公工具"));
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_VERIFY(controller_->searchResults().isEmpty());
+    QVERIFY(controller_->flushSave());
+    destroyWindow();
+}
+
+void PrototypeWindowTest::tileDisplayNameValidationAndCancellation() {
+    const auto before = service_->snapshot();
+    const auto tileId = QStringLiteral("work-standard-1");
+    openSizeMenu(tileId, true);
+    item(QStringLiteral("renameTileItem"))->forceActiveFocus(Qt::TabFocusReason);
+    QTest::keyClick(window_, Qt::Key_Return);
+    auto* dialog = window_->findChild<QObject*>(QStringLiteral("tileNameDialog"));
+    QVERIFY(dialog);
+    QTRY_VERIFY(dialog->property("opened").toBool());
+    auto* field = item(QStringLiteral("tileNameField"));
+    QVERIFY(field);
+    QVERIFY(field->setProperty("text", QString(129, QLatin1Char('x'))));
+    QTest::keyClick(window_, Qt::Key_Return);
+    QTRY_VERIFY(item(QStringLiteral("tileNameError"))->isVisible());
+    QVERIFY(item(QStringLiteral("tileNameError"))->property("text").toString().contains(QStringLiteral("128")));
+    QCOMPARE(service_->snapshot(), before);
+    QVERIFY(dialog->property("visible").toBool());
+    QVERIFY(field->setProperty("text", QStringLiteral("  ")));
+    QTest::keyClick(window_, Qt::Key_Return);
+    QCOMPARE(service_->snapshot(), before);
+    QVERIFY(field->setProperty("text", QString{}));
+    QInputMethodEvent preedit(QStringLiteral("gaiming"), {});
+    QCoreApplication::sendEvent(field, &preedit);
+    QTRY_VERIFY(field->property("inputMethodComposing").toBool());
+    QTest::keyClick(window_, Qt::Key_Return);
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QVERIFY(dialog->property("visible").toBool());
+    QCOMPARE(service_->snapshot(), before);
+    QInputMethodEvent cancelComposition;
+    QCoreApplication::sendEvent(field, &cancelComposition);
+    QTRY_VERIFY(!field->property("inputMethodComposing").toBool());
+    QVERIFY(field->setProperty("text", QStringLiteral("未提交的显示名")));
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!dialog->property("visible").toBool());
+    QTRY_VERIFY(item(QStringLiteral("tile-") + tileId)->hasActiveFocus());
+    QCOMPARE(service_->snapshot(), before);
+    openSizeMenu(tileId, true);
+    click(item(QStringLiteral("renameTileItem")));
+    QTRY_VERIFY(dialog->property("opened").toBool());
+    QVERIFY(field->setProperty("text", QStringLiteral("取消按钮草稿")));
+    click(item(QStringLiteral("tileNameCancelButton")));
+    QTRY_VERIFY(!dialog->property("visible").toBool());
+    QTRY_VERIFY(item(QStringLiteral("tile-") + tileId)->hasActiveFocus());
+    QCOMPARE(service_->snapshot(), before);
+    openSizeMenu(tileId, true);
+    click(item(QStringLiteral("renameTileItem")));
+    QTRY_VERIFY(dialog->property("opened").toBool());
+    QVERIFY(field->setProperty("text", QStringLiteral("失焦丢弃草稿")));
+    QVERIFY(QMetaObject::invokeMethod(window_, "prepareForDismissal"));
+    QTRY_VERIFY(!dialog->property("visible").toBool());
+    QCOMPARE(service_->snapshot(), before);
+    QVERIFY(field->property("text").toString().isEmpty());
+}
+
+void PrototypeWindowTest::tileDisplayNameSharedTargetAliases() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = directory.filePath(QStringLiteral("shared-target.json"));
+    const auto state = std::make_shared<CatalogTestState>();
+    destroyWindow();
+    createWindow({}, false, state);
+    pinFirstApplication(state);
+    auto snapshot = service_->snapshot();
+    const auto targetsBefore = snapshot.value(QStringLiteral("targets"));
+    auto groups = snapshot.value(QStringLiteral("groups")).toArray();
+    auto group = groups[0].toObject();
+    auto tiles = group.value(QStringLiteral("tiles")).toArray();
+    auto duplicate = tiles[0].toObject();
+    const auto firstId = duplicate.value(QStringLiteral("id")).toString();
+    duplicate.insert(QStringLiteral("id"), QStringLiteral("second-shared-tile"));
+    duplicate.insert(QStringLiteral("column"), 2);
+    tiles.append(duplicate); group.insert(QStringLiteral("tiles"), tiles); groups[0] = group;
+    snapshot.insert(QStringLiteral("groups"), groups);
+    snapshot.insert(QStringLiteral("schemaVersion"), 2);
+    const auto bytes = QJsonDocument(snapshot).toJson();
+    destroyWindow();
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    QCOMPARE(file.write(bytes), qint64(bytes.size())); file.close();
+    createWindow(path, false, state);
+    QTRY_VERIFY(!controller_->catalogBusy());
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    QCOMPARE(file.readAll(), bytes); file.close();
+    QVERIFY(controller_->renameTile(firstId, QStringLiteral("入口甲")));
+    QVERIFY(controller_->renameTile(QStringLiteral("second-shared-tile"), QStringLiteral("入口乙")));
+    QCOMPARE(service_->snapshot().value(QStringLiteral("targets")), targetsBefore);
+    for (const auto& query : {QStringLiteral("入口甲"), QStringLiteral("入口乙"), state->applications.first().name}) {
+        controller_->setSearchQuery(query);
+        QTRY_VERIFY(!controller_->searchBusy());
+        QTRY_COMPARE(controller_->searchResults().size(), 1);
+        QCOMPARE(controller_->searchResults().first().toMap().value(QStringLiteral("appId")).toString(),
+                 state->applications.first().id);
+    }
+    state->applications[0].name = QStringLiteral("目录更新后的名字");
+    controller_->refreshApplications();
+    QTRY_VERIFY(!controller_->catalogBusy());
+    controller_->setSearchQuery(QStringLiteral("A 测试快捷方式"));
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_COMPARE(controller_->searchResults().size(), 1);
+    QCOMPARE(controller_->searchResults().first().toMap().value(QStringLiteral("displayName")).toString(), state->applications.first().name);
+    QCOMPARE(tileData(firstId).value(QStringLiteral("name")).toString(), QStringLiteral("入口甲"));
+    QVERIFY(controller_->resetTileDisplayName(firstId));
+    controller_->setSearchQuery(QStringLiteral("入口甲"));
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_VERIFY(controller_->searchResults().isEmpty());
+    controller_->setSearchQuery(QStringLiteral("入口乙"));
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_COMPARE(controller_->searchResults().size(), 1);
+    QVERIFY(controller_->flushSave());
+    QFile backup(path + QStringLiteral(".bak"));
+    QVERIFY(backup.open(QIODevice::ReadOnly));
+    QCOMPARE(backup.readAll(), bytes);
+    QCOMPARE(service_->snapshot().value(QStringLiteral("targets")), targetsBefore);
+    destroyWindow();
+}
+
+void PrototypeWindowTest::contextMenuShortcutsRespectFocus() {
+    const auto state = std::make_shared<CatalogTestState>();
+    destroyWindow();
+    createWindow({}, true, state);
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 2);
+    auto* field = item(QStringLiteral("searchField"));
+    auto* menu = sizeMenu();
+    auto* pin = window_->findChild<QObject*>(QStringLiteral("pinApplicationMenu"));
+    auto* group = window_->findChild<QObject*>(QStringLiteral("groupMenu"));
+    QVERIFY(field && menu && pin && group);
+    QSignalSpy tileOpened(menu, SIGNAL(opened()));
+    QSignalSpy pinOpened(pin, SIGNAL(opened()));
+    QSignalSpy groupOpened(group, SIGNAL(opened()));
+    QVERIFY(tileOpened.isValid() && pinOpened.isValid() && groupOpened.isValid());
+    QTRY_VERIFY(field->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QVERIFY(!menu->property("visible").toBool());
+    QVERIFY(!pin->property("visible").toBool());
+    QVERIFY(!group->property("visible").toBool());
+
+    auto* tile = item(QStringLiteral("tile-work-standard-1"));
+    QVERIFY(tile);
+    tile->forceActiveFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(tile->hasActiveFocus());
+    // Only the documented exact chord is registered; extra modifiers are not stolen.
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier | Qt::ControlModifier);
+    QVERIFY(!menu->property("visible").toBool());
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QTRY_VERIFY(menu->property("opened").toBool());
+    QCOMPARE(tileOpened.count(), 1);
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QCOMPARE(tileOpened.count(), 1);
+    QVERIFY(menu->property("visible").toBool());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!menu->property("visible").toBool());
+    QTRY_VERIFY(tile->hasActiveFocus());
+
+    tile->setEnabled(false);
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QVERIFY(!menu->property("visible").toBool());
+    tile->setEnabled(true);
+    controller_->setEditMode(true);
+    beginMouseDrag(QStringLiteral("work-standard-1"));
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QVERIFY(!menu->property("visible").toBool());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!window_->property("dragActive").toBool());
+    QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, QPoint(1, 1));
+
+    field->forceActiveFocus(Qt::OtherFocusReason);
+    QInputMethodEvent preedit(QStringLiteral("ceshi"), {});
+    QCoreApplication::sendEvent(field, &preedit);
+    QTRY_VERIFY(field->property("inputMethodComposing").toBool());
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QVERIFY(!menu->property("visible").toBool());
+    QVERIFY(!pin->property("visible").toBool());
+    QInputMethodEvent cancelComposition;
+    QCoreApplication::sendEvent(field, &cancelComposition);
+    QTRY_VERIFY(!field->property("inputMethodComposing").toBool());
+
+    auto* application = item(QStringLiteral("applicationLaunch-") + state->applications.first().id);
+    QVERIFY(application);
+    application->forceActiveFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(application->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QTRY_VERIFY(pin->property("opened").toBool());
+    QCOMPARE(pinOpened.count(), 1);
+    QCOMPARE(state->launches.load(), 0);
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QCOMPARE(pinOpened.count(), 1);
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!pin->property("visible").toBool());
+
+    auto* actions = item(QStringLiteral("groupActions-work"));
+    QVERIFY(actions && actions->isVisible());
+    actions->forceActiveFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(actions->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QTRY_VERIFY(group->property("opened").toBool());
+    QCOMPARE(groupOpened.count(), 1);
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QCOMPARE(groupOpened.count(), 1);
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!group->property("visible").toBool());
+
+    openMoreMenu();
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QVERIFY(!menu->property("visible").toBool());
+    QVERIFY(!pin->property("visible").toBool());
+    QVERIFY(!group->property("visible").toBool());
+    auto* more = window_->findChild<QObject*>(QStringLiteral("moreMenu"));
+    QVERIFY(more && more->property("visible").toBool());
+    QVERIFY(QMetaObject::invokeMethod(window_, "prepareForDismissal"));
+    tile->forceActiveFocus(Qt::OtherFocusReason);
+    QTRY_VERIFY(tile->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QVERIFY(!menu->property("visible").toBool());
+    QCOMPARE(tileOpened.count(), 1);
+    QCOMPARE(state->launches.load(), 0);
+}
+
+void PrototypeWindowTest::tileNameMouseContextFromSearchRestoresFocus() {
+    const auto tileId = QStringLiteral("work-standard-1");
+    auto* tile = item(QStringLiteral("tile-") + tileId);
+    auto* field = item(QStringLiteral("searchField"));
+    QVERIFY(tile && field);
+    const auto before = service_->snapshot();
+    QTRY_VERIFY(field->hasActiveFocus());
+    // Deliberately do not use openSizeMenu(), which first focuses the tile itself.
+    QTest::mouseClick(window_, Qt::RightButton, Qt::NoModifier,
+                      tile->mapToScene(tile->boundingRect().center()).toPoint());
+    QTRY_VERIFY(sizeMenu()->property("opened").toBool());
+    click(item(QStringLiteral("renameTileItem")));
+    auto* dialog = window_->findChild<QObject*>(QStringLiteral("tileNameDialog"));
+    QVERIFY(dialog);
+    QTRY_VERIFY(dialog->property("opened").toBool());
+    auto* name = item(QStringLiteral("tileNameField"));
+    QVERIFY(name);
+    QTRY_VERIFY(name->hasActiveFocus());
+    QVERIFY(name->setProperty("text", QStringLiteral("未提交的草稿")));
+    click(item(QStringLiteral("tileNameCancelButton")));
+    QTRY_VERIFY(!dialog->property("visible").toBool());
+    QTRY_VERIFY(tile->hasActiveFocus());
+    QCOMPARE(service_->snapshot(), before);
+
+    field->forceActiveFocus(Qt::OtherFocusReason);
+    QTRY_VERIFY(field->hasActiveFocus());
+    QTest::mouseClick(window_, Qt::RightButton, Qt::NoModifier,
+                      tile->mapToScene(tile->boundingRect().center()).toPoint());
+    QTRY_VERIFY(sizeMenu()->property("opened").toBool());
+    click(item(QStringLiteral("renameTileItem")));
+    QTRY_VERIFY(dialog->property("opened").toBool());
+    QTRY_VERIFY(name->hasActiveFocus());
+    QVERIFY(name->setProperty("text", QStringLiteral("鼠标修改名称")));
+    QTest::keyClick(window_, Qt::Key_Return);
+    QTRY_VERIFY(!dialog->property("visible").toBool());
+    QTRY_VERIFY(item(QStringLiteral("tile-") + tileId)->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QTRY_VERIFY(sizeMenu()->property("opened").toBool());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!sizeMenu()->property("visible").toBool());
+    QTest::keyClick(window_, Qt::Key_Menu);
+    QTRY_VERIFY(sizeMenu()->property("opened").toBool());
 }
 
 int main(int argc, char* argv[]) {

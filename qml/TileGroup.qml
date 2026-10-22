@@ -21,6 +21,7 @@ Item {
     }
     property bool editMode: false
     property bool readOnly: false
+    property bool contextShortcutsEnabled: true
     property int iconRevision: 0
     property var iconVersions: ({})
     property string draggedTileId: ""
@@ -104,6 +105,10 @@ Item {
         ToolButton {
             id: groupActions
 
+            function requestContextMenu(): void {
+                tileGroup.actionsRequested(tileGroup.group.id, groupActions);
+            }
+
             objectName: "groupActions-" + tileGroup.group.id
             anchors.right: parent.right
             width: 36
@@ -149,14 +154,23 @@ Item {
                 if (activeFocus)
                     tileGroup.actionsFocused(tileGroup.group.id);
             }
-            onClicked: tileGroup.actionsRequested(tileGroup.group.id, groupActions)
-            Keys.onReturnPressed: tileGroup.actionsRequested(tileGroup.group.id, groupActions)
-            Keys.onEnterPressed: tileGroup.actionsRequested(tileGroup.group.id, groupActions)
+            onClicked: requestContextMenu()
+            Keys.onReturnPressed: requestContextMenu()
+            Keys.onEnterPressed: requestContextMenu()
             Keys.onPressed: event => {
-                if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && event.modifiers === Qt.ShiftModifier)) {
-                    tileGroup.actionsRequested(tileGroup.group.id, groupActions);
+                if (event.key === Qt.Key_Menu) {
+                    requestContextMenu();
                     event.accepted = true;
                 }
+            }
+
+            Shortcut {
+                objectName: "groupContextShortcut-" + tileGroup.group.id
+                sequence: "Shift+F10"
+                context: Qt.WindowShortcut
+                autoRepeat: false
+                enabled: tileGroup.contextShortcutsEnabled && groupActions.activeFocus && groupActions.visible && groupActions.enabled
+                onActivated: groupActions.requestContextMenu()
             }
         }
     }

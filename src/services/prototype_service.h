@@ -19,6 +19,7 @@ struct PreviewTile {
     TileRect rectangle;
     QString targetId;
     QString iconKey;
+    QString displayName;
 };
 
 struct PreviewGroup {
@@ -44,6 +45,8 @@ class PrototypeService final {
     [[nodiscard]] LayoutResult pinApplication(const QJsonObject& target,
                                               const QString& groupId = {});
     [[nodiscard]] LayoutResult unpinTile(const QString& tileId);
+    [[nodiscard]] LayoutResult renameTile(const QString& tileId, const QString& displayName);
+    [[nodiscard]] LayoutResult resetTileDisplayName(const QString& tileId);
     [[nodiscard]] LayoutResult createGroup(const QString& name);
     [[nodiscard]] LayoutResult renameGroup(const QString& groupId, const QString& name);
     [[nodiscard]] LayoutResult moveGroupBy(const QString& groupId, int delta);
@@ -65,6 +68,8 @@ class PrototypeService final {
     QString configurationPath_;
     [[nodiscard]] QVector<PreviewGroup> makeDefaultGroups() const;
     void updateGroupGeometry(PreviewGroup& group) const;
+    [[nodiscard]] LayoutResult updateTileDisplayName(const QString& tileId,
+                                                    const QString& displayName, bool reset);
 };
 
 } // namespace xdstarter

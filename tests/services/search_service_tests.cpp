@@ -186,6 +186,7 @@ class SearchServiceTests final : public QObject {
   private slots:
     void literalMatchingHasStablePriorityAndCanonicalNames();
     void duplicateTargetsMergeAliasesWithoutDuplicateResults();
+    void allTileOverridesShareOneBoundedGlobalBudget();
     void pinyinMatchesFullInitialsPolyphonicAndMixedNames();
     void commonPolyphonicAlternativesRemainSearchable();
     void normalizationKeepsLiteralPunctuationAndAcceptsUmlautVariants();
@@ -195,6 +196,27 @@ class SearchServiceTests final : public QObject {
     void refreshedIndexCannotPublishRemovedTargets();
     void clearingQueryInvalidatesWorkAndDestructionJoins();
 };
+
+void SearchServiceTests::allTileOverridesShareOneBoundedGlobalBudget() {
+    SearchEntry entry{QStringLiteral("shared"), QStringLiteral("Original application"), {}};
+    for (int index = 0; index < SearchIndex::maximumTileDisplayNames + 1; ++index)
+        entry.tileDisplayNames.append(QStringLiteral("Custom%1end").arg(index));
+    SearchIndex index;
+    index.setEntries({entry});
+    for (const auto& query : {QStringLiteral("Custom0end"), QStringLiteral("Custom511end")}) {
+        QCOMPARE(index.search(query).matchCount, 1);
+        QCOMPARE(index.search(query).matches.first().targetId, QStringLiteral("shared"));
+        QCOMPARE(index.search(query).matches.first().displayName, entry.displayName);
+    }
+    QVERIFY(index.search(QStringLiteral("Custom512end")).matches.isEmpty());
+    SearchEntry another{QStringLiteral("another"), QStringLiteral("Another application"), {}};
+    another.tileDisplayNames.append(QStringLiteral("OverGlobalBudget"));
+    index.setEntries({entry, another});
+    QVERIFY(index.search(QStringLiteral("OverGlobalBudget")).matches.isEmpty());
+    entry.tileDisplayNames.clear();
+    index.setEntries({entry});
+    QVERIFY(index.search(QStringLiteral("Custom0end")).matches.isEmpty());
+}
 
 void SearchServiceTests::literalMatchingHasStablePriorityAndCanonicalNames() {
     SearchIndex index;

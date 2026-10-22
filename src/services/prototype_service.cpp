@@ -141,12 +141,12 @@ PrototypeService::PrototypeService(const TileGrid& grid, QString configPath, boo
     if (!restored.success) {
         loadResult_.success = false;
         loadResult_.message = restored.message;
-    } else if (loadResult_.snapshot.value(QStringLiteral("schemaVersion")).toInt() == 1 &&
+    } else if (loadResult_.snapshot.value(QStringLiteral("schemaVersion")).toInt() < LayoutStore::schemaVersion &&
                !loadResult_.readOnly) {
         if (!loadResult_.message.isEmpty()) {
             loadResult_.message += QStringLiteral("；");
         }
-        loadResult_.message += QStringLiteral("已读取旧版样例布局，下次保存升级配置并保留旧版备份");
+        loadResult_.message += QStringLiteral("已读取旧版布局，下次保存升级配置并保留旧版备份");
     }
 }
 
@@ -435,6 +435,53 @@ LayoutResult PrototypeService::unpinTile(const QString& tileId) {
     return {false, QStringLiteral("磁贴不存在")};
 }
 
+LayoutResult PrototypeService::renameTile(const QString& tileId, const QString& displayName) {
+    return updateTileDisplayName(tileId, displayName, false);
+}
+
+LayoutResult PrototypeService::resetTileDisplayName(const QString& tileId) {
+    return updateTileDisplayName(tileId, {}, true);
+}
+
+LayoutResult PrototypeService::updateTileDisplayName(const QString& tileId,
+                                                     const QString& displayName, bool reset) {
+    if (isReadOnly())
+        return {false, QStringLiteral("更新版本配置当前为只读"), true};
+    const auto name = displayName.trimmed();
+    if (!reset && (name.isEmpty() || name.size() > LayoutStore::maximumTileDisplayNameLength ||
+        !displayName.isValidUtf16() ||
+        std::any_of(displayName.cbegin(), displayName.cend(), [](QChar character) {
+            return character.category() == QChar::Other_Control ||
+                   character.category() == QChar::Separator_Line ||
+                   character.category() == QChar::Separator_Paragraph;
+        })))
+        return {false, QStringLiteral("磁贴显示名称须为 1 至 128 个字符，不能包含换行或控制字符")};
+    auto candidate = snapshot();
+    auto groups = candidate.value(QStringLiteral("groups")).toArray();
+    for (qsizetype groupIndex = 0; groupIndex < groups.size(); ++groupIndex) {
+        auto group = groups[groupIndex].toObject();
+        auto tiles = group.value(QStringLiteral("tiles")).toArray();
+        for (qsizetype tileIndex = 0; tileIndex < tiles.size(); ++tileIndex) {
+            auto tile = tiles[tileIndex].toObject();
+            if (tile.value(QStringLiteral("id")).toString() != tileId)
+                continue;
+            if (reset)
+                tile.remove(QStringLiteral("displayName"));
+            else
+                tile.insert(QStringLiteral("displayName"), name);
+            tiles[tileIndex] = tile;
+            group.insert(QStringLiteral("tiles"), tiles);
+            groups[groupIndex] = group;
+            candidate.insert(QStringLiteral("groups"), groups);
+            auto result = restoreSnapshot(candidate);
+            if (result.success)
+                result.tileId = tileId;
+            return result;
+        }
+    }
+    return {false, QStringLiteral("磁贴不存在")};
+}
+
 LayoutResult PrototypeService::createGroup(const QString& name) {
     if (isReadOnly()) {
         return {false, QStringLiteral("更新版本配置当前为只读"), true};
@@ -577,11 +624,14 @@ QJsonObject PrototypeService::snapshot() const {
     for (const auto& group : groups_) {
         QJsonArray tiles;
         for (const auto& tile : group.tiles) {
-            tiles.append(QJsonObject{{QStringLiteral("id"), tile.id},
-                                     {QStringLiteral("targetId"), tile.targetId},
-                                     {QStringLiteral("column"), tile.column},
-                                     {QStringLiteral("row"), tile.row},
-                                     {QStringLiteral("size"), sizeName(tile.size)}});
+            QJsonObject entry{{QStringLiteral("id"), tile.id},
+                              {QStringLiteral("targetId"), tile.targetId},
+                              {QStringLiteral("column"), tile.column},
+                              {QStringLiteral("row"), tile.row},
+                              {QStringLiteral("size"), sizeName(tile.size)}};
+            if (!tile.displayName.isEmpty())
+                entry.insert(QStringLiteral("displayName"), tile.displayName);
+            tiles.append(entry);
             if (!seenTargets.contains(tile.targetId)) {
                 targets.append(QJsonObject{{QStringLiteral("id"), tile.targetId},
                                            {QStringLiteral("type"), QStringLiteral("prototype")},
@@ -627,14 +677,17 @@ LayoutResult PrototypeService::restoreSnapshot(const QJsonObject& snapshot) {
                               : sizeText == QLatin1String("wide") ? TileSize::Wide
                                                                   : TileSize::Standard;
             group.tiles.append({tile.value(QStringLiteral("id")).toString(),
-                                target.value(QStringLiteral("name")).toString(),
+                                tile.contains(QStringLiteral("displayName"))
+                                    ? tile.value(QStringLiteral("displayName")).toString()
+                                    : target.value(QStringLiteral("name")).toString(),
                                 target.value(QStringLiteral("symbol")).toString(),
                                 tile.value(QStringLiteral("column")).toInt(),
                                 tile.value(QStringLiteral("row")).toInt(),
                                 size,
                                 {},
                                 targetId,
-                                target.value(QStringLiteral("iconKey")).toString()});
+                                target.value(QStringLiteral("iconKey")).toString(),
+                                tile.value(QStringLiteral("displayName")).toString()});
         }
         updateGroupGeometry(group);
         restoredGroups.append(group);

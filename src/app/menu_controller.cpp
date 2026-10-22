@@ -48,6 +48,7 @@ QVariantList tileValues(const QVector<PreviewTile>& tiles) {
             {QStringLiteral("id"), tile.id},
             {QStringLiteral("targetId"), tile.targetId},
             {QStringLiteral("name"), tile.name},
+            {QStringLiteral("displayName"), tile.displayName},
             {QStringLiteral("symbol"), tile.symbol},
             {QStringLiteral("small"), tile.size == TileSize::Small},
             {QStringLiteral("column"), tile.column},
@@ -184,6 +185,7 @@ void MenuController::refreshGroups() {
             auto tile = tileValue.toMap();
             const auto target =
                 prototypeService_.targetForTile(tile.value(QStringLiteral("id")).toString());
+            tile.insert(QStringLiteral("originalName"), target.value(QStringLiteral("name")).toString());
             const auto type = target.value(QStringLiteral("type")).toString();
             tile.insert(QStringLiteral("targetType"), type);
             const bool real =
@@ -348,23 +350,30 @@ void MenuController::rebuildSearchEntries() {
                 entries.append({tile.targetId, name, {}});
             }
             auto& entry = entries[positions.value(tile.targetId)];
-            if (!tile.name.isEmpty() && tile.name != entry.displayName &&
-                !entry.aliases.contains(tile.name))
-                entry.aliases.append(tile.name);
+            const auto originalName = prototypeService_.targetForTile(tile.id)
+                                          .value(QStringLiteral("name")).toString();
+            if (!originalName.isEmpty() && originalName != entry.displayName &&
+                !entry.aliases.contains(originalName))
+                entry.aliases.append(originalName);
+            if (!tile.displayName.isEmpty() && !entry.tileDisplayNames.contains(tile.displayName))
+                entry.tileDisplayNames.append(tile.displayName);
         }
     }
     // Group order is presentation state, not a change to application search identity.
     std::sort(entries.begin(), entries.end(), [](const SearchEntry& left, const SearchEntry& right) {
         return left.targetId < right.targetId;
     });
-    for (auto& entry : entries)
+    for (auto& entry : entries) {
         entry.aliases.sort(Qt::CaseSensitive);
+        entry.tileDisplayNames.sort(Qt::CaseSensitive);
+    }
     QVariantList state;
     state.reserve(entries.size());
     for (const auto& entry : entries)
         state.append(QVariantMap{{QStringLiteral("id"), entry.targetId},
                                  {QStringLiteral("name"), entry.displayName},
-                                 {QStringLiteral("aliases"), entry.aliases}});
+                                 {QStringLiteral("aliases"), entry.aliases},
+                                 {QStringLiteral("tileDisplayNames"), entry.tileDisplayNames}});
     if (state == searchSourceState_)
         return;
     searchSourceState_ = std::move(state);
@@ -511,6 +520,44 @@ bool MenuController::unpinTile(const QString& tileId) {
     refreshGroups();
     scheduleSave();
     return true;
+}
+
+int MenuController::maximumTileDisplayNameLength() const {
+    return LayoutStore::maximumTileDisplayNameLength;
+}
+
+bool MenuController::applyTileNameResult(const LayoutResult& result, const QJsonObject& before,
+                                        const QString& successMessage) {
+    if (!result.success) {
+        setOperationMessage(result.message, true);
+        return false;
+    }
+    if (before != prototypeService_.snapshot()) {
+        refreshGroups();
+        scheduleSave();
+    }
+    setOperationMessage(successMessage);
+    return true;
+}
+
+bool MenuController::renameTile(const QString& tileId, const QString& displayName) {
+    if (readOnly_) {
+        setOperationMessage(QStringLiteral("当前配置只读，不能修改磁贴显示名称。"), true);
+        return false;
+    }
+    const auto before = prototypeService_.snapshot();
+    return applyTileNameResult(prototypeService_.renameTile(tileId, displayName), before,
+                                QStringLiteral("磁贴显示名称已更新，应用启动目标保持不变。"));
+}
+
+bool MenuController::resetTileDisplayName(const QString& tileId) {
+    if (readOnly_) {
+        setOperationMessage(QStringLiteral("当前配置只读，不能恢复磁贴原名称。"), true);
+        return false;
+    }
+    const auto before = prototypeService_.snapshot();
+    return applyTileNameResult(prototypeService_.resetTileDisplayName(tileId), before,
+                                QStringLiteral("已恢复磁贴原名称。"));
 }
 
 int MenuController::maximumGroups() const { return LayoutStore::maximumGroups; }

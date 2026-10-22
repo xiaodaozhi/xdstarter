@@ -212,6 +212,69 @@ void checkGroupManagement(TestContext& test, const xdstarter::TileGrid& grid) {
                 "new edit-name rules do not invalidate previously legal stored group names");
 }
 
+void checkTileDisplayNames(TestContext& test, const xdstarter::TileGrid& grid) {
+    using namespace xdstarter;
+    PrototypeService service(grid);
+    const auto before = service.snapshot();
+    const auto beforeTiles = service.previewGroups();
+    const auto id = QStringLiteral("work-standard-1");
+    const auto originalTarget = service.targetForTile(id);
+    test.expect(service.renameTile(id, QStringLiteral("  <b>办公工具</b>  ")).success,
+                "display name trims independently from the original target");
+    const auto renamed = service.snapshot();
+    test.expect(renamed.value(QStringLiteral("targets")) == before.value(QStringLiteral("targets")) &&
+                    service.targetForTile(id) == originalTarget,
+                "display editing does not mutate target identity or any launch descriptor");
+    const auto afterTiles = service.previewGroups();
+    const auto* tile = findTile(afterTiles, "work-standard-1");
+    const auto* original = findTile(beforeTiles, "work-standard-1");
+    test.expect(tile && original && tile->name == QStringLiteral("<b>办公工具</b>") &&
+                    tile->displayName == tile->name && tile->targetId == original->targetId &&
+                    tile->size == original->size && sameRectangle(tile->rectangle, original->rectangle),
+                "effective label changes while shared geometry and target stay identical");
+    test.expect(service.renameTile(id, QStringLiteral("<b>办公工具</b>")).success &&
+                    service.snapshot() == renamed,
+                "same display name is a no-op");
+    for (const auto& invalid : {QString{}, QStringLiteral("  "), QString(129, QLatin1Char('x')),
+                                QStringLiteral("x\ny"), QStringLiteral("x\ty"),
+                                QString(QChar(0xD800)), QString(QChar(0x2028))}) {
+        test.expect(!service.renameTile(id, invalid).success && service.snapshot() == renamed,
+                    "invalid or oversized display draft never changes the live snapshot");
+    }
+    const auto emoji = QString::fromUtf8("😀");
+    test.expect(service.renameTile(id, emoji.repeated(64)).success &&
+                    !service.renameTile(id, emoji.repeated(65)).success,
+                "128 UTF-16 units accept a complete emoji boundary without truncation");
+    test.expect(!service.renameTile(QStringLiteral("missing-tile"), QStringLiteral("name")).success &&
+                    !service.resetTileDisplayName(QStringLiteral("missing-tile")).success,
+                "missing tile names cannot create a target or tile");
+    test.expect(service.resetTileDisplayName(id).success && service.snapshot() == before,
+                "reset removes only the optional display override and restores the original label");
+    test.expect(service.resetTileDisplayName(id).success && service.snapshot() == before,
+                "reset of an original name is a no-op");
+
+    auto duplicates = before;
+    auto groups = duplicates.value(QStringLiteral("groups")).toArray();
+    auto group = groups[0].toObject();
+    auto entries = group.value(QStringLiteral("tiles")).toArray();
+    auto second = entries[1].toObject();
+    second.insert(QStringLiteral("targetId"), entries[0].toObject().value(QStringLiteral("targetId")));
+    entries[1] = second;
+    group.insert(QStringLiteral("tiles"), entries); groups[0] = group;
+    duplicates.insert(QStringLiteral("groups"), groups);
+    test.expect(service.restoreSnapshot(duplicates).success &&
+                    service.renameTile(id, QStringLiteral("第一入口")).success &&
+                    service.renameTile(QStringLiteral("work-standard-long"), QStringLiteral("第二入口")).success,
+                "restored shared targets allow independent per-tile overrides");
+    const auto duplicateTiles = service.previewGroups();
+    const auto* first = findTile(duplicateTiles, "work-standard-1");
+    const auto* secondTile = findTile(duplicateTiles, "work-standard-long");
+    test.expect(first && secondTile && first->name != secondTile->name &&
+                    first->targetId == secondTile->targetId &&
+                    service.snapshot().value(QStringLiteral("targets")) == before.value(QStringLiteral("targets")),
+                "one shared target descriptor is unchanged by multiple independent labels");
+}
+
 } // namespace
 
 int main() {
@@ -219,6 +282,7 @@ int main() {
     TestContext test;
     const TileGrid grid;
     checkGroupManagement(test, grid);
+    checkTileDisplayNames(test, grid);
     PrototypeService service(grid);
     const auto groups = service.previewGroups();
     test.expect(groups.size() == 3, "preview contains three independent groups");
@@ -410,7 +474,7 @@ int main() {
                     restored.snapshot() == service.snapshot(),
                 "snapshot round-trip restores edited positions, identity and sizes");
     auto invalidSnapshot = service.snapshot();
-    invalidSnapshot.insert(QStringLiteral("schemaVersion"), 3);
+    invalidSnapshot.insert(QStringLiteral("schemaVersion"), LayoutStore::schemaVersion + 1);
     const auto beforeInvalidRestore = restored.snapshot();
     test.expect(!restored.restoreSnapshot(invalidSnapshot).success &&
                     restored.snapshot() == beforeInvalidRestore,

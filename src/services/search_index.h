@@ -13,6 +13,7 @@ struct SearchEntry {
     QString targetId;
     QString displayName;
     QStringList aliases;
+    QStringList tileDisplayNames;
 };
 
 struct SearchMatch {
@@ -33,6 +34,7 @@ class SearchIndex final {
     static constexpr int maximumNameLength = 256;
     static constexpr int maximumQueryLength = 128;
     static constexpr int maximumNamesPerEntry = 16;
+    static constexpr int maximumTileDisplayNames = 512;
     static constexpr int maximumResults = 100;
 
     void setEntries(QVector<SearchEntry> entries);

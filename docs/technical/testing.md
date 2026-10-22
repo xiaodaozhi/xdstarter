@@ -6,6 +6,58 @@
 
 GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查看 PNG，核对字体、应用图标、长名称、间隙及辅助功能信息的表达。
 
+## 当前：磁贴显示名称与搜索别名验收（Issue #9）
+
+2026-10-21，[#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 剩余的磁贴显示名称编辑已接入右键／Shift+F10 菜单、内部命名弹层、controller、布局与搜索。当前写入 schema 3，严格兼容读取 schema 1/2；旧文件只读取时原字节不变，首次保存保留旧版原字节备份。每枚磁贴可有独立覆盖，原 target 名称与启动描述不变。契约见 [ADR-0011](adr/0011-tile-display-names.md)；此处只记录本分支已执行的检查，不沿用下方旧版本的原生窗口、托盘及产品重启结论。
+
+### 2026-10-22：最终整合程序的 Windows 实际验收
+
+最终源码为 `83e1787cba9e79c162f800aeaf3c717d829abb3f`，已用正常 merge 保留名称原始提交 `633da574`／`f1453501`、圆角修复及 main `308c797` 的全部历史。继续使用 Qt **6.8.2**／MSVC **19.29.30153.0 v142**／SDK **10.0.19041.0**，固定产品为 `e02b22b93cae03f5e2165485cc6f100402c3677e5b4c4e1866cd5e733ba3f984`，GUI 为 `c2b31beb09ac7920bec7fe23a203d161f72693c01614e20e7ed387767f08a0c8`。公开[无路径验收摘要](validation/issue-9/tile-display-names.json)记录版本、源码／程序散列、结构化断言及保留的原提交；完整应用清单、机器路径、隔离布局原件和含私人桌面背景的截图均未上传。
+
+正式 Release、QML lint 与 **12/12 CTest（37.66 秒）**通过，离屏 GUI **49/49**、host **34/34**。同一最终 GUI 另外在 Windows QPA 下执行快捷键门控、搜索焦点起步的真实鼠标右键命名、名称保存与恢复、预编辑／取消、共享目标别名五个用例，共 **7/7（20.277 秒，含初始化／清理）**；日志为本地 `build/validation/20261022/product/names-fixed-native-tests.log`。该专项使用受控目录、Qt 按键／输入法事件及同进程重建；真实托盘和独立产品进程由下面的另一组证据确认。
+
+- **真实按键与命名**：修复前真实 OS Shift+F10 两次无反应，用户另确认物理组合键同样无反应；Menu 键可用。注册公共 `Shortcut` 后，最终产品通过真实 OS 输入打开磁贴菜单。用户确认中文候选的 Enter 不会提前关闭命名弹层。首次用户回复“已保存”时磁盘尚无覆盖，没有将其计为落盘成功；随后代理在实际输入框输入“绘图验收”并点击保存，界面与磁盘均出现该覆盖，同目标的第二枚小磁贴仍无 `displayName`。
+- **目标／搜索／几何**：实际 Ctrl+F 输入 `htys` 与 `huatu` 均只返回一项画图结果。最终布局与原隔离 schema 2 文件逐对象比较，目标描述数组、分组／磁贴标识、格坐标和尺寸完全相同；显示覆盖仅作用于选定磁贴。最终原生 GUI 的命名恢复、取消、输入法和焦点断言与实际产品证据分开保留。
+- **外部收起与真实托盘**：用户点击真实通知区域图标恢复，代理观察窗口完整且编辑状态保留。产品日志记录 `external-focus` 收起与真实 `tray-toggle`；主屏四次 DPR **1.5** 的恢复矩形相同，可见面板左侧／底部均 **8 DIP**。首次在另一屏启动为 DPR 1，不能因此宣称完整混合 DPI 矩阵或系统缩放变更已覆盖。
+- **正常退出与独立重启**：最终固定产品从电源菜单正常退出 **0**，随后以同一 exe 启动另一进程。实际窗口恢复浅色、“绘图验收”、同目标第二枚画图、缺失应用的宽磁贴占位和两组布局；重启前／退出后的完整快照 SHA-256 均为 `1d3afa0842e7380230e6262b0f0b70705ef85e6c2d39df32e201615e22b65d76`。第二次亦从电源菜单正常退出 **0**，并确认没有残留验收进程。两轮进程／退出证据为本地 `names-fixed1-*`、`names-fixed2-*`，不把早先未取得退出码的轮次算作退出 0。
+
+补修前整合产品 `4f43f1a28ba302e1a784184aacc615be5643f10ae35f0fb6c092c7c30b5d1460` 曾实际验证取消草稿、恢复原名、schema 2 读取不改字节以及首次 schema 3 保存的原字节备份；其原 schema 2／备份 SHA-256 为 `21ce83b0e7dc44506f6da09dc8ca2161a74a4c0ab616c1733ab2686ff947d53c`。这些保留为该旧程序身份，不改标为最终 `e02b22b9…` 的实际产品操作；最终 GUI 的对应回归已重新通过。
+
+本轮完成显示名称、搜索别名、键盘入口、真实托盘及独立重启范围，没有在该名称轮次另行启动画图，也未扩展为完整 Windows 版本、系统显示设置切换、Explorer／睡眠恢复或安装部署验收。独立只读审查未发现已确认 P1/P2；PR 当前 head 的检查另在 GitHub 跟踪，历史 head 通过不替代最终证据提交后的检查。
+
+### 正式构建与覆盖范围
+
+2026-10-22 原生验收发现：Qt 6.8.2 的 [Windows 键盘映射](https://github.com/qt/qtbase/blob/v6.8.2/src/plugins/platforms/windows/qwindowskeymapper.cpp#L1164-L1167)在未注册对应快捷键时将 Shift+F10 留给系统，仅用 `Keys.onPressed` 的离屏用例不能证明该原生入口有效。现通过公共 QML `Shortcut` 注册窗口内精确组合，仅在当前磁贴、目录项或分组管理按钮聚焦，且没有内部弹层、拖拽、搜索或预编辑时启用；保留菜单键路径，不添加 Win32／私有 API。追加直接从搜索框右键命名／取消／返回焦点及快捷键门控用例。补修正式 Qt **6.8.2**／MSVC **19.29.30153.0 v142**／SDK **19041** 的 Release、QML lint、**12/12 CTest（37.66 秒）**通过，GUI **49/49**（新增 `contextMenuShortcutsRespectFocus`、`tileNameMouseContextFromSearchRestoresFocus`）、host **34/34**；日志 `build/issue9-native-context-shortcut-final.log`。产品 SHA-256 为 `e02b22b93cae03f5e2165485cc6f100402c3677e5b4c4e1866cd5e733ba3f984`，GUI 为 `c2b31beb09ac7920bec7fe23a203d161f72693c01614e20e7ed387767f08a0c8`；补修后的实际按键、托盘和独立重启结果见上节，下面历史结果保持各自程序身份。
+
+正式入口 `./scripts/build-windows.ps1 -Preset app-release` 使用 Qt **6.8.2**、MSVC **19.29.30153.0／v142**、Windows SDK **10.0.19041.0**。合入 PR #38 前的日志 `build/issue9-tile-names-delivery-final.log` 完成 Release、QML lint 与 **12/12 CTest（27.80 秒）**；GUI **47/47**，host **34/34**。QML lint 没有诊断；没有将 Qt SDK 既有编译警告写为整个构建零警告。文档／素材检查通过，255 项开发素材未重建；`tests/tooling` **13/13** 通过。
+
+| 合入 PR #38 前的显示名称程序 | SHA-256 |
+| --- | --- |
+| 产品 `xdstarter.exe` | `2353d99abf657662b4a82bccd9f7980f3b3e461326031b9f490bf6d5abdef464` |
+| GUI `xdstarter_ui_tests.exe` | `c7eb92cdf7d492d2bf42ed8c6d3cbf222340c17ea11619c4a72118100d22ce1a` |
+| host `xdstarter_desktop_window_host_tests.exe` | `3933c64f29cccf46e437874d72d0ba872adf4442c15da6363f89b17615a12a69` |
+
+合入 main `2303aef`（应用权限／目录错误 PR #38）后，`build/issue9-tile-names-main-sync.log` 再次完成 **12/12 CTest（30.39 秒）**。独立只读审查未发现已确认 P1/P2，并建议补足命名弹层的通用收起保护及返回焦点断言；随后只增加测试：`internalPopupsGuardAndCleanup` 包含 `tileNameDialog`，提交、恢复原名、Esc 和取消按钮结束后，实际磁贴必须重新取得 active focus。追加后的 `build/issue9-tile-names-focus-guard.log` 完成 Release、QML lint 与 **12/12 CTest（30.57 秒）**，GUI **47/47**、host **34/34**。仓库 **610 文件／255 素材** 与 tooling **13/13** 通过。产品代码未因追加焦点断言改变，最终程序如下；普通离屏 host 的 `raise()` 不支持及有意超时场景警告不作为真实托盘验收。
+
+| 合入 PR #38 并补足焦点断言后的程序 | SHA-256 |
+| --- | --- |
+| 产品 `xdstarter.exe` | `269c800746293a35e75e8afd0ed79eca99b0cd702daa17bd1da8290e531363ec` |
+| GUI `xdstarter_ui_tests.exe` | `d0e025ff89f7c2515e801e8c632edb5c2d095f54b63fbdd22c456f2ca9c4ae13` |
+| host `xdstarter_desktop_window_host_tests.exe` | `ccca0159bc9982b9995609d87510bb7a13326d7f20e403fd46cb90bd11f54b1a` |
+
+服务与保存检查覆盖 trim、空白／129 字符／控制字符／换行／行段分隔符／无效 UTF-16 拒绝、128 代码单元 emoji 边界、未知 id、只读与失败不变性；名称修改和恢复保留目标数组、稳定标识、坐标及尺寸。schema 1/2 的新字段拒绝、旧主配置原字节备份、schema 3 严格字段和重建恢复均有检查。搜索保留每目标 16 个普通名称的原预算，另以整个索引共享的 512 条预算覆盖所有有效磁贴名称；首项、末项、全局超限及恢复后移除旧别名有明确断言。
+
+新增三条 GUI 用例覆盖键盘菜单／弹层、PlainText 标签与完整辅助名称、可见 128 限制、预编辑 Enter／Esc、取消／收起丢弃草稿、只读禁用、同目标两枚磁贴的独立名称，以及原名／覆盖的名称、拼音与首字母搜索。目录名称变化仍优先用于搜索结果，已保存原名与其余有效覆盖可继续查找。真实保存文件后重新创建 QML engine、controller 与服务，逐对象比较完整已保存快照；这属于同一测试进程内重建，不是产品独立进程重启。普通 CTest 的 GUI 为 `offscreen/software` 受控夹具；该 2026-10-21 轮次未另行运行原生桌面窗口、托盘或真实应用独立进程验收。
+
+### 开发中的失败与复测
+
+- `build/issue9-tile-names-initial.log` 在受限上下文的空编译器探针出现 C1902，尚未编译产品；改在正式 MSVC 构建上下文配置后通过，没有改变工具链版本。
+- `build/issue9-tile-names-formal.log` 为 **10/12 CTest，GUI 46/47**：新服务用例误用不存在的样例 tileId；新 GUI 恢复用例比较未包含 controller 默认主题的 service 快照。修正为实际样例 id 与完整已保存 JSON。该轮已有图标加载路径的 QtQuickPixmap 警告保留记录，未计作新增 QML 引擎错误。
+- `build/issue9-tile-names-regression.log` 为 **11/12，GUI 46/47**：新 GUI 在重建后首次呈现回调完成前打开菜单，被既有的呈现清理关闭。用例改为等待真实 `frameSwapped` 后发送键盘；菜单可见、恢复入口及布局断言保持。随后 `build/issue9-tile-names-final.log` 已达 12/12；最后仅修改用户错误文案，形成上表程序。
+- `build/issue9-tile-names-delivery.log` 为 **11/12**：未修改的 `platform.applications` 夹具中，Shell 返回成功、标记文件存在，但随后的文件打开失败，连带参数与工作目录断言失败。单次原因未确定，没有据此修改平台实现或放宽严格断言。带明确 Qt DLL 路径的独立复测 `build/issue9-platform-launch-with-qt.log` 为 **1/1（1.67 秒）**；同一程序随后完成上面的正式 **12/12**。另一次手动 CTest 未设置 Qt DLL 路径，30 秒超时，保留为 `build/issue9-platform-launch-recheck.log`，属于启动器环境错误。
+
+以上开发阶段曾等待原生窗口交互、真实托盘与独立产品进程恢复；2026-10-22 已用最终固定程序完成上述单列验收。下方 #29 及更早章节继续保留各自二进制身份与历史边界，不将旧程序证据改标为新程序。
+
 ## 当前：圆角描边覆盖回归（Issue #31）
 
 2026-10-21，[#31](https://github.com/xiaodaozhi/xdstarter/issues/31) 调整同一 Canvas 的覆盖顺序：先绘边框色外轮廓，再绘内缩 1 DIP 的面板与侧栏，保留 v2 修订 2.2 的颜色、12 DIP 外圆角和共享磁贴几何。Windows 原生装饰仍禁用，没有新增外层圆角遮罩。
@@ -81,7 +133,7 @@ ACL 安全门先用文件句柄取得实际路径，再确认它是当前绝对 
 
 权限预检不是授权或安全边界，外部 ACL 仍可能在检查之后变化，最终启动结果继续由 Shell／应用激活接口返回。本轮没有新增原生产品窗口的权限提示交互、真实安装／卸载监听、重绑定目标、完整 Windows 版本矩阵、远程桌面或发行验证；原有真实窗口与本轮平台／服务结果分别记录。
 
-## 前一轮：高保真界面落地与视觉验收（Issue #29）
+## 历史：高保真界面落地与视觉验收（Issue #29）
 
 2026-10-21，[#29](https://github.com/xiaodaozhi/xdstarter/issues/29) 将 [v2 修订 2.2](../design/README.md) 统一为可运行界面：顶部搜索与编辑／更多／收起入口，240 DIP 应用目录与分组磁贴正文，主题控件、菜单、弹层及重要反馈。正常浏览不常驻品牌大标题和调试底栏；共享磁贴保持 48 DIP 小格、8 DIP 间隙、48／104／216×104 DIP 三档几何，布局 schemaVersion 2 不变。当前设计 SVG/PNG 仅是布局基准，下面区分构建、离屏状态、原生像素与真实产品证据。
 

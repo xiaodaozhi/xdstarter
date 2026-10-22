@@ -1,6 +1,6 @@
 # 技术架构
 
-状态：Qt Quick 路线已确认；当前原型已实现拖拽/键盘移动、三档尺寸、布局与主题持久化，以及 Windows 应用目录、系统图标、启动与固定/取消固定。[Issue #14](https://github.com/xiaodaozhi/xdstarter/issues/14) 接入设计素材、桌面动作与托盘；[#15](https://github.com/xiaodaozhi/xdstarter/issues/15) 接入无边框与外部焦点收起；[#16](https://github.com/xiaodaozhi/xdstarter/issues/16) 接入自绘外观和隐藏阶段定位；[#22](https://github.com/xiaodaozhi/xdstarter/issues/22) 接入独立 Win 键接口、显式启用/暂停和托盘守护。[#8](https://github.com/xiaodaozhi/xdstarter/issues/8) 增加离线应用名称、拼音和首字母搜索；本轮 [#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 接入分组新建、重命名、排序和空组删除。各版本的构建、GUI 与物理键盘证据统一见[测试策略](testing.md)，不由代码接入推断 Windows 支持范围。磁贴显示名称编辑与 [#6](https://github.com/xiaodaozhi/xdstarter/issues/6) 中开始按钮、材料及其他系统兼容目标继续推进。
+状态：Qt Quick 路线已确认；当前原型已实现拖拽/键盘移动、三档尺寸、布局与主题持久化，以及 Windows 应用目录、系统图标、启动与固定/取消固定。[Issue #14](https://github.com/xiaodaozhi/xdstarter/issues/14) 接入设计素材、桌面动作与托盘；[#15](https://github.com/xiaodaozhi/xdstarter/issues/15) 接入无边框与外部焦点收起；[#16](https://github.com/xiaodaozhi/xdstarter/issues/16) 接入自绘外观和隐藏阶段定位；[#22](https://github.com/xiaodaozhi/xdstarter/issues/22) 接入独立 Win 键接口、显式启用/暂停和托盘守护。[#8](https://github.com/xiaodaozhi/xdstarter/issues/8) 增加离线应用名称、拼音和首字母搜索；本轮 [#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 接入分组新建、重命名、排序和空组删除。各版本的构建、GUI 与物理键盘证据统一见[测试策略](testing.md)，不由代码接入推断 Windows 支持范围。磁贴显示名称覆盖与搜索别名按 [ADR-0011](adr/0011-tile-display-names.md) 使用 schema 3；[#6](https://github.com/xiaodaozhi/xdstarter/issues/6) 中开始按钮、材料及其他系统兼容目标继续推进。
 
 ## 模块与依赖方向
 
@@ -20,7 +20,7 @@
 | Target | 当前实现 |
 | --- | --- |
 | `xdstarter_core` | 纯 C++ 三档逻辑矩形、范围与溢出校验；由共享 JSON 生成几何常量 |
-| `xdstarter_services` | `PrototypeService` 提供邻接、布局事务、固定/取消固定及分组管理；`LayoutStore` 校验、原子保存及恢复 schema 1/2；`ApplicationCatalog` 后台读取目录、图标、可用性及启动；`DesktopShellService` 在另一专用 worker 执行受控桌面动作与工作区查询；`SearchIndex` / `SearchService` 使用 Qt Core 值类型、独立 worker 与离线字音表完成有界搜索 |
+| `xdstarter_services` | `PrototypeService` 提供邻接、布局事务、固定/取消固定及分组管理；`LayoutStore` 校验、原子保存及恢复 schema 1/2/3；`ApplicationCatalog` 后台读取目录、图标、可用性及启动；`DesktopShellService` 在另一专用 worker 执行受控桌面动作与工作区查询；`SearchIndex` / `SearchService` 使用 Qt Core 值类型、独立 worker 与离线字音表完成有界搜索 |
 | `xdstarter_platform` | `PlatformIntegration` 提供集成状态；`ApplicationPlatform` 封装应用目录、图标及启动；`DesktopPlatform` 封装受控 Shell 动作、工作区/UIA 查询、面板物理定位与原生装饰抑制；`DesktopTray` 封装 `Shell_NotifyIcon` 与文字菜单；`WinKeyCapture` 封装默认关闭的单独 Win 键接管及纯 C++ 状态机。Windows Hook 仅显式启用后安装，非支持平台返回明确的不支持结果 |
 | `xdstarter` | `QGuiApplication`、依赖组装、`MenuController`、缓存图像 provider、`DesktopWindowHost` 与 QML；支持应用与磁贴操作、快捷栏、无边框呈现、延后焦点复核及可恢复的托盘收起/显示生命周期 |
 | `xdstarter_core_tests` | 独立核心行为测试，Debug 和 Release 均执行真实检查 |
@@ -38,9 +38,9 @@
 
 磁贴呈现流为 `PrototypeService → MenuController.groups → TileGroup → TileButton`，编辑流为 `QML 输入/预览 → controller → PrototypeService 校验与提交 → groupsChanged`。C++ 提供逻辑矩形与方向键目标；QML 负责输入反馈、滚动、稳定 tileId 的焦点恢复。普通首次启动显示空的“常用应用”分组；smoke 与测试夹具仍可使用三组 15 枚样例。每组宽 552 DIP，至少高 216 DIP，编辑后按内容增长。样例只选择并提示；普通模式的真实磁贴调用启动服务。
 
-分组管理沿用相同编辑通道。controller 要求配置可写且处于编辑模式；PrototypeService 校验组名、稳定 groupId、1–32 组边界与空组删除，再提交新建、重命名或相邻排序。新组追加，排序只改变 groups 数组顺序，重命名只改 group.name，磁贴身份、目标和共享几何不变；重复组名允许存在。既有 schema 2 已承载名称和顺序，继续使用现有格式与模块边界。名称输入、焦点与取消语义见[交互设计](../product/interaction.md)，数据约束见[磁贴布局](tile-layout.md)和[数据与持久化](data-persistence.md)。
+分组管理沿用相同编辑通道。controller 要求配置可写且处于编辑模式；PrototypeService 校验组名、稳定 groupId、1–32 组边界与空组删除，再提交新建、重命名或相邻排序。新组追加，排序只改变 groups 数组顺序，重命名只改 group.name，磁贴身份、目标和共享几何不变；重复组名允许存在。既有 schema 2 已承载组名和顺序；当前schema3只为磁贴增加可选显示覆盖，分组字段与模块边界保持。名称输入、焦点与取消语义见[交互设计](../product/interaction.md)，数据约束见[磁贴布局](tile-layout.md)和[数据与持久化](data-persistence.md)。
 
-启动时 LayoutStore 有界读取并校验 schemaVersion 1/2，PrototypeService 恢复稳定标识、格坐标、尺寸、真实目标及主题；读取旧样例不执行目标，下次用户保存才写 schema 2。编辑或固定操作提交后 controller 用 500 ms 计时器合并完整快照，交给专用 QObject/QThread 后台保存；修订号保证后续编辑不会被旧保存完成状态误标为已落盘。写入使用 QSaveFile、有效备份与版本保护；退出 flush 并等待线程结束，失败向 UI 返回原因。格式、只读和恢复语义见[数据与持久化](data-persistence.md)、[ADR-0004](adr/0004-application-catalog.md)。
+启动时 LayoutStore 有界读取并校验 schemaVersion 1/2/3，PrototypeService 恢复稳定标识、格坐标、尺寸、真实目标及主题；读取旧样例不执行目标，下次用户保存才写 schema 3。编辑或固定操作提交后 controller 用 500 ms 计时器合并完整快照，交给专用 QObject/QThread 后台保存；修订号保证后续编辑不会被旧保存完成状态误标为已落盘。写入使用 QSaveFile、有效备份与版本保护；退出 flush 并等待线程结束，失败向 UI 返回原因。格式、只读和恢复语义见[数据与持久化](data-persistence.md)、[ADR-0004](adr/0004-application-catalog.md)。
 
 ## 应用目录、图标与启动
 
@@ -52,7 +52,7 @@
 
 列表与磁贴通过稳定目标 id 请求启动，启动前重新检查目标；`.lnk` 直接交给 `ShellExecuteExW`，参数和工作目录由快捷方式自身保留，打包应用使用 `IApplicationActivationManager::ActivateApplication`。不接收任意命令串，也不通过字符串拼接 Shell 参数。成功请求启动后窗口收起，失败保留窗口并显示结构化原因；这是系统已接受启动请求，不代表已证明目标应用完成启动。恢复时目录中缺失的固定目标单独后台检查，位置和尺寸仍保留，允许取消固定。
 
-固定操作从当前目录取受控目标描述，默认以标准尺寸放到所选分组首个空位；同一目标重复固定返回已有磁贴，不新增副本。取消固定移除该磁贴，最后一处引用消失后移除对应描述；不修改原快捷方式或卸载应用。两项均使用相同校验和合并保存流程，schema 2 允许取消最后一枚后保存空布局。
+固定操作从当前目录取受控目标描述，默认以标准尺寸放到所选分组首个空位；同一目标重复固定返回已有磁贴，不新增副本。取消固定移除该磁贴，最后一处引用消失后移除对应描述；不修改原快捷方式或卸载应用。两项均使用相同校验和合并保存流程，schema 2/3 允许取消最后一枚后保存空布局。
 
 ## 离线应用搜索
 
@@ -97,7 +97,7 @@ CMake 的 `xdstarter_add_ui` 为产品与 GUI 测试编译同一组 QML、contro
 1. 启动：读取偏好与布局 → 预创建菜单窗口 → 后台加载应用目录与图标 → 更新模型。
 2. 菜单唤起：托盘事件或显式启用后的有效 Win 独按通知 → DesktopWindowHost 清理暂态、保持隐藏并标记待显示 → DesktopShellService 快速读取显示器/工作区/任务栏 DPI → 当前有效结果抑制原生装饰、隐藏迁移并等待 DPR／尺寸稳定 → 最终定位、显示与请求焦点；取消或过期结果不重开窗口，外部焦点持续离开后可恢复地收起。
 3. 搜索：目录与固定目标值快照／已提交查询 → SearchService 独立 worker 构建或查询 SearchIndex → 复核目录修订与查询代次 → controller 映射缓存状态 → QML 稳定排序结果列表。
-4. 编辑与固定：磁贴/分组的指针与键盘操作或选择应用 → controller 复核可写状态与编辑条件 → PrototypeService 校验 → 提交内存布局 → 更新模型 → 后台合并保存；显示名称编辑仍待后续开发。
+4. 编辑与固定：磁贴/分组的指针与键盘操作或选择应用 → controller 复核可写状态与编辑条件 → PrototypeService 校验 → 提交内存布局 → 更新模型 → 后台合并保存；显示名称覆盖只改磁贴元数据，不改启动目标。
 5. 启动目标：UI 发出 targetId → ApplicationCatalog worker 复核可用性 → ApplicationPlatform 启动 → 成功收起、失败保留菜单。
 6. 桌面快捷动作：快捷栏 → MenuController → DesktopShellService worker → DesktopPlatform 受控动作 → 成功收起或失败反馈；host 保证无托盘时仍可恢复。
 
@@ -106,7 +106,7 @@ CMake 的 `xdstarter_add_ui` 为产品与 GUI 测试编译同一组 QML、contro
 - `ApplicationCatalog`：已实现异步目录快照、图标缓存与启动结果；返回稳定 appId、名称、目标和图标键；自动增量扫描待开发。
 - `LayoutEngine`：以格坐标计算矩形、校验占用、生成落点；不读取屏幕物理坐标。
 - `SearchIndex` / `SearchService`：Qt Core 的离线名称和拼音匹配；输入值快照与查询，后台返回稳定目标 id、名称、排序等级与匹配总数，双版本校验阻止旧查询或旧目录覆盖当前状态。
-- `LayoutStore`：已实现 schema 1/2 的读取、严格校验、原子保存、备份恢复与未来版本保护；支持真实目标和空布局，导入 UI 待后续扩展。
+- `LayoutStore`：已实现严格 schema 1/2/3 的读取、严格校验、原子保存、备份恢复与未来版本保护；支持真实目标和空布局，导入 UI 待后续扩展。
 - `ApplicationPlatform`：已实现同步、可替换的 Windows 目录/图标/可用性/启动接口，由 ApplicationCatalog worker 调用。
 - `DesktopShellService` / `DesktopPlatform`：已接入桌面动作、无 COM/UIA 的产品工作区查询、面板物理定位及原生装饰抑制接口；工作区查询与 Shell 在 worker，短时本进程窗口定位与设置在 GUI 边界；原 UIA 开始按钮接口仅保留显式研究用途。
 - `DesktopTray` / `DesktopWindowHost`：已接入原生托盘、菜单恢复/退出、异步定位代次与外部焦点延后复核。
