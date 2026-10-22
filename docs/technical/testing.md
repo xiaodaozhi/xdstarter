@@ -12,6 +12,8 @@ GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查�
 
 ### 正式构建与覆盖范围
 
+2026-10-22 原生验收发现：Qt 6.8.2 的 [Windows 键盘映射](https://github.com/qt/qtbase/blob/v6.8.2/src/plugins/platforms/windows/qwindowskeymapper.cpp#L1164-L1167)在未注册对应快捷键时将 Shift+F10 留给系统，仅用 `Keys.onPressed` 的离屏用例不能证明该原生入口有效。现通过公共 QML `Shortcut` 注册窗口内精确组合，仅在当前磁贴、目录项或分组管理按钮聚焦，且没有内部弹层、拖拽、搜索或预编辑时启用；保留菜单键路径，不添加 Win32／私有 API。追加直接从搜索框右键命名／取消／返回焦点及快捷键门控用例。补修正式 Qt **6.8.2**／MSVC **19.29.30153.0 v142**／SDK **19041** 的 Release、QML lint、**12/12 CTest（37.66 秒）**通过，GUI **49/49**（新增 `contextMenuShortcutsRespectFocus`、`tileNameMouseContextFromSearchRestoresFocus`）、host **34/34**；日志 `build/issue9-native-context-shortcut-final.log`。产品 SHA-256 为 `e02b22b93cae03f5e2165485cc6f100402c3677e5b4c4e1866cd5e733ba3f984`，GUI 为 `c2b31beb09ac7920bec7fe23a203d161f72693c01614e20e7ed387767f08a0c8`；其原生 Windows 按键、托盘和独立产品重启仍需补修后的实际验收，下面历史结果不替代该门槛。
+
 正式入口 `./scripts/build-windows.ps1 -Preset app-release` 使用 Qt **6.8.2**、MSVC **19.29.30153.0／v142**、Windows SDK **10.0.19041.0**。合入 PR #38 前的日志 `build/issue9-tile-names-delivery-final.log` 完成 Release、QML lint 与 **12/12 CTest（27.80 秒）**；GUI **47/47**，host **34/34**。QML lint 没有诊断；没有将 Qt SDK 既有编译警告写为整个构建零警告。文档／素材检查通过，255 项开发素材未重建；`tests/tooling` **13/13** 通过。
 
 | 合入 PR #38 前的显示名称程序 | SHA-256 |

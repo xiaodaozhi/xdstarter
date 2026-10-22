@@ -77,6 +77,8 @@ ApplicationWindow {
     property bool presentationSuspended: false
     readonly property bool internalPopupVisible: resizeMenu.visible || pinMenu.visible || powerMenu.visible || aboutPopup.visible || groupMenu.visible || groupNameDialog.visible || moreMenu.visible || tileNameDialog.visible
     readonly property bool dismissalBlocked: dragActive || internalPopupVisible
+    readonly property bool contextShortcutsEnabled: visible && !presentationSuspended && !internalPopupVisible && !dragActive && !controller.searchActive && !searchField.inputMethodComposing
+    readonly property TileButton tileContextTarget: activeFocusItem as TileButton
 
     signal dismissRequested
     signal winKeyCaptureToggleRequested
@@ -844,6 +846,15 @@ ApplicationWindow {
     }
 
     Shortcut {
+        objectName: "tileContextShortcut"
+        sequence: "Shift+F10"
+        context: Qt.WindowShortcut
+        autoRepeat: false
+        enabled: window.contextShortcutsEnabled && window.tileContextTarget !== null && window.tileContextTarget.visible && window.tileContextTarget.enabled
+        onActivated: window.tileContextTarget.requestContextMenu()
+    }
+
+    Shortcut {
         sequence: "Escape"
         autoRepeat: false
         enabled: !window.internalPopupVisible && !searchField.inputMethodComposing
@@ -1245,6 +1256,10 @@ ApplicationWindow {
                                 ItemDelegate {
                                     id: appButton
 
+                                    function requestContextMenu(): void {
+                                        window.openPinMenu(appRow.appId, appRow.displayName, appRow.pinned, appButton);
+                                    }
+
                                     objectName: "applicationLaunch-" + appRow.appId
                                     focus: true
                                     anchors.left: parent.left
@@ -1260,8 +1275,8 @@ ApplicationWindow {
                                     Keys.onReturnPressed: window.activateApplication(appRow.appId)
                                     Keys.onEnterPressed: window.activateApplication(appRow.appId)
                                     Keys.onPressed: event => {
-                                        if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier))) {
-                                            window.openPinMenu(appRow.appId, appRow.displayName, appRow.pinned, appButton);
+                                        if (event.key === Qt.Key_Menu) {
+                                            requestContextMenu();
                                             event.accepted = true;
                                         } else if (event.key === Qt.Key_Up || event.key === Qt.Key_Down) {
                                             window.focusApplicationAt(appRow.index + (event.key === Qt.Key_Up ? -1 : 1));
@@ -1275,6 +1290,15 @@ ApplicationWindow {
                                             applicationsList.currentIndex = appRow.index;
                                             applicationsList.positionViewAtIndex(appRow.index, ListView.Contain);
                                         }
+                                    }
+
+                                    Shortcut {
+                                        objectName: "applicationContextShortcut-" + appRow.appId
+                                        sequence: "Shift+F10"
+                                        context: Qt.WindowShortcut
+                                        autoRepeat: false
+                                        enabled: window.contextShortcutsEnabled && appButton.activeFocus && appButton.visible && appButton.enabled
+                                        onActivated: appButton.requestContextMenu()
                                     }
 
                                     ToolTip {
@@ -1345,7 +1369,7 @@ ApplicationWindow {
                                         acceptedButtons: Qt.RightButton
                                         onClicked: {
                                             appButton.forceActiveFocus(Qt.MouseFocusReason);
-                                            window.openPinMenu(appRow.appId, appRow.displayName, appRow.pinned, appButton);
+                                            appButton.requestContextMenu();
                                         }
                                     }
                                 }
@@ -1448,6 +1472,7 @@ ApplicationWindow {
                                         titleColor: window.theme.foreground
                                         editMode: window.controller.editMode
                                         readOnly: window.controller.readOnly
+                                        contextShortcutsEnabled: window.contextShortcutsEnabled
                                         iconRevision: window.controller.iconRevision
                                         iconVersions: window.controller.iconVersions
                                         draggedTileId: window.draggedTileId
