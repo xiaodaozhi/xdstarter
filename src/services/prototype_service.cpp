@@ -127,7 +127,7 @@ const PreviewTile* neighborAcrossGroups(const PreviewTile& current, const Previe
 } // namespace
 
 PrototypeService::PrototypeService(const TileGrid& grid, QString configPath, bool sampleMode)
-    : grid_(grid), configurationPath_(std::move(configPath)) {
+    : grid_(grid), configurationPath_(std::move(configPath)), sampleMode_(sampleMode) {
     if (sampleMode) {
         groups_ = makeDefaultGroups();
     } else {
@@ -149,6 +149,8 @@ PrototypeService::PrototypeService(const TileGrid& grid, QString configPath, boo
         loadResult_.message += QStringLiteral("已读取旧版布局，下次保存升级配置并保留旧版备份");
     }
 }
+
+bool PrototypeService::sampleMode() const { return sampleMode_; }
 
 QVector<PreviewGroup> PrototypeService::makeDefaultGroups() const {
     struct PreviewDefinition {

@@ -524,6 +524,9 @@ int main(int argc, char* argv[]) {
     const auto unsupportedMetrics = nativeFree.queryWindowMetrics(1);
     test.expect(!unsupportedMetrics.supported && !unsupportedMetrics.success,
                 "base native metrics are explicitly unsupported without touching a handle");
+    test.expect(!nativeFree.hasOwnedForegroundWindow(1) &&
+                    !platform->hasOwnedForegroundWindow(0),
+                "unsupported or invalid menu handles never claim owned native foreground");
     test.expect(nativeFree.screenForAnchor(delegatedAnchor) == nullptr &&
                     platform->screenForAnchor(delegatedAnchor) == nullptr,
                 "screen mapping is unavailable without a GUI application, including Windows");
@@ -539,6 +542,8 @@ int main(int argc, char* argv[]) {
     HiddenNativeWindow hidden;
     test.expect(hidden.handle() != nullptr, "isolated hidden native fixture is created");
     if (hidden.handle()) {
+        test.expect(!platform->hasOwnedForegroundWindow(reinterpret_cast<quintptr>(hidden.handle())),
+                    "a hidden menu cannot claim an unrelated foreground window");
         // Seed the previous native decoration policy, so the fixture proves
         // configuration removes it instead of merely observing a bare HWND.
         const DWORD initialCornerPreference = 2;
@@ -665,6 +670,8 @@ int main(int argc, char* argv[]) {
         HiddenNativeWindow child(0, hidden.handle());
         test.expect(child.handle() != nullptr, "isolated hidden child fixture is created");
         if (child.handle()) {
+            test.expect(!platform->hasOwnedForegroundWindow(reinterpret_cast<quintptr>(child.handle())),
+                        "native focus ownership rejects child HWNDs as menu roots");
             test.expect(!platform->queryWindowMetrics(reinterpret_cast<quintptr>(child.handle())).success,
                         "native metrics reject an owned child rather than a top-level surface");
             const auto childAppearance =
@@ -693,6 +700,8 @@ int main(int argc, char* argv[]) {
                 "appearance refuses the foreign system desktop HWND before DWM calls");
     test.expect(!platform->queryWindowMetrics(reinterpret_cast<quintptr>(GetDesktopWindow())).success,
                 "native metrics reject a foreign process window");
+    test.expect(!platform->hasOwnedForegroundWindow(reinterpret_cast<quintptr>(GetDesktopWindow())),
+                "native focus ownership rejects a foreign process menu root");
     if (previousDpi) {
         SetThreadDpiAwarenessContext(previousDpi);
     }

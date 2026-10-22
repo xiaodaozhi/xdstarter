@@ -17,7 +17,7 @@ xdzip 根 CMake 最低要求 3.24，其 CI 的 CMake/Ninja/Python 依赖 runner�
 
 | 依赖 | 正式版本与来源 | 用途与许可记录 |
 | --- | --- | --- |
-| Qt | [6.8.2 官方归档](https://download.qt.io/archive/qt/6.8/6.8.2/) | Core、Gui、Qml、Quick、QuickControls2、Svg；测试另用 Test，产品不链接 Test。采用动态库方向，存在开源/商业许可路径，实际模块与部署材料按[官方许可](https://doc.qt.io/qt-6.8/licensing.html)审查 |
+| Qt | [6.8.2 官方归档](https://download.qt.io/archive/qt/6.8/6.8.2/) | Core、Gui、Qml、Quick、QuickControls2、QuickDialogs2、Svg；测试另用 Test，产品不链接 Test。采用动态库方向，存在开源/商业许可路径，实际模块与部署材料按[官方许可](https://doc.qt.io/qt-6.8/licensing.html)审查 |
 | MSVC / linker | VS 2019 16.11、v142 14.29.30133；编译器 19.29.30153.0、linker 14.29.30153.0；Microsoft Visual Studio Installer | Windows x64 构建工具，不捆绑 IDE/工具到应用；VC 运行时的发行许可及部署仍需单独核对 |
 | Windows SDK | Microsoft Windows SDK 10.0.19041.0 | Windows 头文件、资源编译器及工具；仅构建期使用，不将整个 SDK 复制入产品 |
 | Python | [3.12.13](https://www.python.org/downloads/release/python-31213/) | 构建工具环境；PSF 许可。可使用兼容分发提供的该解释器，项目入口核对实际版本；普通仓库脚本仍支持 Python 3.11+ |
@@ -33,6 +33,8 @@ Python 包通过 PyPI 精确版本取得，项目工具保存在忽略的 `build
 应用 CI 固定 actions/checkout、actions/setup-python 与 Windows 使用的 astral-sh/setup-uv 提交；Python 补丁与工具版本由清单读取。Python 3.12.13 为仅源码安全版本，官方不提供该版 Windows 安装器；Windows CI 通过固定版本 uv 获取与本机相同渠道的 CPython，显式定位解释器后传入现有构建入口，严格版本检查保持不变。Linux 核心任务继续使用 setup-python。`windows-2022` runner 的 MSVC 2022/SDK 随镜像变化，仅作为显式附加兼容验证，不冒充上述 v142/19041 精确基线；实际日志记录其选择结果。Ubuntu 核心检查使用 runner 的 C++20 编译器，不提供 Qt/Windows 验收结论。Actions 恢复和检查证据见 [#12](https://github.com/xiaodaozhi/xdstarter/issues/12) 与 [PR #17](https://github.com/xiaodaozhi/xdstarter/pull/17)。
 
 所有工作流的 `actions/checkout` 统一固定为 [v7.0.1](https://github.com/actions/checkout/releases/tag/v7.0.1) 的 `3d3c42e5aac5ba805825da76410c181273ba90b1`，并保留 `persist-credentials: false` 与原有最小权限。该 Action 使用 Node 24；[官方升级说明](https://github.com/actions/checkout/blob/v7.0.1/README.md#whats-new)增加 ESM 与受信任事件中的 fork 检出限制。当前工作流仅使用 `push`、`pull_request` 和 `workflow_dispatch`，无需开启 `allow-unsafe-pr-checkout`。项目初始化的 `--apply` 仅在匹配路径的 `main` 推送或手动触发时执行；PR 中只运行初始化预览和安全、幂等单测，不将预览结果表述为实际写入验收。依赖维护与更新基线后的检查记录见 [PR #1](https://github.com/xiaodaozhi/xdstarter/pull/1)。
+
+布局文件选择使用同版 Qt 公共 `QtQuick.Dialogs` 模块（链接 QuickDialogs2，QML 构建与 qmllint 同时声明依赖），仅设置 `ReadOnly`，在 Windows 上保留 Qt 默认的系统原生对话框优先行为，明确菜单父窗口与窗口模态。产品不自行重绘文件选择器；部署需要该模块及其公开依赖，不链接 Qt Widgets 或私有 quickimpl API。选项和平台行为见 [Qt 6.8 FileDialog](https://doc.qt.io/qt-6.8/qml-qtquick-dialogs-filedialog.html) 及其公开 [Dialog 父窗口与模态属性](https://doc.qt.io/qt-6.8/qml-qtquick-dialogs-dialog.html)。离屏环境可能使用 Qt 回退，不能据此确认 Windows 原生后端；部署仍需逐项验证，不能仅凭开发机 SDK 推断分发包完整。
 
 ## 离线拼音数据
 

@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs as FileDialogs
 import QtQml.Models
 import XDStarter
 
@@ -75,7 +76,7 @@ ApplicationWindow {
     property string resizeTileSize: ""
     property bool dismissalManaged: false
     property bool presentationSuspended: false
-    readonly property bool internalPopupVisible: resizeMenu.visible || pinMenu.visible || powerMenu.visible || aboutPopup.visible || groupMenu.visible || groupNameDialog.visible || moreMenu.visible || tileNameDialog.visible
+    readonly property bool internalPopupVisible: resizeMenu.visible || pinMenu.visible || powerMenu.visible || aboutPopup.visible || groupMenu.visible || groupNameDialog.visible || moreMenu.visible || tileNameDialog.visible || layoutFileDialog.visible || layoutImportDialog.visible
     readonly property bool dismissalBlocked: dragActive || internalPopupVisible
     readonly property bool contextShortcutsEnabled: visible && !presentationSuspended && !internalPopupVisible && !dragActive && !controller.searchActive && !searchField.inputMethodComposing
     readonly property TileButton tileContextTarget: activeFocusItem as TileButton
@@ -571,6 +572,9 @@ ApplicationWindow {
         groupNameDialog.close();
         moreMenu.close();
         tileNameDialog.close();
+        layoutFileDialog.close();
+        layoutImportDialog.close();
+        controller.cancelLayoutImport();
     }
 
     function openMoreMenu(): void {
@@ -597,6 +601,18 @@ ApplicationWindow {
     function openAbout(): void {
         moreMenu.close();
         aboutPopup.open();
+    }
+
+    function openLayoutImport(): void {
+        closeInternalPopups();
+        if (!controller.readOnly && controller.layoutImportSupported && !controller.importBusy)
+            layoutFileDialog.open();
+    }
+
+    function restoreLayoutBackup(): void {
+        closeInternalPopups();
+        if (controller.stageBackupRestore())
+            layoutImportDialog.open();
     }
 
     function prepareForDismissal(): void {
@@ -769,6 +785,16 @@ ApplicationWindow {
 
     Connections {
         target: window.controller
+
+        function onLayoutImportSucceeded(): void {
+            layoutImportDialog.close();
+            window.showApplications = false;
+            window.browseStateSaved = false;
+            window.focusedTileId = "";
+            window.focusedGroupId = "";
+            if (window.visible && !window.presentationSuspended)
+                searchField.forceActiveFocus(Qt.OtherFocusReason);
+        }
 
         function onGroupsChanged(): void {
             Qt.callLater(window.restoreTileFocus);
@@ -1049,7 +1075,7 @@ ApplicationWindow {
                         icon.source: "qrc:/xdstarter/ui/" + (window.darkTheme ? "dark" : "light") + "/apps.svg"
                         checkable: true
                         checked: window.controller.editMode
-                        enabled: !window.controller.readOnly && !window.controller.searchActive
+                        enabled: !window.controller.readOnly && !window.controller.importCommitting && !window.controller.searchActive
                         Accessible.name: text
                         Accessible.description: qsTr("启用磁贴拖拽和 Ctrl 加方向键移动。Esc 退出编辑。")
                         ToolTip.visible: hovered || activeFocus
@@ -1110,7 +1136,7 @@ ApplicationWindow {
                         objectName: "newGroupButton"
                         text: qsTr("新建分组")
                         visible: window.controller.editMode
-                        enabled: !window.controller.readOnly && window.controller.groups.length < window.controller.maximumGroups
+                        enabled: !window.controller.readOnly && !window.controller.importCommitting && window.controller.groups.length < window.controller.maximumGroups
                         Accessible.description: qsTr("最多保留 %1 个分组。").arg(window.controller.maximumGroups)
                         ToolTip.visible: hovered || activeFocus
                         ToolTip.text: enabled ? qsTr("新建一个空分组") : Accessible.description
@@ -1385,7 +1411,7 @@ ApplicationWindow {
                                     icon.width: 16
                                     icon.height: 16
                                     icon.source: "qrc:/xdstarter/ui/" + (window.darkTheme ? "dark" : "light") + "/pin.svg"
-                                    enabled: !window.controller.readOnly && !appRow.pinned
+                                    enabled: !window.controller.readOnly && !window.controller.importCommitting && !appRow.pinned
                                     Accessible.name: appRow.pinned ? qsTr("已固定 %1").arg(appRow.displayName) : qsTr("固定 %1").arg(appRow.displayName)
                                     ToolTip.visible: hovered || activeFocus
                                     ToolTip.text: Accessible.name
@@ -1471,7 +1497,7 @@ ApplicationWindow {
                                         darkTheme: window.darkTheme
                                         titleColor: window.theme.foreground
                                         editMode: window.controller.editMode
-                                        readOnly: window.controller.readOnly
+                                        readOnly: window.controller.readOnly || window.controller.importCommitting
                                         contextShortcutsEnabled: window.contextShortcutsEnabled
                                         iconRevision: window.controller.iconRevision
                                         iconVersions: window.controller.iconVersions
@@ -1761,7 +1787,7 @@ ApplicationWindow {
 
             objectName: "themeButton"
             text: window.darkTheme ? qsTr("切换浅色") : qsTr("切换深色")
-            enabled: !window.controller.readOnly
+            enabled: !window.controller.readOnly && !window.controller.importCommitting
             Accessible.description: qsTr("切换深浅主题并保存偏好。")
             onTriggered: window.toggleTheme()
             Keys.onReturnPressed: window.toggleTheme()
@@ -1771,10 +1797,30 @@ ApplicationWindow {
         ActionMenuItem {
             objectName: "saveLayoutButton"
             text: window.controller.saving ? qsTr("正在保存") : qsTr("保存布局")
-            enabled: !window.controller.readOnly && !window.controller.saving && !window.dragActive
+            enabled: !window.controller.readOnly && !window.controller.importCommitting && !window.controller.saving && !window.dragActive
             onTriggered: window.saveLayout()
             Keys.onReturnPressed: window.saveLayout()
             Keys.onEnterPressed: window.saveLayout()
+        }
+
+        ActionSeparator {}
+
+        ActionMenuItem {
+            objectName: "importLayoutButton"
+            text: qsTr("导入布局…")
+            enabled: window.controller.layoutImportSupported && !window.controller.readOnly && !window.controller.importCommitting && !window.controller.importBusy && !window.dragActive
+            onTriggered: window.openLayoutImport()
+            Keys.onReturnPressed: window.openLayoutImport()
+            Keys.onEnterPressed: window.openLayoutImport()
+        }
+
+        ActionMenuItem {
+            objectName: "restoreLayoutBackupButton"
+            text: qsTr("恢复上一份布局…")
+            enabled: window.controller.layoutImportSupported && !window.controller.readOnly && !window.controller.importCommitting && !window.controller.importBusy && !window.dragActive
+            onTriggered: window.restoreLayoutBackup()
+            Keys.onReturnPressed: window.restoreLayoutBackup()
+            Keys.onEnterPressed: window.restoreLayoutBackup()
         }
 
         ActionSeparator {}
@@ -1786,6 +1832,39 @@ ApplicationWindow {
             Keys.onReturnPressed: window.openAbout()
             Keys.onEnterPressed: window.openAbout()
         }
+    }
+
+    FileDialogs.FileDialog {
+        id: layoutFileDialog
+
+        objectName: "layoutFileDialog"
+        title: qsTr("选择 JSON 布局文件")
+        parentWindow: window
+        modality: Qt.WindowModal
+        fileMode: FileDialogs.FileDialog.OpenFile
+        // Keep Qt's native platform dialog preference; only request read-only file selection.
+        // Qt 6.8.2 qmltypes omit the public FileDialogOptions flags; runtime tests verify ReadOnly.
+        // qmllint disable missing-type missing-property
+        options: FileDialogs.FileDialog.ReadOnly
+        // qmllint enable missing-type missing-property
+        nameFilters: [qsTr("JSON 布局 (*.json)"), qsTr("所有文件 (*)")]
+        onAccepted: {
+            if (window.controller.stageLayoutImport(selectedFile))
+                layoutImportDialog.open();
+        }
+        onRejected: window.controller.cancelLayoutImport()
+    }
+
+    LayoutImportDialog {
+        id: layoutImportDialog
+
+        parent: window.contentItem
+        controller: window.controller
+        theme: window.theme
+        tokens: window.tokens
+        panelInset: window.shadowInset
+        panelWidth: window.panelWidth
+        panelHeight: window.panelHeight
     }
 
     Popup {
@@ -1870,7 +1949,7 @@ ApplicationWindow {
         ActionMenuItem {
             objectName: "groupRenameAction"
             text: qsTr("重命名")
-            enabled: window.controller.editMode && !window.controller.readOnly && window.managedGroup !== null
+            enabled: window.controller.editMode && !window.controller.readOnly && !window.controller.importCommitting && window.managedGroup !== null
             onTriggered: window.openGroupNameDialog(window.managedGroupId)
             Keys.onReturnPressed: window.openGroupNameDialog(window.managedGroupId)
             Keys.onEnterPressed: window.openGroupNameDialog(window.managedGroupId)
@@ -1879,7 +1958,7 @@ ApplicationWindow {
         ActionMenuItem {
             objectName: "groupMoveUpAction"
             text: qsTr("上移分组")
-            enabled: window.controller.editMode && !window.controller.readOnly && window.managedGroupIndex > 0
+            enabled: window.controller.editMode && !window.controller.readOnly && !window.controller.importCommitting && window.managedGroupIndex > 0
             onTriggered: window.moveManagedGroup(-1)
             Keys.onReturnPressed: window.moveManagedGroup(-1)
             Keys.onEnterPressed: window.moveManagedGroup(-1)
@@ -1888,7 +1967,7 @@ ApplicationWindow {
         ActionMenuItem {
             objectName: "groupMoveDownAction"
             text: qsTr("下移分组")
-            enabled: window.controller.editMode && !window.controller.readOnly && window.managedGroupIndex >= 0 && window.managedGroupIndex < window.controller.groups.length - 1
+            enabled: window.controller.editMode && !window.controller.readOnly && !window.controller.importCommitting && window.managedGroupIndex >= 0 && window.managedGroupIndex < window.controller.groups.length - 1
             onTriggered: window.moveManagedGroup(1)
             Keys.onReturnPressed: window.moveManagedGroup(1)
             Keys.onEnterPressed: window.moveManagedGroup(1)
@@ -1899,7 +1978,7 @@ ApplicationWindow {
         ActionMenuItem {
             objectName: "groupDeleteAction"
             text: qsTr("删除空分组")
-            enabled: window.controller.editMode && !window.controller.readOnly && window.controller.groups.length > 1 && window.managedGroup !== null && window.managedGroup.tiles.length === 0
+            enabled: window.controller.editMode && !window.controller.readOnly && !window.controller.importCommitting && window.controller.groups.length > 1 && window.managedGroup !== null && window.managedGroup.tiles.length === 0
             Accessible.description: groupDeleteHint.text
             onTriggered: window.removeManagedGroup()
             Keys.onReturnPressed: window.removeManagedGroup()
@@ -2050,7 +2129,7 @@ ApplicationWindow {
                 ActionButton {
                     objectName: "groupNameSaveButton"
                     text: qsTr("保存")
-                    enabled: !groupNameField.inputMethodComposing && window.controller.editMode && !window.controller.readOnly
+                    enabled: !groupNameField.inputMethodComposing && window.controller.editMode && !window.controller.readOnly && !window.controller.importCommitting
                     onClicked: window.submitGroupName()
                     Keys.onReturnPressed: window.submitGroupName()
                     Keys.onEnterPressed: window.submitGroupName()
@@ -2188,7 +2267,7 @@ ApplicationWindow {
                 ActionButton {
                     objectName: "tileNameSaveButton"
                     text: qsTr("保存")
-                    enabled: !tileNameField.inputMethodComposing && !window.controller.readOnly
+                    enabled: !tileNameField.inputMethodComposing && !window.controller.readOnly && !window.controller.importCommitting
                     onClicked: window.submitTileName()
                     Keys.onReturnPressed: window.submitTileName()
                     Keys.onEnterPressed: window.submitTileName()
@@ -2258,7 +2337,7 @@ ApplicationWindow {
 
         checkable: true
         autoExclusive: true
-        enabled: !window.controller.readOnly
+        enabled: !window.controller.readOnly && !window.controller.importCommitting
     }
 
     ActionMenu {
@@ -2274,7 +2353,7 @@ ApplicationWindow {
         ActionMenuItem {
             objectName: "renameTileItem"
             text: qsTr("修改显示名称")
-            enabled: !window.controller.readOnly && window.contextTile !== null
+            enabled: !window.controller.readOnly && !window.controller.importCommitting && window.contextTile !== null
             onTriggered: window.openTileNameDialog()
             Keys.onReturnPressed: window.openTileNameDialog()
             Keys.onEnterPressed: window.openTileNameDialog()
@@ -2283,7 +2362,7 @@ ApplicationWindow {
         ActionMenuItem {
             objectName: "resetTileNameItem"
             text: qsTr("恢复原名称")
-            enabled: !window.controller.readOnly && window.contextTile !== null && window.contextTile.displayName.length > 0
+            enabled: !window.controller.readOnly && !window.controller.importCommitting && window.contextTile !== null && window.contextTile.displayName.length > 0
             onTriggered: window.resetCurrentTileName()
             Keys.onReturnPressed: window.resetCurrentTileName()
             Keys.onEnterPressed: window.resetCurrentTileName()
@@ -2319,7 +2398,7 @@ ApplicationWindow {
 
             objectName: "unpinTileItem"
             text: qsTr("取消固定")
-            enabled: !window.controller.readOnly
+            enabled: !window.controller.readOnly && !window.controller.importCommitting
             onTriggered: window.unpinCurrentTile()
             Keys.onReturnPressed: window.unpinCurrentTile()
             Keys.onEnterPressed: window.unpinCurrentTile()
@@ -2376,7 +2455,7 @@ ApplicationWindow {
                         wrapMode: Text.Wrap
                     }
                 }
-                enabled: !window.controller.readOnly && !window.pinApplicationPinned
+                enabled: !window.controller.readOnly && !window.controller.importCommitting && !window.pinApplicationPinned
                 onTriggered: {
                     // Pinning refreshes groups, which replaces this dynamically inserted menu item.
                     window.pinCurrentApplication(modelData.id);

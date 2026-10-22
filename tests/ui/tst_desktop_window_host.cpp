@@ -93,6 +93,14 @@ class PlacementPlatform final : public xdstarter::DesktopPlatform {
         return {true, nativeQuerySucceeds, size};
     }
 
+    bool hasOwnedForegroundWindow(quintptr nativeHandle) override {
+        ++foregroundQueries;
+        foregroundHandle = nativeHandle;
+        guiThreadOnly = guiThreadOnly &&
+                        QThread::currentThread() == QCoreApplication::instance()->thread();
+        return ownedForeground;
+    }
+
     xdstarter::DesktopPlacementResult placeWindow(
         quintptr nativeHandle, const xdstarter::DesktopAnchorResult& anchor,
         int gapPhysicalPixels, bool activate, int shadowInsetPhysicalPixels) override {
@@ -135,6 +143,9 @@ class PlacementPlatform final : public xdstarter::DesktopPlatform {
     QList<QRect> panels;
     bool activationRequested = false;
     bool guiThreadOnly = true;
+    bool ownedForeground = false;
+    int foregroundQueries = 0;
+    quintptr foregroundHandle = 0;
     xdstarter::DesktopAnchorResult lastAnchor;
 };
 
@@ -270,6 +281,8 @@ class DesktopWindowHostTest : public QObject {
     void restoresApplicationPolicy();
     void externalFocusDismissesAndRestores();
     void transientFocusAndQuickReturnStayOpen();
+    void nativeOwnedFocusPollsAndDetectsExternalSwitch();
+    void nativeOwnedPollingStopsOnQtFocusAndShutdown();
     void externalFocusWaitsForDragRelease();
     void externalDismissalWithoutTrayMinimizes();
     void delayedLaunchRecoveryDoesNotMinimizeReopenedWindow();
@@ -646,6 +659,70 @@ void DesktopWindowHostTest::transientFocusAndQuickReturnStayOpen() {
     host.showWindow();
     QTRY_VERIFY(window.isActive());
     QTest::qWait(150);
+    QVERIFY(window.isVisible());
+}
+
+void DesktopWindowHostTest::nativeOwnedFocusPollsAndDetectsExternalSwitch() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    PlacementPlatform placement;
+    FakeTray tray;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.start(trayIcon());
+    QTRY_VERIFY(window.isActive());
+    window.setPopup(true);
+    placement.ownedForeground = true;
+    QWindow untracked;
+    untracked.show();
+    untracked.requestActivate();
+    QTRY_VERIFY(untracked.isActive());
+    // The platform reports an OS-owned foreground with no Qt transient link.
+    // Repeated checks prove protection lasts beyond one focus grace period.
+    QTRY_VERIFY(placement.foregroundQueries >= 3);
+    QVERIFY(window.isVisible());
+    QCOMPARE(placement.foregroundHandle, quintptr(window.winId()));
+    QVERIFY(placement.guiThreadOnly);
+    const int dismissals = window.dismissals;
+    // No new Qt event: the native dialog loses foreground to an external app.
+    // An unconditional popup guard or stopping the native poll would miss it.
+    placement.ownedForeground = false;
+    QTRY_VERIFY(!window.isVisible());
+    QVERIFY(window.dismissals > dismissals);
+    QVERIFY(!window.popup);
+    QVERIFY(window.editMode);
+}
+
+void DesktopWindowHostTest::nativeOwnedPollingStopsOnQtFocusAndShutdown() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    PlacementPlatform placement;
+    FakeTray tray;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.start(trayIcon());
+    QTRY_VERIFY(window.isActive());
+    placement.ownedForeground = true;
+    QWindow untracked;
+    untracked.show();
+    untracked.requestActivate();
+    QTRY_VERIFY(untracked.isActive());
+    QTRY_VERIFY(placement.foregroundQueries >= 2);
+    window.requestActivate();
+    QTRY_VERIFY(window.isActive());
+    const int returnedQueries = placement.foregroundQueries;
+    QTest::qWait(250);
+    QCOMPARE(placement.foregroundQueries, returnedQueries);
+    QVERIFY(window.isVisible());
+
+    untracked.requestActivate();
+    QTRY_VERIFY(untracked.isActive());
+    QTRY_VERIFY(placement.foregroundQueries > returnedQueries);
+    host.shutdown();
+    const int stoppedQueries = placement.foregroundQueries;
+    placement.ownedForeground = false;
+    QTest::qWait(250);
+    QCOMPARE(placement.foregroundQueries, stoppedQueries);
     QVERIFY(window.isVisible());
 }
 

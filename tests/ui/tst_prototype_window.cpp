@@ -14,6 +14,7 @@
 #include <QAbstractItemModel>
 #include <QAccessible>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QGuiApplication>
 #include <QImage>
@@ -22,11 +23,13 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QMap>
+#include <QLockFile>
 #include <QMutex>
 #include <QMutexLocker>
 #include <QQmlApplicationEngine>
 #include <QQmlComponent>
 #include <QQmlError>
+#include <QQmlProperty>
 #include <QQuickItem>
 #include <QQuickStyle>
 #include <QQuickWindow>
@@ -364,6 +367,12 @@ class PrototypeWindowTest : public QObject {
     void tileDisplayNameEditingAndRestart();
     void tileDisplayNameValidationAndCancellation();
     void tileDisplayNameSharedTargetAliases();
+    void layoutImportPreviewAndRestore();
+    void layoutImportCancellationAndProtection();
+    void layoutImportFailureAndExitFence();
+    void layoutImportFilePickerOwnership();
+    void layoutImportDialogThemeAndKeyboard();
+    void layoutImportMinimumPanel();
     void contextMenuShortcutsRespectFocus();
     void tileNameMouseContextFromSearchRestoresFocus();
 
@@ -388,6 +397,7 @@ class PrototypeWindowTest : public QObject {
     void openGroupMenu(const QString& groupId);
     void chooseGroupAction(const QString& itemName);
     void submitGroupName(const QString& name);
+    void captureLayoutImportFrame(const QString& state);
     QVariant modelValue(int row, const QByteArray& role) const;
 
     xdstarter::TileGrid grid_;
@@ -2954,12 +2964,54 @@ void PrototypeWindowTest::tileNamesAreLiteralText() {
     auto data = tile->property("tile").toMap();
     const auto literal = QStringLiteral("<b>工具 Tools</b>");
     data.insert(QStringLiteral("name"), literal);
+    data.insert(QStringLiteral("symbol"), QStringLiteral("<b>X</b>"));
     QVERIFY(tile->setProperty("tile", data));
     auto* label = visualItem(tile, QStringLiteral("tileLabel"));
     auto* tooltip = tile->findChild<QObject*>(QStringLiteral("tileToolTip"));
     QVERIFY(label && tooltip);
     QCOMPARE(label->property("text").toString(), literal);
     QCOMPARE(label->property("textFormat").toInt(), int(Qt::PlainText));
+    auto* symbol = visualItem(tile, QStringLiteral("tileSymbol"));
+    QVERIFY(symbol);
+    QCOMPARE(symbol->property("text").toString(), QStringLiteral("<b>X</b>"));
+    QCOMPARE(symbol->property("textFormat").toInt(), int(Qt::PlainText));
+    const auto symbolBounds = symbol->mapRectToItem(tile, QRectF(QPointF{}, symbol->size()));
+    QVERIFY2(QRectF(QPointF{}, tile->size()).contains(symbolBounds),
+             qPrintable(QStringLiteral("Literal symbol bounds %1,%2 %3x%4 exceed tile %5x%6")
+                            .arg(symbolBounds.x())
+                            .arg(symbolBounds.y())
+                            .arg(symbolBounds.width())
+                            .arg(symbolBounds.height())
+                            .arg(tile->width())
+                            .arg(tile->height())));
+    data.insert(QStringLiteral("symbol"), QString(16, QLatin1Char('W')));
+    QVERIFY(tile->setProperty("tile", data));
+    const auto longSymbolBounds = symbol->mapRectToItem(tile, QRectF(QPointF{}, symbol->size()));
+    QVERIFY2(QRectF(QPointF{}, tile->size()).contains(longSymbolBounds),
+             qPrintable(QStringLiteral("16-character symbol bounds %1,%2 %3x%4 exceed tile %5x%6")
+                            .arg(longSymbolBounds.x())
+                            .arg(longSymbolBounds.y())
+                            .arg(longSymbolBounds.width())
+                            .arg(longSymbolBounds.height())
+                            .arg(tile->width())
+                            .arg(tile->height())));
+    const auto geometryBefore = tileGeometries();
+    for (const auto& id : {QStringLiteral("daily-small-1"), QStringLiteral("work-wide-long")}) {
+        auto* other = item(QStringLiteral("tile-") + id);
+        QVERIFY(other);
+        auto otherData = other->property("tile").toMap();
+        otherData.insert(QStringLiteral("symbol"), QString(16, QLatin1Char('W')));
+        QVERIFY(other->setProperty("tile", otherData));
+        auto* otherSymbol = visualItem(other, QStringLiteral("tileSymbol"));
+        QVERIFY(otherSymbol);
+        QCOMPARE(otherSymbol->width(), other->property("iconSizeDip").toReal());
+        QCOMPARE(otherSymbol->height(), other->property("iconSizeDip").toReal());
+        const auto bounds =
+            otherSymbol->mapRectToItem(other, QRectF(QPointF{}, otherSymbol->size()));
+        QVERIFY(QRectF(QPointF{}, other->size()).contains(bounds));
+        QCOMPARE(otherSymbol->property("textFormat").toInt(), int(Qt::PlainText));
+    }
+    QCOMPARE(tileGeometries(), geometryBefore);
     auto* tipText = tooltip->property("contentItem").value<QQuickItem*>();
     QVERIFY(tipText);
     QVERIFY(tipText->property("text").toString().contains(literal));
@@ -3172,6 +3224,407 @@ void PrototypeWindowTest::tileDisplayNameSharedTargetAliases() {
     QCOMPARE(backup.readAll(), bytes);
     QCOMPARE(service_->snapshot().value(QStringLiteral("targets")), targetsBefore);
     destroyWindow();
+}
+
+void PrototypeWindowTest::layoutImportPreviewAndRestore() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = directory.filePath(QStringLiteral("current.json"));
+    const auto source = directory.filePath(QStringLiteral("layout & preview.json"));
+    xdstarter::PrototypeService sample(grid_);
+    auto replacement = sample.snapshot();
+    replacement.insert(QStringLiteral("preferences"),
+                       QJsonObject{{QStringLiteral("theme"), QStringLiteral("light")}});
+    QFile input(source);
+    QVERIFY(input.open(QIODevice::WriteOnly));
+    QVERIFY(input.write(QJsonDocument(replacement).toJson()) > 0);
+    input.close();
+    destroyWindow();
+    createWindow(path, false);
+    const auto before = service_->snapshot();
+    QVERIFY(controller_->layoutImportSupported());
+    QVERIFY(controller_->stageLayoutImport(QUrl::fromLocalFile(source)));
+    auto* dialog = window_->findChild<QObject*>(QStringLiteral("layoutImportDialog"));
+    QVERIFY(dialog);
+    QVERIFY(QMetaObject::invokeMethod(dialog, "open"));
+    QTRY_VERIFY(!controller_->importBusy());
+    QCOMPARE(controller_->importPreview().value(QStringLiteral("groups")).toInt(), 3);
+    QCOMPARE(controller_->importPreview().value(QStringLiteral("tiles")).toInt(), 15);
+    QVERIFY(item(QStringLiteral("layoutImportCounts"))->isVisible());
+    QCOMPARE(item(QStringLiteral("layoutImportSource"))->property("textFormat").toInt(), 0);
+    QCOMPARE(item(QStringLiteral("layoutImportSource"))->property("text").toString(),
+             QFileInfo(source).path());
+    QCOMPARE(item(QStringLiteral("layoutImportFileName"))->property("text").toString(),
+             QFileInfo(source).fileName());
+    auto* sourceAccessible =
+        QAccessible::queryAccessibleInterface(item(QStringLiteral("layoutImportFileName")));
+    QVERIFY(sourceAccessible);
+    QCOMPARE(sourceAccessible->text(QAccessible::Description), source);
+    QCOMPARE(service_->snapshot(), before);
+    // Confirm exactly the immutable preview even if the selected file changes afterward.
+    QVERIFY(input.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    input.write("invalid after preview");
+    input.close();
+    click(item(QStringLiteral("layoutImportConfirmButton")));
+    QTRY_VERIFY(!controller_->importBusy());
+    QCOMPARE(service_->snapshot(), replacement);
+    QVERIFY(!controller_->darkTheme());
+    QVERIFY(!dialog->property("visible").toBool());
+    QVERIFY(controller_->flushSave());
+    destroyWindow();
+    createWindow(path, false);
+    QCOMPARE(service_->snapshot(), replacement);
+    // The default has no file to preserve until the first actual import write. Make a
+    // legitimate current edit; restore uses its cached backup despite the flush changing it.
+    controller_->setDarkTheme(true);
+    QVERIFY(controller_->flushSave());
+    QVERIFY(controller_->stageBackupRestore());
+    QTRY_VERIFY(!controller_->importBusy());
+    QVERIFY(!controller_->importPreview().isEmpty());
+    QVERIFY(controller_->confirmLayoutImport());
+    QTRY_VERIFY(!controller_->importBusy());
+    QCOMPARE(service_->snapshot(), replacement);
+    QVERIFY(!controller_->darkTheme());
+}
+
+void PrototypeWindowTest::layoutImportCancellationAndProtection() {
+    QTemporaryDir directory;
+    const auto path = directory.filePath(QStringLiteral("current.json"));
+    const auto source = directory.filePath(QStringLiteral("source.json"));
+    xdstarter::PrototypeService sample(grid_);
+    QVERIFY(xdstarter::LayoutStore(source).save(sample.snapshot()).success);
+    // Smoke/sample controllers reject at the C++ boundary even with a configured path.
+    QVERIFY(!controller_->layoutImportSupported());
+    QVERIFY(!controller_->stageLayoutImport(QUrl::fromLocalFile(source)));
+    destroyWindow();
+    createWindow(path, true);
+    QVERIFY(!controller_->layoutImportSupported());
+    QVERIFY(!controller_->stageBackupRestore());
+    destroyWindow();
+    createWindow(path, false);
+    const auto before = service_->snapshot();
+    QVERIFY(
+        !controller_->stageLayoutImport(QUrl(QStringLiteral("https://example.test/layout.json"))));
+    QVERIFY(controller_->stageLayoutImport(QUrl::fromLocalFile(source)));
+    controller_->cancelLayoutImport();
+    QTRY_VERIFY(!controller_->importBusy());
+    QVERIFY(controller_->importPreview().isEmpty());
+    QVERIFY(!controller_->confirmLayoutImport());
+    QCOMPARE(service_->snapshot(), before);
+    QVERIFY(controller_->stageLayoutImport(QUrl::fromLocalFile(source)));
+    QTRY_VERIFY(!controller_->importBusy());
+    QVERIFY(!controller_->importPreview().isEmpty());
+    auto* dialog = window_->findChild<QObject*>(QStringLiteral("layoutImportDialog"));
+    QVERIFY(QMetaObject::invokeMethod(dialog, "open"));
+    QTRY_VERIFY(dialog->property("opened").toBool());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!dialog->property("visible").toBool());
+    QVERIFY(controller_->importPreview().isEmpty());
+    QVERIFY(window_->isVisible());
+    QVERIFY(controller_->stageLayoutImport(QUrl::fromLocalFile(source)));
+    QTRY_VERIFY(!controller_->importBusy());
+    controller_->setDarkTheme(false); // A legitimate new revision invalidates the preview.
+    QVERIFY(controller_->importPreview().isEmpty());
+    QVERIFY(!controller_->confirmLayoutImport());
+    QVERIFY(controller_->flushSave());
+    // Future selected files are refused without making this current layout read-only.
+    QFile input(source);
+    QVERIFY(input.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    input.write("{\"schemaVersion\":999}");
+    input.close();
+    QVERIFY(controller_->stageLayoutImport(QUrl::fromLocalFile(source)));
+    QTRY_VERIFY(!controller_->importBusy());
+    QVERIFY(!controller_->importError().isEmpty());
+    QVERIFY(!controller_->readOnly());
+    destroyWindow();
+    QFile current(path);
+    QVERIFY(current.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    current.write("{\"schemaVersion\":999}");
+    current.close();
+    createWindow(path, false);
+    QVERIFY(controller_->readOnly());
+    QVERIFY(!controller_->stageLayoutImport(QUrl::fromLocalFile(source)));
+    QVERIFY(!controller_->stageBackupRestore());
+    QVERIFY(!controller_->confirmLayoutImport());
+}
+
+void PrototypeWindowTest::layoutImportFailureAndExitFence() {
+    QTemporaryDir directory;
+    const auto path = directory.filePath(QStringLiteral("current.json"));
+    const auto source = directory.filePath(QStringLiteral("source.json"));
+    xdstarter::PrototypeService sample(grid_);
+    const auto replacement = sample.snapshot();
+    QVERIFY(xdstarter::LayoutStore(source).save(replacement).success);
+    destroyWindow();
+    const auto catalogState = std::make_shared<CatalogTestState>();
+    createWindow(path, false, catalogState);
+    pinFirstApplication(catalogState);
+    const auto tileId = controller_->tiles().first().toMap().value(QStringLiteral("id")).toString();
+    QVERIFY(controller_->renameTile(tileId, QStringLiteral("有效的先前名称")));
+    controller_->setEditMode(true);
+    QVERIFY(!controller_->createGroup(QStringLiteral("尚未保存的合法编辑")).isEmpty());
+    QVERIFY(controller_->stageLayoutImport(QUrl::fromLocalFile(source)));
+    QTRY_VERIFY(!controller_->importBusy());
+    const auto before = service_->snapshot();
+    // A competing lock refuses the transaction, with no replacement publication.
+    QLockFile lock(path + QStringLiteral(".lock"));
+    QVERIFY(lock.tryLock(0));
+    QVERIFY(controller_->confirmLayoutImport());
+    QVERIFY(!controller_->renameTile(tileId, QStringLiteral("被阻止")));
+    QVERIFY(!controller_->resetTileDisplayName(tileId));
+    QVERIFY(!controller_->moveTile(tileId, QStringLiteral("default"), 2, 0));
+    QVERIFY(!controller_->resizeTile(tileId, QStringLiteral("small")));
+    QVERIFY(!controller_->unpinTile(tileId));
+    QVERIFY(controller_->createGroup(QStringLiteral("被阻止")).isEmpty());
+    controller_->setDarkTheme(false);
+    QVERIFY(controller_->darkTheme());
+    QTRY_VERIFY(!controller_->importBusy());
+    QCOMPARE(service_->snapshot(), before);
+    QVERIFY(!controller_->importError().isEmpty());
+    lock.unlock();
+    // Queue an autosave, then an import, then immediately flush without pumping its
+    // GUI completion. The worker fence must publish import before considering old memory.
+    QVERIFY(controller_->stageLayoutImport(QUrl::fromLocalFile(source)));
+    QTRY_VERIFY(!controller_->importBusy());
+    controller_->requestSave();
+    // Do not pump GUI events between the old save and confirmation: its completion
+    // remains queued while the worker executes import and the shutdown fence.
+    QVERIFY(controller_->confirmLayoutImport());
+    QVERIFY(controller_->flushSave());
+    QCOMPARE(service_->snapshot(), replacement);
+    QCOMPARE(xdstarter::LayoutStore(path).load(before).snapshot, replacement);
+    const auto successStatus = controller_->persistenceStatus();
+    QCoreApplication::sendPostedEvents();
+    QCoreApplication::processEvents();
+    QVERIFY(!controller_->saving());
+    QCOMPARE(controller_->persistenceStatus(), successStatus);
+    QCOMPARE(service_->snapshot(), replacement);
+    QCOMPARE(catalogState->launches.load(), 0);
+    destroyWindow();
+    createWindow(path, false);
+    QCOMPARE(service_->snapshot(), replacement);
+    // Detect a newer destination appearing between preview and confirmation.
+    QVERIFY(controller_->stageLayoutImport(QUrl::fromLocalFile(source)));
+    QTRY_VERIFY(!controller_->importBusy());
+    QFile current(path);
+    QVERIFY(current.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    const QByteArray future("{\"schemaVersion\":999}");
+    current.write(future);
+    current.close();
+    const auto currentMemory = service_->snapshot();
+    QVERIFY(controller_->confirmLayoutImport());
+    QTRY_VERIFY(!controller_->importBusy());
+    QVERIFY(controller_->readOnly());
+    QCOMPARE(service_->snapshot(), currentMemory);
+    QVERIFY(current.open(QIODevice::ReadOnly));
+    QCOMPARE(current.readAll(), future);
+}
+
+void PrototypeWindowTest::layoutImportFilePickerOwnership() {
+    QTemporaryDir directory;
+    destroyWindow();
+    createWindow(directory.filePath(QStringLiteral("current.json")), false);
+    for (const bool dark : {true, false}) {
+        controller_->setDarkTheme(dark);
+        openMoreMenu();
+        QVERIFY(item(QStringLiteral("importLayoutButton"))->isEnabled());
+        click(item(QStringLiteral("importLayoutButton")));
+        auto* picker = window_->findChild<QObject*>(QStringLiteral("layoutFileDialog"));
+        QVERIFY(picker);
+        QTRY_VERIFY(picker->property("visible").toBool());
+        // ReadOnly (0x10) is the only requested option. Let Qt use the native
+        // platform dialog instead of requiring any particular Quick implementation.
+        QCOMPARE(picker->property("options").toInt(), 0x10);
+        QCOMPARE(picker->property("parentWindow").value<QWindow*>(),
+                 static_cast<QWindow*>(window_));
+        QCOMPARE(picker->property("modality").toInt(), int(Qt::WindowModal));
+        QVERIFY(window_->property("internalPopupVisible").toBool());
+        QVERIFY(window_->property("dismissalBlocked").toBool());
+        // The offscreen backend may use a fallback. Native HWND ownership and
+        // focus handoffs require a separate Windows product-window acceptance.
+        if (dark)
+            QVERIFY(QMetaObject::invokeMethod(picker, "reject"));
+        else
+            QVERIFY(QMetaObject::invokeMethod(window_, "prepareForDismissal"));
+        QTRY_VERIFY(!picker->property("visible").toBool());
+        QVERIFY(!window_->property("internalPopupVisible").toBool());
+        QVERIFY(!window_->property("dismissalBlocked").toBool());
+        QVERIFY(window_->isVisible());
+    }
+}
+
+void PrototypeWindowTest::layoutImportDialogThemeAndKeyboard() {
+    QTemporaryDir directory;
+    const auto path = directory.filePath(QStringLiteral("current.json"));
+    const auto source = directory.filePath(QStringLiteral("source.json"));
+    xdstarter::PrototypeService sample(grid_);
+    auto replacement = sample.snapshot();
+    destroyWindow();
+    createWindow(path, false);
+    for (const bool dark : {true, false}) {
+        controller_->setDarkTheme(dark);
+        replacement.insert(QStringLiteral("preferences"),
+                           QJsonObject{{QStringLiteral("theme"),
+                                        dark ? QStringLiteral("dark") : QStringLiteral("light")}});
+        QVERIFY(xdstarter::LayoutStore(source).save(replacement).success);
+        QVERIFY(controller_->stageLayoutImport(QUrl::fromLocalFile(source)));
+        QTRY_VERIFY(!controller_->importBusy());
+        auto* dialog = window_->findChild<QObject*>(QStringLiteral("layoutImportDialog"));
+        QVERIFY(QMetaObject::invokeMethod(dialog, "open"));
+        QTRY_VERIFY(dialog->property("opened").toBool());
+        auto* cancel = item(QStringLiteral("layoutImportCancelButton"));
+        auto* confirm = item(QStringLiteral("layoutImportConfirmButton"));
+        QVERIFY(cancel && confirm);
+        QCOMPARE(confirm->height(), 36.0);
+        confirm->forceActiveFocus(Qt::TabFocusReason);
+        QTRY_VERIFY(confirm->hasActiveFocus());
+        const auto background = confirm->property("background").value<QQuickItem*>();
+        QVERIFY(background);
+        QCOMPARE(background->property("radius").toReal(), 6.0);
+        // Read the grouped border through QML's public object metadata.
+        QQmlProperty focusBorder(background, QStringLiteral("border.width"));
+        QCOMPARE(focusBorder.read().toReal(), 2.0);
+        captureLayoutImportFrame(dark ? QStringLiteral("dark-import-preview")
+                                      : QStringLiteral("light-import-preview"));
+        cancel->forceActiveFocus(Qt::TabFocusReason);
+        QTest::keyClick(window_, Qt::Key_Return);
+        QTRY_VERIFY(!dialog->property("visible").toBool());
+        QVERIFY(controller_->importPreview().isEmpty());
+        QVERIFY(controller_->stageLayoutImport(QUrl::fromLocalFile(source)));
+        QTRY_VERIFY(!controller_->importBusy());
+        QVERIFY(QMetaObject::invokeMethod(dialog, "open"));
+        QTRY_VERIFY(dialog->property("opened").toBool());
+        // Closing the parent cancels this preview and cannot later publish its read.
+        QVERIFY(QMetaObject::invokeMethod(window_, "prepareForDismissal"));
+        QVERIFY(!dialog->property("visible").toBool());
+        QVERIFY(controller_->importPreview().isEmpty());
+        QVERIFY(!window_->property("internalPopupVisible").toBool());
+        QVERIFY(QMetaObject::invokeMethod(window_, "prepareForPresentation"));
+        QVERIFY(controller_->stageLayoutImport(QUrl::fromLocalFile(source)));
+        QTRY_VERIFY(!controller_->importBusy());
+        QVERIFY(QMetaObject::invokeMethod(dialog, "open"));
+        QTRY_VERIFY(dialog->property("opened").toBool());
+        confirm->forceActiveFocus(Qt::TabFocusReason);
+        QTest::keyClick(window_, Qt::Key_Return);
+        QVERIFY(controller_->importCommitting());
+        QVERIFY(!confirm->isEnabled());
+        QCOMPARE(confirm->opacity(), 0.45);
+        QTRY_VERIFY(!controller_->importBusy());
+        QCOMPARE(service_->snapshot(), replacement);
+        QCOMPARE(controller_->darkTheme(), dark);
+    }
+}
+
+void PrototypeWindowTest::layoutImportMinimumPanel() {
+    QTemporaryDir directory;
+    const auto folder =
+        directory.filePath(QString(40, QLatin1Char('a')) + u'/' + QString(40, QLatin1Char('b')) +
+                           u'/' + QString(40, QLatin1Char('c')));
+    QVERIFY(QDir().mkpath(folder));
+    const auto source = QDir(folder).filePath(QStringLiteral("layout-preview.json"));
+    xdstarter::PrototypeService sample(grid_);
+    while (sample.previewGroups().size() < xdstarter::LayoutStore::maximumGroups)
+        QVERIFY(sample.createGroup(QStringLiteral("额外分组")).success);
+    QVERIFY(xdstarter::LayoutStore(source).save(sample.snapshot()).success);
+    destroyWindow();
+    createWindow(directory.filePath(QStringLiteral("current.json")), false);
+    window_->resize(528, 528); // 480 DIP panel plus the shared 24 DIP shadow insets.
+    for (const bool dark : {true, false}) {
+        controller_->setDarkTheme(dark);
+        QVERIFY(controller_->stageLayoutImport(QUrl::fromLocalFile(source)));
+        QTRY_VERIFY(!controller_->importBusy());
+        auto* dialog = window_->findChild<QObject*>(QStringLiteral("layoutImportDialog"));
+        QVERIFY(QMetaObject::invokeMethod(dialog, "open"));
+        QTRY_VERIFY(dialog->property("opened").toBool());
+        QCOMPARE(controller_->importPreview().value(QStringLiteral("groups")).toInt(), 32);
+        const auto checkButton = [this](const QString& name) {
+            auto* button = item(name);
+            if (!button)
+                return false;
+            const auto bounds = button->mapRectToScene(QRectF(QPointF{}, button->size()));
+            return button->isVisible() && bounds.top() >= 24 &&
+                   bounds.bottom() <= window_->height() - 24 && bounds.left() >= 24 &&
+                   bounds.right() <= window_->width() - 24;
+        };
+        QTRY_VERIFY(checkButton(QStringLiteral("layoutImportConfirmButton")));
+        QVERIFY(checkButton(QStringLiteral("layoutImportCancelButton")));
+        QVERIFY(checkButton(QStringLiteral("layoutImportFileName")));
+        QCOMPARE(item(QStringLiteral("layoutImportFileName"))->property("text").toString(),
+                 QStringLiteral("layout-preview.json"));
+        captureLayoutImportFrame(dark ? QStringLiteral("dark-import-minimum")
+                                      : QStringLiteral("light-import-minimum"));
+        QVERIFY(QMetaObject::invokeMethod(dialog, "close"));
+        // Invalid file errors also leave the close action fully reachable.
+        QFile invalid(source);
+        QVERIFY(invalid.open(QIODevice::WriteOnly | QIODevice::Truncate));
+        invalid.write("not JSON");
+        invalid.close();
+        QVERIFY(controller_->stageLayoutImport(QUrl::fromLocalFile(source)));
+        QTRY_VERIFY(!controller_->importBusy());
+        QVERIFY(QMetaObject::invokeMethod(dialog, "open"));
+        QTRY_VERIFY(dialog->property("opened").toBool());
+        QVERIFY(item(QStringLiteral("layoutImportError"))->isVisible());
+        QVERIFY(checkButton(QStringLiteral("layoutImportCancelButton")));
+        QVERIFY(!item(QStringLiteral("layoutImportConfirmButton"))->isEnabled());
+        captureLayoutImportFrame(dark ? QStringLiteral("dark-import-error")
+                                      : QStringLiteral("light-import-error"));
+        QVERIFY(QMetaObject::invokeMethod(dialog, "close"));
+        QVERIFY(xdstarter::LayoutStore(source).save(sample.snapshot()).success);
+    }
+}
+
+void PrototypeWindowTest::captureLayoutImportFrame(const QString& state) {
+    const auto directory = qEnvironmentVariable("XDSTARTER_LAYOUT_IMPORT_VALIDATION_DIR");
+    if (directory.isEmpty())
+        return;
+    QVERIFY(QDir().mkpath(directory));
+    std::atomic_int frames{0};
+    const auto connection = connect(
+        window_, &QQuickWindow::afterRendering, window_, [&frames] { ++frames; },
+        Qt::DirectConnection);
+    QElapsedTimer timer;
+    timer.start();
+    while (frames.load() < 2 && timer.elapsed() < 3000) {
+        window_->requestUpdate();
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+    }
+    disconnect(connection);
+    QVERIFY2(frames.load() >= 2, "No fresh rendered frames for import capture");
+    const auto frame = window_->grabWindow();
+    QVERIFY(!frame.isNull());
+    QVERIFY(frame.save(QDir(directory).filePath(state + QStringLiteral(".png"))));
+    const auto bounds = [this](const QString& name) {
+        const auto* value = item(name);
+        if (!value)
+            return QJsonObject{};
+        const auto rectangle = value->mapRectToScene(QRectF(QPointF{}, value->size()));
+        return QJsonObject{{QStringLiteral("x"), rectangle.x()},
+                           {QStringLiteral("y"), rectangle.y()},
+                           {QStringLiteral("width"), rectangle.width()},
+                           {QStringLiteral("height"), rectangle.height()},
+                           {QStringLiteral("visible"), value->isVisible()},
+                           {QStringLiteral("enabled"), value->isEnabled()}};
+    };
+    const QJsonObject evidence{
+        {QStringLiteral("state"), state},
+        {QStringLiteral("theme"),
+         controller_->darkTheme() ? QStringLiteral("dark") : QStringLiteral("light")},
+        {QStringLiteral("qpa"), QGuiApplication::platformName()},
+        {QStringLiteral("dpr"), window_->devicePixelRatio()},
+        {QStringLiteral("windowWidthDip"), window_->width()},
+        {QStringLiteral("windowHeightDip"), window_->height()},
+        {QStringLiteral("frameWidthPixels"), frame.width()},
+        {QStringLiteral("frameHeightPixels"), frame.height()},
+        {QStringLiteral("freshFrames"), frames.load()},
+        {QStringLiteral("source"), bounds(QStringLiteral("layoutImportSource"))},
+        {QStringLiteral("fileName"), bounds(QStringLiteral("layoutImportFileName"))},
+        {QStringLiteral("counts"), bounds(QStringLiteral("layoutImportCounts"))},
+        {QStringLiteral("error"), bounds(QStringLiteral("layoutImportError"))},
+        {QStringLiteral("cancel"), bounds(QStringLiteral("layoutImportCancelButton"))},
+        {QStringLiteral("confirm"), bounds(QStringLiteral("layoutImportConfirmButton"))}};
+    QFile output(QDir(directory).filePath(state + QStringLiteral(".json")));
+    QVERIFY(output.open(QIODevice::WriteOnly));
+    QVERIFY(output.write(QJsonDocument(evidence).toJson()) > 0);
 }
 
 void PrototypeWindowTest::contextMenuShortcutsRespectFocus() {

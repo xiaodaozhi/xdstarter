@@ -1,5 +1,6 @@
 add_library(xdstarter_services STATIC prototype_service.cpp prototype_service.h layout_store.cpp
-                                        layout_store.h application_catalog.cpp application_catalog.h
+                                        layout_store.h layout_import.cpp layout_import.h
+                                        application_catalog.cpp application_catalog.h
                                         desktop_shell_service.cpp desktop_shell_service.h
                                         search_index.cpp search_index.h
                                         search_service.cpp search_service.h

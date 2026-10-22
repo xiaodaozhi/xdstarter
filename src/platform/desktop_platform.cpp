@@ -168,6 +168,10 @@ DesktopWindowMetricsResult DesktopPlatform::queryWindowMetrics(quintptr) {
     return {};
 }
 
+bool DesktopPlatform::hasOwnedForegroundWindow(quintptr) {
+    return false;
+}
+
 QScreen *DesktopPlatform::screenForAnchor(const DesktopAnchorResult &anchor) {
     const auto *application = qobject_cast<QGuiApplication *>(QCoreApplication::instance());
     if (!application || QThread::currentThread() != application->thread() ||
