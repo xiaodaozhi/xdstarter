@@ -373,6 +373,8 @@ class PrototypeWindowTest : public QObject {
     void layoutImportFilePickerOwnership();
     void layoutImportDialogThemeAndKeyboard();
     void layoutImportMinimumPanel();
+    void contextMenuShortcutsRespectFocus();
+    void tileNameMouseContextFromSearchRestoresFocus();
 
   private:
     QQuickItem* item(const QString& name) const;
@@ -3624,6 +3626,151 @@ void PrototypeWindowTest::captureLayoutImportFrame(const QString& state) {
     QFile output(QDir(directory).filePath(state + QStringLiteral(".json")));
     QVERIFY(output.open(QIODevice::WriteOnly));
     QVERIFY(output.write(QJsonDocument(evidence).toJson()) > 0);
+}
+
+void PrototypeWindowTest::contextMenuShortcutsRespectFocus() {
+    const auto state = std::make_shared<CatalogTestState>();
+    destroyWindow();
+    createWindow({}, true, state);
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 2);
+    auto* field = item(QStringLiteral("searchField"));
+    auto* menu = sizeMenu();
+    auto* pin = window_->findChild<QObject*>(QStringLiteral("pinApplicationMenu"));
+    auto* group = window_->findChild<QObject*>(QStringLiteral("groupMenu"));
+    QVERIFY(field && menu && pin && group);
+    QSignalSpy tileOpened(menu, SIGNAL(opened()));
+    QSignalSpy pinOpened(pin, SIGNAL(opened()));
+    QSignalSpy groupOpened(group, SIGNAL(opened()));
+    QVERIFY(tileOpened.isValid() && pinOpened.isValid() && groupOpened.isValid());
+    QTRY_VERIFY(field->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QVERIFY(!menu->property("visible").toBool());
+    QVERIFY(!pin->property("visible").toBool());
+    QVERIFY(!group->property("visible").toBool());
+
+    auto* tile = item(QStringLiteral("tile-work-standard-1"));
+    QVERIFY(tile);
+    tile->forceActiveFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(tile->hasActiveFocus());
+    // Only the documented exact chord is registered; extra modifiers are not stolen.
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier | Qt::ControlModifier);
+    QVERIFY(!menu->property("visible").toBool());
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QTRY_VERIFY(menu->property("opened").toBool());
+    QCOMPARE(tileOpened.count(), 1);
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QCOMPARE(tileOpened.count(), 1);
+    QVERIFY(menu->property("visible").toBool());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!menu->property("visible").toBool());
+    QTRY_VERIFY(tile->hasActiveFocus());
+
+    tile->setEnabled(false);
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QVERIFY(!menu->property("visible").toBool());
+    tile->setEnabled(true);
+    controller_->setEditMode(true);
+    beginMouseDrag(QStringLiteral("work-standard-1"));
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QVERIFY(!menu->property("visible").toBool());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!window_->property("dragActive").toBool());
+    QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, QPoint(1, 1));
+
+    field->forceActiveFocus(Qt::OtherFocusReason);
+    QInputMethodEvent preedit(QStringLiteral("ceshi"), {});
+    QCoreApplication::sendEvent(field, &preedit);
+    QTRY_VERIFY(field->property("inputMethodComposing").toBool());
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QVERIFY(!menu->property("visible").toBool());
+    QVERIFY(!pin->property("visible").toBool());
+    QInputMethodEvent cancelComposition;
+    QCoreApplication::sendEvent(field, &cancelComposition);
+    QTRY_VERIFY(!field->property("inputMethodComposing").toBool());
+
+    auto* application = item(QStringLiteral("applicationLaunch-") + state->applications.first().id);
+    QVERIFY(application);
+    application->forceActiveFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(application->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QTRY_VERIFY(pin->property("opened").toBool());
+    QCOMPARE(pinOpened.count(), 1);
+    QCOMPARE(state->launches.load(), 0);
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QCOMPARE(pinOpened.count(), 1);
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!pin->property("visible").toBool());
+
+    auto* actions = item(QStringLiteral("groupActions-work"));
+    QVERIFY(actions && actions->isVisible());
+    actions->forceActiveFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(actions->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QTRY_VERIFY(group->property("opened").toBool());
+    QCOMPARE(groupOpened.count(), 1);
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QCOMPARE(groupOpened.count(), 1);
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!group->property("visible").toBool());
+
+    openMoreMenu();
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QVERIFY(!menu->property("visible").toBool());
+    QVERIFY(!pin->property("visible").toBool());
+    QVERIFY(!group->property("visible").toBool());
+    auto* more = window_->findChild<QObject*>(QStringLiteral("moreMenu"));
+    QVERIFY(more && more->property("visible").toBool());
+    QVERIFY(QMetaObject::invokeMethod(window_, "prepareForDismissal"));
+    tile->forceActiveFocus(Qt::OtherFocusReason);
+    QTRY_VERIFY(tile->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QVERIFY(!menu->property("visible").toBool());
+    QCOMPARE(tileOpened.count(), 1);
+    QCOMPARE(state->launches.load(), 0);
+}
+
+void PrototypeWindowTest::tileNameMouseContextFromSearchRestoresFocus() {
+    const auto tileId = QStringLiteral("work-standard-1");
+    auto* tile = item(QStringLiteral("tile-") + tileId);
+    auto* field = item(QStringLiteral("searchField"));
+    QVERIFY(tile && field);
+    const auto before = service_->snapshot();
+    QTRY_VERIFY(field->hasActiveFocus());
+    // Deliberately do not use openSizeMenu(), which first focuses the tile itself.
+    QTest::mouseClick(window_, Qt::RightButton, Qt::NoModifier,
+                      tile->mapToScene(tile->boundingRect().center()).toPoint());
+    QTRY_VERIFY(sizeMenu()->property("opened").toBool());
+    click(item(QStringLiteral("renameTileItem")));
+    auto* dialog = window_->findChild<QObject*>(QStringLiteral("tileNameDialog"));
+    QVERIFY(dialog);
+    QTRY_VERIFY(dialog->property("opened").toBool());
+    auto* name = item(QStringLiteral("tileNameField"));
+    QVERIFY(name);
+    QTRY_VERIFY(name->hasActiveFocus());
+    QVERIFY(name->setProperty("text", QStringLiteral("未提交的草稿")));
+    click(item(QStringLiteral("tileNameCancelButton")));
+    QTRY_VERIFY(!dialog->property("visible").toBool());
+    QTRY_VERIFY(tile->hasActiveFocus());
+    QCOMPARE(service_->snapshot(), before);
+
+    field->forceActiveFocus(Qt::OtherFocusReason);
+    QTRY_VERIFY(field->hasActiveFocus());
+    QTest::mouseClick(window_, Qt::RightButton, Qt::NoModifier,
+                      tile->mapToScene(tile->boundingRect().center()).toPoint());
+    QTRY_VERIFY(sizeMenu()->property("opened").toBool());
+    click(item(QStringLiteral("renameTileItem")));
+    QTRY_VERIFY(dialog->property("opened").toBool());
+    QTRY_VERIFY(name->hasActiveFocus());
+    QVERIFY(name->setProperty("text", QStringLiteral("鼠标修改名称")));
+    QTest::keyClick(window_, Qt::Key_Return);
+    QTRY_VERIFY(!dialog->property("visible").toBool());
+    QTRY_VERIFY(item(QStringLiteral("tile-") + tileId)->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QTRY_VERIFY(sizeMenu()->property("opened").toBool());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!sizeMenu()->property("visible").toBool());
+    QTest::keyClick(window_, Qt::Key_Menu);
+    QTRY_VERIFY(sizeMenu()->property("opened").toBool());
 }
 
 int main(int argc, char* argv[]) {

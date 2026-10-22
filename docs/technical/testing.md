@@ -34,6 +34,8 @@ GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查�
 
 ### 正式构建与覆盖范围
 
+2026-10-22 原生验收发现：Qt 6.8.2 的 [Windows 键盘映射](https://github.com/qt/qtbase/blob/v6.8.2/src/plugins/platforms/windows/qwindowskeymapper.cpp#L1164-L1167)在未注册对应快捷键时将 Shift+F10 留给系统，仅用 `Keys.onPressed` 的离屏用例不能证明该原生入口有效。现通过公共 QML `Shortcut` 注册窗口内精确组合，仅在当前磁贴、目录项或分组管理按钮聚焦，且没有内部弹层、拖拽、搜索或预编辑时启用；保留菜单键路径，不添加 Win32／私有 API。追加直接从搜索框右键命名／取消／返回焦点及快捷键门控用例。补修正式 Qt **6.8.2**／MSVC **19.29.30153.0 v142**／SDK **19041** 的 Release、QML lint、**12/12 CTest（37.66 秒）**通过，GUI **49/49**（新增 `contextMenuShortcutsRespectFocus`、`tileNameMouseContextFromSearchRestoresFocus`）、host **34/34**；日志 `build/issue9-native-context-shortcut-final.log`。产品 SHA-256 为 `e02b22b93cae03f5e2165485cc6f100402c3677e5b4c4e1866cd5e733ba3f984`，GUI 为 `c2b31beb09ac7920bec7fe23a203d161f72693c01614e20e7ed387767f08a0c8`；其原生 Windows 按键、托盘和独立产品重启仍需补修后的实际验收，下面历史结果不替代该门槛。
+
 正式入口 `./scripts/build-windows.ps1 -Preset app-release` 使用 Qt **6.8.2**、MSVC **19.29.30153.0／v142**、Windows SDK **10.0.19041.0**。合入 PR #38 前的日志 `build/issue9-tile-names-delivery-final.log` 完成 Release、QML lint 与 **12/12 CTest（27.80 秒）**；GUI **47/47**，host **34/34**。QML lint 没有诊断；没有将 Qt SDK 既有编译警告写为整个构建零警告。文档／素材检查通过，255 项开发素材未重建；`tests/tooling` **13/13** 通过。
 
 | 合入 PR #38 前的显示名称程序 | SHA-256 |
@@ -78,9 +80,27 @@ GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查�
 
 为验证测试确能检出原缺陷，临时仅将 `MenuChrome.qml` 换回 `61c9376` 的旧绘制顺序，保留同一测试和其余源码。旧版在四角检查失败：`(31,24)` 实际 `#601d282d`，同色实心参考 `#60323d48`，最大通道差 **27**；GUI **43 通过、1 失败**，其余十一套 CTest 通过。日志 `build/issue31-negative-regression.log` 保留失败身份。随后通过 finally 恢复修复源码并重新构建，才得到上面的最终通过和程序散列。
 
-本节只记录本轮已完成的构建、离屏回归与负向证明；Windows 原生五档缩放、完整窗口抓帧和目视结果由 #31 的后续验收记录补充，不将历史原生截图视为本次修复通过。
+上述 2026-10-21 记录仅包含当时已完成的构建、离屏回归与负向证明；Windows 原生五档缩放、完整窗口抓帧和目视结果由下方后续验收记录补充，不将历史原生截图视为本次修复通过。
 
-随后以 `8358e1d` 合入主线的应用异常修复 #38，保留两轮证据及其原始程序身份。该集成版本的正式 Release、QML lint 与 **12/12 CTest（27.21 秒）**再次通过（`build/issue31-build-main-sync.log`）；此时产品为 `0b87f7665beefa3959eb6d036b93d0eb1bc49aba1d055b13ce6460ee909ceabd`，GUI 为 `e500821c559f3db25209fe4962b0f954e1e690107b9560a9acb1bce7725e699a`。上表及离屏 PNG 保留集成前身份，不能将其散列改标为此新程序。集成后的原生验收仍未完成。
+随后以 `8358e1d` 合入主线的应用异常修复 #38，保留两轮证据及其原始程序身份。该集成版本的正式 Release、QML lint 与 **12/12 CTest（27.21 秒）**再次通过（`build/issue31-build-main-sync.log`）；此时产品为 `0b87f7665beefa3959eb6d036b93d0eb1bc49aba1d055b13ce6460ee909ceabd`，GUI 为 `e500821c559f3db25209fe4962b0f954e1e690107b9560a9acb1bce7725e699a`。上表及离屏 PNG 保留集成前身份，不能将其散列改标为此新程序。该记录提交时，集成后的原生验收尚未完成；后续结果如下。
+
+### 2026-10-22：Windows 原生五档缩放与完整窗口验收
+
+本轮继续使用上述集成版本，源码 head 为 `8f405c0b3e5be0f657bca7e51f8fc27df2346dc6`，产品与 GUI 散列均未改变。Windows kernel **10.0.26300**、Qt **6.8.2**、Windows QPA／**Direct3D 11** 的 `customChromePixels` 五档专项均通过，每档为初始化、专项和清理共 **3/3**，不是重复运行完整 44 项 GUI。公开[原生矩阵](../design/validation/issue-31/native-matrix.json)逐主题记录实际 DPR、物理尺寸和曲线结果。
+
+| 请求有效缩放 | 实际 DPR（约） | 每主题曲线样本 | 最大 RGBA 通道差（深／浅） |
+| --- | --- | --- | --- |
+| 100% | 1 | 52 | 0／0 |
+| 125% | 1.25 | 76 | 0／0 |
+| 150% | 1.5 | 116 | 0／0 |
+| 175% | 1.75 | 172 | 0／0 |
+| 200% | 2 | 228 | 0／0 |
+
+最初两次 `scale-100` 与 `verified-scale-100` 配置实际仍为 DPR 1.5，没有达到请求的 100%，因此不计入五档通过；原始 PNG／JSON／日志保留在本地。最终 `calibrated-scale-*` 先实测基础 DPR **1.5**，再为各测试进程设置 `QT_SCALE_FACTOR = 目标 DPR / 1.5`，逐图确认实际 DPR，得到上表结果。本轮不宣称 `QT_SCREEN_SCALE_FACTORS` 配置成功，没有修改 Windows 显示设置，也不代表真实系统缩放切换或完整混合 DPI 跨屏通过。全部原始工件位于 `build/validation/20261022/pr37/`。
+
+同一 GUI 的 `--native-chrome-probe` 在 DPR **1.5** 下完成 **12/12** 轮显示／隐藏：每轮首次可见与稳定后的窗口矩形相同，十二轮位置一致，可见面板左侧和底部间距均为 **8 DIP**，自绘窗口标志检查通过。公开[原生 probe](../design/validation/issue-31/native-chrome-probe.json)保留实际几何并匿名化显示器型号；`errors` 与 `qmlWarnings` 均为空。该 probe 查询真实工作区、派发模拟托盘信号，没有注册或点击真实托盘，没有读取日常布局或真实应用目录。
+
+深浅主题完整窗口均为 **1542×1092 RGBA PNG**：外窗四角 alpha 为 **0**，近／远阴影 alpha 为 **28／3**，面板 alpha 为 **255**。已分别目视核对[浅色窗口](../design/validation/issue-31/light-native-chrome.png)和[深色窗口](../design/validation/issue-31/dark-native-chrome.png)：四角连续、曲线与直边边框对比一致，保持单层圆角与渐变阴影，侧栏未覆盖外轮廓。两图只含匿名内存样例磁贴，不包含真实目录、用户路径或私人桌面；其原始 PNG 散列包含在矩阵中。源码与证据的独立只读审查未发现已确认 P1/P2。此处完成 #31 的原生外观范围，不扩展为真实托盘点击、产品独立重启、系统接管或其他 Windows 版本验收。
 
 ## 应用目录异常验收（Issue #7）
 

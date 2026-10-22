@@ -63,6 +63,11 @@ Button {
             selected(tile.name);
     }
 
+    function requestContextMenu(): void {
+        const position = tileButton.mapToItem(null, width / 2, height / 2);
+        contextRequested(tile.id, tile.size, position.x, position.y);
+    }
+
     onClicked: activate()
     onActiveFocusChanged: {
         if (activeFocus)
@@ -70,9 +75,8 @@ Button {
     }
 
     Keys.onPressed: event => {
-        if (event.key === Qt.Key_Menu || (event.key === Qt.Key_F10 && (event.modifiers & Qt.ShiftModifier))) {
-            const position = tileButton.mapToItem(null, width / 2, height / 2);
-            contextRequested(tile.id, tile.size, position.x, position.y);
+        if (event.key === Qt.Key_Menu) {
+            requestContextMenu();
             event.accepted = true;
             return;
         }

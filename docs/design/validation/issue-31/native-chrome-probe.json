@@ -1,0 +1,470 @@
+{
+  "anchorQuery": "真实 Windows 工作区查询；不使用 UIA。",
+  "buildAbi": "x86_64-little_endian-llp64",
+  "captures": [
+    {
+      "farShadowAlpha": 3,
+      "heightPx": 1092,
+      "nearShadowAlpha": 28,
+      "outerCornersAlphaZero": true,
+      "panelOpaque": true,
+      "panelSampleRgba": [
+        24,
+        35,
+        52,
+        255
+      ],
+      "saved": true,
+      "screenshot": "dark-native-chrome.png",
+      "shadowGradientPassed": true,
+      "theme": "dark",
+      "widthPx": 1542
+    },
+    {
+      "farShadowAlpha": 3,
+      "heightPx": 1092,
+      "nearShadowAlpha": 28,
+      "outerCornersAlphaZero": true,
+      "panelOpaque": true,
+      "panelSampleRgba": [
+        239,
+        245,
+        252,
+        255
+      ],
+      "saved": true,
+      "screenshot": "light-native-chrome.png",
+      "shadowGradientPassed": true,
+      "theme": "light",
+      "widthPx": 1542
+    }
+  ],
+  "completedCycles": 12,
+  "cycles": [
+    {
+      "bottomGapDip": 8,
+      "customChromeFlagsPassed": true,
+      "cycle": 1,
+      "firstVisibleGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "leftGapDip": 8,
+      "panelGeometryDip": {
+        "height": 680,
+        "width": 980,
+        "x": 8,
+        "y": 331
+      },
+      "sameMonitorPositionStable": true,
+      "screenAvailableGeometryDip": {
+        "height": 1019,
+        "width": 1600,
+        "x": 0,
+        "y": 0
+      },
+      "screenName": "anonymous-screen-1",
+      "settledWindowGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "symmetricGapPassed": true,
+      "windowDevicePixelRatio": 1.5
+    },
+    {
+      "bottomGapDip": 8,
+      "customChromeFlagsPassed": true,
+      "cycle": 2,
+      "firstVisibleGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "leftGapDip": 8,
+      "panelGeometryDip": {
+        "height": 680,
+        "width": 980,
+        "x": 8,
+        "y": 331
+      },
+      "sameMonitorPositionStable": true,
+      "screenAvailableGeometryDip": {
+        "height": 1019,
+        "width": 1600,
+        "x": 0,
+        "y": 0
+      },
+      "screenName": "anonymous-screen-1",
+      "settledWindowGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "symmetricGapPassed": true,
+      "windowDevicePixelRatio": 1.5
+    },
+    {
+      "bottomGapDip": 8,
+      "customChromeFlagsPassed": true,
+      "cycle": 3,
+      "firstVisibleGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "leftGapDip": 8,
+      "panelGeometryDip": {
+        "height": 680,
+        "width": 980,
+        "x": 8,
+        "y": 331
+      },
+      "sameMonitorPositionStable": true,
+      "screenAvailableGeometryDip": {
+        "height": 1019,
+        "width": 1600,
+        "x": 0,
+        "y": 0
+      },
+      "screenName": "anonymous-screen-1",
+      "settledWindowGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "symmetricGapPassed": true,
+      "windowDevicePixelRatio": 1.5
+    },
+    {
+      "bottomGapDip": 8,
+      "customChromeFlagsPassed": true,
+      "cycle": 4,
+      "firstVisibleGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "leftGapDip": 8,
+      "panelGeometryDip": {
+        "height": 680,
+        "width": 980,
+        "x": 8,
+        "y": 331
+      },
+      "sameMonitorPositionStable": true,
+      "screenAvailableGeometryDip": {
+        "height": 1019,
+        "width": 1600,
+        "x": 0,
+        "y": 0
+      },
+      "screenName": "anonymous-screen-1",
+      "settledWindowGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "symmetricGapPassed": true,
+      "windowDevicePixelRatio": 1.5
+    },
+    {
+      "bottomGapDip": 8,
+      "customChromeFlagsPassed": true,
+      "cycle": 5,
+      "firstVisibleGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "leftGapDip": 8,
+      "panelGeometryDip": {
+        "height": 680,
+        "width": 980,
+        "x": 8,
+        "y": 331
+      },
+      "sameMonitorPositionStable": true,
+      "screenAvailableGeometryDip": {
+        "height": 1019,
+        "width": 1600,
+        "x": 0,
+        "y": 0
+      },
+      "screenName": "anonymous-screen-1",
+      "settledWindowGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "symmetricGapPassed": true,
+      "windowDevicePixelRatio": 1.5
+    },
+    {
+      "bottomGapDip": 8,
+      "customChromeFlagsPassed": true,
+      "cycle": 6,
+      "firstVisibleGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "leftGapDip": 8,
+      "panelGeometryDip": {
+        "height": 680,
+        "width": 980,
+        "x": 8,
+        "y": 331
+      },
+      "sameMonitorPositionStable": true,
+      "screenAvailableGeometryDip": {
+        "height": 1019,
+        "width": 1600,
+        "x": 0,
+        "y": 0
+      },
+      "screenName": "anonymous-screen-1",
+      "settledWindowGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "symmetricGapPassed": true,
+      "windowDevicePixelRatio": 1.5
+    },
+    {
+      "bottomGapDip": 8,
+      "customChromeFlagsPassed": true,
+      "cycle": 7,
+      "firstVisibleGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "leftGapDip": 8,
+      "panelGeometryDip": {
+        "height": 680,
+        "width": 980,
+        "x": 8,
+        "y": 331
+      },
+      "sameMonitorPositionStable": true,
+      "screenAvailableGeometryDip": {
+        "height": 1019,
+        "width": 1600,
+        "x": 0,
+        "y": 0
+      },
+      "screenName": "anonymous-screen-1",
+      "settledWindowGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "symmetricGapPassed": true,
+      "windowDevicePixelRatio": 1.5
+    },
+    {
+      "bottomGapDip": 8,
+      "customChromeFlagsPassed": true,
+      "cycle": 8,
+      "firstVisibleGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "leftGapDip": 8,
+      "panelGeometryDip": {
+        "height": 680,
+        "width": 980,
+        "x": 8,
+        "y": 331
+      },
+      "sameMonitorPositionStable": true,
+      "screenAvailableGeometryDip": {
+        "height": 1019,
+        "width": 1600,
+        "x": 0,
+        "y": 0
+      },
+      "screenName": "anonymous-screen-1",
+      "settledWindowGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "symmetricGapPassed": true,
+      "windowDevicePixelRatio": 1.5
+    },
+    {
+      "bottomGapDip": 8,
+      "customChromeFlagsPassed": true,
+      "cycle": 9,
+      "firstVisibleGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "leftGapDip": 8,
+      "panelGeometryDip": {
+        "height": 680,
+        "width": 980,
+        "x": 8,
+        "y": 331
+      },
+      "sameMonitorPositionStable": true,
+      "screenAvailableGeometryDip": {
+        "height": 1019,
+        "width": 1600,
+        "x": 0,
+        "y": 0
+      },
+      "screenName": "anonymous-screen-1",
+      "settledWindowGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "symmetricGapPassed": true,
+      "windowDevicePixelRatio": 1.5
+    },
+    {
+      "bottomGapDip": 8,
+      "customChromeFlagsPassed": true,
+      "cycle": 10,
+      "firstVisibleGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "leftGapDip": 8,
+      "panelGeometryDip": {
+        "height": 680,
+        "width": 980,
+        "x": 8,
+        "y": 331
+      },
+      "sameMonitorPositionStable": true,
+      "screenAvailableGeometryDip": {
+        "height": 1019,
+        "width": 1600,
+        "x": 0,
+        "y": 0
+      },
+      "screenName": "anonymous-screen-1",
+      "settledWindowGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "symmetricGapPassed": true,
+      "windowDevicePixelRatio": 1.5
+    },
+    {
+      "bottomGapDip": 8,
+      "customChromeFlagsPassed": true,
+      "cycle": 11,
+      "firstVisibleGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "leftGapDip": 8,
+      "panelGeometryDip": {
+        "height": 680,
+        "width": 980,
+        "x": 8,
+        "y": 331
+      },
+      "sameMonitorPositionStable": true,
+      "screenAvailableGeometryDip": {
+        "height": 1019,
+        "width": 1600,
+        "x": 0,
+        "y": 0
+      },
+      "screenName": "anonymous-screen-1",
+      "settledWindowGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "symmetricGapPassed": true,
+      "windowDevicePixelRatio": 1.5
+    },
+    {
+      "bottomGapDip": 8,
+      "customChromeFlagsPassed": true,
+      "cycle": 12,
+      "firstVisibleGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "leftGapDip": 8,
+      "panelGeometryDip": {
+        "height": 680,
+        "width": 980,
+        "x": 8,
+        "y": 331
+      },
+      "sameMonitorPositionStable": true,
+      "screenAvailableGeometryDip": {
+        "height": 1019,
+        "width": 1600,
+        "x": 0,
+        "y": 0
+      },
+      "screenName": "anonymous-screen-1",
+      "settledWindowGeometryDip": {
+        "height": 728,
+        "width": 1028,
+        "x": -16,
+        "y": 307
+      },
+      "symmetricGapPassed": true,
+      "windowDevicePixelRatio": 1.5
+    }
+  ],
+  "errors": [],
+  "graphicsApi": "Direct3D11",
+  "kernelVersion": "10.0.26300",
+  "noApplicationCatalog": true,
+  "noGlobalInput": true,
+  "noUserLayoutIO": true,
+  "passed": true,
+  "platformName": "windows",
+  "qmlWarnings": [],
+  "qtVersion": "6.8.2",
+  "requestedRevealHideCycles": 12,
+  "scope": "真实 Windows QPA/RHI 渲染与模拟托盘信号；未点击或注册真实系统托盘。",
+  "date": "2026-10-22",
+  "sourceHead": "8f405c0b3e5be0f657bca7e51f8fc27df2346dc6",
+  "guiSha256": "e500821c559f3db25209fe4962b0f954e1e690107b9560a9acb1bce7725e699a",
+  "productSha256": "0b87f7665beefa3959eb6d036b93d0eb1bc49aba1d055b13ce6460ee909ceabd",
+  "sanitization": "Screen model name replaced by a stable anonymous identifier; all measured geometry and rendering results preserved."
+}
