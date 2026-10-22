@@ -449,6 +449,13 @@ void DesktopWindowHost::scheduleFocusCheck() {
     if (ownsFocus()) {
         focusArmed_ = true;
         focusTimer_.stop();
+    } else if (placement_.hasOwnedForegroundWindow(window_->winId())) {
+        // An OS dialog may have no Qt focus window. Only while its actual
+        // foreground owner chain matches do we poll: a later switch to another
+        // app may emit no further Qt focus change for this native dialog.
+        focusArmed_ = true;
+        if (!focusTimer_.isActive())
+            focusTimer_.start(100);
     } else if (focusArmed_) {
         // Coalesce popup/activation handoffs; never hide a window whose initial
         // activation was denied by Windows, or resurrect a previous dismissal.
@@ -463,6 +470,10 @@ void DesktopWindowHost::checkFocus() {
         return;
     if (ownsFocus())
         return;
+    if (placement_.hasOwnedForegroundWindow(window_->winId())) {
+        focusTimer_.start(100);
+        return;
+    }
     if (window_->property("dragActive").toBool() &&
         QGuiApplication::mouseButtons().testFlag(Qt::LeftButton)) {
         // Poll only during an outstanding external-focus drag. Qt delivers the

@@ -139,6 +139,10 @@ class DesktopPlatform {
     // Short GUI-thread observation of this process's own top-level surface.
     // It does not move, show or activate the window, or query another process.
     [[nodiscard]] virtual DesktopWindowMetricsResult queryWindowMetrics(quintptr nativeHandle);
+    // Short GUI-thread observation for native dialogs without a QWindow. True
+    // only when the current foreground is this process's menu or its owned
+    // window. Unsupported adapters return false; no activation or caching.
+    [[nodiscard]] virtual bool hasOwnedForegroundWindow(quintptr menuHandle);
     // A short native GUI operation, with no Shell/COM/IO. Only a top-level window
     // owned by this process may be placed. The window's real physical size is
     // read after Qt has selected its screen, avoiding logical/native mixing.

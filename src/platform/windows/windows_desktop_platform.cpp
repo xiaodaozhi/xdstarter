@@ -669,6 +669,37 @@ DesktopWindowMetricsResult WindowsDesktopPlatform::queryWindowMetrics(quintptr n
     return {true, bounds.isValid(), bounds.size()};
 }
 
+bool WindowsDesktopPlatform::hasOwnedForegroundWindow(quintptr menuHandle) {
+    const HWND menu = reinterpret_cast<HWND>(menuHandle);
+    DWORD menuProcess = 0;
+    const DWORD menuThread = GetWindowThreadProcessId(menu, &menuProcess);
+    if (!menu || !IsWindow(menu) || !IsWindowVisible(menu) ||
+        menuProcess != GetCurrentProcessId() || menuThread != GetCurrentThreadId() ||
+        GetAncestor(menu, GA_ROOT) != menu)
+        return false;
+
+    // Qt's native IFileDialog runs on another thread and has no QWindow. Read
+    // the real foreground rather than this thread's GetFocus(); only a precise
+    // owner chain to our menu counts, never another same-process top-level.
+    const HWND foreground = GetForegroundWindow();
+    if (!foreground || !IsWindow(foreground) || !IsWindowVisible(foreground))
+        return false;
+    HWND candidate = GetAncestor(foreground, GA_ROOT);
+    for (int depth = 0; candidate && depth < 16; ++depth) {
+        DWORD process = 0;
+        if (!IsWindow(candidate) || !GetWindowThreadProcessId(candidate, &process) ||
+            process != GetCurrentProcessId())
+            return false;
+        if (candidate == menu)
+            return GetForegroundWindow() == foreground;
+        const HWND owner = GetWindow(candidate, GW_OWNER);
+        if (owner == candidate)
+            return false;
+        candidate = owner;
+    }
+    return false;
+}
+
 DesktopPlacementResult WindowsDesktopPlatform::placeWindow(quintptr nativeHandle,
                                                            const DesktopAnchorResult& anchor,
                                                            int gapPhysicalPixels, bool activate,
