@@ -1,0 +1,176 @@
+{
+  "guiSha256": "e500821c559f3db25209fe4962b0f954e1e690107b9560a9acb1bce7725e699a",
+  "sourceHead": "8f405c0b3e5be0f657bca7e51f8fc27df2346dc6",
+  "scope": "Windows QPA process effective scaling; not OS display-setting changes or real tray clicks",
+  "scales": [
+    {
+      "themes": [
+        {
+          "cornerSamples": 52,
+          "devicePixelRatio": 1.000000005,
+          "graphicsApi": 4,
+          "height": 728,
+          "maximumChannelDifference": 0,
+          "platform": "windows",
+          "theme": "light",
+          "width": 1028
+        },
+        {
+          "cornerSamples": 52,
+          "devicePixelRatio": 1.000000005,
+          "graphicsApi": 4,
+          "height": 728,
+          "maximumChannelDifference": 0,
+          "platform": "windows",
+          "theme": "dark",
+          "width": 1028
+        }
+      ],
+      "percent": 100
+    },
+    {
+      "themes": [
+        {
+          "cornerSamples": 76,
+          "devicePixelRatio": 1.249999995,
+          "graphicsApi": 4,
+          "height": 910,
+          "maximumChannelDifference": 0,
+          "platform": "windows",
+          "theme": "light",
+          "width": 1285
+        },
+        {
+          "cornerSamples": 76,
+          "devicePixelRatio": 1.249999995,
+          "graphicsApi": 4,
+          "height": 910,
+          "maximumChannelDifference": 0,
+          "platform": "windows",
+          "theme": "dark",
+          "width": 1285
+        }
+      ],
+      "percent": 125
+    },
+    {
+      "themes": [
+        {
+          "cornerSamples": 116,
+          "devicePixelRatio": 1.5,
+          "graphicsApi": 4,
+          "height": 1092,
+          "maximumChannelDifference": 0,
+          "platform": "windows",
+          "theme": "light",
+          "width": 1542
+        },
+        {
+          "cornerSamples": 116,
+          "devicePixelRatio": 1.5,
+          "graphicsApi": 4,
+          "height": 1092,
+          "maximumChannelDifference": 0,
+          "platform": "windows",
+          "theme": "dark",
+          "width": 1542
+        }
+      ],
+      "percent": 150
+    },
+    {
+      "themes": [
+        {
+          "cornerSamples": 172,
+          "devicePixelRatio": 1.750000005,
+          "graphicsApi": 4,
+          "height": 1274,
+          "maximumChannelDifference": 0,
+          "platform": "windows",
+          "theme": "light",
+          "width": 1799
+        },
+        {
+          "cornerSamples": 172,
+          "devicePixelRatio": 1.750000005,
+          "graphicsApi": 4,
+          "height": 1274,
+          "maximumChannelDifference": 0,
+          "platform": "windows",
+          "theme": "dark",
+          "width": 1799
+        }
+      ],
+      "percent": 175
+    },
+    {
+      "themes": [
+        {
+          "cornerSamples": 228,
+          "devicePixelRatio": 1.999999995,
+          "graphicsApi": 4,
+          "height": 1456,
+          "maximumChannelDifference": 0,
+          "platform": "windows",
+          "theme": "light",
+          "width": 2056
+        },
+        {
+          "cornerSamples": 228,
+          "devicePixelRatio": 1.999999995,
+          "graphicsApi": 4,
+          "height": 1456,
+          "maximumChannelDifference": 0,
+          "platform": "windows",
+          "theme": "dark",
+          "width": 2056
+        }
+      ],
+      "percent": 200
+    }
+  ],
+  "productSha256": "0b87f7665beefa3959eb6d036b93d0eb1bc49aba1d055b13ce6460ee909ceabd",
+  "date": "2026-10-22",
+  "testFunction": "customChromePixels",
+  "perScaleResult": {
+    "passed": 3,
+    "failed": 0,
+    "skipped": 0,
+    "scope": "init, customChromePixels, cleanup; not the full GUI suite"
+  },
+  "calibration": {
+    "nativeBaseDpr": 1.5,
+    "environment": "QT_SCALE_FACTOR = targetDpr / nativeBaseDpr",
+    "actualDprVerifiedFromCaptures": true,
+    "systemDisplaySettingsChanged": false,
+    "qtScreenScaleFactorsSuccessClaimed": false
+  },
+  "excludedAttempts": [
+    {
+      "directory": "scale-100",
+      "requestedDpr": 1,
+      "observedDpr": 1.5,
+      "acceptedFor100Percent": false,
+      "reason": "Process scaling configuration did not produce the requested DPR; original local artifacts retained."
+    },
+    {
+      "directory": "verified-scale-100",
+      "requestedDpr": 1,
+      "observedDpr": 1.5,
+      "acceptedFor100Percent": false,
+      "reason": "Process scaling configuration did not produce the requested DPR; original local artifacts retained."
+    }
+  ],
+  "nativeProbeImages": [
+    {
+      "file": "light-native-chrome.png",
+      "sha256": "24fc084c3eb6d4a9ecfe0acf73279fba46f4b622f61c2878b3460e9906768b69",
+      "scope": "Complete native QQuickWindow capture of anonymous in-memory sample tiles; no real catalog or desktop."
+    },
+    {
+      "file": "dark-native-chrome.png",
+      "sha256": "a33f2a0e44ad84bac695e31bf30f7b06364f27adaf67fa486a122b3bade4d6d0",
+      "scope": "Complete native QQuickWindow capture of anonymous in-memory sample tiles; no real catalog or desktop."
+    }
+  ]
+}
