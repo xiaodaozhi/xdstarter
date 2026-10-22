@@ -682,7 +682,10 @@ bool WindowsDesktopPlatform::hasOwnedForegroundWindow(quintptr menuHandle) {
     // the real foreground rather than this thread's GetFocus(); only a precise
     // owner chain to our menu counts, never another same-process top-level.
     const HWND foreground = GetForegroundWindow();
-    if (!foreground || !IsWindow(foreground) || !IsWindowVisible(foreground))
+    // IFileDialog can own foreground before its HWND becomes visible. Keep the
+    // exact current-foreground and owner checks during this initialization gap;
+    // visibility is required for our menu, not for the OS-owned foreground.
+    if (!foreground || !IsWindow(foreground))
         return false;
     HWND candidate = GetAncestor(foreground, GA_ROOT);
     for (int depth = 0; candidate && depth < 16; ++depth) {
