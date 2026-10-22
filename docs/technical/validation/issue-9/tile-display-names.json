@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-22",
+  "issue": 9,
+  "sourceCommit": "83e1787cba9e79c162f800aeaf3c717d829abb3f",
+  "scope": "Isolated Windows product layout, observed OS input and real tray recovery, plus separate Qt Windows QPA fixtures. No daily layout changes or private desktop captures are published.",
+  "toolchain": {
+    "qt": "6.8.2",
+    "compiler": "19.29.30153.0",
+    "toolset": "14.29.30133",
+    "sdk": "10.0.19041.0",
+    "preset": "app-release",
+    "alternateMsvc": false
+  },
+  "binarySha256": {
+    "product": "e02b22b93cae03f5e2165485cc6f100402c3677e5b4c4e1866cd5e733ba3f984",
+    "gui": "c2b31beb09ac7920bec7fe23a203d161f72693c01614e20e7ed387767f08a0c8",
+    "host": "ccca0159bc9982b9995609d87510bb7a13326d7f20e403fd46cb90bd11f54b1a"
+  },
+  "formalValidation": {
+    "releasePassed": true,
+    "qmlLintPassed": true,
+    "ctestPassed": 12,
+    "ctestFailed": 0,
+    "ctestSeconds": 37.66,
+    "guiPassed": 49,
+    "hostPassed": 34
+  },
+  "windowsQpaRegression": {
+    "cases": [
+      "contextMenuShortcutsRespectFocus",
+      "tileNameMouseContextFromSearchRestoresFocus",
+      "tileDisplayNameEditingAndRestart",
+      "tileDisplayNameValidationAndCancellation",
+      "tileDisplayNameSharedTargetAliases"
+    ],
+    "caseCount": 5,
+    "passedIncludingInitCleanup": 7,
+    "failed": 0,
+    "seconds": 20.277,
+    "scope": "Qt Windows QPA with controlled catalog/layout and injected Qt key/input-method events; not a real tray or independent product process."
+  },
+  "actualProduct": {
+    "shiftF10MenuOpenedByOsInput": true,
+    "physicalImeCompositionEnterKeptDialogOpen": true,
+    "firstReportedSaveWithoutDiskOverrideExcluded": true,
+    "finalSaveMethod": "Literal Unicode entry followed by mouse Save; displayed label and saved snapshot agreed.",
+    "primaryOverride": "绘图验收",
+    "secondTileForSameTargetHasOverride": false,
+    "originalTargetDescriptorsUnchanged": true,
+    "tileGeometryAndIdentitiesUnchanged": true,
+    "searchQueries": {
+      "htys": {
+        "resultCount": 1,
+        "target": "Paint"
+      },
+      "huatu": {
+        "resultCount": 1,
+        "target": "Paint"
+      }
+    },
+    "realTrayRestoredByUser": true,
+    "externalFocusDismissalObserved": true,
+    "trayRestoreDpr": 1.5,
+    "trayRestorePlacementSamples": 4,
+    "sameMonitorPlacementStable": true,
+    "visiblePanelLeftGapDip": 8,
+    "visiblePanelBottomGapDip": 8,
+    "editModeRetainedAfterTrayRestore": true,
+    "independentProcessRestartObserved": true,
+    "restoredTheme": "light",
+    "restoredGroups": 2,
+    "restoredTiles": 3,
+    "missingTargetPlaceholderRetained": true,
+    "normalExitCodes": [
+      0,
+      0
+    ],
+    "fullSavedSnapshotSha256BeforeRestart": "1d3afa0842e7380230e6262b0f0b70705ef85e6c2d39df32e201615e22b65d76",
+    "fullSavedSnapshotSha256AfterRestart": "1d3afa0842e7380230e6262b0f0b70705ef85e6c2d39df32e201615e22b65d76"
+  },
+  "earlierProductValidation": {
+    "productSha256": "4f43f1a28ba302e1a784184aacc615be5643f10ae35f0fb6c092c7c30b5d1460",
+    "scope": "Earlier pre-shortcut-fix product, retained as its own identity; not retagged as the final binary.",
+    "cancelDraftObserved": true,
+    "resetOriginalNameObserved": true,
+    "schema2ReadPreservedBytes": true,
+    "firstSchema3SavePreservedOriginalBackupBytes": true,
+    "schema2OriginalSha256": "21ce83b0e7dc44506f6da09dc8ca2161a74a4c0ab616c1733ab2686ff947d53c",
+    "shiftF10OsInputFailedBeforeFix": true,
+    "shiftF10PhysicalKeyFailureConfirmedByUser": true,
+    "menuKeyWorkedBeforeFix": true
+  },
+  "sourceSha256": {
+    "qml/Main.qml": "3c0a4f3aedc09cbbb9a24c19c3ec02703a0d6efdb61aee442f9b84d65ebd5782",
+    "qml/TileButton.qml": "b0f44b7cc5d3b207d0721010a82b28372967d08f598e41fe7e8426b5bba70134",
+    "qml/TileGroup.qml": "8b8a01fa2bf9cf466b572bb157557776df91953e7eeecc0e3412cfb98250cf73",
+    "tests/ui/tst_prototype_window.cpp": "c957b7380d91817d6715d8daad498b1e2d89876de55cbf92db40f1e43a737659"
+  },
+  "sourceDigestFormat": "SHA-256 of committed Git blob bytes, with repository LF normalization.",
+  "preservedAncestorCommits": [
+    "633da574959898b55abb61570c981732224d2d06",
+    "f1453501d60113c07f3d8f82dc36248bf72377c7",
+    "0d1806a8c860f45a0c66910bdb69656358c5bfff",
+    "8a9b58940f6fb95d810f0fdb2c5663efe73d72fa",
+    "19699c329a85b428910bf1c87bb014d1c48b7c2f",
+    "4a4af21311ef6c674f3e281e70545119e0652e63",
+    "308c7973cc9e2c6adf8cb5cd59cbf977890e417c"
+  ],
+  "notClaimed": [
+    "Full Windows version compatibility matrix",
+    "Windows display-setting changes or complete mixed-DPI matrix",
+    "Explorer restart or sleep recovery",
+    "Actual Paint launch on this names-only round",
+    "Installer or deployment completeness",
+    "Private desktop screenshots, full application catalog or machine paths as public evidence"
+  ]
+}
