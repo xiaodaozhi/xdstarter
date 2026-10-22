@@ -25,6 +25,7 @@
 #include <QMutex>
 #include <QMutexLocker>
 #include <QQmlApplicationEngine>
+#include <QQmlComponent>
 #include <QQmlError>
 #include <QQuickItem>
 #include <QQuickStyle>
@@ -2256,6 +2257,7 @@ void PrototypeWindowTest::customChromePixels() {
     const auto shadow = chromeTokens.value(QStringLiteral("shadowInsetDip")).toReal();
     const auto radius = visualTokens_.value(QStringLiteral("cornerRadiusDip")).toMap()
                             .value(QStringLiteral("menu")).toReal();
+    const auto borderWidth = chromeTokens.value(QStringLiteral("borderWidthDip")).toReal();
     QCOMPARE(window_->property("shadowInset").toReal(), shadow);
     QCOMPARE(window_->property("screenGapDip").toReal(), qreal(8));
     auto* surface = item(QStringLiteral("menuSurface"));
@@ -2309,27 +2311,32 @@ void PrototypeWindowTest::customChromePixels() {
         QVERIFY(painted.isValid());
         QVERIFY(QMetaObject::invokeMethod(surface, "requestPaint"));
         QTRY_VERIFY(painted.count() > 0);
-        auto image = window_->grabWindow();
-        if (!image.hasAlphaChannel() &&
-            QGuiApplication::platformName() == QStringLiteral("offscreen") &&
-            window_->rendererInterface()->graphicsApi() == QSGRendererInterface::Software) {
-            // The offscreen software backing store and item-grab layer flatten
-            // to the RGB screen format. Inspect the actual Canvas paint PNG,
-            // retaining its original alpha without synthesizing a channel.
-            // Rail transparency and child bounds are independently checked above.
-            QVERIFY(surface->metaObject()->indexOfMethod("toDataURL(QString)") >= 0);
-            QString dataUrl;
-            QVERIFY(QMetaObject::invokeMethod(surface, "toDataURL", Q_RETURN_ARG(QString, dataUrl),
-                                              Q_ARG(QString, QStringLiteral("image/png"))));
-            const auto prefix = QStringLiteral("data:image/png;base64,");
-            QVERIFY(dataUrl.startsWith(prefix));
-            const auto png = QByteArray::fromBase64(dataUrl.mid(prefix.size()).toLatin1());
-            image = QImage::fromData(png, "PNG");
-            qInfo() << "Chrome alpha capture: Canvas toDataURL original paint PNG"
-                       " (offscreen software RGB backing-store limitation)";
-        } else {
-            qInfo() << "Chrome alpha capture: complete QQuickWindow grabWindow";
-        }
+        const auto captureChrome = [&](QObject* canvas) {
+            auto image = window_->grabWindow();
+            if (!image.hasAlphaChannel() &&
+                QGuiApplication::platformName() == QStringLiteral("offscreen") &&
+                window_->rendererInterface()->graphicsApi() == QSGRendererInterface::Software) {
+                // Offscreen software flattens the window to RGB. Retain original
+                // Canvas alpha; native QPA must use the complete window capture.
+                QString dataUrl;
+                if (!QMetaObject::invokeMethod(canvas, "toDataURL", Q_RETURN_ARG(QString, dataUrl),
+                                               Q_ARG(QString, QStringLiteral("image/png")))) {
+                    return QImage{};
+                }
+                const auto prefix = QStringLiteral("data:image/png;base64,");
+                if (!dataUrl.startsWith(prefix)) {
+                    return QImage{};
+                }
+                const auto png = QByteArray::fromBase64(dataUrl.mid(prefix.size()).toLatin1());
+                image = QImage::fromData(png, "PNG");
+                qInfo() << "Chrome alpha capture: Canvas toDataURL original paint PNG"
+                           " (offscreen software RGB backing-store limitation)";
+            } else {
+                qInfo() << "Chrome alpha capture: complete QQuickWindow grabWindow";
+            }
+            return image;
+        };
+        const auto image = captureChrome(surface);
         QVERIFY(!image.isNull());
         QVERIFY(image.hasAlphaChannel());
         const auto pixel = [&](qreal x, qreal y) {
@@ -2385,6 +2392,97 @@ void PrototypeWindowTest::customChromePixels() {
         // The single inset border has finished within 2 DIP; no second native-like
         // line is painted on the inside of the common panel/rail silhouette.
         QVERIFY(closeColor(pixel(shadow + 2, window_->height() / 2), railColor));
+
+        // Changing only the interior colors must not tint the outside contour.
+        // Compare with a solid border-colored reference using the same component;
+        // the sampled pixel footprints stay wholly outside the inner silhouette.
+        QQmlComponent referenceComponent(engine_.get());
+        referenceComponent.loadFromModule("XDStarter", "MenuChrome");
+        QVERIFY2(referenceComponent.isReady(), qPrintable(referenceComponent.errorString()));
+        std::unique_ptr<QObject> reference(referenceComponent.createWithInitialProperties({
+            {QStringLiteral("width"), window_->width()},
+            {QStringLiteral("height"), window_->height()},
+            {QStringLiteral("color"), border}, {QStringLiteral("railColor"), border},
+            {QStringLiteral("borderColor"), border}, {QStringLiteral("radius"), radius},
+            {QStringLiteral("shadowInset"), shadow},
+            {QStringLiteral("borderWidth"), borderWidth}}));
+        auto* referenceItem = qobject_cast<QQuickItem*>(reference.get());
+        QVERIFY(referenceItem);
+        referenceItem->setParentItem(window_->contentItem());
+        referenceItem->setZ(10000);
+        surface->setVisible(false);
+        QSignalSpy referencePainted(reference.get(), SIGNAL(painted()));
+        QVERIFY(QMetaObject::invokeMethod(reference.get(), "requestPaint"));
+        QTRY_VERIFY(referencePainted.count() > 0);
+        const auto referenceImage = captureChrome(reference.get());
+        surface->setVisible(true);
+        reference.reset();
+        QVERIFY(!referenceImage.isNull());
+        QCOMPARE(referenceImage.size(), image.size());
+        const qreal scaleX = qreal(image.width()) / window_->width();
+        const qreal scaleY = qreal(image.height()) / window_->height();
+        int sampleCount = 0;
+        int maximumDifference = 0;
+        for (const bool left : {true, false}) {
+            for (const bool top : {true, false}) {
+                const QPointF center(left ? shadow + radius : right - radius,
+                                     top ? shadow + radius : bottom - radius);
+                int cornerSamples = 0;
+                for (int y = qFloor((center.y() - radius) * scaleY);
+                     y < qCeil((center.y() + radius) * scaleY); ++y) {
+                    for (int x = qFloor((center.x() - radius) * scaleX);
+                         x < qCeil((center.x() + radius) * scaleX); ++x) {
+                        const QRectF footprint(x / scaleX, y / scaleY, 1 / scaleX, 1 / scaleY);
+                        const auto middle = footprint.center();
+                        if ((left ? middle.x() >= center.x() : middle.x() <= center.x()) ||
+                            (top ? middle.y() >= center.y() : middle.y() <= center.y())) {
+                            continue;
+                        }
+                        const auto closestX = std::clamp(center.x(), footprint.left(), footprint.right());
+                        const auto closestY = std::clamp(center.y(), footprint.top(), footprint.bottom());
+                        const auto nearest = std::hypot(closestX - center.x(), closestY - center.y());
+                        if (nearest < radius - borderWidth + 0.15 / scaleX ||
+                            std::hypot(middle.x() - center.x(), middle.y() - center.y()) >
+                                radius + 0.4 / scaleX || image.pixelColor(x, y).alpha() < 32) {
+                            continue;
+                        }
+                        const auto actual = image.pixelColor(x, y);
+                        const auto expected = referenceImage.pixelColor(x, y);
+                        const auto difference = std::max({std::abs(actual.red() - expected.red()),
+                            std::abs(actual.green() - expected.green()),
+                            std::abs(actual.blue() - expected.blue()),
+                            std::abs(actual.alpha() - expected.alpha())});
+                        maximumDifference = std::max(maximumDifference, difference);
+                        QVERIFY2(difference <= 3, qPrintable(QStringLiteral(
+                            "Interior tinted corner (%1,%2): %3 vs solid outline %4, delta %5")
+                            .arg(x).arg(y).arg(actual.name(QColor::HexArgb), expected.name(QColor::HexArgb))
+                            .arg(difference)));
+                        ++cornerSamples;
+                    }
+                }
+                QVERIFY(cornerSamples > 0);
+                sampleCount += cornerSamples;
+            }
+        }
+        qInfo() << "Corner contour" << (dark ? "dark" : "light")
+                << "samples" << sampleCount << "maximum channel difference" << maximumDifference;
+        const auto artifactDirectory = qEnvironmentVariable("XDSTARTER_CHROME_VALIDATION_DIR");
+        if (!artifactDirectory.isEmpty()) {
+            QVERIFY(QDir().mkpath(artifactDirectory));
+            const auto themeName = dark ? QStringLiteral("dark") : QStringLiteral("light");
+            QVERIFY(image.save(QDir(artifactDirectory).filePath(themeName + QStringLiteral(".png"))));
+            QFile evidence(QDir(artifactDirectory).filePath(themeName + QStringLiteral(".json")));
+            QVERIFY(evidence.open(QIODevice::WriteOnly));
+            QVERIFY(evidence.write(QJsonDocument(QJsonObject{
+                {QStringLiteral("theme"), themeName},
+                {QStringLiteral("devicePixelRatio"), window_->devicePixelRatio()},
+                {QStringLiteral("platform"), QGuiApplication::platformName()},
+                {QStringLiteral("graphicsApi"), int(window_->rendererInterface()->graphicsApi())},
+                {QStringLiteral("cornerSamples"), sampleCount},
+                {QStringLiteral("maximumChannelDifference"), maximumDifference},
+                {QStringLiteral("width"), image.width()}, {QStringLiteral("height"), image.height()}
+            }).toJson()) > 0);
+        }
         QCOMPARE(item(QStringLiteral("tile-daily-small-1"))->size(), QSizeF(48, 48));
         QCOMPARE(item(QStringLiteral("tile-work-standard-1"))->size(), QSizeF(104, 104));
         QCOMPARE(item(QStringLiteral("tile-daily-wide"))->size(), QSizeF(216, 104));
