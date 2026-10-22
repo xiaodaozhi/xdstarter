@@ -1839,10 +1839,13 @@ ApplicationWindow {
 
         objectName: "layoutFileDialog"
         title: qsTr("选择 JSON 布局文件")
+        parentWindow: window
+        modality: Qt.WindowModal
         fileMode: FileDialogs.FileDialog.OpenFile
-        // Qt 6.8.2 qmltypes omit the public FileDialogOptions flags; runtime tests verify both flags.
+        // Keep Qt's native platform dialog preference; only request read-only file selection.
+        // Qt 6.8.2 qmltypes omit the public FileDialogOptions flags; runtime tests verify ReadOnly.
         // qmllint disable missing-type missing-property
-        options: FileDialogs.FileDialog.ReadOnly | FileDialogs.FileDialog.DontUseNativeDialog
+        options: FileDialogs.FileDialog.ReadOnly
         // qmllint enable missing-type missing-property
         nameFilters: [qsTr("JSON 布局 (*.json)"), qsTr("所有文件 (*)")]
         onAccepted: {

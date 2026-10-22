@@ -34,7 +34,7 @@ Python 包通过 PyPI 精确版本取得，项目工具保存在忽略的 `build
 
 所有工作流的 `actions/checkout` 统一固定为 [v7.0.1](https://github.com/actions/checkout/releases/tag/v7.0.1) 的 `3d3c42e5aac5ba805825da76410c181273ba90b1`，并保留 `persist-credentials: false` 与原有最小权限。该 Action 使用 Node 24；[官方升级说明](https://github.com/actions/checkout/blob/v7.0.1/README.md#whats-new)增加 ESM 与受信任事件中的 fork 检出限制。当前工作流仅使用 `push`、`pull_request` 和 `workflow_dispatch`，无需开启 `allow-unsafe-pr-checkout`。项目初始化的 `--apply` 仅在匹配路径的 `main` 推送或手动触发时执行；PR 中只运行初始化预览和安全、幂等单测，不将预览结果表述为实际写入验收。依赖维护与更新基线后的检查记录见 [PR #1](https://github.com/xiaodaozhi/xdstarter/pull/1)。
 
-布局文件选择使用同版 Qt 公共 `QtQuick.Dialogs` 模块（链接 QuickDialogs2，QML 构建与 qmllint 同时声明依赖），通过 `DontUseNativeDialog` 使用 Qt Quick 实现。产品部署需要该模块及其公开依赖；不链接 Qt Widgets 或私有 quickimpl API。选项和平台行为见 [Qt 6.8 FileDialog](https://doc.qt.io/qt-6.8/qml-qtquick-dialogs-filedialog.html)，部署仍需逐项验证，不能仅凭开发机 SDK 推断分发包完整。
+布局文件选择使用同版 Qt 公共 `QtQuick.Dialogs` 模块（链接 QuickDialogs2，QML 构建与 qmllint 同时声明依赖），仅设置 `ReadOnly`，在 Windows 上保留 Qt 默认的系统原生对话框优先行为，明确菜单父窗口与窗口模态。产品不自行重绘文件选择器；部署需要该模块及其公开依赖，不链接 Qt Widgets 或私有 quickimpl API。选项和平台行为见 [Qt 6.8 FileDialog](https://doc.qt.io/qt-6.8/qml-qtquick-dialogs-filedialog.html) 及其公开 [Dialog 父窗口与模态属性](https://doc.qt.io/qt-6.8/qml-qtquick-dialogs-dialog.html)。离屏环境可能使用 Qt 回退，不能据此确认 Windows 原生后端；部署仍需逐项验证，不能仅凭开发机 SDK 推断分发包完整。
 
 ## 离线拼音数据
 

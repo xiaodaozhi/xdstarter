@@ -8,9 +8,11 @@ GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查�
 
 ## 本轮候选：布局导入与上一份备份恢复（Issue #10）
 
+2026-10-22，按用户要求将文件选择改为 Windows 系统原生对话框优先：仅请求公开 `ReadOnly` 选项，明确菜单 `parentWindow` 和 `Qt.WindowModal`，不再强制 Quick 选择器；预览与确认继续使用软件内弹层。文件选择用例改为验证公开选项／父窗口／模态和可见状态，不将 Qt 私有 Quick 对象或 QWindow transient 链当作 Windows 原生焦点证据。此修订尚未构建或进行实际窗口验收；下方 `32.08 秒` 及其他既有 hash 只代表此前强制 Quick 选择器的候选，不能改标为新版本通过。
+
 2026-10-21，导入候选复用严格 schema 1／2／3 校验及现有保存 worker，加入文件选择、不可变预览、确认替换和备份恢复，决定见 [ADR-0012](adr/0012-layout-import-transaction.md)。本轮暂以草稿 PR 交付；下面是固定版本的构建与离屏结果，Windows 实际产品验收仍待协调，不能据此关闭 [#10](https://github.com/xiaodaozhi/xdstarter/issues/10)。
 
-正式入口 `scripts/build-windows.ps1 -Preset app-release` 使用 Qt **6.8.2**、MSVC **19.29.30153.0／v142**、SDK **10.0.19041.0**。最终 `build/issue10-build-release-final.log` 完成 Release、QML lint 和 **13/13 CTest（32.08 秒）**，GUI **53/53**、host **34/34**；新增导入服务单独同环境复核 **27/27**，日志为 `build/issue10-import-service-baseline.txt`。仓库检查与工具脚本 **13/13** 另行通过。SDK `FileDialogOptions` 在 Qt 6.8.2 qmltypes 中缺少完整类型／ReadOnly 元数据，仅对公共 options 绑定做局部 lint 注释；实际窗口对象同时断言 ReadOnly 与 DontUseNativeDialog 标志，未导入私有 API。Qt SDK 既有 C4702 警告与 QML lint 诊断分开记录。
+此前强制 Quick 选择器的正式入口 `scripts/build-windows.ps1 -Preset app-release` 使用 Qt **6.8.2**、MSVC **19.29.30153.0／v142**、SDK **10.0.19041.0**。当时 `build/issue10-build-release-final.log` 完成 Release、QML lint 和 **13/13 CTest（32.08 秒）**，GUI **53/53**、host **34/34**；新增导入服务单独同环境复核 **27/27**，日志为 `build/issue10-import-service-baseline.txt`。仓库检查与工具脚本 **13/13** 另行通过。SDK `FileDialogOptions` 在 Qt 6.8.2 qmltypes 中缺少完整类型／ReadOnly 元数据，仅对公共 options 绑定做局部 lint 注释；该旧候选曾断言 ReadOnly 与 DontUseNativeDialog，现已改为上方原生优先策略。Qt SDK 既有 C4702 警告与 QML lint 诊断分开记录。
 
 | 最终候选程序 | SHA-256 |
 | --- | --- |
