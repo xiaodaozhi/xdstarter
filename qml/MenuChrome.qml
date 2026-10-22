@@ -52,22 +52,24 @@ Canvas {
         }
 
         roundedPath(context, inset, inset, panelWidth, panelHeight, radius);
+        // Paint the outside silhouette only once. Stroking over a panel fill at
+        // the same antialiased edge blends the fill back into the curved border.
+        context.fillStyle = borderColor;
+        context.fill();
+
+        const innerInset = inset + borderWidth;
+        const innerWidth = panelWidth - 2 * borderWidth;
+        const innerHeight = panelHeight - 2 * borderWidth;
+        roundedPath(context, innerInset, innerInset, innerWidth, innerHeight,
+                    Math.max(0, radius - borderWidth));
         context.fillStyle = color;
         context.fill();
-        // The rail touches the panel edge. Clip its fill to the exact same path,
-        // so its square background cannot produce a second pair of corner edges.
+        // The rail shares the inner silhouette; it cannot overwrite the outline.
         context.save();
         context.clip();
         context.fillStyle = railColor;
         context.fillRect(inset, inset, railWidth, panelHeight);
         context.restore();
-
-        const halfBorder = borderWidth / 2;
-        roundedPath(context, inset + halfBorder, inset + halfBorder,
-                    panelWidth - borderWidth, panelHeight - borderWidth, radius - halfBorder);
-        context.lineWidth = borderWidth;
-        context.strokeStyle = borderColor;
-        context.stroke();
     }
 
     onWidthChanged: requestPaint()
