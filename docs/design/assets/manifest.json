@@ -76,11 +76,11 @@
   "generatorSources": [
     {
       "path": "docs/design/source/build_development_assets.py",
-      "sha256": "ae82efd44a0d25a2759fe964cc7a61b38693d44af19383575a5a76fef02ce93b"
+      "sha256": "184eadf02348cb8d2c43a1e5182e86ff426d3819df6682db010a97efc89de4c1"
     },
     {
       "path": "docs/design/source/ui_symbols.py",
-      "sha256": "5009c656c3c901b3c4b65c2d0791869ec1b000d79f3b6eb27751b2325243ebe1"
+      "sha256": "45cedc316d559797f9cb9344a0bfd5e8128ae7d5d5106fff1d8f5ecb8f1779ee"
     },
     {
       "path": "docs/design/source/render_svg.py",

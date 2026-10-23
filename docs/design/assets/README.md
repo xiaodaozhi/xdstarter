@@ -45,3 +45,5 @@ python3 scripts/check_repository.py
 ## Issue #41 更新
 
 开发素材增加同一 24 DIP 矢量系统的刷新与地球分类图标及六档 RGBA 导出，完整清单为 283 项。总览按当前图标数均匀排布，不裁掉新增图标。此前“255 项未改变”仅属于 #16 的历史状态；当前设计与运行时采用 v2.3、后台首启及自适应任务栏策略，见[设计说明](../README.md)和 [ADR-0013](../../technical/adr/0013-resident-editable-menu.md)。
+
+生成器源文件散列按仓库 `.gitattributes` 的 LF 字节计算，避免 Windows 编辑器的 CRLF 与 Git 提交字节不同；SVG／PNG／ICO 素材仍检查精确原始字节。
