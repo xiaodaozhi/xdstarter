@@ -1,12 +1,18 @@
 #include "windows_application_platform.h"
 
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QHash>
+#include <QJsonArray>
+#include <QJsonDocument>
 #include <QSet>
+#include <QtEndian>
 
 #include <algorithm>
 #include <cstring>
+#include <cwchar>
+#include <optional>
 #include <utility>
 
 #include <windows.h>
@@ -24,6 +30,11 @@ constexpr int maxApplications = 4096;
 constexpr int maxDirectories = 512;
 constexpr int maxDepth = 12;
 constexpr int maxEntries = 32768;
+
+struct ShortcutRepresentative {
+    QString rootIdentity;
+    QString targetId;
+};
 
 template <typename T> class ComPtr {
   public:
@@ -141,6 +152,181 @@ HRESULT shellItem(const LaunchTarget& target, IShellItem** item) {
                                     : nativePath(target.shortcutPath);
     return SHCreateItemFromParsingName(reinterpret_cast<LPCWSTR>(parsingName.utf16()), nullptr,
                                        IID_PPV_ARGS(item));
+}
+
+// Equivalence is deliberately narrower than Shell activation: only existing direct Win32
+// files with understood launch data qualify. Unknown/indirect/broken links stay visible.
+bool understoodShortcutData(const QString& path) {
+    constexpr qint64 maxLinkBytes = 256 * 1024;
+    const auto native = nativePath(path);
+    const auto attributes = GetFileAttributesW(reinterpret_cast<LPCWSTR>(native.utf16()));
+    if (attributes == INVALID_FILE_ATTRIBUTES ||
+        (attributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)))
+        return false;
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly) || file.size() < 80 || file.size() > maxLinkBytes)
+        return false;
+    const QByteArray bytes = file.read(maxLinkBytes + 1);
+    if (bytes.size() != file.size())
+        return false;
+    const auto word = [&](qsizetype offset) {
+        return qFromLittleEndian<quint16>(bytes.constData() + offset);
+    };
+    const auto dword = [&](qsizetype offset) {
+        return qFromLittleEndian<quint32>(bytes.constData() + offset);
+    };
+    GUID identifier{};
+    std::memcpy(&identifier, bytes.constData() + 4, sizeof(identifier));
+    if (dword(0) != 76 || !IsEqualGUID(identifier, CLSID_ShellLink))
+        return false;
+    const auto flags = dword(20);
+    constexpr DWORD knownFlags = 0x0ffff7ff;
+    constexpr DWORD indirectFlags = SLDF_HAS_EXP_SZ | SLDF_RUN_IN_SEPARATE | SLDF_HAS_DARWINID |
+                                    SLDF_RUN_WITH_SHIMLAYER | SLDF_ALLOW_LINK_TO_LINK |
+                                    SLDF_PREFER_ENVIRONMENT_PATH;
+    if ((flags & ~knownFlags) || (flags & indirectFlags))
+        return false;
+    qsizetype offset = 76;
+    const auto advance = [&](quint64 length) {
+        if (length > quint64(bytes.size() - offset))
+            return false;
+        offset += qsizetype(length);
+        return true;
+    };
+    if (flags & SLDF_HAS_ID_LIST) {
+        if (bytes.size() - offset < 2)
+            return false;
+        const auto length = word(offset);
+        if (!advance(quint64(length) + 2))
+            return false;
+    }
+    if (flags & SLDF_HAS_LINK_INFO) {
+        if (bytes.size() - offset < 4)
+            return false;
+        const auto length = dword(offset);
+        if (length < 28 || !advance(length))
+            return false;
+    }
+    for (const DWORD field : {SLDF_HAS_NAME, SLDF_HAS_RELPATH, SLDF_HAS_WORKINGDIR, SLDF_HAS_ARGS,
+                              SLDF_HAS_ICONLOCATION}) {
+        if (!(flags & field))
+            continue;
+        if (bytes.size() - offset < 2)
+            return false;
+        const auto length = word(offset);
+        if (!advance(2 + quint64(length) * ((flags & SLDF_UNICODE) ? 2 : 1)))
+            return false;
+    }
+    while (bytes.size() - offset >= 4) {
+        const auto length = dword(offset);
+        if (!length)
+            return offset + 4 == bytes.size();
+        if (length < 8 || quint64(length) > quint64(bytes.size() - offset))
+            return false;
+        // These blocks describe tracking, location, icon and property metadata. Console,
+        // environment-target, installer, shim and future blocks may change launch behavior.
+        switch (dword(offset + 4)) {
+        case 0xa0000003: // TrackerDataBlock
+        case 0xa0000005: // SpecialFolderDataBlock
+        case 0xa0000007: // IconEnvironmentDataBlock
+        case 0xa0000009: // PropertyStoreDataBlock (ordinary desktop AUMID is metadata)
+        case 0xa000000b: // KnownFolderDataBlock
+        case 0xa000000c: // VistaAndAboveIDListDataBlock
+            break;
+        default:
+            return false;
+        }
+        offset += length;
+    }
+    return false;
+}
+
+bool normalizedLaunchPath(const QString& input, bool directory, QString& output) {
+    if (input.isEmpty()) {
+        output.clear();
+        return directory;
+    }
+    wchar_t expanded[32768]{};
+    const auto length =
+        ExpandEnvironmentStringsW(reinterpret_cast<LPCWSTR>(input.utf16()), expanded, 32768);
+    if (!length || length >= 32768)
+        return false;
+    const auto path = QDir::fromNativeSeparators(QString::fromWCharArray(expanded));
+    if (!QDir::isAbsolutePath(path) || path.contains(QLatin1Char('%')))
+        return false;
+    const auto attributes = GetFileAttributesW(expanded);
+    if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_REPARSE_POINT) ||
+        bool(attributes & FILE_ATTRIBUTE_DIRECTORY) != directory)
+        return false;
+    output = QDir::cleanPath(path).toCaseFolded();
+    return true;
+}
+
+std::optional<QByteArray> shortcutEquivalenceKey(const LaunchTarget& target,
+                                                 const QString& relativePath) {
+    if (!understoodShortcutData(target.shortcutPath))
+        return std::nullopt;
+    ComPtr<IShellLinkW> link;
+    ComPtr<IPersistFile> file;
+    ComPtr<IShellLinkDataList> data;
+    ComPtr<IPropertyStore> properties;
+    const auto path = nativePath(target.shortcutPath);
+    if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER,
+                                IID_PPV_ARGS(link.put()))) ||
+        FAILED(link->QueryInterface(IID_PPV_ARGS(file.put()))) ||
+        FAILED(file->Load(reinterpret_cast<LPCWSTR>(path.utf16()), STGM_READ)) ||
+        FAILED(link->QueryInterface(IID_PPV_ARGS(data.put()))) ||
+        FAILED(link->QueryInterface(IID_PPV_ARGS(properties.put()))))
+        return std::nullopt;
+    DWORD flags = 0;
+    wchar_t rawPath[32768]{};
+    wchar_t rawDirectory[32768]{};
+    WIN32_FIND_DATAW findData{};
+    int showCommand = 0;
+    WORD hotKey = 0;
+    if (FAILED(data->GetFlags(&flags)) ||
+        FAILED(link->GetPath(rawPath, 32768, &findData, SLGP_RAWPATH)) ||
+        FAILED(link->GetWorkingDirectory(rawDirectory, 32768)) ||
+        FAILED(link->GetShowCmd(&showCommand)) || FAILED(link->GetHotkey(&hotKey)) ||
+        wcsnlen(rawPath, 32768) >= 32767 || wcsnlen(rawDirectory, 32768) >= 32767)
+        return std::nullopt;
+    QString executable;
+    QString directory;
+    if (!normalizedLaunchPath(QString::fromWCharArray(rawPath), false, executable) ||
+        !normalizedLaunchPath(QString::fromWCharArray(rawDirectory), true, directory))
+        return std::nullopt;
+    const auto suffix = QFileInfo(executable).suffix();
+    if (suffix != QLatin1String("exe") && suffix != QLatin1String("com"))
+        return std::nullopt;
+    // Refuse namespace/alias targets when the filesystem IDList and raw path disagree.
+    CoMemory<ITEMIDLIST> identifier;
+    wchar_t identifierPath[32768]{};
+    QString identifierIdentity;
+    if (FAILED(link->GetIDList(&identifier.pointer)) || !identifier.pointer ||
+        !SHGetPathFromIDListEx(identifier.pointer, identifierPath, 32768, GPFIDL_DEFAULT) ||
+        !normalizedLaunchPath(QString::fromWCharArray(identifierPath), false, identifierIdentity) ||
+        identifierIdentity != executable)
+        return std::nullopt;
+    const auto stringProperty = [&](REFPROPERTYKEY key, QString& value) {
+        PROPVARIANT property{};
+        const auto result = properties->GetValue(key, &property);
+        const bool valid = SUCCEEDED(result) && (property.vt == VT_EMPTY ||
+                                                 (property.vt == VT_LPWSTR && property.pwszVal));
+        if (valid)
+            value = property.vt == VT_EMPTY ? QString() : QString::fromWCharArray(property.pwszVal);
+        PropVariantClear(&property);
+        return valid;
+    };
+    QString arguments;
+    QString aumid;
+    // IPropertyStore allocates the complete argument string; GetArguments can truncate it.
+    if (!stringProperty(PKEY_Link_Arguments, arguments) ||
+        !stringProperty(PKEY_AppUserModel_ID, aumid) || aumid.contains(QLatin1Char('!')))
+        return std::nullopt;
+    return QJsonDocument(QJsonArray{QDir::cleanPath(relativePath).toCaseFolded(), target.name,
+                                    executable, arguments, directory, bool(flags & SLDF_RUNAS_USER),
+                                    showCommand, int(hotKey)})
+        .toJson(QJsonDocument::Compact);
 }
 
 LaunchResult shortcutAvailable(const LaunchTarget& target) {
@@ -318,11 +504,13 @@ QImage iconImage(HICON icon, int size) {
 }
 
 bool scanShortcutDirectory(const QString& path, int depth, int& directories, int& entriesInspected,
-                           bool& truncated, CatalogSnapshot& snapshot, QSet<QString>& visited,
-                           QHash<QString, qsizetype>& folders, const QString& parentFolderId = {},
+                           int& candidatesInspected, bool& truncated, CatalogSnapshot& snapshot,
+                           QSet<QString>& visited, QHash<QString, qsizetype>& folders,
+                           QHash<QByteArray, ShortcutRepresentative>& shortcuts,
+                           const QString& rootIdentity, const QString& parentFolderId = {},
                            const QString& relativePath = {}) {
     if (depth > maxDepth || directories >= maxDirectories ||
-        snapshot.applications.size() >= maxApplications || entriesInspected >= maxEntries) {
+        candidatesInspected >= maxApplications || entriesInspected >= maxEntries) {
         truncated = true;
         return false;
     }
@@ -362,7 +550,7 @@ bool scanShortcutDirectory(const QString& path, int depth, int& directories, int
     while (true) {
         const QString name = QString::fromWCharArray(data.cFileName);
         if (name != QLatin1String(".") && name != QLatin1String("..")) {
-            if (snapshot.applications.size() >= maxApplications || entriesInspected >= maxEntries) {
+            if (candidatesInspected >= maxApplications || entriesInspected >= maxEntries) {
                 truncated = true;
                 break;
             }
@@ -370,6 +558,7 @@ bool scanShortcutDirectory(const QString& path, int depth, int& directories, int
             const QFileInfo entry(QDir(path).filePath(name));
             if (!(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
                 entry.suffix().compare(QStringLiteral("lnk"), Qt::CaseInsensitive) == 0) {
+                ++candidatesInspected;
                 LaunchTarget target;
                 target.type = QStringLiteral("shortcut");
                 target.shortcutPath = QDir::fromNativeSeparators(entry.absoluteFilePath());
@@ -381,9 +570,26 @@ bool scanShortcutDirectory(const QString& path, int depth, int& directories, int
                 target.symbol = target.name.first(1);
                 target.iconKey = target.id;
                 target.parentFolderId = parentFolderId;
-                snapshot.applications.append(std::move(target));
+                const auto relative =
+                    relativePath.isEmpty() ? name : relativePath + QLatin1Char('/') + name;
+                const auto key = shortcutEquivalenceKey(target, relative);
+                bool duplicate = false;
+                if (key) {
+                    const auto previous = shortcuts.constFind(*key);
+                    duplicate =
+                        previous != shortcuts.cend() && previous->rootIdentity != rootIdentity;
+                    if (duplicate && target.id != previous->targetId)
+                        snapshot.equivalentTargetIds.insert(target.id, previous->targetId);
+                    if (previous == shortcuts.cend())
+                        shortcuts.insert(*key, {rootIdentity, target.id});
+                }
+                // The first (production: user) root keeps its original path-based identity.
+                // A suppressed public link remains a valid launch target for existing tiles.
+                if (!duplicate)
+                    snapshot.applications.append(std::move(target));
             } else if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY &&
                        !(data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+                ++candidatesInspected;
                 LaunchTarget folder;
                 folder.type = QStringLiteral("folder");
                 folder.symbol = QStringLiteral("▱");
@@ -411,8 +617,9 @@ bool scanShortcutDirectory(const QString& path, int depth, int& directories, int
                     snapshot.applications.append(folder);
                 }
                 scanShortcutDirectory(entry.absoluteFilePath(), depth + 1, directories,
-                                      entriesInspected, truncated, snapshot, visited, folders,
-                                      folder.id, relative);
+                                      entriesInspected, candidatesInspected, truncated, snapshot,
+                                      visited, folders, shortcuts, rootIdentity, folder.id,
+                                      relative);
             }
         }
         if (!FindNextFileW(search, &data)) {
@@ -427,7 +634,7 @@ bool scanShortcutDirectory(const QString& path, int depth, int& directories, int
     return true;
 }
 
-bool scanPackagedApplications(CatalogSnapshot& snapshot) {
+bool scanPackagedApplications(CatalogSnapshot& snapshot, int& candidatesInspected) {
     ComPtr<IShellItem> folder;
     HRESULT result = SHGetKnownFolderItem(FOLDERID_AppsFolder, KF_FLAG_DEFAULT, nullptr,
                                           IID_PPV_ARGS(folder.put()));
@@ -441,7 +648,7 @@ bool scanPackagedApplications(CatalogSnapshot& snapshot) {
         return false;
     }
     int inspected = 0;
-    while (snapshot.applications.size() < maxApplications && inspected++ < maxApplications * 2) {
+    while (candidatesInspected < maxApplications && inspected++ < maxApplications * 2) {
         ComPtr<IShellItem> item;
         ULONG fetched = 0;
         result = enumerator->Next(1, item.put(), &fetched);
@@ -466,6 +673,7 @@ bool scanPackagedApplications(CatalogSnapshot& snapshot) {
         target.symbol = target.name.first(1);
         target.iconKey = target.id;
         if (isValidApplicationTarget(target)) {
+            ++candidatesInspected;
             snapshot.applications.append(std::move(target));
         }
     }
@@ -503,22 +711,27 @@ CatalogSnapshot WindowsApplicationPlatform::scanApplications() {
     }
     int directories = 0;
     int entriesInspected = 0;
+    int candidatesInspected = 0;
     bool truncated = false;
     QSet<QString> visited;
     QHash<QString, qsizetype> folders;
+    QHash<QByteArray, ShortcutRepresentative> shortcuts;
     bool readableRoot = false;
     for (const QString& root : roots) {
         if (!QFileInfo(root).isDir()) {
             snapshot.warnings.append(QStringLiteral("开始菜单目录不可用：") + root);
             continue;
         }
-        readableRoot = scanShortcutDirectory(root, 0, directories, entriesInspected, truncated,
-                                             snapshot, visited, folders) ||
-                       readableRoot;
+        readableRoot =
+            scanShortcutDirectory(root, 0, directories, entriesInspected, candidatesInspected,
+                                  truncated, snapshot, visited, folders, shortcuts,
+                                  QDir::cleanPath(root).toCaseFolded()) ||
+            readableRoot;
     }
-    const bool packagedRead = includePackaged_ && scanPackagedApplications(snapshot);
+    const bool packagedRead =
+        includePackaged_ && scanPackagedApplications(snapshot, candidatesInspected);
     snapshot.success = readableRoot || packagedRead;
-    if (truncated || snapshot.applications.size() >= maxApplications) {
+    if (truncated || candidatesInspected >= maxApplications) {
         snapshot.warnings.append(QStringLiteral("应用目录达到扫描上限，部分项目未载入。"));
     }
     snapshot.applications = normalizedApplications(snapshot.applications);

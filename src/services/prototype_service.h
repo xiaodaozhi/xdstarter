@@ -4,6 +4,7 @@
 #include "services/layout_store.h"
 
 #include <QJsonArray>
+#include <QSet>
 #include <QString>
 #include <QVector>
 
@@ -52,6 +53,7 @@ class PrototypeService final {
     [[nodiscard]] LayoutResult pinApplicationAt(const QJsonObject& target, const QString& groupId,
                                                 int column, int row);
     [[nodiscard]] LayoutResult unpinApplication(const QString& applicationId);
+    [[nodiscard]] LayoutResult unpinApplications(const QSet<QString>& applicationIds);
     [[nodiscard]] LayoutResult unpinTile(const QString& tileId);
     [[nodiscard]] LayoutResult renameTile(const QString& tileId, const QString& displayName);
     [[nodiscard]] LayoutResult resetTileDisplayName(const QString& tileId);

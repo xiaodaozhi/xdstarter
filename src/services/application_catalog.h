@@ -93,6 +93,8 @@ class ApplicationCatalog final : public QObject {
     [[nodiscard]] bool error() const;
     [[nodiscard]] LaunchTarget target(const QString& id) const;
     [[nodiscard]] bool containsApplication(const QString& id) const;
+    [[nodiscard]] QString canonicalApplicationId(const QString& id) const;
+    [[nodiscard]] QSet<QString> equivalentApplicationIds(const QString& id) const;
     [[nodiscard]] LaunchResult availability(const QString& id) const;
     [[nodiscard]] QImage cachedIcon(const QString& id) const;
     void refreshApplications();
@@ -122,6 +124,8 @@ class ApplicationCatalog final : public QObject {
     QHash<QString, LaunchResult> availability_;
     QSet<QString> catalogIds_;
     QSet<QString> persistedIds_;
+    QHash<QString, QString> equivalentTargetIds_;
+    QSet<QString> pinnedIds_;
     QSet<QString> pendingIcons_;
     quint64 generation_ = 0;
     quint64 iconGeneration_ = 0;

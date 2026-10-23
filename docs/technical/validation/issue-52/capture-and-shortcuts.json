@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-23",
+  "issues": [
+    52,
+    53
+  ],
+  "sourceBaseCommit": "8b1d5440baeaca107a50fa785583099d3c487ec6",
+  "sourceIdentity": "Exact source hashes below identify the tested working-tree candidate; the base commit alone does not.",
+  "sourceHashFormat": "SHA256 of LF-normalized source file bytes",
+  "sourceLfSha256": {
+    "CMakeLists.txt": "86780f3790d2cb01c96a22012bac2f247121693696640833b071bbbb60b92950",
+    "src/app/desktop_window_host.cpp": "ba0cd9dc1ce42289a2e035fdc64d1c0ad16390f4bfe007a3a2e5b96aab8d2bda",
+    "src/app/desktop_window_host.h": "a2b97a5f3457c19ebc471c6a9c6ae4acde82bd7071631a130338591600f09556",
+    "src/app/main.cpp": "ecd55b807121435fe249005ead1f6ad1829b2a954ac5e8b464e8ad21aff44024",
+    "src/app/menu_controller.cpp": "83ac5437749c59d6198fb085fde0389164d9a067ebea5a6dd9d616326143cf5b",
+    "src/experimental/start_bridge/CMakeLists.txt": "d9c6c761123f34503ac9edafb4709f96e676e7a194a4c311ad402c1a8bb1ba20",
+    "src/experimental/start_bridge/bridge_controller.cpp": "0c087ad153849032af7583aca43806fb2451e9faa4f129bf688bec78760dd698",
+    "src/experimental/start_bridge/bridge_dll.cpp": "a912efd9cd1c037580f83245269cc5afd51d81853936a88cdc727bcf745003dc",
+    "src/experimental/start_bridge/fixture_host.cpp": "b0a6d4abb2bb86a0a6435bf85dc6681a395b14bc38b9df4fe1a5337f06406c42",
+    "src/experimental/start_bridge/poc_version.rc": "5cf44e1c02b6a8b95648d3575807f5ba2be785f88a49ddd62f48bfcf45d3a859",
+    "src/experimental/start_bridge/protocol.h": "8b45647fd629a41c6b72ce9260196b4d3915fec937644665df22ea8edde0e016",
+    "src/experimental/start_bridge/session_server.cpp": "cd282fd7a2f54c71e1db3cb190cf131c01a684b00104b39813cbf2230252c5bc",
+    "src/experimental/start_bridge/session_server.h": "e7afc6d08f0b9e8bf27ab61bed889c79d1e2de28eb4941d086ca820b26fe77b5",
+    "src/experimental/start_bridge/win_support.cpp": "83bd5af7b5ce66e09fb767ed9fb17695e643e3f2d5b39bc76889ea427a6eb885",
+    "src/experimental/start_bridge/win_support.h": "f1cde38b78c0fabf95ed5130fdb12e9754daddfea39178e04bbd604bcde7d80f",
+    "src/platform/application_platform.h": "b2f532b5f007014db2d31b5db7a1b53a0897dd0b4b70161a0fe18151f0bdfd04",
+    "src/platform/start_button_capture.cpp": "fd6b4a29abe51aafdfcf799ea059956c7c855496a98976e1eb36cf5ad8a94365",
+    "src/platform/start_button_capture.h": "6bd6150fcf8417f816f9c8079d620f3bc608c083bd49ac98c439534ebf2e88bc",
+    "src/platform/start_button_capture_state.cpp": "ad23ca1c80759449b82959bb824d961b8cef18a66d1f0f70d544bf3fc37b035c",
+    "src/platform/start_button_capture_state.h": "7bd19ab9e6a7116f53f30290ab713399fb2139d997dc5bea41e4fd1c38fb5db4",
+    "src/platform/windows/windows_application_platform.cpp": "f3b37419ac119ef17494d2605029fccd2ff00d285af6bc0d12b78375c27ba1a1",
+    "src/platform/windows/windows_desktop_platform.cpp": "8981d25dab025e2855de7676ea12086684e5a6d0348299e3a93be1c107817870",
+    "src/platform/windows/windows_desktop_platform.h": "cb9f03958c84271753c17d5b5985ae906eb31a77c517ec2fc28c1046f045f880",
+    "src/platform/windows/windows_start_button_capture.cpp": "4edee4734be84ae7e137456d7d1893e5b1d47b23a58bda6f18f2531780764ff3",
+    "src/services/application_catalog.cpp": "da98f255e2b8f46d81fc49baf08f7e21a91a5ae424d5abadd27dc0c9dcec4ede",
+    "src/services/application_catalog.h": "10835889e4e984fa4c091613463cbf71fcfc3bf5fc8dccf1e5d6f2666f58f6ca",
+    "src/services/prototype_service.cpp": "0f94e8d4a397960c23a36cbe7e4c681763bc9c271f98436427696e88b7e2442e",
+    "src/services/prototype_service.h": "561032628e6682cb515deb5e6f157ae1b2ea5d85a0463ff64e2a858b3b986002",
+    "tests/experimental/start_bridge_tests.cpp": "19485a44d8439954184426197d57a287192a806fce7c1d9d25ef77762d9733d0",
+    "tests/platform/CMakeLists.txt": "a7291d44b65dbdf1da056acf256809b2ff22f459d76ae7c73806a6c7b47c71d4",
+    "tests/platform/application_catalog_fixture.rc": "aea5e4183f2f9c62e4da51c8560c7181f1b40690094512be370423ef20991a52",
+    "tests/platform/application_platform_tests.cpp": "a17e66e8b2a1c963daebe065c92e70e4de8a2bb530e00029c26071a7cdb8b57b",
+    "tests/platform/start_button_capture_tests.cpp": "2eba79ffbaa049ca905462982efb16d72f001ab0f69d1fbaaf25d3086f754b70",
+    "tests/services/application_catalog_tests.cpp": "9cea89de6124d353aa0ae338d38e695d2c66777597c81e84dac13be411d0857d",
+    "tests/ui/tst_desktop_window_host.cpp": "9bc8accb4b66ecd06c91399a5b28c98de0b2262c04c52b166d1bb277f217af24",
+    "tests/ui/tst_prototype_window.cpp": "fe73bacd87e1ff13536983eca34858d0d5bbde727aee32934359e9912b36e352"
+  },
+  "environment": {
+    "windows": "11 26H2 26300.9711",
+    "qt": "6.8.2",
+    "msvc": "19.29.30159.0",
+    "toolchainScope": "additional v142 patch compatibility; not exact 19.29.30153.0 baseline",
+    "windowsSdk": "10.0.19041.0",
+    "cmake": "4.4.4",
+    "ninja": "1.13.2.git.kitware.jobserver-pipe-1",
+    "python": "3.12.13"
+  },
+  "localChecks": {
+    "ctestGroups": [
+      {
+        "total": 3,
+        "passed": 3,
+        "seconds": 123.93,
+        "scope": "services.application_catalog, ui.prototype, ui.desktop_window_host"
+      },
+      {
+        "total": 17,
+        "passed": 17,
+        "seconds": 30.17,
+        "scope": "remaining registered checks, including isolated bridge"
+      }
+    ],
+    "guiCases": 98,
+    "hostCases": 52,
+    "captureStateAssertions": 119,
+    "bridgeAssertions": 116,
+    "bridgeSeconds": 3.77,
+    "qmlLint": "passed",
+    "toolingTests": 13,
+    "repositoryCheck": {
+      "passed": true,
+      "files": 737
+    },
+    "smokeRejectsCaptureExperiment": {
+      "exitCode": 1,
+      "waitedForGuiProcess": true
+    },
+    "localizationFixtureRetest": {
+      "total": 1,
+      "passed": 1,
+      "seconds": 23.75,
+      "scope": "platform.applications after resource-backed Shell fixture revision",
+      "productRuntimeChanged": false,
+      "localLog": "build/issue54-localization-test.log"
+    }
+  },
+  "realCatalog": {
+    "filter": "Bitwarden",
+    "visibleEntries": 1,
+    "userRootRepresentative": true,
+    "equivalentCommonTargetRetainsOriginalLaunchDescriptor": true,
+    "sourceShortcutFilesModified": false,
+    "userLayoutModified": false
+  },
+  "nativeUiaQuery": {
+    "scope": "read-only MTA/client/cache; no hooks or input",
+    "mode": "area-cache",
+    "samples": 8,
+    "identified": 0,
+    "reason": "start-occluded",
+    "occludingClass": "LockScreenBackstopFrame",
+    "positiveUnoccludedCaseVerified": false
+  },
+  "bridge": {
+    "enabledByDefaultBuild": false,
+    "productLoadsBridge": false,
+    "allowedTarget": "owned controlled Win32 fixture only",
+    "explorerAdapterImplemented": false,
+    "explorerInjected": false,
+    "dllHasQtImports": false,
+    "actualMouseQueueDllAndNamedPipeVerified": true,
+    "realPointerPolicy": "pass through unchanged",
+    "emulatedPointerFramesRequireExplicitCapability": true,
+    "emulatedFramesAreHardwareEvidence": false,
+    "nativePointerTransport": {
+      "attempts": 2,
+      "successes": 0,
+      "error": 1002,
+      "errorName": "ERROR_INVALID_MESSAGE",
+      "zeroDeliveryProvesSuppression": false
+    }
+  },
+  "artifactSha256": {
+    "xdstarter.exe": "3c9231b0192a6ff9b45ff8a522e555dc3d02749c2539bd9bd6a9e4b48a87161f",
+    "xdstarter_start_bridge_controller.exe": "557aaacc9714479a09e06d4a4d49822079b2fd92bd402beae0ea3483ddf4ce3d",
+    "xdstarter_start_bridge_fixture.exe": "47110187fd5bb8781a10dd2a34a82fa6abc64cf1be507ac9fe2bb216fb98ec0f",
+    "xdstarter_start_bridge_poc.dll": "56d111254120edc6474ec0e991ac465cee0fa7288d45941b192fb1dc061f3a23",
+    "xdstarter_start_bridge_tests.exe": "15b66fa3036f01f8797da33ef5b67e17e3fe3e139657fc2069f56eb9844fce60"
+  },
+  "retainedFailures": [
+    {
+      "scope": "PR 54 initial Windows CI at bd917c584e8adc6eaac2f635621b1873fbffb736",
+      "url": "https://github.com/xiaodaozhi/xdstarter/actions/runs/39979690365/job/120503403881",
+      "passed": 17,
+      "total": 18,
+      "failure": "Shell localized-folder fixture returned physical folder names despite successful Unicode profile readback and correct attributes",
+      "bridgeStepExecuted": false,
+      "causeConfirmed": false,
+      "systemTrustPolicyChanged": false,
+      "candidateCorrection": "owned neutral STRINGTABLE and SHSetLocalizedName; independent resource/profile checks and source/build diagnostics; strict Shell Chinese assertion retained"
+    },
+    {
+      "scope": "unhashed intermediate bridge candidates",
+      "failures": [
+        11,
+        19
+      ],
+      "evidence": "local bridge-transport-run.txt and execution logs",
+      "resolution": "separate OS-rejected pointer transport from explicit emulated frames; fix ownership, cancellation, binding and teardown races"
+    },
+    {
+      "scope": "bridge UI smoke environment",
+      "result": "timeout without Qt SDK PATH",
+      "resolution": "proper SDK PATH, explicit Basic style, smoke passed"
+    },
+    {
+      "scope": "compiler ABI probe in sandbox",
+      "result": "C1902",
+      "resolution": "normal Windows build context succeeded"
+    }
+  ],
+  "unverified": [
+    "physical fast-entry Start clicks and A/B reliability",
+    "unoccluded area qualification on this session",
+    "modern Explorer InputSite bridge adaptation",
+    "hardware pointer/touch/pen takeover",
+    "full multi-monitor DPI, auto-hide, Explorer restart/sleep and Windows version matrix"
+  ],
+  "desktopSettingsChanged": false,
+  "computerUsePerformed": false,
+  "localRawEvidence": "build/validation/issue52 (ignored; private paths and temporary native identities are not published)"
+}

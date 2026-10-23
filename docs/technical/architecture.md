@@ -44,7 +44,7 @@
 
 ## 应用目录、图标与启动
 
-`ApplicationCatalog` 通过独立的 `ApplicationPlatform` 注入真实平台，未向普通窗口状态接口硬加 Shell 职责。Windows 扫描当前用户和公共 `Programs` Known Folder 的 `.lnk`，再通过 AppsFolder 补充有有效 package family/app 标识的打包应用。快捷方式的稳定 id 由规范化绝对路径生成，打包应用由 AUMID 生成；同路径和同 AUMID 去重，不因可执行文件相同而合并不同参数的快捷方式。扫描最多 4096 个应用、512 个目录、12 层及 32768 个目录项，不递归重解析目录；失效快捷方式仍可保留为项目。
+`ApplicationCatalog` 通过独立的 `ApplicationPlatform` 注入真实平台，未向普通窗口状态接口硬加 Shell 职责。Windows 扫描当前用户和公共 `Programs` Known Folder 的 `.lnk`，再通过 AppsFolder 补充有有效 package family/app 标识的打包应用。快捷方式的稳定 id 由规范化绝对路径生成，打包应用由 AUMID 生成；同路径和同 AUMID 去重，不因可执行文件相同而合并不同参数的快捷方式。[#53](https://github.com/xiaodaozhi/xdstarter/issues/53) 为跨 Programs 根、同规范化相对路径、同显示名且完整直接程序启动语义等价的快捷方式增加展示合并，优先保留用户根原 id；普通桌面 AUMID、图标和描述差异不改变此启动等价，未知或无法证明的情况保留两项。具体参数、工作目录、权限、显示方式、热键、文件格式和兼容边界见 [ADR-0004](adr/0004-application-catalog.md#跨-programs-根的等价展示issue-53-补充)。扫描最多 4096 个目录／应用候选、512 个目录、12 层及 32768 个目录项，候选在展示合并前计数，不递归重解析目录；失效快捷方式仍可保留为项目。合并不改真实源文件或布局，已固定的原目标仍按原路径处理。
 
 目录读取、图标提取、缺失目标检查和启动在同一个专用 worker 上串行执行。每次平台方法负责 COM 初始化与释放，COM 对象不跨线程保存；扫描结果回到 GUI 后才替换 `QAbstractListModel`，刷新失败保留已有列表。当前为启动时或手工刷新，不包含文件系统监视或安装/卸载事件订阅。搜索接收已发布的目录值快照，不自行枚举 Shell。
 

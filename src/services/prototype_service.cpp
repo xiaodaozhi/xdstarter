@@ -555,16 +555,21 @@ LayoutResult PrototypeService::pinApplicationAt(const QJsonObject& target, const
 }
 
 LayoutResult PrototypeService::unpinApplication(const QString& applicationId) {
+    return unpinApplications({applicationId});
+}
+
+LayoutResult PrototypeService::unpinApplications(const QSet<QString>& applicationIds) {
     if (isReadOnly())
         return {false, QStringLiteral("更新版本配置当前为只读"), true};
     auto planned = groups_;
     bool removed = false;
     for (auto& group : planned) {
         const auto before = group.tiles.size();
-        group.tiles.erase(
-            std::remove_if(group.tiles.begin(), group.tiles.end(),
-                           [&](const auto& tile) { return tile.targetId == applicationId; }),
-            group.tiles.end());
+        group.tiles.erase(std::remove_if(group.tiles.begin(), group.tiles.end(),
+                                         [&](const auto& tile) {
+                                             return applicationIds.contains(tile.targetId);
+                                         }),
+                          group.tiles.end());
         removed = removed || before != group.tiles.size();
         updateGroupGeometry(group);
     }
@@ -572,7 +577,8 @@ LayoutResult PrototypeService::unpinApplication(const QString& applicationId) {
         return {false, QStringLiteral("此应用尚未固定")};
     auto targets = targets_;
     for (qsizetype index = targets.size(); index-- > 0;)
-        if (targets[index].toObject().value(QStringLiteral("id")).toString() == applicationId)
+        if (applicationIds.contains(
+                targets[index].toObject().value(QStringLiteral("id")).toString()))
             targets.removeAt(index);
     // Every reference to this app is removed in one transaction, including restored duplicates.
     groups_ = std::move(planned);

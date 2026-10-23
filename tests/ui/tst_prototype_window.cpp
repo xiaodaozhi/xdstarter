@@ -73,6 +73,7 @@ struct CatalogTestState {
         catalogTarget(QStringLiteral("A 测试快捷方式"), QStringLiteral("C:/Fixture/A.lnk")),
         catalogTarget(QStringLiteral("B 测试打包应用"), QStringLiteral("Fixture.Package_123!App"),
                       QStringLiteral("packaged"))};
+    QHash<QString, QString> equivalentTargetIds;
     std::atomic_bool includeApplications{true};
     std::atomic_bool scanSucceeds{true};
     std::atomic_bool scanWarns{false};
@@ -91,10 +92,10 @@ class CatalogTestPlatform final : public xdstarter::ApplicationPlatform {
     xdstarter::CatalogSnapshot scanApplications() override {
         recordThread();
         ++state_->scans;
-        return {state_->includeApplications ? state_->applications
-                                           : QVector<xdstarter::LaunchTarget>{},
-                state_->scanWarns ? QStringList{QStringLiteral("测试目录部分不可用")} : QStringList{},
-                state_->scanSucceeds};
+        return {
+            state_->includeApplications ? state_->applications : QVector<xdstarter::LaunchTarget>{},
+            state_->scanWarns ? QStringList{QStringLiteral("测试目录部分不可用")} : QStringList{},
+            state_->scanSucceeds, state_->equivalentTargetIds};
     }
 
     QImage loadIcon(const xdstarter::LaunchTarget&, int size) override {
@@ -359,6 +360,7 @@ class PrototypeWindowTest : public QObject {
     void failedSaveCanBeRetried();
     void futureConfigurationIsReadOnly();
     void applicationDirectoryAndPinning();
+    void equivalentShortcutsPreserveOldTilesAndSearch();
     void applicationLaunchLifecycle();
     void searchFocusCompositionAndEscape();
     void searchPreservesBrowsing();
@@ -1998,6 +2000,75 @@ void PrototypeWindowTest::pinFirstApplication(const std::shared_ptr<CatalogTestS
     QVERIFY(item(buttonName)->isEnabled());
     QVERIFY(controller_->isApplicationPinned(applicationId));
     QTRY_VERIFY(item(buttonName)->hasActiveFocus());
+}
+
+void PrototypeWindowTest::equivalentShortcutsPreserveOldTilesAndSearch() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = directory.filePath(QStringLiteral("layout.json"));
+    auto state = std::make_shared<CatalogTestState>();
+    const auto user =
+        catalogTarget(QStringLiteral("Bitwarden"), QStringLiteral("C:/User/Bitwarden.lnk"));
+    const auto common =
+        catalogTarget(QStringLiteral("Bitwarden"), QStringLiteral("C:/Common/Bitwarden.lnk"));
+    const auto other = state->applications.last();
+    state->applications = {user, other};
+    state->equivalentTargetIds.insert(common.id, user.id);
+    xdstarter::PrototypeService restored(grid_, {}, false);
+    const auto oldPin = restored.pinApplication(xdstarter::applicationTargetJson(common));
+    QVERIFY(oldPin.success);
+    QVERIFY(restored.renameTile(oldPin.tileId, QStringLiteral("我的密码库")).success);
+    QVERIFY(restored.pinApplication(xdstarter::applicationTargetJson(user)).success);
+    QVERIFY(restored.pinApplication(xdstarter::applicationTargetJson(other)).success);
+    QFile file(path);
+    QVERIFY(file.open(QIODevice::WriteOnly));
+    const auto bytes = QJsonDocument(restored.snapshot()).toJson();
+    QCOMPARE(file.write(bytes), qint64(bytes.size()));
+    file.close();
+    destroyWindow();
+    createWindow(path, false, state);
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 2);
+    QVERIFY(controller_->isApplicationPinned(user.id));
+    int userRow = -1;
+    for (int row = 0; row < catalog_->applicationsModel()->rowCount(); ++row)
+        if (modelValue(row, "appId").toString() == user.id)
+            userRow = row;
+    QVERIFY(userRow >= 0);
+    QVERIFY(modelValue(userRow, "pinned").toBool());
+    const auto original = service_->snapshot();
+    QVERIFY(controller_->pinApplication(user.id));
+    QVERIFY(!controller_->previewApplicationPlacement(user.id, QStringLiteral("default"), 8, 8)
+                 .value(QStringLiteral("valid"))
+                 .toBool());
+    QVERIFY(!controller_->pinApplicationAt(user.id, QStringLiteral("default"), 8, 8));
+    QCOMPARE(service_->snapshot(), original);
+    QCOMPARE(
+        service_->targetForTile(oldPin.tileId).value(QStringLiteral("shortcutPath")).toString(),
+        common.shortcutPath);
+    controller_->setSearchQuery(QStringLiteral("Bitwarden"));
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_COMPARE(controller_->searchResults().size(), 1);
+    QCOMPARE(controller_->searchResults().first().toMap().value(QStringLiteral("appId")).toString(),
+             user.id);
+    QVERIFY(controller_->searchResults().first().toMap().value(QStringLiteral("pinned")).toBool());
+    controller_->setSearchQuery({});
+    QTRY_COMPARE(controller_->searchResults().size(), 0);
+    controller_->setSearchQuery(QStringLiteral("我的密码库"));
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_COMPARE(controller_->searchResults().size(), 1);
+    QCOMPARE(controller_->searchResults().first().toMap().value(QStringLiteral("appId")).toString(),
+             user.id);
+    QVERIFY(controller_->unpinApplication(user.id));
+    QVERIFY(!controller_->isApplicationPinned(common.id));
+    QVERIFY(!controller_->isApplicationPinned(user.id));
+    QVERIFY(controller_->isApplicationPinned(other.id));
+    QCOMPARE(tileGeometries().size(), 1);
+    // Removing the representative invalidates the old alias on refresh.
+    controller_->setSearchQuery({});
+    state->includeApplications = false;
+    catalog_->refreshApplications();
+    QTRY_VERIFY(!catalog_->busy());
+    QCOMPARE(catalog_->canonicalApplicationId(common.id), common.id);
 }
 
 void PrototypeWindowTest::applicationDirectoryAndPinning() {

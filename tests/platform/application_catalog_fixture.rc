@@ -1,0 +1,10 @@
+// tests/platform/application_catalog_fixture.rc
+
+#include <windows.h>
+
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+
+STRINGTABLE
+BEGIN
+    5301 L"\x672c\x5730\x5316\x5de5\x5177"
+END

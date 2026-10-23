@@ -6,7 +6,25 @@
 
 GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查看 PNG，核对字体、应用图标、长名称、间隙及辅助功能信息的表达。
 
-## 当前：按点透视与内容对齐（Issue #50）
+## 当前：等价快捷方式与接管诊断原型（Issue #53 / #52）
+
+公共／用户 Programs 的等价叶子快捷方式按 [ADR-0004](adr/0004-application-catalog.md) 合并展示，原路径目标与既有布局不迁移。本机只读目录 probe 在本轮最终扫描中只返回一项 Bitwarden；两份系统 `.lnk` 未修改。旧公共目标的固定状态、搜索与覆盖名使用运行时等价映射聚合，取消固定一次移除等价族，刷新后重新建立证明。
+
+开始按钮默认点资格不变，补齐有界原因码、UIA/订阅/会话代次和实际 host 前台观察；显式区域缓存与独立进程内桥接的范围见 [ADR-0016](adr/0016-start-capture-experiments.md) 和[使用方法](research/start-capture-comparison-52.md)。普通产品构建不启用桥接 DLL，实验白名单拒绝 Explorer。
+
+2026-10-23，本机 Qt6.8.2／MSVC19.29.30159.0／SDK19041 Release 构建和 QML lint 通过；这是附加 v142 补丁兼容，仍不冒充精确19.29.30153.0基线。最终适用 CTest 分两组执行，**20/20** 通过：目录服务与完整 GUI/host 三套共123.93秒，余下17套共30.17秒。GUI **98/98**、host **52/52**、接管状态与故障注入 **119项断言**通过；桥接自有进程集成 **116项断言**、3.77秒通过，独立Qt实验界面smoke通过。工具脚本13/13和仓库检查通过。程序散列、源码LF散列和验证范围见[结构化证据](validation/issue-52/capture-and-shortcuts.json)。
+
+桥接实测包含真正的DLL加载、指定线程 `WH_GETMESSAGE`、`PM_REMOVE`/`PM_NOREMOVE`、named pipe、原生鼠标消息、心跳失联、nonce/身份、窗口重建、持有按下后的排空与卸载。真实 `WM_POINTER`/系统promoted鼠标在本轮全部放行；指针及兼容状态回归仅用显式授权的受控仿真帧，不能写成硬件输入通过。PE依赖检查确认桥接DLL没有Qt依赖。
+
+保留失败边界：早期桥接测试错误地假定 `PostMessage(WM_POINTER*)` 能构造实际指针输入，出现11项及后续19项失败。传输诊断证明两次投递均失败、错误1002、Hook观察数为零；手工兼容鼠标消息也未保留系统签名。修订明确分离真实鼠标集成、原生投递负例和仿真帧，保留原日志，不把零原生计数当作成功消费。同时修复取消状态污染后续手势、foreign HWND误释放、兼容许可重复使用、初始化view竞态、无效绑定与析构持有手势的排空问题。Qt示例首轮缺少SDK PATH导致加载器超时，正确运行环境下smoke通过。沙箱MSVC探测的C1902在正常Windows构建环境复跑通过。
+
+只读UIA区域探针在本机发现 `LockScreenBackstopFrame` 覆盖Start，八次均拒绝为 `start-occluded`，这是原生命中复核的真实负例；未放宽为同Explorer PID即可接管。无遮挡区域正例、真实物理点击A/B、现代Explorer桥接适配、硬件触控和完整Windows兼容矩阵仍未验证。没有Computer Use、用户程序启动、任务栏/显示设置变化或用户布局/系统快捷方式写入。#53的目录修复与#52仍待真实接管选型的范围分别跟踪，旧#45/#50结果保留原版本身份。
+
+PR #54 的首轮 [Windows CI](https://github.com/xiaodaozhi/xdstarter/actions/runs/39979690365/job/120503403881) 在 `bd917c5` 完成构建、lint 和17/18套测试，仅既有真实Shell目录本地化断言失败，后续桥接步骤未执行。Unicode配置读回、目录/文件属性均通过，Shell和`SHGetFileInfoW`都返回物理名称，不能再次归因为编码。微软 [KB5103160](https://support.microsoft.com/en-us/servicing/os/windows/docs/2026/06/custom-folder-icons-or-localized-folder-names-might-not-appear-after-installing-the-june-2026-window) 说明2026年6月起Shell可能因来源信任而忽略`desktop.ini`；当前日志不足以确认该策略是本次原因。保留产品对Shell显示名的读取，不自行解析ini绕过系统决定，不修改信任策略。
+
+后续夹具改用自有helper的中性中文STRINGTABLE及官方[SHSetLocalizedName](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shsetlocalizedname)，只定制自有临时目录。分别检查`LoadStringW`、`SHLoadIndirectString`、Unicode配置读回与真实Shell中文显示，并保留同显示名不同路径不得合并的断言。失败时增加来源的Zone.Identifier、卷类型、完整系统build/UBR与设置HRESULT，避免仅凭API成功推断Shell已采用配置。此调整只涉及测试资源和夹具，产品显示逻辑不变；本机仅重建平台测试/helper并复测`platform.applications`，1/1通过、23.75秒，仓库737文件检查通过，产品EXE散列不变。远程结果按新head单独记录。
+
+## 按点透视与内容对齐（Issue #50）
 
 磁贴左键按下采用带透视分母的视觉矩阵，三档尺寸按归一化按点倾斜，90 ms按下、180 ms复原；按钮命中与拖放坐标保持原几何。滚动条进入既有正文右边距，磁贴视口、组操作、窄模式目录与右上关闭按钮共享内容右缘；关于框“项目主页”使用明确左对齐的零水平内距文本。参数与行为见[交互说明](../product/interaction.md)和[布局说明](tile-layout.md)，不改变布局格式或Windows接管。
 

@@ -74,6 +74,9 @@ class DesktopWindowHost final : public QObject {
     void publishWinKeyCapture();
     void publishStartButtonCapture();
     void activatePresentedWindow();
+    void recordCaptureHostObservation(const QString& event,
+                                      const DesktopPresentationResult* result = nullptr,
+                                      const QString& errorCode = {});
     bool ownsFocus() const;
     void checkFocus();
     void dismiss(const QString &reason);
@@ -95,6 +98,7 @@ class DesktopWindowHost final : public QObject {
     QPointer<WinKeyCapture> startButtonCapture_;
     bool startButtonRequested_ = false;
     bool startButtonActive_ = false;
+    bool startButtonTogglePending_ = false;
     QString startButtonStatus_;
     QString trayStatus_;
     QString anchorStatus_;
