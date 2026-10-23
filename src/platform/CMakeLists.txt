@@ -3,7 +3,9 @@ add_library(xdstarter_platform STATIC platform_integration.cpp platform_integrat
     desktop_platform.cpp desktop_platform.h
     desktop_tray.cpp desktop_tray.h
     win_key_capture.cpp win_key_capture.h
-    win_key_capture_state.cpp win_key_capture_state.h)
+    win_key_capture_state.cpp win_key_capture_state.h
+    start_button_capture.cpp start_button_capture.h
+    start_button_capture_state.cpp start_button_capture_state.h)
 if(WIN32)
     target_sources(xdstarter_platform PRIVATE
         windows/windows_platform_integration.cpp
@@ -16,6 +18,7 @@ if(WIN32)
         windows/windows_desktop_tray.h
         windows/windows_win_key_capture.cpp
         windows/windows_win_key_capture.h
+        windows/windows_start_button_capture.cpp
     )
 else()
     target_sources(xdstarter_platform PRIVATE

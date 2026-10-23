@@ -8,6 +8,7 @@
 #include "platform/desktop_platform.h"
 #include "platform/desktop_tray.h"
 #include "platform/platform_integration.h"
+#include "platform/start_button_capture.h"
 #include "platform/win_key_capture.h"
 #include "services/application_catalog.h"
 #include "services/desktop_shell_service.h"
@@ -196,14 +197,17 @@ int main(int argc, char *argv[]) {
     std::unique_ptr<xdstarter::DesktopPlatform> placement;
     std::unique_ptr<xdstarter::DesktopTray> tray;
     std::unique_ptr<xdstarter::WinKeyCapture> winKeyCapture;
+    std::unique_ptr<xdstarter::WinKeyCapture> startButtonCapture;
     std::unique_ptr<xdstarter::DesktopWindowHost> desktopHost;
     if (desktopShell) {
         placement = xdstarter::createDesktopPlatform();
         tray = xdstarter::createDesktopTray();
         winKeyCapture = xdstarter::createWinKeyCapture();
+        startButtonCapture = xdstarter::createStartButtonCapture();
         desktopHost = std::make_unique<xdstarter::DesktopWindowHost>(*window, *desktopShell,
                                                                      *placement, *tray);
         desktopHost->attachWinKeyCapture(*winKeyCapture);
+        desktopHost->attachStartButtonCapture(*startButtonCapture);
         QObject::connect(desktopHost.get(), &xdstarter::DesktopWindowHost::exitRequested,
                          &application, [&application] { application.quit(); });
         QObject::connect(&controller, &xdstarter::MenuController::launchSucceeded,

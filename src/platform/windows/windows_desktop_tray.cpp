@@ -19,6 +19,7 @@ constexpr UINT trayIconId = 1;
 constexpr UINT toggleCommand = 1;
 constexpr UINT quitCommand = 2;
 constexpr UINT winKeyCaptureCommand = 3;
+constexpr UINT startButtonCaptureCommand = 4;
 
 HICON createNativeIcon(const QImage& source) {
     // The application supplies its bundled image, not a machine-local icon path.
@@ -93,7 +94,10 @@ class WindowsDesktopTray::Impl {
         } else {
             captureState = QStringLiteral("Win 键唤起未启用");
         }
-        QString tooltip = QStringLiteral("XDStarter — %1\n开始按钮未接管").arg(captureState);
+        QString tooltip =
+            QStringLiteral("XDStarter — %1\n%2")
+                .arg(captureState, startButtonActive ? QStringLiteral("开始按钮接管已启用")
+                                                     : QStringLiteral("开始按钮使用系统入口"));
         if (!winKeyStatus.isEmpty()) {
             tooltip += QLatin1Char('\n') + winKeyStatus;
         }
@@ -184,6 +188,8 @@ class WindowsDesktopTray::Impl {
     bool available = false;
     bool menuOpen = false;
     bool winKeyActive = false;
+    bool startButtonActive = false;
+    bool startButtonCanEnable = false;
     bool winKeyCanEnable = false;
     bool winKeyWasEnabled = false;
     QString winKeyStatus;
@@ -288,6 +294,12 @@ void WindowsDesktopTray::showContextMenu() {
     const UINT captureFlags =
         MF_STRING | (impl_->winKeyActive || impl_->winKeyCanEnable ? MF_ENABLED : MF_GRAYED);
     if (!AppendMenuW(menu, MF_STRING, toggleCommand, L"显示/隐藏 XDStarter") ||
+        !AppendMenuW(
+            menu,
+            MF_STRING |
+                (impl_->startButtonActive || impl_->startButtonCanEnable ? MF_ENABLED : MF_GRAYED),
+            startButtonCaptureCommand,
+            impl_->startButtonActive ? L"暂停开始按钮接管" : L"启用开始按钮接管") ||
         !AppendMenuW(menu, captureFlags, winKeyCaptureCommand, captureLabel) ||
         !AppendMenuW(menu, MF_STRING, quitCommand, L"退出 XDStarter")) {
         DestroyMenu(menu);
@@ -310,11 +322,25 @@ void WindowsDesktopTray::showContextMenu() {
     }
     if (command == toggleCommand) {
         emit toggleRequested();
-    } else if (command == winKeyCaptureCommand &&
-               (impl_->winKeyActive || impl_->winKeyCanEnable)) {
+    } else if (command == startButtonCaptureCommand &&
+               (impl_->startButtonActive || impl_->startButtonCanEnable)) {
+        emit startButtonCaptureToggleRequested();
+    } else if (command == winKeyCaptureCommand && (impl_->winKeyActive || impl_->winKeyCanEnable)) {
         emit winKeyCaptureToggleRequested();
     } else if (command == quitCommand) {
         emit quitRequested();
+    }
+}
+
+void WindowsDesktopTray::setStartButtonCaptureState(bool active, bool canEnable, const QString&) {
+    impl_->startButtonActive = active;
+    impl_->startButtonCanEnable = canEnable;
+    if (impl_->available) {
+        auto notification = impl_->notification();
+        if (!Shell_NotifyIconW(NIM_MODIFY, &notification)) {
+            impl_->available = false;
+            emit registrationChanged(false, QStringLiteral("无法更新托盘状态。"));
+        }
     }
 }
 

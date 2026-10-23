@@ -1,0 +1,1153 @@
+{
+  "schemaVersion": 1,
+  "issue": 45,
+  "date": "2026-10-23",
+  "sourceBaseCommit": "d305c8c973294ed9c03774825d5d1a0e08cab2c6",
+  "scope": "Start click implementation and bounded taskbar geometry validation; full real taskbar settings/resize matrix remains open.",
+  "toolchain": {
+    "qt": "6.8.2",
+    "compiler": "19.29.30153.0",
+    "windowsSdk": "10.0.19041.0",
+    "kernelVersion": "10.0.26300"
+  },
+  "checks": {
+    "ctestSuitesPassed": 16,
+    "ctestSeconds": 102.59,
+    "guiPassed": 63,
+    "hostPassed": 41,
+    "startGestureAssertionsPassed": 53,
+    "dockingParameterCombinations": 240,
+    "toolingTestsPassed": 13,
+    "qmlLint": "no diagnostics",
+    "hiddenNativeWindowSamplesPassed": 36
+  },
+  "nativeManual": {
+    "initialAttempt": {
+      "result": "failed",
+      "exactProgramHash": "not captured",
+      "observation": "Start-button events arrived; user reported that the window required taskbar activation. Kept as a failed attempt."
+    },
+    "afterForegroundFix": {
+      "result": "passed for direct show and repeat-click hide",
+      "productSha256": "9357f1412e958546bebc70ee9ee241df11cf79fccd7db17687e58b1482e6a4ff",
+      "userConfirmed": [
+        "click shows XDStarter directly",
+        "second click hides XDStarter"
+      ],
+      "nativeLog": {
+        "nativeVisible": true,
+        "nativeMinimized": false,
+        "foreground": true
+      }
+    },
+    "changesAfterManualRetest": "Final candidate additionally reinitializes failed UIA/hook/timer resources when explicitly retried. That failure-only change has automated regression and self-review; the final binary was not physically retested.",
+    "otherGestures": "Right click, Win+X, co-enabled Win capture and physical resizing are not claimed as manually accepted in this revision."
+  },
+  "startupShowStateRegression": [
+    {
+      "startupShowMode": 0,
+      "passed": true,
+      "probeSha256": "9c2659265a72e228c6f21dc3c29257e3c001b21310ea6f57625de5d21a4f62aa",
+      "presentation": {
+        "firstQtShowMinimized": false,
+        "firstQtShowVisible": true,
+        "foreground": true,
+        "kind": "explicit-native-presentation",
+        "nativeMinimized": false,
+        "nativeVisible": true,
+        "passed": true
+      }
+    },
+    {
+      "startupShowMode": 2,
+      "passed": true,
+      "probeSha256": "9c2659265a72e228c6f21dc3c29257e3c001b21310ea6f57625de5d21a4f62aa",
+      "presentation": {
+        "firstQtShowMinimized": false,
+        "firstQtShowVisible": true,
+        "foreground": true,
+        "kind": "explicit-native-presentation",
+        "nativeMinimized": false,
+        "nativeVisible": true,
+        "passed": true
+      }
+    }
+  ],
+  "nativeHiddenGeometry": {
+    "failures": 0,
+    "kernelVersion": "10.0.26300",
+    "probeSha256": "9c2659265a72e228c6f21dc3c29257e3c001b21310ea6f57625de5d21a4f62aa",
+    "qtVersion": "6.8.2",
+    "samples": [
+      {
+        "actualPanel": [
+          12,
+          796,
+          720,
+          720
+        ],
+        "centered": false,
+        "dpr": 1.5,
+        "edge": -1,
+        "expectedPanel": [
+          12,
+          796,
+          720,
+          720
+        ],
+        "kind": "observed-taskbar",
+        "monitor": "\\\\.\\DISPLAY1",
+        "passed": true,
+        "resizeEdges": 5,
+        "taskbarDpi": 144,
+        "workArea": [
+          0,
+          0,
+          2400,
+          1528
+        ]
+      },
+      {
+        "actualPanel": [
+          12,
+          496,
+          1470,
+          1020
+        ],
+        "centered": false,
+        "dpr": 1.5,
+        "edge": -1,
+        "expectedPanel": [
+          12,
+          496,
+          1470,
+          1020
+        ],
+        "kind": "observed-taskbar",
+        "monitor": "\\\\.\\DISPLAY1",
+        "passed": true,
+        "resizeEdges": 5,
+        "taskbarDpi": 144,
+        "workArea": [
+          0,
+          0,
+          2400,
+          1528
+        ]
+      },
+      {
+        "actualPanel": [
+          12,
+          796,
+          720,
+          720
+        ],
+        "centered": false,
+        "dpr": 1.5,
+        "edge": 0,
+        "expectedPanel": [
+          12,
+          796,
+          720,
+          720
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY1",
+        "passed": true,
+        "resizeEdges": 5,
+        "taskbarDpi": 144,
+        "workArea": [
+          0,
+          0,
+          2400,
+          1528
+        ]
+      },
+      {
+        "actualPanel": [
+          12,
+          496,
+          1470,
+          1020
+        ],
+        "centered": false,
+        "dpr": 1.5,
+        "edge": 0,
+        "expectedPanel": [
+          12,
+          496,
+          1470,
+          1020
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY1",
+        "passed": true,
+        "resizeEdges": 5,
+        "taskbarDpi": 144,
+        "workArea": [
+          0,
+          0,
+          2400,
+          1528
+        ]
+      },
+      {
+        "actualPanel": [
+          840,
+          796,
+          720,
+          720
+        ],
+        "centered": true,
+        "dpr": 1.5,
+        "edge": 0,
+        "expectedPanel": [
+          840,
+          796,
+          720,
+          720
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY1",
+        "passed": true,
+        "resizeEdges": 7,
+        "taskbarDpi": 144,
+        "workArea": [
+          0,
+          0,
+          2400,
+          1528
+        ]
+      },
+      {
+        "actualPanel": [
+          465,
+          496,
+          1470,
+          1020
+        ],
+        "centered": true,
+        "dpr": 1.5,
+        "edge": 0,
+        "expectedPanel": [
+          465,
+          496,
+          1470,
+          1020
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY1",
+        "passed": true,
+        "resizeEdges": 7,
+        "taskbarDpi": 144,
+        "workArea": [
+          0,
+          0,
+          2400,
+          1528
+        ]
+      },
+      {
+        "actualPanel": [
+          12,
+          84,
+          720,
+          720
+        ],
+        "centered": false,
+        "dpr": 1.5,
+        "edge": 1,
+        "expectedPanel": [
+          12,
+          84,
+          720,
+          720
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY1",
+        "passed": true,
+        "resizeEdges": 12,
+        "taskbarDpi": 144,
+        "workArea": [
+          0,
+          72,
+          2400,
+          1528
+        ]
+      },
+      {
+        "actualPanel": [
+          12,
+          84,
+          1470,
+          1020
+        ],
+        "centered": false,
+        "dpr": 1.5,
+        "edge": 1,
+        "expectedPanel": [
+          12,
+          84,
+          1470,
+          1020
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY1",
+        "passed": true,
+        "resizeEdges": 12,
+        "taskbarDpi": 144,
+        "workArea": [
+          0,
+          72,
+          2400,
+          1528
+        ]
+      },
+      {
+        "actualPanel": [
+          840,
+          84,
+          720,
+          720
+        ],
+        "centered": true,
+        "dpr": 1.5,
+        "edge": 1,
+        "expectedPanel": [
+          840,
+          84,
+          720,
+          720
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY1",
+        "passed": true,
+        "resizeEdges": 14,
+        "taskbarDpi": 144,
+        "workArea": [
+          0,
+          72,
+          2400,
+          1528
+        ]
+      },
+      {
+        "actualPanel": [
+          465,
+          84,
+          1470,
+          1020
+        ],
+        "centered": true,
+        "dpr": 1.5,
+        "edge": 1,
+        "expectedPanel": [
+          465,
+          84,
+          1470,
+          1020
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY1",
+        "passed": true,
+        "resizeEdges": 14,
+        "taskbarDpi": 144,
+        "workArea": [
+          0,
+          72,
+          2400,
+          1528
+        ]
+      },
+      {
+        "actualPanel": [
+          84,
+          12,
+          720,
+          720
+        ],
+        "centered": false,
+        "dpr": 1.5,
+        "edge": 2,
+        "expectedPanel": [
+          84,
+          12,
+          720,
+          720
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY1",
+        "passed": true,
+        "resizeEdges": 12,
+        "taskbarDpi": 144,
+        "workArea": [
+          72,
+          0,
+          2328,
+          1600
+        ]
+      },
+      {
+        "actualPanel": [
+          84,
+          12,
+          1470,
+          1020
+        ],
+        "centered": false,
+        "dpr": 1.5,
+        "edge": 2,
+        "expectedPanel": [
+          84,
+          12,
+          1470,
+          1020
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY1",
+        "passed": true,
+        "resizeEdges": 12,
+        "taskbarDpi": 144,
+        "workArea": [
+          72,
+          0,
+          2328,
+          1600
+        ]
+      },
+      {
+        "actualPanel": [
+          84,
+          440,
+          720,
+          720
+        ],
+        "centered": true,
+        "dpr": 1.5,
+        "edge": 2,
+        "expectedPanel": [
+          84,
+          440,
+          720,
+          720
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY1",
+        "passed": true,
+        "resizeEdges": 13,
+        "taskbarDpi": 144,
+        "workArea": [
+          72,
+          0,
+          2328,
+          1600
+        ]
+      },
+      {
+        "actualPanel": [
+          84,
+          290,
+          1470,
+          1020
+        ],
+        "centered": true,
+        "dpr": 1.5,
+        "edge": 2,
+        "expectedPanel": [
+          84,
+          290,
+          1470,
+          1020
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY1",
+        "passed": true,
+        "resizeEdges": 13,
+        "taskbarDpi": 144,
+        "workArea": [
+          72,
+          0,
+          2328,
+          1600
+        ]
+      },
+      {
+        "actualPanel": [
+          1596,
+          12,
+          720,
+          720
+        ],
+        "centered": false,
+        "dpr": 1.5,
+        "edge": 3,
+        "expectedPanel": [
+          1596,
+          12,
+          720,
+          720
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY1",
+        "passed": true,
+        "resizeEdges": 10,
+        "taskbarDpi": 144,
+        "workArea": [
+          0,
+          0,
+          2328,
+          1600
+        ]
+      },
+      {
+        "actualPanel": [
+          846,
+          12,
+          1470,
+          1020
+        ],
+        "centered": false,
+        "dpr": 1.5,
+        "edge": 3,
+        "expectedPanel": [
+          846,
+          12,
+          1470,
+          1020
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY1",
+        "passed": true,
+        "resizeEdges": 10,
+        "taskbarDpi": 144,
+        "workArea": [
+          0,
+          0,
+          2328,
+          1600
+        ]
+      },
+      {
+        "actualPanel": [
+          1596,
+          440,
+          720,
+          720
+        ],
+        "centered": true,
+        "dpr": 1.5,
+        "edge": 3,
+        "expectedPanel": [
+          1596,
+          440,
+          720,
+          720
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY1",
+        "passed": true,
+        "resizeEdges": 11,
+        "taskbarDpi": 144,
+        "workArea": [
+          0,
+          0,
+          2328,
+          1600
+        ]
+      },
+      {
+        "actualPanel": [
+          846,
+          290,
+          1470,
+          1020
+        ],
+        "centered": true,
+        "dpr": 1.5,
+        "edge": 3,
+        "expectedPanel": [
+          846,
+          290,
+          1470,
+          1020
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY1",
+        "passed": true,
+        "resizeEdges": 11,
+        "taskbarDpi": 144,
+        "workArea": [
+          0,
+          0,
+          2328,
+          1600
+        ]
+      },
+      {
+        "actualPanel": [
+          260,
+          -536,
+          480,
+          480
+        ],
+        "centered": false,
+        "dpr": 1,
+        "edge": -1,
+        "expectedPanel": [
+          260,
+          -536,
+          480,
+          480
+        ],
+        "kind": "observed-taskbar",
+        "monitor": "\\\\.\\DISPLAY2",
+        "passed": true,
+        "resizeEdges": 5,
+        "taskbarDpi": 96,
+        "workArea": [
+          252,
+          -1080,
+          1920,
+          1032
+        ]
+      },
+      {
+        "actualPanel": [
+          260,
+          -736,
+          980,
+          680
+        ],
+        "centered": false,
+        "dpr": 1,
+        "edge": -1,
+        "expectedPanel": [
+          260,
+          -736,
+          980,
+          680
+        ],
+        "kind": "observed-taskbar",
+        "monitor": "\\\\.\\DISPLAY2",
+        "passed": true,
+        "resizeEdges": 5,
+        "taskbarDpi": 96,
+        "workArea": [
+          252,
+          -1080,
+          1920,
+          1032
+        ]
+      },
+      {
+        "actualPanel": [
+          260,
+          -536,
+          480,
+          480
+        ],
+        "centered": false,
+        "dpr": 1,
+        "edge": 0,
+        "expectedPanel": [
+          260,
+          -536,
+          480,
+          480
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY2",
+        "passed": true,
+        "resizeEdges": 5,
+        "taskbarDpi": 96,
+        "workArea": [
+          252,
+          -1080,
+          1920,
+          1032
+        ]
+      },
+      {
+        "actualPanel": [
+          260,
+          -736,
+          980,
+          680
+        ],
+        "centered": false,
+        "dpr": 1,
+        "edge": 0,
+        "expectedPanel": [
+          260,
+          -736,
+          980,
+          680
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY2",
+        "passed": true,
+        "resizeEdges": 5,
+        "taskbarDpi": 96,
+        "workArea": [
+          252,
+          -1080,
+          1920,
+          1032
+        ]
+      },
+      {
+        "actualPanel": [
+          972,
+          -536,
+          480,
+          480
+        ],
+        "centered": true,
+        "dpr": 1,
+        "edge": 0,
+        "expectedPanel": [
+          972,
+          -536,
+          480,
+          480
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY2",
+        "passed": true,
+        "resizeEdges": 7,
+        "taskbarDpi": 96,
+        "workArea": [
+          252,
+          -1080,
+          1920,
+          1032
+        ]
+      },
+      {
+        "actualPanel": [
+          722,
+          -736,
+          980,
+          680
+        ],
+        "centered": true,
+        "dpr": 1,
+        "edge": 0,
+        "expectedPanel": [
+          722,
+          -736,
+          980,
+          680
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY2",
+        "passed": true,
+        "resizeEdges": 7,
+        "taskbarDpi": 96,
+        "workArea": [
+          252,
+          -1080,
+          1920,
+          1032
+        ]
+      },
+      {
+        "actualPanel": [
+          260,
+          -1024,
+          480,
+          480
+        ],
+        "centered": false,
+        "dpr": 1,
+        "edge": 1,
+        "expectedPanel": [
+          260,
+          -1024,
+          480,
+          480
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY2",
+        "passed": true,
+        "resizeEdges": 12,
+        "taskbarDpi": 96,
+        "workArea": [
+          252,
+          -1032,
+          1920,
+          1032
+        ]
+      },
+      {
+        "actualPanel": [
+          260,
+          -1024,
+          980,
+          680
+        ],
+        "centered": false,
+        "dpr": 1,
+        "edge": 1,
+        "expectedPanel": [
+          260,
+          -1024,
+          980,
+          680
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY2",
+        "passed": true,
+        "resizeEdges": 12,
+        "taskbarDpi": 96,
+        "workArea": [
+          252,
+          -1032,
+          1920,
+          1032
+        ]
+      },
+      {
+        "actualPanel": [
+          972,
+          -1024,
+          480,
+          480
+        ],
+        "centered": true,
+        "dpr": 1,
+        "edge": 1,
+        "expectedPanel": [
+          972,
+          -1024,
+          480,
+          480
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY2",
+        "passed": true,
+        "resizeEdges": 14,
+        "taskbarDpi": 96,
+        "workArea": [
+          252,
+          -1032,
+          1920,
+          1032
+        ]
+      },
+      {
+        "actualPanel": [
+          722,
+          -1024,
+          980,
+          680
+        ],
+        "centered": true,
+        "dpr": 1,
+        "edge": 1,
+        "expectedPanel": [
+          722,
+          -1024,
+          980,
+          680
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY2",
+        "passed": true,
+        "resizeEdges": 14,
+        "taskbarDpi": 96,
+        "workArea": [
+          252,
+          -1032,
+          1920,
+          1032
+        ]
+      },
+      {
+        "actualPanel": [
+          308,
+          -1072,
+          480,
+          480
+        ],
+        "centered": false,
+        "dpr": 1,
+        "edge": 2,
+        "expectedPanel": [
+          308,
+          -1072,
+          480,
+          480
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY2",
+        "passed": true,
+        "resizeEdges": 12,
+        "taskbarDpi": 96,
+        "workArea": [
+          300,
+          -1080,
+          1872,
+          1080
+        ]
+      },
+      {
+        "actualPanel": [
+          308,
+          -1072,
+          980,
+          680
+        ],
+        "centered": false,
+        "dpr": 1,
+        "edge": 2,
+        "expectedPanel": [
+          308,
+          -1072,
+          980,
+          680
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY2",
+        "passed": true,
+        "resizeEdges": 12,
+        "taskbarDpi": 96,
+        "workArea": [
+          300,
+          -1080,
+          1872,
+          1080
+        ]
+      },
+      {
+        "actualPanel": [
+          308,
+          -780,
+          480,
+          480
+        ],
+        "centered": true,
+        "dpr": 1,
+        "edge": 2,
+        "expectedPanel": [
+          308,
+          -780,
+          480,
+          480
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY2",
+        "passed": true,
+        "resizeEdges": 13,
+        "taskbarDpi": 96,
+        "workArea": [
+          300,
+          -1080,
+          1872,
+          1080
+        ]
+      },
+      {
+        "actualPanel": [
+          308,
+          -880,
+          980,
+          680
+        ],
+        "centered": true,
+        "dpr": 1,
+        "edge": 2,
+        "expectedPanel": [
+          308,
+          -880,
+          980,
+          680
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY2",
+        "passed": true,
+        "resizeEdges": 13,
+        "taskbarDpi": 96,
+        "workArea": [
+          300,
+          -1080,
+          1872,
+          1080
+        ]
+      },
+      {
+        "actualPanel": [
+          1636,
+          -1072,
+          480,
+          480
+        ],
+        "centered": false,
+        "dpr": 1,
+        "edge": 3,
+        "expectedPanel": [
+          1636,
+          -1072,
+          480,
+          480
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY2",
+        "passed": true,
+        "resizeEdges": 10,
+        "taskbarDpi": 96,
+        "workArea": [
+          252,
+          -1080,
+          1872,
+          1080
+        ]
+      },
+      {
+        "actualPanel": [
+          1136,
+          -1072,
+          980,
+          680
+        ],
+        "centered": false,
+        "dpr": 1,
+        "edge": 3,
+        "expectedPanel": [
+          1136,
+          -1072,
+          980,
+          680
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY2",
+        "passed": true,
+        "resizeEdges": 10,
+        "taskbarDpi": 96,
+        "workArea": [
+          252,
+          -1080,
+          1872,
+          1080
+        ]
+      },
+      {
+        "actualPanel": [
+          1636,
+          -780,
+          480,
+          480
+        ],
+        "centered": true,
+        "dpr": 1,
+        "edge": 3,
+        "expectedPanel": [
+          1636,
+          -780,
+          480,
+          480
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY2",
+        "passed": true,
+        "resizeEdges": 11,
+        "taskbarDpi": 96,
+        "workArea": [
+          252,
+          -1080,
+          1872,
+          1080
+        ]
+      },
+      {
+        "actualPanel": [
+          1136,
+          -880,
+          980,
+          680
+        ],
+        "centered": true,
+        "dpr": 1,
+        "edge": 3,
+        "expectedPanel": [
+          1136,
+          -880,
+          980,
+          680
+        ],
+        "kind": "native-window-synthetic-dock",
+        "monitor": "\\\\.\\DISPLAY2",
+        "passed": true,
+        "resizeEdges": 11,
+        "taskbarDpi": 96,
+        "workArea": [
+          252,
+          -1080,
+          1872,
+          1080
+        ]
+      }
+    ],
+    "schemaVersion": 1,
+    "scope": "Own hidden HWND measurements at actual monitor DPR; synthetic docks do not change Explorer or prove physical border dragging."
+  },
+  "desktopAutomation": {
+    "settingsPageObserved": true,
+    "fourPositionsAvailable": true,
+    "settingsChanged": false,
+    "originalConfiguration": {
+      "position": "bottom",
+      "alignment": "left"
+    },
+    "actualSettingsMatrix": "not completed",
+    "blocker": "Physical Escape stopped Computer Use. User authorized resumption, but the backend still returned the stopped state in the same turn; no further input or fallback UI automation was attempted."
+  },
+  "priorFailures": [
+    "13 file/ACL GUI cases failed using the sandbox default temporary directory; official normal-session validation with the repository temporary root passed. No ACL checks were relaxed.",
+    "First native fixture reused a hidden HWND with a cached old DPR: 18/36 failures. Independent per-screen creation corrected the fixture; final actual-DPR geometry 36/36 passed.",
+    "First presentation regression showed visible/non-minimized but foreground=false. Explicit bounded foreground restoration then passed both startup modes and the user mouse retest."
+  ],
+  "notClaimed": [
+    "Real Explorer taskbar all four directions and alignment combinations",
+    "Physical border-drag matrix",
+    "Another stable Windows build",
+    "Real display-scale changes/hotplug/primary-monitor switch",
+    "Explorer restart/sleep and secure-desktop recovery",
+    "Installer or release validation"
+  ],
+  "representativeUi": {
+    "capture": "offscreen/software, in-memory sample catalog; not physical taskbar acceptance",
+    "test": "startButtonCaptureControl",
+    "screenshots": {
+      "docs/design/validation/issue-45/power-dark.png": "270896f28396d59bcc4cc4e4de655a0f396c3470620e52173663bf5060839551",
+      "docs/design/validation/issue-45/power-light.png": "f33b21bf60dde374ef7507bff2cf155bf5f71432133a2110c404480528f303bc"
+    }
+  },
+  "binarySha256": {
+    "product": "d0b94b8050af180c6df48bc89827749cfbfd794a3fed795bb589fb3269cb0fc3",
+    "uiTests": "1afc18b20b780fcf96fa79cd3bb1e87dc7af2e52392eb1d2ccdf14a0a42319e6",
+    "hostTests": "9cb343f7c8cc89e2837687df51379adb1dc7e18f4926fc7a3860156b0db8f219",
+    "currentNativeProbe": "9c2659265a72e228c6f21dc3c29257e3c001b21310ea6f57625de5d21a4f62aa"
+  },
+  "sourceSha256LF": {
+    "qml/Main.qml": "a42446696748e926162ac9c44f641d6c7fbc2f7dc200768aedbe761e6c1d980c",
+    "src/app/main.cpp": "1950c265c8ce19b3550815b13f9fe39f76f0215ce97564ef4550a1ce3d3990af",
+    "src/app/desktop_window_host.cpp": "b9cfb462fafc95e7be433b92c93d6bd4da140ef3e04ba8678a457f37826e0b0c",
+    "src/app/desktop_window_host.h": "698c6d636d8d285e3e1921458685ae3d23a7d28d098ab6abaadaf1fda37e58cd",
+    "src/platform/desktop_platform.cpp": "a7584f36711421502213982f45440ce4e283a5c43ae4ccf423368da769a045bc",
+    "src/platform/desktop_platform.h": "9637dba4322dc27ea93ab5b2488fd55bf0f27633230c0f99b632c7f7bf7c58c1",
+    "src/platform/start_button_capture.cpp": "69fcf1c1d36058080740a547706d201ab4097518a1069895e8fede4c1065a717",
+    "src/platform/start_button_capture.h": "2a6953e36d84de1bc3348e222ecbe1fe4842aaf5c20972070dbd92083be43215",
+    "src/platform/start_button_capture_state.cpp": "5eb1e0337677f8505954d35808a9664bceb36107b1634fbd54946947c84b3f04",
+    "src/platform/start_button_capture_state.h": "84b575a93ab516a5be4ddd9068ad53c2a6804ee2637250c0b1311a7a23a71e7c",
+    "src/platform/windows/windows_start_button_capture.cpp": "e17f28669edb8b2b8bf763641fd99859010b87d3f7453a852485232c2ab7ffaf",
+    "src/platform/windows/windows_desktop_platform.cpp": "33f637ad30c5dd48eaf3ec3a18d983839608013cf9b2d9117192bd485dc520c4",
+    "src/platform/windows/windows_desktop_tray.cpp": "1c2de7919b4d3018b3732a70ad8e5dda3261cbfb7caf49d27c729684ecc7da79",
+    "tests/platform/start_button_capture_tests.cpp": "b457a2aac3bb183091ef14afc9870b521eedb8e706cada8b858fabb98d90bdec",
+    "tests/platform/desktop_platform_tests.cpp": "c036a4f21b0842c0feac7d78afca827c048fe5cc7007187a9a1e311797e01145",
+    "tests/platform/native_taskbar_probe.cpp": "2002eaa4d80e999477b3358fce1880f3c6b169fdd3428fc9085ce7d839379968",
+    "tests/ui/tst_desktop_window_host.cpp": "78d115d892498a56ec3e91cdac95110d32acdf19b05c1a92c33b187f1cf8373c",
+    "tests/ui/tst_prototype_window.cpp": "0a6748046c0bd7683437eddd96da7c3aac4feebba068a71dc76c9d1e0db93bdf",
+    "scripts/verify-taskbar-integration.ps1": "fdd0ca1ea2a48b0fcf68ae73c0bca699e4496c58d5536acb513107ad26180225"
+  }
+}

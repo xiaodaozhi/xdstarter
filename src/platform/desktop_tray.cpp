@@ -13,6 +13,7 @@
 namespace xdstarter {
 
 void DesktopTray::setWinKeyCaptureState(bool, bool, const QString&) {}
+void DesktopTray::setStartButtonCaptureState(bool, bool, const QString&) {}
 
 void DesktopTray::beginEventSession() {
     ++eventGeneration_;

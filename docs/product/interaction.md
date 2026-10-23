@@ -1,6 +1,6 @@
 # 交互设计
 
-本文件区分当前 Qt Quick 菜单原型与后续完整目标。[Issue #14](https://github.com/xiaodaozhi/xdstarter/issues/14) 已将 [#13 的设计素材](https://github.com/xiaodaozhi/xdstarter/issues/13) 接入运行时；[#15](https://github.com/xiaodaozhi/xdstarter/issues/15) 接入无边框和外部焦点收起；[#16](https://github.com/xiaodaozhi/xdstarter/issues/16) 改为自绘外观与统一面板边距；[#22](https://github.com/xiaodaozhi/xdstarter/issues/22) 接入用户显式启用的单独 Win 键唤起。[#8](https://github.com/xiaodaozhi/xdstarter/issues/8) 接入本地应用与固定目标搜索；[#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 增加分组管理；[#29](https://github.com/xiaodaozhi/xdstarter/issues/29) 建立完整菜单视觉；[#41](https://github.com/xiaodaozhi/xdstarter/issues/41) 将其更新为 v2 修订 2.3 的默认可编辑交互。磁贴显示名称编辑及搜索别名联动由 [ADR-0011](../technical/adr/0011-tile-display-names.md) 定义，开始按钮接管继续按对应 Issue 推进。实际验证范围见[测试策略](../technical/testing.md)。
+本文件区分当前 Qt Quick 菜单原型与后续完整目标。[Issue #14](https://github.com/xiaodaozhi/xdstarter/issues/14) 已将 [#13 的设计素材](https://github.com/xiaodaozhi/xdstarter/issues/13) 接入运行时；[#15](https://github.com/xiaodaozhi/xdstarter/issues/15) 接入无边框和外部焦点收起；[#16](https://github.com/xiaodaozhi/xdstarter/issues/16) 改为自绘外观与统一面板边距；[#22](https://github.com/xiaodaozhi/xdstarter/issues/22) 接入用户显式启用的单独 Win 键唤起。[#8](https://github.com/xiaodaozhi/xdstarter/issues/8) 接入本地应用与固定目标搜索；[#9](https://github.com/xiaodaozhi/xdstarter/issues/9) 增加分组管理；[#29](https://github.com/xiaodaozhi/xdstarter/issues/29) 建立完整菜单视觉；[#41](https://github.com/xiaodaozhi/xdstarter/issues/41) 将其更新为 v2 修订 2.3 的默认可编辑交互。磁贴显示名称编辑及搜索别名联动由 [ADR-0011](../technical/adr/0011-tile-display-names.md) 定义，开始按钮点击与自适应任务栏见 [ADR-0014](../technical/adr/0014-start-click-and-adaptive-taskbar.md)。实际验证范围见[测试策略](../technical/testing.md)。
 
 ## 浏览与启动
 
@@ -16,7 +16,7 @@
 
 单击或 Enter 启动应用；启动失败保留窗口并显示原因，成功后收起，把焦点交给目标程序。托盘可再次显示；若托盘不可用，成功启动后最小化到任务栏以保持可恢复。异步定位完成不重新抢占用户已切走的焦点。
 
-Esc 在输入法预编辑期间交给输入法；其他时候先关闭当前子菜单或取消拖拽，再退出文件夹／分类选择或清空搜索，最后收起主菜单。“收起菜单”按钮直接收起，退出程序需选择明确的退出入口。托盘可用时收起仅隐藏窗口；托盘不可用时最小化，保留任务栏恢复入口。系统关闭窗口的退出策略与主动收起分开处理。独按 Win 键仅在用户启用后切换菜单，系统开始按钮仍保持原生行为。
+Esc 在输入法预编辑期间交给输入法；其他时候先关闭当前子菜单或取消拖拽，再退出文件夹／分类选择或清空搜索，最后收起主菜单。“收起菜单”按钮直接收起，退出程序需选择明确的退出入口。托盘可用时收起仅隐藏窗口；托盘不可用时最小化，保留任务栏恢复入口。系统关闭窗口的退出策略与主动收起分开处理。独按 Win 键仅在用户启用后切换菜单。托盘成功注册后开始按钮点击服务自动启用；只有当前点已确认属于真实 StartButton 时接收完整左键，释放后切换菜单。未识别、快速移动或失效的新点击保留系统路径，右键不接管。托盘及电源菜单可独立暂停／启用开始按钮服务。
 
 菜单确实获得焦点后，点击桌面、其他应用或切换到外部窗口，持续失去焦点时收起；若初次激活被系统拒绝，保留窗口供用户操作。内部尺寸、固定、分组、电源、更多与关于菜单，以及组名编辑弹层在同一 Qt Quick 窗口内呈现，打开、选择和关闭它们不会被误认为切换应用。本窗口拥有的临时子窗口也属于内部焦点。真正切至外部时会连同子菜单一起收起，不因子菜单仍打开而永久停留。
 
@@ -86,9 +86,9 @@ v2 修订 2.3 的几何、字体和深浅颜色由共享视觉 tokens 定义，�
 
 每次启动默认关闭 Win 键唤起，不从布局恢复此开关。支持环境且托盘可用时，用户可从窗口电源菜单或托盘选择启用，界面显示实际启用、暂停或失败状态，等待启用结果时不接受重复请求。启用后单独按下并释放左右 Win 键切换 XDStarter；长按重复不连续切换，其他按键或鼠标参与时不算独按。Win+E/R/L/数字等组合按原始输入路径交给系统，其兼容性仍须按确切环境验收。
 
-用户可随时暂停，失败或托盘不可用时也停止接管。托盘恢复、新进程启动或错误条件消失均不自动重新启用，需用户再次操作。系统开始按钮一直保持原生入口，暂停或退出后 Win 键回到系统路径；不采用先打开原生 Start 再关闭的闪烁方案。当前只支持本地 Windows 11 的显式原型启用，不把安全桌面、锁屏或 UAC 作为接管目标。
+用户可随时暂停，失败或托盘不可用时也停止接管。托盘恢复、新进程启动或错误条件消失均不自动重新启用，需用户再次操作。开始按钮服务与 Win 键分别管理；暂停或退出对应服务后回到系统路径；不采用先打开原生 Start 再关闭的闪烁方案。当前只支持本地 Windows 11 的显式原型启用，不把安全桌面、锁屏或 UAC 作为接管目标。
 
-开始按钮左键接管、打开系统开始菜单的独立命令和开机启动管理继续按父 [Issue #6](https://github.com/xiaodaozhi/xdstarter/issues/6) 等后续任务推进。机制与失败边界见 [ADR-0008](../technical/adr/0008-win-key-capture.md)；只有[测试策略](../technical/testing.md)记录过的物理键盘、组合和恢复用例才算实际验证。
+开始按钮点击的实现与限制见 ADR-0014；打开系统开始菜单的独立命令和开机启动管理继续按父 [Issue #6](https://github.com/xiaodaozhi/xdstarter/issues/6) 等后续任务推进。机制与失败边界见 [ADR-0008](../technical/adr/0008-win-key-capture.md)；只有[测试策略](../technical/testing.md)记录过的物理键盘、组合和恢复用例才算实际验证。
 
 ## 辅助功能与视觉
 

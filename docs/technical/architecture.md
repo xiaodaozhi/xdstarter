@@ -70,9 +70,9 @@ GUI 将有界结果映射为名称、图标、是否固定及缓存的可用状�
 
 `ShortcutRail` 为 64 DIP 宽；每项命中区为 48×48 DIP，头像显示为 32 DIP 圆形，其他图标为 24 DIP。组件按主题从 qrc 读取独立 SVG，并提供可见焦点、名称与提示。头像是已交付的圆形占位素材，点击进入账户设置，不读取真实用户照片。磁贴仍使用共享网格原生绘制，素材接入不改变三档几何。
 
-`MenuController.requestDesktopAction` 只接收 `documents`、`downloads`、`settings`、`account`。`DesktopShellService` 使用专用 QThread 串行执行这些请求，平台层再次校验白名单；文档和下载通过 Known Folders 解析，设置与账户分别使用固定的 `ms-settings:`、`ms-settings:yourinfo`。不接受路径、URI 或命令串作为界面输入。同一时刻只接受一个桌面动作，完成后通过信号更新忙碌状态与原因；成功收起窗口，失败保留窗口。电源入口显示文字菜单，提供 Win 键唤起启用/暂停和退出 XDStarter，未接入系统关机、重启或注销。
+`MenuController.requestDesktopAction` 只接收 `documents`、`downloads`、`settings`、`account`。`DesktopShellService` 使用专用 QThread 串行执行这些请求，平台层再次校验白名单；文档和下载通过 Known Folders 解析，设置与账户分别使用固定的 `ms-settings:`、`ms-settings:yourinfo`。不接受路径、URI 或命令串作为界面输入。同一时刻只接受一个桌面动作，完成后通过信号更新忙碌状态与原因；成功收起窗口，失败保留窗口。电源入口显示文字菜单，提供开始按钮接管、Win 键唤起的独立启用／暂停和退出 XDStarter，未接入系统关机、重启或注销。
 
-`DesktopWindowHost` 在 GUI 边界统一管理菜单、托盘、外观、定位与接管状态。托盘注册成功时设置 `quitOnLastWindowClosed(false)`，关闭或收起窗口后进程保留，托盘可再次显示或退出；注册不可用时恢复系统关闭窗口的退出行为，但主动收起、外部焦点收起及启动成功后收起均采用最小化以保留任务栏恢复入口。host 仅在支持环境且托盘可用时允许启用 Win 键唤起，托盘失效立即停止，注册恢复不自动重新启用。退出会失效定位请求和接管通知，停止焦点计时器、Hook 线程与托盘，并执行既有布局 flush 与 worker join。
+`DesktopWindowHost` 在 GUI 边界统一管理菜单、托盘、外观、定位与接管状态。托盘注册成功时设置 `quitOnLastWindowClosed(false)`，关闭或收起窗口后进程保留，托盘可再次显示或退出；注册不可用时恢复系统关闭窗口的退出行为，但主动收起、外部焦点收起及启动成功后收起均采用最小化以保留任务栏恢复入口。host 在托盘可用时自动启用支持平台的开始按钮服务；仅在用户明确操作后启用 Win 键唤起，托盘失效立即停止，注册恢复不自动重新启用。退出会失效定位请求和接管通知，停止焦点计时器、两类接管线程与托盘，并执行既有布局 flush 与 worker join。
 
 Host 监听 `focusWindowChanged`、应用激活状态与窗口激活变化；每轮显示只有实际获得根窗口或其 `transientParent` 家族焦点后才启用外部收起。焦点离开后延后 100 ms 复核，内部临时窗口、短时焦点交接和托盘菜单不会误关。初次激活被拒时不自行隐藏。拖拽且左键按下时仅在待处理的外部失焦期间短时复查，释放后正常收起；编辑模式不成为永久禁止收起的条件。
 

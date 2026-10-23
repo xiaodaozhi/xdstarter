@@ -315,6 +315,95 @@ class HiddenNativeWindow {
 
 } // namespace
 
+void testDockingMatrix(TestContext& test) {
+    int cases = 0;
+    for (int edge = 0; edge < 4; ++edge) {
+        for (const bool centered : {false, true}) {
+            for (const double dpr : {1.0, 1.25, 1.5, 1.75, 2.0}) {
+                for (const QPoint origin : {QPoint(0, 0), QPoint(-2560, -1440)}) {
+                    xdstarter::DesktopAnchorResult anchor;
+                    anchor.monitorPhysicalRect = QRect(origin, QSize(2560, 1440));
+                    const int bar = qRound(48 * dpr);
+                    const auto monitor = anchor.monitorPhysicalRect;
+                    switch (edge) {
+                    case 0:
+                        anchor.taskbarPhysicalRect =
+                            QRect(origin.x(), monitor.bottom() - bar + 1, 2560, bar);
+                        anchor.workAreaPhysicalRect = monitor.adjusted(0, 0, 0, -bar);
+                        break;
+                    case 1:
+                        anchor.taskbarPhysicalRect = QRect(origin, QSize(2560, bar));
+                        anchor.workAreaPhysicalRect = monitor.adjusted(0, bar, 0, 0);
+                        break;
+                    case 2:
+                        anchor.taskbarPhysicalRect = QRect(origin, QSize(bar, 1440));
+                        anchor.workAreaPhysicalRect = monitor.adjusted(bar, 0, 0, 0);
+                        break;
+                    case 3:
+                        anchor.taskbarPhysicalRect =
+                            QRect(monitor.right() - bar + 1, origin.y(), bar, 1440);
+                        anchor.workAreaPhysicalRect = monitor.adjusted(0, 0, -bar, 0);
+                        break;
+                    }
+                    anchor.centeredStart = centered;
+                    const auto edges = xdstarter::desktopResizeEdges(anchor);
+                    test.expect(!edges.testFlag(edge == 0   ? Qt::BottomEdge
+                                                : edge == 1 ? Qt::TopEdge
+                                                : edge == 2 ? Qt::LeftEdge
+                                                            : Qt::RightEdge),
+                                "docked border never resizes into the taskbar");
+                    for (const QSize dip : {QSize(480, 480), QSize(980, 680), QSize(2200, 1800)}) {
+                        const QSize size(qRound(dip.width() * dpr), qRound(dip.height() * dpr));
+                        const int gap = qRound(8 * dpr);
+                        const QRect panel = xdstarter::desktopPopupPhysicalRect(size, anchor, gap);
+                        test.expect(panel.isValid() && anchor.workAreaPhysicalRect.contains(panel),
+                                    "all sizes/scales remain in native work area");
+                        test.expect(
+                            panel.size() ==
+                                QSize(qMin(size.width(), anchor.workAreaPhysicalRect.width()),
+                                      qMin(size.height(), anchor.workAreaPhysicalRect.height())),
+                            "oversized panels are clamped per axis");
+                        const auto area = anchor.workAreaPhysicalRect;
+                        if (centered && edge >= 2)
+                            test.expect(qAbs(qint64(panel.top()) + panel.bottom() - area.top() -
+                                             area.bottom()) <= 1,
+                                        "vertical centered menus stay centered at every height");
+                        else if (panel.height() + 2 * gap <= area.height())
+                            test.expect(edge == 0 ? panel.bottom() == area.bottom() - gap
+                                                  : panel.top() == area.top() + gap,
+                                        "height resize preserves the docking margin");
+                        if (centered && edge < 2)
+                            test.expect(qAbs(qint64(panel.left()) + panel.right() - area.left() -
+                                             area.right()) <= 1,
+                                        "centered menus stay centered at every width and scale");
+                        else if (panel.width() + 2 * gap <= area.width())
+                            test.expect(edge == 3 ? panel.right() == area.right() - gap
+                                                  : panel.left() == area.left() + gap,
+                                        "width resize preserves the docking margin");
+                        ++cases;
+                    }
+                }
+            }
+        }
+    }
+    xdstarter::DesktopAnchorResult autoHide;
+    autoHide.monitorPhysicalRect = QRect(0, 0, 1920, 1080);
+    autoHide.workAreaPhysicalRect = autoHide.monitorPhysicalRect;
+    for (const QRect bar : {QRect(0, 1040, 1920, 40), QRect(0, 0, 1920, 40), QRect(0, 0, 48, 1080),
+                            QRect(1872, 0, 48, 1080)}) {
+        autoHide.taskbarPhysicalRect = bar;
+        const QRect area = xdstarter::desktopMenuWorkArea(autoHide);
+        const QRect popup = xdstarter::desktopPopupPhysicalRect(QSize(980, 680), autoHide);
+        test.expect(area.isValid() && !area.intersects(bar) && area.contains(popup),
+                    "revealed auto-hide taskbars reserve space on all four edges");
+        auto reserved = autoHide;
+        reserved.workAreaPhysicalRect = area;
+        test.expect(xdstarter::desktopMenuWorkArea(reserved) == area,
+                    "already reserved space is never subtracted twice");
+    }
+    std::cout << "Taskbar matrix: " << cases << " parameter combinations\n";
+}
+
 int main(int argc, char* argv[]) {
     QCoreApplication application(argc, argv);
     auto platform = xdstarter::createDesktopPlatform();
@@ -390,6 +479,7 @@ int main(int argc, char* argv[]) {
     }
 
     TestContext test;
+    testDockingMatrix(test);
     testStartButtonHitClassification(test);
     for (const auto& action : {QStringLiteral("documents"), QStringLiteral("downloads"),
                                QStringLiteral("settings"), QStringLiteral("account")}) {

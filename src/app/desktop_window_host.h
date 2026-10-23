@@ -44,6 +44,7 @@ class DesktopWindowHost final : public QObject {
     ~DesktopWindowHost() override;
     void start(const QImage& icon, bool showInitially = false);
     void attachWinKeyCapture(WinKeyCapture &capture);
+    void attachStartButtonCapture(WinKeyCapture& capture);
     void showWindow();
     void toggleWindow();
     void keepReachableAfterLaunch();
@@ -52,6 +53,7 @@ class DesktopWindowHost final : public QObject {
   public slots:
     void dismissWindow();
     void toggleWinKeyCapture();
+    void toggleStartButtonCapture();
 
   private slots:
     void scheduleFocusCheck();
@@ -68,6 +70,8 @@ class DesktopWindowHost final : public QObject {
     void updateRecovery(bool available, const QString &message);
     void publishStatus();
     void publishWinKeyCapture();
+    void publishStartButtonCapture();
+    void activatePresentedWindow();
     bool ownsFocus() const;
     void checkFocus();
     void dismiss(const QString &reason);
@@ -84,6 +88,10 @@ class DesktopWindowHost final : public QObject {
     DesktopPlatform &placement_;
     DesktopTray &tray_;
     QPointer<WinKeyCapture> winKeyCapture_;
+    QPointer<WinKeyCapture> startButtonCapture_;
+    bool startButtonRequested_ = false;
+    bool startButtonActive_ = false;
+    QString startButtonStatus_;
     QString trayStatus_;
     QString anchorStatus_;
     QString appearanceStatus_;

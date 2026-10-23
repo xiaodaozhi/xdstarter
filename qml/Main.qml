@@ -29,7 +29,10 @@ ApplicationWindow {
     property bool winKeyCaptureAvailable: false
     property bool winKeyCaptureActive: false
     property bool winKeyCaptureBusy: false
-    property string winKeyCaptureStatus: qsTr("Win 键唤起未启用；开始按钮保持原生行为。")
+    property string winKeyCaptureStatus: qsTr("Win 键唤起未启用。")
+    property bool startButtonCaptureAvailable: false
+    property bool startButtonCaptureActive: false
+    property string startButtonCaptureStatus: qsTr("开始按钮使用系统入口。")
     readonly property bool compactLayout: panelWidth - shortcutRail.width - 2 * tokens.layout.contentMargin < tokens.layout.catalogWidth + tokens.layout.contentSpacing + 552
     property bool showApplications: false
     readonly property var applicationBrowser: controller.applications
@@ -163,6 +166,7 @@ ApplicationWindow {
 
     signal dismissRequested
     signal winKeyCaptureToggleRequested
+    signal startButtonCaptureToggleRequested
 
     objectName: "prototypeWindow"
     width: tokens.defaultMenuSizeDip.width + 2 * shadowInset
@@ -2708,6 +2712,25 @@ ApplicationWindow {
         popupType: Popup.Item
         title: qsTr("电源与退出")
         width: 240
+
+        ActionMenuItem {
+            objectName: "startButtonCaptureItem"
+            text: window.startButtonCaptureActive ? qsTr("暂停开始按钮接管") : qsTr("启用开始按钮接管")
+            enabled: window.startButtonCaptureAvailable || window.startButtonCaptureActive
+            Accessible.description: window.startButtonCaptureStatus
+            onTriggered: {
+                powerMenu.close();
+                window.startButtonCaptureToggleRequested();
+            }
+            Keys.onReturnPressed: {
+                powerMenu.close();
+                window.startButtonCaptureToggleRequested();
+            }
+            Keys.onEnterPressed: {
+                powerMenu.close();
+                window.startButtonCaptureToggleRequested();
+            }
+        }
 
         ActionMenuItem {
             objectName: "winKeyCaptureItem"

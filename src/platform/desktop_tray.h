@@ -27,12 +27,14 @@ class DesktopTray : public QObject {
     // This only presents state supplied by the input service. It never starts
     // capture, including when the Shell recreates the notification area.
     virtual void setWinKeyCaptureState(bool active, bool canEnable, const QString& status);
+    virtual void setStartButtonCaptureState(bool active, bool canEnable, const QString& status);
 
   signals:
     void toggleRequested();
     void menuRequested(QPoint physicalPosition);
     void quitRequested();
     void winKeyCaptureToggleRequested();
+    void startButtonCaptureToggleRequested();
     void registrationChanged(bool available, QString message);
 
   protected:

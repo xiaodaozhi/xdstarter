@@ -9,7 +9,7 @@ QString WindowsPlatformIntegration::displayName() const {
 }
 
 QString WindowsPlatformIntegration::statusDescription() const {
-    return QStringLiteral("开始按钮保持原生行为；Win 键唤起可在电源菜单或托盘中启用。");
+    return QStringLiteral("开始按钮接管由托盘管理，识别失效时使用系统入口；Win 键唤起可单独启用。");
 }
 
 bool WindowsPlatformIntegration::isSimulated() const { return false; }

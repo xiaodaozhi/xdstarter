@@ -114,6 +114,9 @@ DesktopWindowHost::DesktopWindowHost(QWindow &window, DesktopShellService &shell
     if (windowMeta->indexOfSignal("winKeyCaptureToggleRequested()") >= 0)
         connect(&window, SIGNAL(winKeyCaptureToggleRequested()), this,
                 SLOT(toggleWinKeyCapture()));
+    if (windowMeta->indexOfSignal("startButtonCaptureToggleRequested()") >= 0)
+        connect(&window, SIGNAL(startButtonCaptureToggleRequested()), this,
+                SLOT(toggleStartButtonCapture()));
     const int blockedProperty = windowMeta->indexOfProperty("dismissalBlocked");
     if (blockedProperty >= 0) {
         const auto property = windowMeta->property(blockedProperty);
@@ -125,6 +128,8 @@ DesktopWindowHost::DesktopWindowHost(QWindow &window, DesktopShellService &shell
     connect(&tray_, &DesktopTray::toggleRequested, this, &DesktopWindowHost::toggleWindow);
     connect(&tray_, &DesktopTray::winKeyCaptureToggleRequested, this,
             &DesktopWindowHost::toggleWinKeyCapture);
+    connect(&tray_, &DesktopTray::startButtonCaptureToggleRequested, this,
+            &DesktopWindowHost::toggleStartButtonCapture);
     connect(&tray_, &DesktopTray::menuRequested, this, [this](QPoint) {
         if (!stopping_) {
             trayMenuActive_ = true;
@@ -257,18 +262,36 @@ void DesktopWindowHost::finishRevealPreparation() {
     const auto result = placement_.placeWindow(window_->winId(), anchor, gap, false, inset);
     if (!isCurrentReveal(request))
         return;
-    anchorStatus_ = result.success
-                        ? QStringLiteral("面板距工作区左侧和底部均为 %1 DIP。")
-                              .arg(windowMetric(window_, "screenGapDip", 8))
-                        : QStringLiteral("原生定位不可用，使用 Qt 工作区边距回退。");
+    anchorStatus_ = result.success ? QStringLiteral("面板按任务栏方向停靠，边距为 %1 DIP。")
+                                         .arg(windowMetric(window_, "screenGapDip", 8))
+                                   : QStringLiteral("原生定位不可用，使用 Qt 工作区边距回退。");
     if (!result.success && window_->screen()) {
-        const auto area = window_->screen()->availableGeometry();
+        DesktopAnchorResult logical = anchor;
+        const auto monitor = window_->screen()->geometry();
+        logical.monitorPhysicalRect = monitor;
+        logical.workAreaPhysicalRect = window_->screen()->availableGeometry();
+        switch (desktopTaskbarEdge(anchor)) {
+        case TaskbarEdge::Top:
+            logical.taskbarPhysicalRect = QRect(monitor.topLeft(), QSize(monitor.width(), 1));
+            break;
+        case TaskbarEdge::Left:
+            logical.taskbarPhysicalRect = QRect(monitor.topLeft(), QSize(1, monitor.height()));
+            break;
+        case TaskbarEdge::Right:
+            logical.taskbarPhysicalRect =
+                QRect(monitor.right(), monitor.top(), 1, monitor.height());
+            break;
+        default:
+            logical.taskbarPhysicalRect =
+                QRect(monitor.left(), monitor.bottom(), monitor.width(), 1);
+            break;
+        }
         const int logicalGap = qRound(windowMetric(window_, "screenGapDip", 8));
         const int logicalInset = qRound(windowMetric(window_, "shadowInset", 0));
-        const int panelHeight = window_->height() - 2 * logicalInset;
-        window_->setPosition(area.left() + logicalGap - logicalInset,
-                             std::max(area.top() + logicalGap,
-                                      area.bottom() + 1 - logicalGap - panelHeight) - logicalInset);
+        const auto panel = desktopPopupPhysicalRect(
+            window_->size() - QSize(2 * logicalInset, 2 * logicalInset), logical, logicalGap);
+        if (panel.isValid())
+            window_->setPosition(panel.topLeft() - QPoint(logicalInset, logicalInset));
     }
     if (!isCurrentReveal(request))
         return;
@@ -300,6 +323,7 @@ void DesktopWindowHost::finishRevealPreparation() {
         return;
     window_->raise();
     window_->requestActivate();
+    activatePresentedWindow();
     prepareWindow("prepareForPresentation");
     scheduleFocusCheck();
 }
@@ -315,17 +339,65 @@ void DesktopWindowHost::start(const QImage& icon, bool showInitially) {
     const auto result = tray_.start(icon);
     updateRecovery(result.success && tray_.isAvailable(), result.message);
     started_ = true;
+    if (recoveryAvailable_ && startButtonCapture_ && startButtonCapture_->isSupported())
+        toggleStartButtonCapture();
     if (showInitially || !recoveryAvailable_)
         showWindow();
+}
+
+void DesktopWindowHost::attachStartButtonCapture(WinKeyCapture& capture) {
+    if (started_ || stopping_ || startButtonCapture_)
+        return;
+    startButtonCapture_ = &capture;
+    connect(&capture, &WinKeyCapture::toggleRequested, this, [this] {
+        if (!stopping_ && startButtonRequested_ && startButtonActive_ && startButtonCapture_ &&
+            startButtonCapture_->isActive())
+            toggleWindowFrom(QStringLiteral("start-button"));
+    });
+    connect(&capture, &WinKeyCapture::statusChanged, this,
+            [this](bool active, const QString& message, const QString& errorCode) {
+                if (stopping_)
+                    return;
+                if (active && (!startButtonRequested_ || !recoveryAvailable_)) {
+                    startButtonCapture_->setEnabled(false);
+                    return;
+                }
+                startButtonActive_ = active;
+                if (!active)
+                    startButtonRequested_ = false;
+                startButtonStatus_ = message;
+                publishStatus();
+                qInfo().noquote() << "Start button capture:"
+                                  << QJsonDocument(
+                                         QJsonObject{{QStringLiteral("active"), active},
+                                                     {QStringLiteral("errorCode"), errorCode}})
+                                         .toJson(QJsonDocument::Compact);
+            });
+    publishStatus();
+}
+
+void DesktopWindowHost::toggleStartButtonCapture() {
+    if (stopping_ || !started_ || !startButtonCapture_ || !startButtonCapture_->isSupported())
+        return;
+    if (startButtonRequested_ || startButtonActive_) {
+        startButtonRequested_ = false;
+        startButtonActive_ = false;
+        startButtonCapture_->setEnabled(false);
+        startButtonStatus_ = QStringLiteral("开始按钮接管已暂停。");
+    } else if (recoveryAvailable_) {
+        startButtonRequested_ = true;
+        startButtonStatus_ = QStringLiteral("正在启用开始按钮接管…");
+        startButtonCapture_->setEnabled(true);
+    }
+    publishStatus();
 }
 
 void DesktopWindowHost::attachWinKeyCapture(WinKeyCapture &capture) {
     if (started_ || stopping_ || winKeyCapture_)
         return;
     winKeyCapture_ = &capture;
-    winKeyStatus_ = capture.isSupported()
-                        ? QStringLiteral("Win 键唤起未启用；开始按钮保持原生行为。")
-                        : QStringLiteral("当前平台不支持 Win 键唤起。开始按钮保持原生行为。");
+    winKeyStatus_ = capture.isSupported() ? QStringLiteral("Win 键唤起未启用。")
+                                          : QStringLiteral("当前平台不支持 Win 键唤起。");
     connect(&capture, &WinKeyCapture::toggleRequested, this, [this] {
         if (!stopping_ && winKeyRequested_ && winKeyActive_ && winKeyCapture_ &&
             winKeyCapture_->isActive())
@@ -393,6 +465,7 @@ void DesktopWindowHost::showWindow() {
         prepareWindow("prepareForPresentation");
         window_->raise();
         window_->requestActivate();
+        activatePresentedWindow();
         scheduleFocusCheck();
         return;
     }
@@ -405,6 +478,20 @@ void DesktopWindowHost::rememberVisibleWindowSize() {
     if (!stopping_ && !pendingReveal_ && window_ && window_->isVisible() &&
         window_->visibility() != QWindow::Minimized && !window_->size().isEmpty())
         intendedWindowSize_ = window_->size();
+}
+
+void DesktopWindowHost::activatePresentedWindow() {
+    if (stopping_ || !window_ || !window_->isVisible())
+        return;
+    const auto result = placement_.presentMenuWindow(window_->winId());
+    if (result.supported)
+        qInfo().noquote() << "Menu presentation:"
+                          << QJsonDocument(
+                                 QJsonObject{{QStringLiteral("nativeVisible"), result.visible},
+                                             {QStringLiteral("nativeMinimized"), result.minimized},
+                                             {QStringLiteral("foreground"), result.foreground},
+                                             {QStringLiteral("errorCode"), result.errorCode}})
+                                 .toJson(QJsonDocument::Compact);
 }
 
 void DesktopWindowHost::toggleWindow() {
@@ -581,6 +668,11 @@ void DesktopWindowHost::shutdown() {
     if (winKeyCapture_)
         winKeyCapture_->stop();
     winKeyActive_ = false;
+    startButtonRequested_ = false;
+    startButtonActive_ = false;
+    if (startButtonCapture_)
+        startButtonCapture_->stop();
+    publishStartButtonCapture();
     publishWinKeyCapture();
     tray_.stop();
 }
@@ -594,6 +686,12 @@ void DesktopWindowHost::updateRecovery(bool available, const QString &message) {
     if (stopping_)
         return;
     recoveryAvailable_ = available;
+    if (!available && startButtonCapture_ && (startButtonRequested_ || startButtonActive_)) {
+        startButtonRequested_ = false;
+        startButtonActive_ = false;
+        startButtonCapture_->setEnabled(false);
+        startButtonStatus_ = QStringLiteral("托盘入口不可用，开始按钮接管已暂停。");
+    }
     if (!available && winKeyCapture_ && (winKeyRequested_ || winKeyActive_ || winKeyPending_)) {
         winKeyRequested_ = false;
         winKeyPending_ = false;
@@ -613,10 +711,23 @@ void DesktopWindowHost::updateRecovery(bool available, const QString &message) {
 
 void DesktopWindowHost::publishStatus() {
     publishWinKeyCapture();
+    publishStartButtonCapture();
     if (window_)
         window_->setProperty("integrationStatus", trayStatus_ + QLatin1Char('\n') + anchorStatus_ +
-                                                       QLatin1Char('\n') + appearanceStatus_ +
-                                                       QLatin1Char('\n') + winKeyStatus_);
+                                                      QLatin1Char('\n') + appearanceStatus_ +
+                                                      QLatin1Char('\n') + winKeyStatus_ +
+                                                      QLatin1Char('\n') + startButtonStatus_);
+}
+
+void DesktopWindowHost::publishStartButtonCapture() {
+    const bool available = !stopping_ && recoveryAvailable_ && startButtonCapture_ &&
+                           startButtonCapture_->isSupported();
+    if (window_) {
+        window_->setProperty("startButtonCaptureAvailable", available);
+        window_->setProperty("startButtonCaptureActive", startButtonActive_);
+        window_->setProperty("startButtonCaptureStatus", startButtonStatus_);
+    }
+    tray_.setStartButtonCaptureState(startButtonActive_, available, startButtonStatus_);
 }
 
 void DesktopWindowHost::publishWinKeyCapture() {
