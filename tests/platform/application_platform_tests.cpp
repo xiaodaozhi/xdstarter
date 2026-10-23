@@ -55,6 +55,58 @@ xdstarter::LaunchTarget shortcut(const QString& path, const QString& name) {
 }
 
 #ifdef Q_OS_WIN
+constexpr int localizedFolderResourceId = 5301;
+
+QJsonObject localizationSourceDiagnostics(const QString& path) {
+    const auto native = QDir::toNativeSeparators(path);
+    const auto zonePath = native + QStringLiteral(":Zone.Identifier");
+    const auto zone = CreateFileW(reinterpret_cast<LPCWSTR>(zonePath.utf16()), GENERIC_READ,
+                                  FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
+                                  OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    const auto zoneError = zone == INVALID_HANDLE_VALUE ? GetLastError() : ERROR_SUCCESS;
+    QByteArray zoneBytes(4096, '\0');
+    DWORD zoneLength = 0;
+    if (zone != INVALID_HANDLE_VALUE) {
+        if (!ReadFile(zone, zoneBytes.data(), DWORD(zoneBytes.size()), &zoneLength, nullptr))
+            zoneLength = 0;
+        CloseHandle(zone);
+    }
+    zoneBytes.resize(zoneLength);
+    wchar_t volumePath[32768]{};
+    const bool volumeAvailable =
+        GetVolumePathNameW(reinterpret_cast<LPCWSTR>(native.utf16()), volumePath, 32768) != FALSE;
+    return {{QStringLiteral("path"), path},
+            {QStringLiteral("zoneIdentifierPresent"), zone != INVALID_HANDLE_VALUE},
+            {QStringLiteral("zoneIdentifierOpenError"), static_cast<int>(zoneError)},
+            {QStringLiteral("zoneIdentifier"), QString::fromUtf8(zoneBytes)},
+            {QStringLiteral("volumePath"),
+             volumeAvailable ? QString::fromWCharArray(volumePath) : QString()},
+            {QStringLiteral("driveType"), volumeAvailable ? int(GetDriveTypeW(volumePath)) : -1}};
+}
+
+QJsonObject nativeOsDiagnostics() {
+    using GetVersion = LONG(WINAPI*)(OSVERSIONINFOW*);
+    const auto getVersion = reinterpret_cast<GetVersion>(
+        GetProcAddress(GetModuleHandleW(L"ntdll.dll"), "RtlGetVersion"));
+    OSVERSIONINFOEXW version{};
+    version.dwOSVersionInfoSize = sizeof(version);
+    const bool available =
+        getVersion && getVersion(reinterpret_cast<OSVERSIONINFOW*>(&version)) == 0;
+    DWORD revision = 0;
+    DWORD size = sizeof(revision);
+    const auto revisionResult =
+        RegGetValueW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", L"UBR",
+                     RRF_RT_REG_DWORD, nullptr, &revision, &size);
+    return {{QStringLiteral("rtlGetVersionAvailable"), available},
+            {QStringLiteral("major"), int(version.dwMajorVersion)},
+            {QStringLiteral("minor"), int(version.dwMinorVersion)},
+            {QStringLiteral("build"), int(version.dwBuildNumber)},
+            {QStringLiteral("updateBuildRevisionAvailable"), revisionResult == ERROR_SUCCESS},
+            {QStringLiteral("updateBuildRevision"), int(revision)},
+            {QStringLiteral("productType"), int(version.wProductType)},
+            {QStringLiteral("userUiLanguage"), int(GetUserDefaultUILanguage())}};
+}
+
 struct ShortcutOptions {
     bool runAs = false;
     int showCommand = SW_SHOWNORMAL;
@@ -468,6 +520,28 @@ int main(int argc, char* argv[]) {
     const auto userLink = QDir(userFolder).filePath(QStringLiteral("Same.lnk"));
     const auto commonLink = QDir(commonFolder).filePath(QStringLiteral("Same.lnk"));
     const QString localizedName = QStringLiteral("本地化工具");
+    const auto resourceModule = fixture.filePath(QStringLiteral("本地化 资源 & helper.exe"));
+    test.expect(QFile::copy(helper, resourceModule),
+                "resource module copied only inside the owned localization fixture");
+    const auto nativeResourceModule = QDir::toNativeSeparators(resourceModule);
+    const HMODULE resource =
+        LoadLibraryExW(reinterpret_cast<LPCWSTR>(nativeResourceModule.utf16()), nullptr,
+                       LOAD_LIBRARY_AS_DATAFILE | LOAD_LIBRARY_AS_IMAGE_RESOURCE);
+    wchar_t resourceName[256]{};
+    const auto resourceLength =
+        resource ? LoadStringW(resource, localizedFolderResourceId, resourceName, 256) : 0;
+    test.expect(
+        QString::fromWCharArray(resourceName, resourceLength) == localizedName,
+        "neutral string resource preserves exact Chinese independently of the ANSI code page");
+    if (resource)
+        FreeLibrary(resource);
+    const auto localizedReference =
+        QStringLiteral("@%1,-%2").arg(nativeResourceModule).arg(localizedFolderResourceId);
+    wchar_t indirectName[256]{};
+    const auto indirectResult = SHLoadIndirectString(
+        reinterpret_cast<LPCWSTR>(localizedReference.utf16()), indirectName, 256, nullptr);
+    test.expect(SUCCEEDED(indirectResult) && QString::fromWCharArray(indirectName) == localizedName,
+                "documented indirect resource reference resolves exact Chinese before Shell scan");
     const auto localizeFixture = [&](const QString& directory) {
         const auto nativeDirectory = QDir::toNativeSeparators(directory);
         if (!PathMakeSystemFolderW(reinterpret_cast<LPCWSTR>(nativeDirectory.utf16())))
@@ -476,7 +550,8 @@ int main(int argc, char* argv[]) {
         if (!ini.open(QIODevice::WriteOnly))
             return false;
         const auto content = QStringLiteral("[.ShellClassInfo]\r\nLocalizedResourceName=") +
-                             localizedName + QStringLiteral("\r\n");
+                             localizedReference + QStringLiteral("\r\nInfoTip=") + localizedName +
+                             QStringLiteral("\r\n");
         if (ini.write(QByteArray("\xff\xfe", 2)) != 2 ||
             ini.write(reinterpret_cast<const char*>(content.utf16()), content.size() * 2) !=
                 content.size() * 2)
@@ -485,15 +560,25 @@ int main(int argc, char* argv[]) {
         const auto nativeIni = QDir::toNativeSeparators(ini.fileName());
         wchar_t profileName[256]{};
         const auto profileLength =
-            GetPrivateProfileStringW(L".ShellClassInfo", L"LocalizedResourceName", L"", profileName,
-                                     256, reinterpret_cast<LPCWSTR>(nativeIni.utf16()));
+            GetPrivateProfileStringW(L".ShellClassInfo", L"InfoTip", L"", profileName, 256,
+                                     reinterpret_cast<LPCWSTR>(nativeIni.utf16()));
         const auto profileValue =
             QString::fromWCharArray(profileName, static_cast<int>(profileLength));
         test.expect(profileValue == localizedName,
                     "Windows profile API reads exact Chinese from UTF-16LE desktop.ini");
-        if (profileValue != localizedName) {
+        wchar_t profileReference[32768]{};
+        const auto referenceLength = GetPrivateProfileStringW(
+            L".ShellClassInfo", L"LocalizedResourceName", L"", profileReference, 32768,
+            reinterpret_cast<LPCWSTR>(nativeIni.utf16()));
+        const auto referenceValue = QString::fromWCharArray(profileReference, int(referenceLength));
+        test.expect(
+            referenceValue == localizedReference,
+            "Windows profile API preserves exact resource reference including Unicode module path");
+        if (profileValue != localizedName || referenceValue != localizedReference) {
             const QJsonObject diagnostics{{QStringLiteral("expected"), localizedName},
-                                          {QStringLiteral("profileValue"), profileValue}};
+                                          {QStringLiteral("profileValue"), profileValue},
+                                          {QStringLiteral("expectedReference"), localizedReference},
+                                          {QStringLiteral("profileReference"), referenceValue}};
             std::cerr << "Localization fixture: "
                       << QJsonDocument(diagnostics).toJson(QJsonDocument::Compact).constData()
                       << '\n';
@@ -503,6 +588,27 @@ int main(int argc, char* argv[]) {
     };
     test.expect(localizeFixture(userFolder) && localizeFixture(separateFolder),
                 "localized names configured only inside owned temporary roots");
+    QJsonArray localizationSetup;
+    const auto localizationCom = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    test.expect(SUCCEEDED(localizationCom), "COM initialized for documented localized-name setter");
+    for (const auto& directory : {userFolder, separateFolder}) {
+        const auto native = QDir::toNativeSeparators(directory);
+        const auto configured =
+            SUCCEEDED(localizationCom)
+                ? SHSetLocalizedName(reinterpret_cast<LPCWSTR>(native.utf16()),
+                                     reinterpret_cast<LPCWSTR>(nativeResourceModule.utf16()),
+                                     localizedFolderResourceId)
+                : localizationCom;
+        test.expect(SUCCEEDED(configured),
+                    "documented Shell API sets resource-backed name only on owned folder");
+        localizationSetup.append(QJsonObject{{QStringLiteral("path"), directory},
+                                             {QStringLiteral("setLocalizedNameResultHex"),
+                                              QString::number(quint32(configured), 16)}});
+        SHChangeNotify(SHCNE_UPDATEITEM, SHCNF_PATHW | SHCNF_FLUSH,
+                       reinterpret_cast<LPCWSTR>(native.utf16()), nullptr);
+    }
+    if (SUCCEEDED(localizationCom))
+        CoUninitialize();
     // Configure display metadata before any Shell COM object can cache a
     // physical folder name while creating the shortcuts in these directories.
     test.expect(
@@ -582,13 +688,27 @@ int main(int argc, char* argv[]) {
         }
         if (SUCCEEDED(diagnosticCom))
             CoUninitialize();
-        const QJsonObject diagnostics{{QStringLiteral("expected"), localizedName},
-                                      {QStringLiteral("folders"), folderNames},
-                                      {QStringLiteral("nativeFolders"), nativeFolders},
-                                      {QStringLiteral("diagnosticComResultHex"),
-                                       QString::number(static_cast<quint32>(diagnosticCom), 16)},
-                                      {QStringLiteral("ansiCodePage"), static_cast<int>(GetACP())},
-                                      {QStringLiteral("kernelVersion"), QSysInfo::kernelVersion()}};
+        QJsonArray sources;
+        for (const auto& source :
+             {fixture.path(), userRoot, commonRoot, userFolder, separateFolder,
+              QDir(userFolder).filePath(QStringLiteral("desktop.ini")),
+              QDir(separateFolder).filePath(QStringLiteral("desktop.ini")), resourceModule})
+            sources.append(localizationSourceDiagnostics(source));
+        const QJsonObject diagnostics{
+            {QStringLiteral("expected"), localizedName},
+            {QStringLiteral("localizedReference"), localizedReference},
+            {QStringLiteral("resourceName"), QString::fromWCharArray(resourceName, resourceLength)},
+            {QStringLiteral("indirectName"), QString::fromWCharArray(indirectName)},
+            {QStringLiteral("indirectResultHex"), QString::number(quint32(indirectResult), 16)},
+            {QStringLiteral("folders"), folderNames},
+            {QStringLiteral("nativeFolders"), nativeFolders},
+            {QStringLiteral("localizationSetup"), localizationSetup},
+            {QStringLiteral("sourceTrustDiagnostics"), sources},
+            {QStringLiteral("nativeOs"), nativeOsDiagnostics()},
+            {QStringLiteral("diagnosticComResultHex"),
+             QString::number(static_cast<quint32>(diagnosticCom), 16)},
+            {QStringLiteral("ansiCodePage"), static_cast<int>(GetACP())},
+            {QStringLiteral("kernelVersion"), QSysInfo::kernelVersion()}};
         std::cerr << "Localized folder scan: "
                   << QJsonDocument(diagnostics).toJson(QJsonDocument::Compact).constData() << '\n';
     }

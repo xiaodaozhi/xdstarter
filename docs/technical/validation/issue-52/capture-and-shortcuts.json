@@ -38,8 +38,9 @@
     "src/services/prototype_service.cpp": "0f94e8d4a397960c23a36cbe7e4c681763bc9c271f98436427696e88b7e2442e",
     "src/services/prototype_service.h": "561032628e6682cb515deb5e6f157ae1b2ea5d85a0463ff64e2a858b3b986002",
     "tests/experimental/start_bridge_tests.cpp": "19485a44d8439954184426197d57a287192a806fce7c1d9d25ef77762d9733d0",
-    "tests/platform/CMakeLists.txt": "7567019db6eb8317d3e1b3aa3f0022d1e6cff386b68506ef2e99d13864ce27ef",
-    "tests/platform/application_platform_tests.cpp": "a4a164dde4d1a8080b7c25487390bb5069de88d6164e3f0024368ce1ce3fdbc9",
+    "tests/platform/CMakeLists.txt": "a7291d44b65dbdf1da056acf256809b2ff22f459d76ae7c73806a6c7b47c71d4",
+    "tests/platform/application_catalog_fixture.rc": "aea5e4183f2f9c62e4da51c8560c7181f1b40690094512be370423ef20991a52",
+    "tests/platform/application_platform_tests.cpp": "a17e66e8b2a1c963daebe065c92e70e4de8a2bb530e00029c26071a7cdb8b57b",
     "tests/platform/start_button_capture_tests.cpp": "2eba79ffbaa049ca905462982efb16d72f001ab0f69d1fbaaf25d3086f754b70",
     "tests/services/application_catalog_tests.cpp": "9cea89de6124d353aa0ae338d38e695d2c66777597c81e84dac13be411d0857d",
     "tests/ui/tst_desktop_window_host.cpp": "9bc8accb4b66ecd06c91399a5b28c98de0b2262c04c52b166d1bb277f217af24",
@@ -79,11 +80,19 @@
     "toolingTests": 13,
     "repositoryCheck": {
       "passed": true,
-      "files": 736
+      "files": 737
     },
     "smokeRejectsCaptureExperiment": {
       "exitCode": 1,
       "waitedForGuiProcess": true
+    },
+    "localizationFixtureRetest": {
+      "total": 1,
+      "passed": 1,
+      "seconds": 23.75,
+      "scope": "platform.applications after resource-backed Shell fixture revision",
+      "productRuntimeChanged": false,
+      "localLog": "build/issue54-localization-test.log"
     }
   },
   "realCatalog": {
@@ -130,6 +139,17 @@
     "xdstarter_start_bridge_tests.exe": "15b66fa3036f01f8797da33ef5b67e17e3fe3e139657fc2069f56eb9844fce60"
   },
   "retainedFailures": [
+    {
+      "scope": "PR 54 initial Windows CI at bd917c584e8adc6eaac2f635621b1873fbffb736",
+      "url": "https://github.com/xiaodaozhi/xdstarter/actions/runs/39979690365/job/120503403881",
+      "passed": 17,
+      "total": 18,
+      "failure": "Shell localized-folder fixture returned physical folder names despite successful Unicode profile readback and correct attributes",
+      "bridgeStepExecuted": false,
+      "causeConfirmed": false,
+      "systemTrustPolicyChanged": false,
+      "candidateCorrection": "owned neutral STRINGTABLE and SHSetLocalizedName; independent resource/profile checks and source/build diagnostics; strict Shell Chinese assertion retained"
+    },
     {
       "scope": "unhashed intermediate bridge candidates",
       "failures": [

@@ -20,6 +20,10 @@ GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查�
 
 只读UIA区域探针在本机发现 `LockScreenBackstopFrame` 覆盖Start，八次均拒绝为 `start-occluded`，这是原生命中复核的真实负例；未放宽为同Explorer PID即可接管。无遮挡区域正例、真实物理点击A/B、现代Explorer桥接适配、硬件触控和完整Windows兼容矩阵仍未验证。没有Computer Use、用户程序启动、任务栏/显示设置变化或用户布局/系统快捷方式写入。#53的目录修复与#52仍待真实接管选型的范围分别跟踪，旧#45/#50结果保留原版本身份。
 
+PR #54 的首轮 [Windows CI](https://github.com/xiaodaozhi/xdstarter/actions/runs/39979690365/job/120503403881) 在 `bd917c5` 完成构建、lint 和17/18套测试，仅既有真实Shell目录本地化断言失败，后续桥接步骤未执行。Unicode配置读回、目录/文件属性均通过，Shell和`SHGetFileInfoW`都返回物理名称，不能再次归因为编码。微软 [KB5103160](https://support.microsoft.com/en-us/servicing/os/windows/docs/2026/06/custom-folder-icons-or-localized-folder-names-might-not-appear-after-installing-the-june-2026-window) 说明2026年6月起Shell可能因来源信任而忽略`desktop.ini`；当前日志不足以确认该策略是本次原因。保留产品对Shell显示名的读取，不自行解析ini绕过系统决定，不修改信任策略。
+
+后续夹具改用自有helper的中性中文STRINGTABLE及官方[SHSetLocalizedName](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shsetlocalizedname)，只定制自有临时目录。分别检查`LoadStringW`、`SHLoadIndirectString`、Unicode配置读回与真实Shell中文显示，并保留同显示名不同路径不得合并的断言。失败时增加来源的Zone.Identifier、卷类型、完整系统build/UBR与设置HRESULT，避免仅凭API成功推断Shell已采用配置。此调整只涉及测试资源和夹具，产品显示逻辑不变；本机仅重建平台测试/helper并复测`platform.applications`，1/1通过、23.75秒，仓库737文件检查通过，产品EXE散列不变。远程结果按新head单独记录。
+
 ## 按点透视与内容对齐（Issue #50）
 
 磁贴左键按下采用带透视分母的视觉矩阵，三档尺寸按归一化按点倾斜，90 ms按下、180 ms复原；按钮命中与拖放坐标保持原几何。滚动条进入既有正文右边距，磁贴视口、组操作、窄模式目录与右上关闭按钮共享内容右缘；关于框“项目主页”使用明确左对齐的零水平内距文本。参数与行为见[交互说明](../product/interaction.md)和[布局说明](tile-layout.md)，不改变布局格式或Windows接管。
