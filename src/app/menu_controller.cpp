@@ -1,5 +1,8 @@
 #include "menu_controller.h"
 
+#include <QCoreApplication>
+#include <QKeyEvent>
+
 #include "platform/platform_integration.h"
 #include "services/application_catalog.h"
 #include "services/desktop_shell_service.h"
@@ -87,6 +90,8 @@ MenuController::MenuController(PrototypeService& prototypeService,
       platformName_(platform.displayName()), platformStatus_(platform.statusDescription()),
       simulatedPlatform_(platform.isSimulated()), catalog_(catalog), desktopShell_(desktopShell),
       search_(std::make_unique<SearchService>()) {
+    if (QCoreApplication::instance())
+        QCoreApplication::instance()->installEventFilter(this);
     connect(search_.get(), &SearchService::resultsChanged, this,
             &MenuController::refreshSearchResults);
     connect(search_.get(), &SearchService::stateChanged, this,
@@ -94,6 +99,7 @@ MenuController::MenuController(PrototypeService& prototypeService,
     if (catalog_)
         catalog_->refreshApplications();
     readOnly_ = prototypeService.isReadOnly();
+    editMode_ = !readOnly_;
     darkTheme_ = prototypeService.snapshot()
                      .value(QStringLiteral("preferences"))
                      .toObject()
@@ -185,7 +191,17 @@ MenuController::~MenuController() {
 }
 
 void MenuController::refreshGroups() {
+    QHash<QString, QVariantMap> previousTiles;
+    for (const auto& value : groups_) {
+        const auto group = value.toMap();
+        for (const auto& tileValue : group.value(QStringLiteral("tiles")).toList()) {
+            auto tile = tileValue.toMap();
+            tile.insert(QStringLiteral("groupId"), group.value(QStringLiteral("id")));
+            previousTiles.insert(tile.value(QStringLiteral("id")).toString(), tile);
+        }
+    }
     const auto groups = prototypeService_.previewGroups();
+    tileTransitions_.clear();
     groups_.clear();
     tiles_.clear();
     previewWidth_ = 0;
@@ -195,6 +211,14 @@ void MenuController::refreshGroups() {
         auto tiles = tileValues(group.tiles);
         for (auto& tileValue : tiles) {
             auto tile = tileValue.toMap();
+            const auto previous = previousTiles.value(tile.value(QStringLiteral("id")).toString());
+            QVariantMap motion{{QStringLiteral("hasPrevious"), !previous.isEmpty()}};
+            const bool sameGroup = previous.value(QStringLiteral("groupId")).toString() == group.id;
+            for (const auto* coordinate : {"x", "y", "width", "height"})
+                motion.insert(QStringLiteral("motionFrom_") + QLatin1String(coordinate),
+                              sameGroup ? previous.value(QLatin1String(coordinate))
+                                        : tile.value(QLatin1String(coordinate)));
+            tileTransitions_.insert(tile.value(QStringLiteral("id")).toString(), motion);
             const auto target =
                 prototypeService_.targetForTile(tile.value(QStringLiteral("id")).toString());
             tile.insert(QStringLiteral("originalName"),
@@ -495,14 +519,31 @@ bool MenuController::launchApplication(const QString& appId) {
 }
 
 bool MenuController::launchTile(const QString& tileId) {
-    if (editMode_)
-        return false;
     const auto target = prototypeService_.targetForTile(tileId);
     if (target.value(QStringLiteral("type")).toString() == QLatin1String("prototype")) {
         setOperationMessage(QStringLiteral("这是样例磁贴，不会启动应用。"));
         return false;
     }
     return launchApplication(target.value(QStringLiteral("id")).toString());
+}
+
+bool MenuController::eventFilter(QObject* watched, QEvent* event) {
+    bool keyboard = keyboardNavigation_;
+    if (event->type() == QEvent::KeyPress || event->type() == QEvent::ShortcutOverride) {
+        const auto* key = static_cast<QKeyEvent*>(event);
+        if (key->key() == Qt::Key_Tab || key->key() == Qt::Key_Backtab)
+            keyboard = true;
+        else if (key->key() == Qt::Key_Escape)
+            keyboard = false;
+    } else if (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::TouchBegin ||
+               event->type() == QEvent::Wheel || event->type() == QEvent::ApplicationDeactivate) {
+        keyboard = false;
+    }
+    if (keyboard != keyboardNavigation_) {
+        keyboardNavigation_ = keyboard;
+        emit keyboardNavigationChanged();
+    }
+    return QObject::eventFilter(watched, event);
 }
 
 bool MenuController::pinApplication(const QString& appId, const QString& groupId) {
@@ -1057,11 +1098,11 @@ void MenuController::completeLayoutImport(const std::shared_ptr<PendingLayoutImp
         ++revision_;
         savedRevision_ = revision_;
         diskRevision_->store(revision_, std::memory_order_release);
-        setEditMode(false);
+        setEditMode(true);
         setSearchQuery({});
         refreshGroups();
         emit darkThemeChanged();
-        setPersistenceStatus(QStringLiteral("布局已替换并保存，可从更多菜单预览恢复备份。"));
+        setPersistenceStatus(QStringLiteral("布局已替换并保存。"));
         emit importStateChanged();
         emit layoutImportSucceeded();
         return;

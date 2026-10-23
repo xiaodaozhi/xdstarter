@@ -42,7 +42,7 @@ class DesktopWindowHost final : public QObject {
     DesktopWindowHost(QWindow &window, DesktopShellService &shell, DesktopPlatform &placement,
                       DesktopTray &tray, QObject *parent = nullptr);
     ~DesktopWindowHost() override;
-    void start(const QImage &icon);
+    void start(const QImage& icon, bool showInitially = false);
     void attachWinKeyCapture(WinKeyCapture &capture);
     void showWindow();
     void toggleWindow();
@@ -90,6 +90,8 @@ class DesktopWindowHost final : public QObject {
     QString winKeyStatus_;
     QTimer focusTimer_;
     QTimer revealTimer_;
+    QTimer dismissTimer_;
+    bool dismissPending_ = false;
     QElapsedTimer revealDeadline_;
     HiddenWindowReadiness readiness_;
     DesktopAnchorResult revealAnchor_;

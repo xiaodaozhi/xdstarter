@@ -1,3 +1,5 @@
+#include "interface_font.h"
+
 #include <QGuiApplication>
 #include <QImage>
 #include <QPainter>
@@ -6,6 +8,7 @@
 
 int main(int argc, char* argv[]) {
     QGuiApplication application(argc, argv);
+    xdstarter::configureInterfaceFont();
     const auto arguments = application.arguments();
     if (arguments.size() != 3 && arguments.size() != 5) {
         qCritical() << "Usage: xdstarter_render_svg input.svg output.png [width height]";

@@ -41,3 +41,7 @@ python3 scripts/check_repository.py
 ```
 
 矢量和 ICO 容器生成仅依赖 Python 标准库；PNG 通过项目的 [render_svg.py](../source/render_svg.py) 使用 Qt 6.8.2 的 SVG 渲染器离屏导出。校验不需要 Qt，逐项验证尺寸、透明像素、圆形边界、源与导出哈希以及 ICO 帧目录与 PNG 负载。
+
+## Issue #41 更新
+
+开发素材增加同一 24 DIP 矢量系统的刷新与地球分类图标及六档 RGBA 导出，完整清单为 283 项。总览按当前图标数均匀排布，不裁掉新增图标。此前“255 项未改变”仅属于 #16 的历史状态；当前设计与运行时采用 v2.3、后台首启及自适应任务栏策略，见[设计说明](../README.md)和 [ADR-0013](../../technical/adr/0013-resident-editable-menu.md)。

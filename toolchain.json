@@ -6,7 +6,10 @@
     "observedDate": "2026-10-20",
     "basis": "Qt pin and actual native Windows build environment; not an upstream complete environment lock"
   },
-  "python": {"version": "3.12.13", "compatibleMinimum": "3.11"},
+  "python": {
+    "version": "3.12.13",
+    "compatibleMinimum": "3.11"
+  },
   "packages": {
     "cmake": "4.4.4",
     "ninja": "1.13.2",
@@ -19,8 +22,18 @@
     "target": "desktop",
     "architecture": "win64_msvc2022_64",
     "directory": "msvc2022_64",
-    "modules": ["Core", "Gui", "Qml", "Quick", "QuickControls2", "Svg"],
-    "testModules": ["Test"]
+    "modules": [
+      "Core",
+      "Gui",
+      "Network",
+      "Qml",
+      "Quick",
+      "QuickControls2",
+      "Svg"
+    ],
+    "testModules": [
+      "Test"
+    ]
   },
   "windows": {
     "visualStudioMajor": "16",
@@ -31,7 +44,12 @@
     "architecture": "x64",
     "additionalValidationVisualStudioMajor": "17"
   },
-  "ciAcquisition": {"uvVersion": "0.13.4"},
+  "ciAcquisition": {
+    "uvVersion": "0.13.4"
+  },
   "cmakeMinimum": "3.25",
-  "cache": {"tools": "build/tooling", "qt": "build/Qt"}
+  "cache": {
+    "tools": "build/tooling",
+    "qt": "build/Qt"
+  }
 }

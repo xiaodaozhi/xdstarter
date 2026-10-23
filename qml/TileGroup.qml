@@ -9,6 +9,8 @@ Item {
     required property var group
     required property var tokens
     required property color titleColor
+    property var tileTransitions: ({})
+    property bool keyboardNavigation: false
     property bool darkTheme: true
     readonly property var theme: tokens.themes[darkTheme ? "dark" : "light"]
     readonly property real occupiedGridHeight: {
@@ -87,13 +89,16 @@ Item {
                 id: titleHover
             }
 
-            ToolTip {
+            Hint {
                 id: titleToolTip
+                delay: 600
+                font.family: groupLabel.font.family
 
                 width: Math.min(380, implicitWidth)
                 visible: titleHover.hovered && groupLabel.truncated
                 text: tileGroup.group.name
                 contentItem: Text {
+                    font.family: groupLabel.font.family
                     text: tileGroup.group.name
                     textFormat: Text.PlainText
                     color: titleToolTip.palette.toolTipText
@@ -123,11 +128,12 @@ Item {
             background: Rectangle {
                 radius: 6
                 color: groupActions.down ? tileGroup.theme.pressed : (groupActions.hovered ? tileGroup.theme.hover : "transparent")
-                border.width: groupActions.activeFocus ? 2 : 0
+                border.width: (groupActions.activeFocus && tileGroup.keyboardNavigation) ? 2 : 0
                 border.color: tileGroup.tokens.brand.cyan
             }
 
             contentItem: Text {
+                font.family: groupLabel.font.family
                 text: groupActions.text
                 color: tileGroup.titleColor
                 font.pixelSize: 20
@@ -136,11 +142,13 @@ Item {
                 opacity: groupActions.enabled ? 1 : 0.45
             }
 
-            ToolTip {
+            Hint {
                 id: actionsToolTip
+                delay: 600
+                font.family: groupLabel.font.family
 
                 width: Math.min(380, implicitWidth)
-                visible: groupActions.hovered || groupActions.activeFocus
+                visible: groupActions.enabled && (groupActions.hovered || groupActions.activeFocus)
                 text: groupActions.Accessible.name
                 contentItem: Text {
                     text: actionsToolTip.text
@@ -184,7 +192,7 @@ Item {
         width: tileGroup.group.width
         // Browsing shows the occupied extent. Editing restores the full shared
         // drop grid; the individual tiles retain the same coordinates and sizes.
-        height: tileGroup.editMode ? tileGroup.group.height : (tileGroup.group.tiles.length === 0 ? 56 : tileGroup.occupiedGridHeight)
+        height: tileGroup.draggedTileId.length > 0 ? tileGroup.group.height : (tileGroup.group.tiles.length === 0 ? 56 : tileGroup.occupiedGridHeight)
 
         Label {
             objectName: "emptyGroupHint"
@@ -208,6 +216,8 @@ Item {
             delegate: TileButton {
                 required property var modelData
 
+                keyboardNavigation: tileGroup.keyboardNavigation
+                motion: tileGroup.tileTransitions[modelData.id] || ({})
                 tile: modelData
                 tokens: tileGroup.tokens
                 editMode: tileGroup.editMode

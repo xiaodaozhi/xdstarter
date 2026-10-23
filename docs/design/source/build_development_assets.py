@@ -80,7 +80,7 @@ def overview_svg(grid):
         body += f'<rect x="32" y="{y}" width="1536" height="156" rx="14" fill="{card}"/>'
         body += text(52, y + 32, f'{variant.upper()} / 24 DIP', 17, label)
         for index, name in enumerate(GLYPHS):
-            x = 58 + index * 126
+            x = 52 + index * (1496 / len(GLYPHS))
             body += (
                 f'<g transform="translate({x + 29} {y + 51}) scale(2)" fill="none" '
                 f'stroke="{THEME_COLORS[variant]}" stroke-width="1.75" stroke-linecap="round" '

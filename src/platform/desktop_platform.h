@@ -28,7 +28,13 @@ struct DesktopAnchorResult {
     QString message;
     QString errorCode;
     QString monitorName;
+    QRect taskbarPhysicalRect;
+    bool centeredStart = false;
 };
+
+enum class TaskbarEdge { Bottom, Top, Left, Right };
+[[nodiscard]] TaskbarEdge desktopTaskbarEdge(const DesktopAnchorResult& anchor);
+[[nodiscard]] Qt::Edges desktopResizeEdges(const DesktopAnchorResult& anchor);
 
 // These handles are diagnostic integer values, not persistent identities or
 // permission to consume input. No native types cross the platform boundary.

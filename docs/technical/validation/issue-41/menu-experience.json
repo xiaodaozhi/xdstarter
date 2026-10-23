@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-23",
+  "issue": 41,
+  "sourceBaseCommit": "6919571132420619cb2cb35fd197859e384d00d4",
+  "status": "automated-regression-and-read-only-native-probe-passed",
+  "toolchain": {
+    "qt": "6.8.2",
+    "compiler": "19.29.30153.0",
+    "toolset": "14.29.30133",
+    "windowsSdk": "10.0.19041.0",
+    "alternateMsvc": false
+  },
+  "validation": {
+    "ctestSuites": 15,
+    "ctestPassed": 15,
+    "ctestSeconds": 87.95,
+    "guiPassed": 57,
+    "hostPassed": 38,
+    "sessionPassed": 6,
+    "browserPassed": 11,
+    "toolingUnitTestsPassed": 13,
+    "qmlLint": "no diagnostics",
+    "computerUse": false
+  },
+  "binaries": {
+    "xdstarter.exe": "6bb011313c17316a45884cf0f734be9e459b48b4a99bb88541d9720551344aa4",
+    "xdstarter_ui_tests.exe": "5f936eb33bd0dda1144dea3a6579884dc0cce3b8f8e14188b1379b57dc8e2336",
+    "xdstarter_desktop_window_host_tests.exe": "3a71ee1d67ea9d9262885246a5421abb1339e52ff4f0f68119551a90789759c3"
+  },
+  "nativeStartProbe": {
+    "classification": "no-native-window",
+    "captureReady": false,
+    "uiaIdentified": true,
+    "nativeHandleRead": true,
+    "elapsedMs": 90,
+    "errorCode": "start-hit-no-native-window"
+  },
+  "nativeEnvironment": {
+    "kernelVersion": "10.0.26300",
+    "qtRuntimeVersion": "6.8.2",
+    "compiler": "MSVC 192930159",
+    "binarySha256": "c8107e961e971b4fc11a0445aaa4a4687efe6dadc14fce7d5da458ea1c026dec"
+  },
+  "font": {
+    "family": "Microsoft YaHei UI",
+    "actualGlyphChecks": "QFontInfo and QRawFont family, Latin A and Chinese U+4E2D; system YaHei TTC registered for Qt offscreen only when missing",
+    "distributedFontFiles": false
+  },
+  "coverage": [
+    "Default hidden tray startup, fallback recovery and repeated reveal",
+    "Separate-process IPC activation, concurrent secondaries, stale owner recovery, invalid directory rejection",
+    "Deterministic move/resize displacement, 180 invariant sequences, full grid source reuse and rollback",
+    "Alphabet sections, nested folders, refresh reconciliation, compact selector and hover pin visibility",
+    "Keyboard-only focus decoration, circular clear control, delayed themed tooltips and menu dismissal",
+    "Stable 48/8 geometry, animations completed after catalog refresh, pending dismissal canceled by reopening",
+    "Synthetic taskbar edge/alignment placement and resize-edge policy"
+  ],
+  "captures": [
+    {
+      "path": "docs/design/validation/issue-41/more-dark.png",
+      "sha256": "b24009cfad96191a2cee77a32ad1ab07a6e6acba93b6b9c1132a628fa2253dff",
+      "scope": "offscreen QtTest with controlled in-memory fixtures"
+    },
+    {
+      "path": "docs/design/validation/issue-41/more-light.png",
+      "sha256": "b0264a3e5630493f0686b484208c4f22c714258acff1098114fdd7ea5c35f98e",
+      "scope": "offscreen QtTest with controlled in-memory fixtures"
+    },
+    {
+      "path": "docs/design/validation/issue-41/alphabet-dark.png",
+      "sha256": "1fba6dfbf1775a990904a0a783ec15d034514dd7800ee74a56ffa5dcdf583296",
+      "scope": "offscreen QtTest with controlled in-memory fixtures"
+    },
+    {
+      "path": "docs/design/validation/issue-41/folder-dark.png",
+      "sha256": "38702eacc3c19b57159894edbd615a1ebfab790cc2c1667da7bb6ba7e5b50f3a",
+      "scope": "offscreen QtTest with controlled in-memory fixtures"
+    }
+  ],
+  "sourceDigestFormat": "SHA-256 of Git blob content after repository LF normalization",
+  "sourceFiles": {
+    "CMakeLists.txt": "5287aa6e7c094f15ed9b77dea02a59336cc800f0fd3bbd3e38185c8a48cfed1a",
+    "docs/design/tokens/visual.json": "e172e73a09e5d9f5fae54e753849c41865ffb9ac4bae61232a1c10291ae216df",
+    "qml/Hint.qml": "5b89651eba43822c1a9344ac46105634e6cd17f4f84980aebc3cf6d29366d313",
+    "qml/LayoutImportDialog.qml": "b3f36d7bb2f8941431faeba1a1cdf3df75b6ae1db202a06e61fc744a69ceaa11",
+    "qml/Main.qml": "7705a1104d4b04aa3b916db9d9d4e11e88d9745073531b1668b92a9f23ad8449",
+    "qml/ShortcutRail.qml": "c241a6a5cc623ebab5a3784ba5f5418d9261ed7a640d1cfd55b1879402492f82",
+    "qml/TileButton.qml": "c129c0c15d4d50f231a27bb1dcc6f2a8a66dec44b2a8845d6cc58819704bf8d2",
+    "qml/TileGroup.qml": "88eefd8d34c14a9a19ee64e724f60100a59cfb8f03ca4a0b51d69dc61e725b16",
+    "scripts/build-windows.ps1": "551f32c6cf7650cc5eb1d9e9d7bf8dffad10a5e7db61f18a93247b79b5a0a028",
+    "src/app/CMakeLists.txt": "e3691238d7f8846d102657d77eae9d6dd6ba13ed39135490c484dd04531dc8e0",
+    "src/app/desktop_window_host.cpp": "4482972452610f449e8790d471625f17f9d1e8efc8aeef0643c29de3f959f0eb",
+    "src/app/desktop_window_host.h": "daba47838e5b33a55d6ee29a0c7a7aad32d366865b3c7f222bd6c2d97e9dfac0",
+    "src/app/interface_font.cpp": "ba865cd0685aad6747dc15143f58182eec1c954866d30efd6c90b21ab260779d",
+    "src/app/interface_font.h": "61fce4f3d892bd2f6000ea8911e1736cef81b168bbe6a84ef80041be7cd19403",
+    "src/app/main.cpp": "e5c8640591b80cee92482e1395726311aec67f5043947b0ef44c32e7d19e101f",
+    "src/app/menu_controller.cpp": "e237dc00b493d579bb73cab44d34c2fab23e5f05879232d84709d10d7c52bc51",
+    "src/app/menu_controller.h": "30cb7318fb0e1dc209059c8e9f8992a5a872bfc429027b9a091784af557823cd",
+    "src/platform/application_platform.cpp": "3f7db4e0041fcbc81315e3b58926d2f58da3f319adad8b9a16f2c1fe1a9082a4",
+    "src/platform/application_platform.h": "9dea6b645e25570a92b8892e3dc85f757716a298b03f5a55762ebb24b9256353",
+    "src/platform/desktop_platform.cpp": "97f571e2bd7a51a02e60bea232cbcea98cb37e91be63b480b4d4da610c5e9d24",
+    "src/platform/desktop_platform.h": "70641f3b9683bc4cdb6d3f10764f6ddb8f2308c1c0e77565ac65e9cfccf1a268",
+    "src/platform/platform_integration.h": "21eba7a39db4d17dc2d887f7c28eabc3c96396eb9cbf0d766f8307193328258b",
+    "src/platform/windows/windows_application_platform.cpp": "c15bec5cb6b9853a4e5a303650ee9715d39140327ca1d3d142bfb650a7df5426",
+    "src/platform/windows/windows_desktop_platform.cpp": "124bc62072d77949b38444c969b7f2bf623b758da333842d65a1587c6d504abe",
+    "src/platform/windows/windows_platform_integration.cpp": "8e621cc6c89eab504cdf58cbcbef178b338ff7018dc6bbea35c9b082c68c8518",
+    "src/platform/windows/windows_platform_integration.h": "6e4b68b2c3d77617e7fdfcd3a91204a2cac6b9104eff727a1280dd34edd3fcd1",
+    "src/services/CMakeLists.txt": "d80e34dea87ae0107be1ed52ade90bd80609c749974217aae4de2f6d4bb75935",
+    "src/services/application_catalog.cpp": "7867e8f8fc9f72bf1d1de828d8202c84e62ca3cbd33bf8a3008e713c412a550b",
+    "src/services/application_catalog.h": "33452d57addc05d626d3ef1960e0d5fcacbe04d68d819ad88c340230ebe0635f",
+    "src/services/prototype_service.cpp": "ee962414e12151a37489e8125a5a193c9a2090d85b4ecab225cc9a866f1c3b4d",
+    "src/services/prototype_service.h": "2c3c652121562c17b16d96fc40d9590704db0084c146d38581c6b4a92bca3224",
+    "src/services/session_instance.cpp": "f32907c2a35145d57efacae0634540cdc691de750e65975c9fa0890fe949d4c2",
+    "src/services/session_instance.h": "49cfd336f2652f3c6bcfc377daac42940b49ed54e95ddeafd0d6adffcf99d4df",
+    "tests/platform/application_platform_tests.cpp": "cb17697e47bcdf10826643a209b1e4c7b3a6569eff771232abcf45de4baa7f9d",
+    "tests/platform/desktop_platform_tests.cpp": "92ccc56111aded825501df53bb7ec54e09387e877bd27d6508e2a62f350d4f1c",
+    "tests/services/CMakeLists.txt": "f927d824f43370293133801a00c8af4195783dee012ce02d5ac10fde3fd37a5c",
+    "tests/services/application_browser_tests.cpp": "c2aa9e37e4d1fd0d5ab83bf22bbb11e433990dad836c1b2a2883b859ffa149e8",
+    "tests/services/prototype_service_tests.cpp": "f03ffa05c00f7ce895c3848eb33abf5d0fa355aa664b1b9b2bdcf85b63c57a76",
+    "tests/services/session_instance_tests.cpp": "75cce0f6376422e4af8137b0e11e83963f7be2c38593544c7a72efd394dfe6bf",
+    "tests/ui/CMakeLists.txt": "95440eff946c4b2f785e5fd969f7971a2d496fe97471d809a3c25c49c0da3bce",
+    "tests/ui/tst_desktop_window_host.cpp": "45abf2f02f188dbec0227881ee9bf1c63f345465d561615a68c01f90e398499b",
+    "tests/ui/tst_prototype_window.cpp": "d2bcf8df2ec0af4183fa61e4bf82d57683a851c9246bdb31c6822b7abbaf1673",
+    "tests/ui/visual_acceptance_probe.cpp": "9bf03a572536387e2b265d0e853e6796b225c46334f46469e856446365edc40c",
+    "toolchain.json": "32dcd60f0c7c2860771fc7da3d1518eb02b89b12801913ec208ea75974056aa0"
+  },
+  "notClaimed": [
+    "Start button mouse takeover: native result has no independent HWND; native click behavior remains",
+    "Physical taskbar moves, actual border drag, centered taskbar interaction or a complete Windows version matrix",
+    "Real tray interaction, Explorer restart, sleep recovery, mixed-DPI hotplug or native file-dialog reacceptance in this revision",
+    "New installer, release ZIP or installed file associations"
+  ]
+}

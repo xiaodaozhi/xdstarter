@@ -317,7 +317,8 @@ QImage iconImage(HICON icon, int size) {
 }
 
 bool scanShortcutDirectory(const QString& path, int depth, int& directories, int& entriesInspected,
-                           bool& truncated, CatalogSnapshot& snapshot, QSet<QString>& visited) {
+                           bool& truncated, CatalogSnapshot& snapshot, QSet<QString>& visited,
+                           const QString& parentFolderId = {}) {
     if (depth > maxDepth || directories >= maxDirectories ||
         snapshot.applications.size() >= maxApplications || entriesInspected >= maxEntries) {
         truncated = true;
@@ -377,11 +378,21 @@ bool scanShortcutDirectory(const QString& path, int depth, int& directories, int
                                   : entry.completeBaseName();
                 target.symbol = target.name.first(1);
                 target.iconKey = target.id;
+                target.parentFolderId = parentFolderId;
                 snapshot.applications.append(std::move(target));
             } else if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY &&
                        !(data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+                LaunchTarget folder;
+                folder.type = QStringLiteral("folder");
+                folder.name = name;
+                folder.symbol = QStringLiteral("▱");
+                folder.shortcutPath = QDir::fromNativeSeparators(entry.absoluteFilePath());
+                folder.id = applicationTargetId(folder.type, folder.shortcutPath);
+                folder.iconKey = folder.id;
+                folder.parentFolderId = parentFolderId;
+                snapshot.applications.append(folder);
                 scanShortcutDirectory(entry.absoluteFilePath(), depth + 1, directories,
-                                      entriesInspected, truncated, snapshot, visited);
+                                      entriesInspected, truncated, snapshot, visited, folder.id);
             }
         }
         if (!FindNextFileW(search, &data)) {
@@ -494,7 +505,7 @@ CatalogSnapshot WindowsApplicationPlatform::scanApplications() {
 }
 
 QImage WindowsApplicationPlatform::loadIcon(const LaunchTarget& target, int size) {
-    if (!isValidApplicationTarget(target) || size < 16 || size > 256) {
+    if (!isValidCatalogEntry(target) || size < 16 || size > 256) {
         return {};
     }
     ComApartment apartment;

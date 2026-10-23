@@ -230,99 +230,146 @@ void PrototypeService::updateGroupGeometry(PreviewGroup& group) const {
     group.height = std::max(4 * pitch - grid_tokens::gap, bottom + 2 * pitch);
 }
 
+LayoutResult PrototypeService::planPlacement(const QString& tileId, const QString& groupId,
+                                             int column, int row, TileSize size,
+                                             QVector<PreviewGroup>& planned) const {
+    const auto rectangle = grid_.rectangle(column, row, size);
+    const int rows = size == TileSize::Small ? grid_tokens::smallRows : grid_tokens::standardRows;
+    if (!rectangle || row < 0 || row > LayoutStore::maximumRows - rows)
+        return {false, QStringLiteral("落点超出十列或 64 行网格")};
+    planned = groups_;
+    PreviewTile moved{};
+    bool found = false;
+    qsizetype originalIndex = -1;
+    PreviewGroup* destination = nullptr;
+    for (auto& group : planned) {
+        if (group.id == groupId)
+            destination = &group;
+        for (qsizetype index = 0; index < group.tiles.size(); ++index) {
+            if (group.tiles[index].id == tileId) {
+                if (group.id == groupId)
+                    originalIndex = index;
+                moved = group.tiles.takeAt(index);
+                found = true;
+                break;
+            }
+        }
+    }
+    if (!found || !destination)
+        return {false, QStringLiteral("磁贴或目标分组不存在")};
+    moved.column = column;
+    moved.row = row;
+    moved.size = size;
+    moved.rectangle = *rectangle;
+    QVector<PreviewTile> ordered = destination->tiles;
+    std::stable_sort(ordered.begin(), ordered.end(), [](const auto& a, const auto& b) {
+        return a.row != b.row ? a.row < b.row : a.column < b.column;
+    });
+    QVector<PreviewTile> placed{moved};
+    std::array<bool, grid_tokens::columns * LayoutStore::maximumRows> occupied{};
+    const auto mark = [&](const PreviewTile& tile) {
+        const int columns = tile.size == TileSize::Small      ? grid_tokens::smallColumns
+                            : tile.size == TileSize::Standard ? grid_tokens::standardColumns
+                                                              : grid_tokens::wideColumns;
+        const int rows =
+            tile.size == TileSize::Small ? grid_tokens::smallRows : grid_tokens::standardRows;
+        for (int y = tile.row; y < tile.row + rows; ++y)
+            for (int x = tile.column; x < tile.column + columns; ++x)
+                occupied[y * grid_tokens::columns + x] = true;
+    };
+    mark(moved);
+    for (auto tile : ordered) {
+        auto free = [&](int candidateColumn, int candidateRow) {
+            const auto candidate = grid_.rectangle(candidateColumn, candidateRow, tile.size);
+            if (!candidate ||
+                candidateRow > LayoutStore::maximumRows - (tile.size == TileSize::Small
+                                                               ? grid_tokens::smallRows
+                                                               : grid_tokens::standardRows))
+                return false;
+            const int columns = tile.size == TileSize::Small      ? grid_tokens::smallColumns
+                                : tile.size == TileSize::Standard ? grid_tokens::standardColumns
+                                                                  : grid_tokens::wideColumns;
+            const int rows =
+                tile.size == TileSize::Small ? grid_tokens::smallRows : grid_tokens::standardRows;
+            for (int y = candidateRow; y < candidateRow + rows; ++y)
+                for (int x = candidateColumn; x < candidateColumn + columns; ++x)
+                    if (occupied[y * grid_tokens::columns + x])
+                        return false;
+            tile.column = candidateColumn;
+            tile.row = candidateRow;
+            tile.rectangle = *candidate;
+            return true;
+        };
+        bool fitted = free(tile.column, tile.row);
+        // Stable row-major displacement. The dragged tile owns its requested
+        // cells; every other tile keeps its position until a collision occurs.
+        const int start = tile.row * grid_tokens::columns + tile.column;
+        for (int cell = start; !fitted && cell < LayoutStore::maximumRows * grid_tokens::columns;
+             ++cell)
+            fitted = free(cell % grid_tokens::columns, cell / grid_tokens::columns);
+        for (int cell = 0; !fitted && cell < start; ++cell)
+            fitted = free(cell % grid_tokens::columns, cell / grid_tokens::columns);
+        if (!fitted)
+            return {false, QStringLiteral("分组空间不足，未改变布局")};
+        placed.append(tile);
+        mark(tile);
+    }
+    // Keep model order and stable IDs independent from geometric packing.
+    for (auto& tile : destination->tiles) {
+        const auto match = std::find_if(placed.cbegin(), placed.cend(),
+                                        [&](const auto& value) { return value.id == tile.id; });
+        tile = *match;
+    }
+    if (originalIndex >= 0)
+        destination->tiles.insert(originalIndex, moved);
+    else
+        destination->tiles.append(moved);
+    for (auto& group : planned)
+        updateGroupGeometry(group);
+    return {true, {}};
+}
+
 LayoutResult PrototypeService::checkPlacement(const QString& tileId, const QString& groupId,
                                               int column, int row, TileSize size) const {
-    bool tileExists = false;
-    const PreviewGroup* destination = nullptr;
-    for (const auto& group : groups_) {
-        if (group.id == groupId) {
-            destination = &group;
-        }
-        for (const auto& tile : group.tiles) {
-            tileExists = tileExists || tile.id == tileId;
-        }
-    }
-    if (!tileExists || !destination) {
-        return {false, QStringLiteral("磁贴或目标分组不存在")};
-    }
-    const auto rectangle = grid_.rectangle(column, row, size);
-    const auto rowSpan = size == TileSize::Small      ? grid_tokens::smallRows
-                         : size == TileSize::Standard ? grid_tokens::standardRows
-                                                      : grid_tokens::wideRows;
-    if (!rectangle || row >= LayoutStore::maximumRows || rowSpan > LayoutStore::maximumRows - row) {
-        return {false, QStringLiteral("落点超出十列或 64 行网格")};
-    }
-    for (const auto& other : destination->tiles) {
-        if (other.id != tileId &&
-            overlaps(rectangle->x, rectangle->width, other.rectangle.x, other.rectangle.width) &&
-            overlaps(rectangle->y, rectangle->height, other.rectangle.y, other.rectangle.height)) {
-            return {false, QStringLiteral("该位置已被其他磁贴占用")};
-        }
-    }
-    return {true, {}};
+    QVector<PreviewGroup> planned;
+    return planPlacement(tileId, groupId, column, row, size, planned);
 }
 
 LayoutResult PrototypeService::moveTile(const QString& tileId, const QString& groupId, int column,
                                         int row) {
-    if (isReadOnly()) {
+    if (isReadOnly())
         return {false, QStringLiteral("更新版本配置当前为只读"), true};
-    }
-    for (qsizetype source = 0; source < groups_.size(); ++source) {
-        for (qsizetype index = 0; index < groups_[source].tiles.size(); ++index) {
-            const auto& current = groups_[source].tiles[index];
-            if (current.id != tileId) {
+    for (const auto& group : groups_) {
+        for (const auto& tile : group.tiles) {
+            if (tile.id != tileId)
                 continue;
-            }
-            const auto placement = checkPlacement(tileId, groupId, column, row, current.size);
-            if (!placement.success) {
-                return placement;
-            }
-            if (groups_[source].id == groupId) {
-                auto& tile = groups_[source].tiles[index];
-                tile.column = column;
-                tile.row = row;
-                updateGroupGeometry(groups_[source]);
-                return {true, {}};
-            }
-            auto tile = current;
-            tile.column = column;
-            tile.row = row;
-            for (auto& destination : groups_) {
-                if (destination.id == groupId) {
-                    destination.tiles.append(tile);
-                    break;
-                }
-            }
-            groups_[source].tiles.removeAt(index);
-            updateGroupGeometry(groups_[source]);
-            for (auto& destination : groups_) {
-                if (destination.id == groupId) {
-                    updateGroupGeometry(destination);
-                    break;
-                }
-            }
-            return {true, {}};
+            QVector<PreviewGroup> planned;
+            const auto result = planPlacement(tileId, groupId, column, row, tile.size, planned);
+            if (result.success)
+                groups_ = std::move(planned);
+            return result;
         }
     }
     return {false, QStringLiteral("磁贴不存在")};
 }
 
 LayoutResult PrototypeService::resizeTile(const QString& tileId, TileSize size) {
-    if (isReadOnly()) {
+    if (isReadOnly())
         return {false, QStringLiteral("更新版本配置当前为只读"), true};
-    }
-    for (auto& group : groups_) {
-        for (auto& tile : group.tiles) {
-            if (tile.id != tileId) {
+    for (const auto& group : groups_) {
+        for (const auto& tile : group.tiles) {
+            if (tile.id != tileId)
                 continue;
-            }
-            const auto placement = checkPlacement(tileId, group.id, tile.column, tile.row, size);
-            if (!placement.success) {
-                return placement;
-            }
-            tile.size = size;
-            updateGroupGeometry(group);
-            return {true, {}};
+            const int columns = size == TileSize::Small      ? grid_tokens::smallColumns
+                                : size == TileSize::Standard ? grid_tokens::standardColumns
+                                                             : grid_tokens::wideColumns;
+            QVector<PreviewGroup> planned;
+            const auto result = planPlacement(tileId, group.id,
+                                              std::min(tile.column, grid_tokens::columns - columns),
+                                              tile.row, size, planned);
+            if (result.success)
+                groups_ = std::move(planned);
+            return result;
         }
     }
     return {false, QStringLiteral("磁贴不存在")};

@@ -20,7 +20,7 @@ def verify():
     taskbar_top = canvas['height'] - canvas['taskbarHeightDip'] * scale
     for theme in ('dark', 'light'):
         svg = ET.parse(ROOT / f'mockups/v2/xdstarter-desktop-{theme}-v2.svg').getroot()
-        assert svg.get('data-design-revision') == VISUAL['designRevision'] == '2.2'
+        assert svg.get('data-design-revision') == VISUAL['designRevision'] == '2.3'
         assert float(svg.get('data-reference-scale')) == scale
         assert [float(svg.get(k)) for k in ('width', 'height')] == [canvas['width'], canvas['height']]
         menu = svg.find('.//s:g[@id="menu-window"]', NS)
@@ -67,13 +67,13 @@ def verify():
         assert float(search.get('height')) == layout['searchHeight']
         assert search.get('fill') == VISUAL['themes'][theme]['searchBackground']
         toolbar = menu.findall('s:g[@data-toolbar]', NS)
-        assert [entry.get('data-toolbar') for entry in toolbar] == ['apps', 'more', 'close']
+        assert [entry.get('data-toolbar') for entry in toolbar] == ['more', 'close']
         for entry in toolbar:
             area = entry.find('s:rect[@data-role="toolbar-hit-area"]', NS)
             assert float(area.get('width')) == float(area.get('height')) == layout['controlSize']
         assert all(float(row.get('data-row-height-dip')) == layout['catalogRowHeight']
                    for row in menu.findall('s:g[@data-catalog-app]', NS))
-        print(f'{theme}: revision 2.2, 980x680 DIP panel; left/bottom 8 DIP; one border, circular avatar and compact toolbar')
+        print(f'{theme}: revision 2.3, 980x680 DIP panel; left/bottom 8 DIP; one border, circular avatar and compact toolbar')
 
 
 if __name__ == '__main__':

@@ -3,6 +3,7 @@
 #include <QDir>
 #include <QGuiApplication>
 #include <QScreen>
+#include <QSettings>
 #include <QThread>
 #include <QVector>
 #include <QtGui/qscreen_platform.h>
@@ -348,10 +349,20 @@ DesktopAnchorResult WindowsDesktopPlatform::queryMenuAnchor() {
     for (HWND taskbar : taskbars) {
         if (MonitorFromWindow(taskbar, MONITOR_DEFAULTTONULL) == preferredMonitor) {
             result.dpi = GetDpiForWindow(taskbar);
+            RECT bounds{};
+            if (GetWindowRect(taskbar, &bounds))
+                result.taskbarPhysicalRect = rectangle(bounds);
             break;
         }
     }
-    result.message = QStringLiteral("已读取目标屏幕工作区；菜单按左侧与底部等距定位。");
+    // A read-only Shell preference. Missing on Windows 10 means left aligned.
+    // Never infer alignment from a potentially stale UIA hit-test rectangle.
+    const QSettings explorer(
+        QStringLiteral(
+            "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"),
+        QSettings::NativeFormat);
+    result.centeredStart = explorer.value(QStringLiteral("TaskbarAl"), 0).toInt() == 1;
+    result.message = QStringLiteral("已按任务栏边缘、对齐与目标工作区定位。");
     return result;
 }
 
@@ -770,7 +781,7 @@ DesktopPlacementResult WindowsDesktopPlatform::placeWindow(quintptr nativeHandle
     if (activate) {
         SetForegroundWindow(window);
     }
-    return {true, placement, QStringLiteral("菜单主体按工作区左侧与底部等距定位。"), {}};
+    return {true, placement, QStringLiteral("菜单已按任务栏方向、对齐与工作区定位。"), {}};
 }
 
 } // namespace xdstarter

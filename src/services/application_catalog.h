@@ -10,6 +10,7 @@
 #include <QMutex>
 #include <QObject>
 #include <QSet>
+#include <QSortFilterProxyModel>
 #include <QThread>
 
 namespace xdstarter {
@@ -19,7 +20,16 @@ namespace xdstarter {
 
 class ApplicationListModel final : public QAbstractListModel {
   public:
-    enum Role { AppId = Qt::UserRole + 1, DisplayName, Kind, IconSource, Available, Pinned };
+    enum Role {
+        AppId = Qt::UserRole + 1,
+        DisplayName,
+        Kind,
+        IconSource,
+        Available,
+        Pinned,
+        Section,
+        ParentFolderId
+    };
     explicit ApplicationListModel(QObject* parent = nullptr);
     int rowCount(const QModelIndex& parent = {}) const override;
     QVariant data(const QModelIndex& index, int role) const override;
@@ -36,6 +46,36 @@ class ApplicationListModel final : public QAbstractListModel {
     quint64 nextIconVersion_ = 0;
     QSet<QString> pinnedIds_;
     QHash<QString, bool> availability_;
+};
+
+[[nodiscard]] QString applicationSection(const QString& name);
+
+class ApplicationBrowserModel final : public QSortFilterProxyModel {
+    Q_OBJECT
+    Q_PROPERTY(QString folderName READ folderName NOTIFY folderChanged)
+    Q_PROPERTY(bool inFolder READ inFolder NOTIFY folderChanged)
+    Q_PROPERTY(QStringList sections READ sections NOTIFY sectionsChanged)
+  public:
+    explicit ApplicationBrowserModel(QObject* parent = nullptr);
+    [[nodiscard]] QString folderName() const;
+    [[nodiscard]] bool inFolder() const;
+    [[nodiscard]] QStringList sections() const;
+    Q_INVOKABLE bool openFolder(const QString& id);
+    Q_INVOKABLE void back();
+    Q_INVOKABLE void resetFolder();
+    Q_INVOKABLE int sectionIndex(const QString& section) const;
+    void reconcile();
+  signals:
+    void folderChanged();
+    void sectionsChanged();
+
+  protected:
+    bool filterAcceptsRow(int row, const QModelIndex& parent) const override;
+    bool lessThan(const QModelIndex& left, const QModelIndex& right) const override;
+
+  private:
+    QStringList folders_;
+    QString name_;
 };
 
 class ApplicationCatalog final : public QObject {
@@ -75,6 +115,7 @@ class ApplicationCatalog final : public QObject {
     void pruneTargets();
     std::unique_ptr<ApplicationPlatform> platform_;
     ApplicationListModel model_;
+    ApplicationBrowserModel browser_;
     QThread thread_;
     QObject* worker_ = nullptr;
     QHash<QString, LaunchTarget> targets_;

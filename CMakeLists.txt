@@ -57,7 +57,7 @@ if(XDSTARTER_BUILD_APP)
         endif()
     endif()
 
-    find_package(Qt6 ${XDSTARTER_QT_VERSION} EXACT REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickDialogs2 Svg)
+    find_package(Qt6 ${XDSTARTER_QT_VERSION} EXACT REQUIRED COMPONENTS Core Gui Network Qml Quick QuickControls2 QuickDialogs2 Svg)
     qt_standard_project_setup(REQUIRES 6.8)
 
     add_subdirectory(src/platform)

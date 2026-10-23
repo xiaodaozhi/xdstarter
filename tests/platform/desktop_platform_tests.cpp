@@ -415,6 +415,39 @@ int main(int argc, char* argv[]) {
                     QRect(8, 432, 960, 600),
                 "panel has equal left and bottom work-area margins");
 
+    {
+        auto dock = anchor;
+        dock.monitorPhysicalRect = QRect(0, 0, 1920, 1080);
+        dock.workAreaPhysicalRect = QRect(0, 0, 1920, 1040);
+        dock.taskbarPhysicalRect = QRect(0, 1040, 1920, 40);
+        dock.centeredStart = true;
+        test.expect(xdstarter::desktopPopupPhysicalRect(QSize(960, 600), dock) ==
+                        QRect(480, 432, 960, 600),
+                    "centered taskbar aligns menu to the work-area center");
+        test.expect(xdstarter::desktopResizeEdges(dock).testFlag(Qt::TopEdge) &&
+                        xdstarter::desktopResizeEdges(dock).testFlag(Qt::LeftEdge),
+                    "centered bottom menu exposes top and both side resize handles");
+        dock.centeredStart = false;
+        dock.workAreaPhysicalRect = QRect(0, 40, 1920, 1040);
+        dock.taskbarPhysicalRect = QRect(0, 0, 1920, 40);
+        test.expect(xdstarter::desktopPopupPhysicalRect(QSize(960, 600), dock) ==
+                            QRect(8, 48, 960, 600) &&
+                        xdstarter::desktopResizeEdges(dock) == (Qt::BottomEdge | Qt::RightEdge),
+                    "top taskbar anchors at the top and resizes away from the dock");
+        dock.workAreaPhysicalRect = QRect(48, 0, 1872, 1080);
+        dock.taskbarPhysicalRect = QRect(0, 0, 48, 1080);
+        test.expect(xdstarter::desktopPopupPhysicalRect(QSize(960, 600), dock) ==
+                            QRect(56, 8, 960, 600) &&
+                        xdstarter::desktopResizeEdges(dock) == (Qt::BottomEdge | Qt::RightEdge),
+                    "left taskbar uses its adjacent top corner and outward edges");
+        dock.workAreaPhysicalRect = QRect(0, 0, 1872, 1080);
+        dock.taskbarPhysicalRect = QRect(1872, 0, 48, 1080);
+        test.expect(xdstarter::desktopPopupPhysicalRect(QSize(960, 600), dock) ==
+                            QRect(904, 8, 960, 600) &&
+                        xdstarter::desktopResizeEdges(dock) == (Qt::BottomEdge | Qt::LeftEdge),
+                    "right taskbar mirrors the anchor and width resize handle");
+    }
+
     anchor.startButtonPhysicalRect.moveLeft(1800);
     test.expect(xdstarter::desktopPopupPhysicalRect(QSize(960, 600), anchor) ==
                     QRect(8, 432, 960, 600),

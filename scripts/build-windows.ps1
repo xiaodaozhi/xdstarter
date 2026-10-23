@@ -73,7 +73,7 @@ try {
             try {
                 $env:XDSTARTER_SVG_RENDERER = Join-Path $repositoryRoot "build/$Preset/bin/xdstarter_render_svg.exe"
                 if ($QtPrefix) { $env:XDSTARTER_QT_ROOT = (Resolve-Path -LiteralPath $QtPrefix).Path }
-                foreach ($source in @('build_desktop_grid.py', 'build_development_assets.py', 'verify_development_assets.py')) {
+                foreach ($source in @('build_desktop_grid.py', 'build_interaction_states.py', 'build_development_assets.py', 'verify_development_assets.py')) {
                     & $projectPython (Join-Path $repositoryRoot "docs/design/source/$source")
                     if ($LASTEXITCODE -ne 0) { throw "Design export/check failed: $source ($LASTEXITCODE)" }
                 }

@@ -19,6 +19,8 @@ struct LaunchTarget {
     QString shortcutPath;
     QString aumid;
     QString iconKey;
+    // Catalog-only hierarchy. It is never persisted as part of a launch target.
+    QString parentFolderId;
 };
 
 struct CatalogSnapshot {
@@ -37,6 +39,7 @@ struct LaunchResult {
 // same executable may have different arguments and must remain distinguishable.
 [[nodiscard]] QString applicationTargetId(const QString& type, const QString& identity);
 [[nodiscard]] bool isValidApplicationTarget(const LaunchTarget& target);
+[[nodiscard]] bool isValidCatalogEntry(const LaunchTarget& target);
 [[nodiscard]] QVector<LaunchTarget>
 normalizedApplications(const QVector<LaunchTarget>& applications);
 

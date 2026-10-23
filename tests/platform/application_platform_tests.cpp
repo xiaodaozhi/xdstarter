@@ -363,10 +363,10 @@ int main(int argc, char* argv[]) {
                 xdstarter::WindowsApplicationPlatform({denied, denied}).scanApplications();
             const auto mixed =
                 xdstarter::WindowsApplicationPlatform({denied, readable}).scanApplications();
-            test.expect(partial.success && partial.applications.size() == 1 &&
+            test.expect(partial.success && partial.applications.size() == 2 &&
                             !partial.warnings.isEmpty(),
                         "partially denied scan keeps readable applications and warning");
-            test.expect(mixed.success && mixed.applications.size() == 1 &&
+            test.expect(mixed.success && mixed.applications.size() == 2 &&
                             !mixed.warnings.isEmpty(),
                         "mixed denied and readable roots keep usable applications");
             test.expect(!failed.success && failed.applications.isEmpty() &&

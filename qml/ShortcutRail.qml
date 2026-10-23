@@ -10,6 +10,7 @@ Rectangle {
 
     required property bool darkTheme
     required property var tokens
+    property bool keyboardNavigation: false
     property bool busy: false
     readonly property string assetRoot: "qrc:/xdstarter/ui/" + (darkTheme ? "dark" : "light") + "/"
     readonly property var theme: tokens.themes[darkTheme ? "dark" : "light"]
@@ -51,7 +52,7 @@ Rectangle {
         background: Rectangle {
             radius: 8
             color: button.down ? rail.theme.pressed : (button.hovered ? rail.theme.hover : "transparent")
-            border.width: button.activeFocus ? 2 : 0
+            border.width: (button.activeFocus && rail.keyboardNavigation) ? 2 : 0
             border.color: rail.tokens.brand.cyan
         }
 
@@ -70,10 +71,10 @@ Rectangle {
             }
         }
 
-        ToolTip.visible: hovered || activeFocus
-        ToolTip.text: actionName
-        ToolTip.delay: hovered ? 400 : 0
-        ToolTip.timeout: -1
+        Hint {
+            visible: button.enabled && (button.hovered || button.activeFocus)
+            text: button.actionName
+        }
     }
 
     ColumnLayout {

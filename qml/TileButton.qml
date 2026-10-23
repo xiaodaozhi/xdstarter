@@ -9,19 +9,25 @@ Button {
 
     required property var tile
     required property var tokens
+    property var motion: ({})
+    property bool keyboardNavigation: false
     property bool editMode: false
     property bool readOnly: false
     property bool dragging: false
     property int iconRevision: 0
     property var iconVersions: ({})
+    readonly property bool pointerHovered: tileHover.hovered
+    HoverHandler {
+        id: tileHover
+    }
     readonly property bool applicationTile: tile.targetType !== undefined && tile.targetType !== "prototype"
     readonly property bool targetAvailable: tile.available !== false
     readonly property string iconSource: tile.iconSource || ""
     readonly property string paletteIdentity: tile.targetId || tile.id || ""
     readonly property int tokenPaletteIndex: paletteIndex(paletteIdentity)
     readonly property color baseColor: tokens.tilePalette[tokenPaletteIndex]
-    readonly property color fillTopColor: down ? Qt.darker(baseColor, 1.10) : Qt.lighter(baseColor, hovered ? 1.16 : 1.05)
-    readonly property color fillBottomColor: down ? Qt.darker(baseColor, 1.16) : (hovered ? Qt.lighter(baseColor, 1.06) : Qt.darker(baseColor, 1.04))
+    readonly property color fillTopColor: down ? Qt.darker(baseColor, 1.10) : Qt.lighter(baseColor, pointerHovered ? 1.16 : 1.05)
+    readonly property color fillBottomColor: down ? Qt.darker(baseColor, 1.16) : (pointerHovered ? Qt.lighter(baseColor, 1.06) : Qt.darker(baseColor, 1.04))
     readonly property int iconSizeDip: tile.small ? 28 : 36
 
     signal selected(string name)
@@ -42,6 +48,73 @@ Button {
     height: tile.height
     padding: 0
     opacity: dragging ? 0.35 : 1
+    scale: down ? 0.97 : 1
+    Behavior on scale {
+        NumberAnimation {
+            duration: 110
+            easing.type: Easing.OutCubic
+        }
+    }
+    Behavior on opacity {
+        NumberAnimation {
+            duration: 140
+        }
+    }
+    ParallelAnimation {
+        running: tileButton.motion.hasPrevious === true
+        NumberAnimation {
+            target: tileButton
+            property: "x"
+            from: tileButton.motion.motionFrom_x ?? tileButton.tile.x
+            to: tileButton.tile.x
+            duration: 200
+            easing.type: Easing.OutCubic
+        }
+        NumberAnimation {
+            target: tileButton
+            property: "y"
+            from: tileButton.motion.motionFrom_y ?? tileButton.tile.y
+            to: tileButton.tile.y
+            duration: 200
+            easing.type: Easing.OutCubic
+        }
+        NumberAnimation {
+            target: tileButton
+            property: "width"
+            from: tileButton.motion.motionFrom_width ?? tileButton.tile.width
+            to: tileButton.tile.width
+            duration: 200
+            easing.type: Easing.OutCubic
+        }
+        NumberAnimation {
+            target: tileButton
+            property: "height"
+            from: tileButton.motion.motionFrom_height ?? tileButton.tile.height
+            to: tileButton.tile.height
+            duration: 200
+            easing.type: Easing.OutCubic
+        }
+    }
+    property real appearScale: 1
+    transform: Scale {
+        origin.x: tileButton.width / 2
+        origin.y: tileButton.height / 2
+        xScale: tileButton.appearScale
+        yScale: tileButton.appearScale
+    }
+    NumberAnimation {
+        id: pinAppearMotion
+        target: tileButton
+        property: "appearScale"
+        from: 0.9
+        to: 1
+        duration: 180
+        easing.type: Easing.OutCubic
+    }
+    Component.onCompleted: {
+        if (motion.hasPrevious === false)
+            pinAppearMotion.start();
+    }
     focusPolicy: Qt.StrongFocus
     Accessible.name: tile.name
     Accessible.description: !targetAvailable ? qsTr("%1，目标不可用。%2。Shift 加 F10 取消固定。").arg(tile.dimensions).arg(tile.unavailableReason || qsTr("应用已移除")) : (editMode ? qsTr("%1，编辑模式。按 Ctrl 加方向键移动一格，Shift 加 F10 打开磁贴菜单。").arg(tile.dimensions) : (applicationTile ? qsTr("%1，按 Enter 启动。Shift 加 F10 打开磁贴菜单。").arg(tile.dimensions) : qsTr("%1，仅供布局预览。Shift 加 F10 打开磁贴菜单。").arg(tile.dimensions)))
@@ -57,7 +130,7 @@ Button {
     }
 
     function activate(): void {
-        if (applicationTile && !editMode)
+        if (applicationTile)
             activated(tile.id);
         else
             selected(tile.name);
@@ -112,13 +185,15 @@ Button {
     Keys.onReturnPressed: activate()
     Keys.onEnterPressed: activate()
 
-    ToolTip {
+    Hint {
         id: tileNameTip
+        delay: 600
+        font.family: tileButton.font.family
 
         objectName: "tileToolTip"
         width: Math.min(380, implicitWidth)
         parent: tileButton
-        visible: !tileButton.dragging && (tileButton.hovered || tileButton.activeFocus)
+        visible: !tileButton.dragging && (tileButton.pointerHovered || tileButton.activeFocus)
         text: tileButton.tile.name + " · " + tileButton.tile.dimensions + (tileButton.targetAvailable ? "" : "\n" + (tileButton.tile.unavailableReason || qsTr("应用不可用；可右键取消固定。")))
         timeout: -1
         contentItem: Text {
@@ -133,15 +208,22 @@ Button {
     background: Rectangle {
         radius: tileButton.tokens.cornerRadiusDip.tile
         gradient: Gradient {
-            GradientStop { position: 0; color: tileButton.fillTopColor }
-            GradientStop { position: 1; color: tileButton.fillBottomColor }
+            GradientStop {
+                position: 0
+                color: tileButton.fillTopColor
+            }
+            GradientStop {
+                position: 1
+                color: tileButton.fillBottomColor
+            }
         }
-        border.width: tileButton.activeFocus ? 2 : 1
-        border.color: tileButton.activeFocus ? tileButton.tokens.brand.cyan : Qt.rgba(1, 1, 1, tileButton.hovered ? 0.30 : 0.16)
+        border.width: (tileButton.activeFocus && tileButton.keyboardNavigation) ? 2 : 1
+        border.color: (tileButton.activeFocus && tileButton.keyboardNavigation) ? tileButton.tokens.brand.cyan : Qt.lighter(tileButton.baseColor, tileButton.pointerHovered ? 1.36 : 1.12)
     }
 
     contentItem: Item {
         Text {
+            font.family: tileButton.font.family
             objectName: "tileSymbol"
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.verticalCenter: parent.verticalCenter
@@ -192,6 +274,7 @@ Button {
             color: tileButton.tokens.status.error
 
             Text {
+                font.family: tileButton.font.family
                 anchors.centerIn: parent
                 text: "!"
                 color: tileButton.tokens.brand.ink
@@ -200,6 +283,7 @@ Button {
         }
 
         Text {
+            font.family: tileButton.font.family
             objectName: "tileLabel"
             anchors.left: parent.left
             anchors.right: parent.right

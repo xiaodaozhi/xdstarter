@@ -1,5 +1,6 @@
 #include "application_icon_provider.h"
 #include "desktop_window_host.h"
+#include "interface_font.h"
 #include "menu_controller.h"
 
 #include "core/tile_grid.h"
@@ -11,6 +12,7 @@
 #include "services/application_catalog.h"
 #include "services/desktop_shell_service.h"
 #include "services/prototype_service.h"
+#include "services/session_instance.h"
 
 #include <QColor>
 #include <QCommandLineOption>
@@ -19,6 +21,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QFont>
 #include <QGuiApplication>
 #include <QIcon>
 #include <QImage>
@@ -83,6 +86,7 @@ int main(int argc, char *argv[]) {
     QGuiApplication::setOrganizationName(QStringLiteral("xiaodaozhi"));
     QGuiApplication::setOrganizationDomain(QStringLiteral("github.com/xiaodaozhi"));
     QGuiApplication::setApplicationName(QStringLiteral("XDStarter"));
+    xdstarter::configureInterfaceFont();
     QIcon applicationIcon;
     for (const int size : {16, 20, 24, 32, 40, 48, 64, 96, 128, 256, 512, 1024}) {
         const auto resource = QStringLiteral(":/xdstarter/app/xdstarter-app-icon-%1.png").arg(size);
@@ -110,6 +114,26 @@ int main(int argc, char *argv[]) {
         QStringLiteral("path"));
     parser.addOption(layoutFileOption);
     parser.process(application);
+
+    std::unique_ptr<xdstarter::SessionInstance> instance;
+    bool pendingActivation = false;
+    if (!parser.isSet(smokeTestOption)) {
+        instance = std::make_unique<xdstarter::SessionInstance>(
+            xdstarter::createPlatformIntegration()->sessionKey(),
+            QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation));
+        instance->setForegroundGrant([](qint64 ownerPid) {
+            xdstarter::createPlatformIntegration()->allowForegroundActivation(ownerPid);
+        });
+        const auto result = instance->acquire();
+        if (result == xdstarter::SessionInstance::Result::ActivatedExisting)
+            return EXIT_SUCCESS;
+        if (result == xdstarter::SessionInstance::Result::Failed) {
+            qCritical() << instance->errorString();
+            return EXIT_FAILURE;
+        }
+        QObject::connect(instance.get(), &xdstarter::SessionInstance::activationRequested,
+                         &application, [&pendingActivation] { pendingActivation = true; });
+    }
 
     const auto visualTokens = loadVisualTokens();
     if (!visualTokens) {
@@ -191,6 +215,10 @@ int main(int argc, char *argv[]) {
         QObject::connect(&application, &QCoreApplication::aboutToQuit, desktopHost.get(),
                          &xdstarter::DesktopWindowHost::shutdown);
         desktopHost->start(QImage(QStringLiteral(":/xdstarter/app/xdstarter-app-icon-32.png")));
+        QObject::connect(instance.get(), &xdstarter::SessionInstance::activationRequested,
+                         desktopHost.get(), &xdstarter::DesktopWindowHost::showWindow);
+        if (pendingActivation)
+            desktopHost->showWindow();
     }
     // Release global input before waiting for the final layout write.
     QObject::connect(&application, &QCoreApplication::aboutToQuit, &controller, [&controller] {

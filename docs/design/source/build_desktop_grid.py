@@ -162,12 +162,12 @@ def build(theme):
         p += r(8, top, 48, 48, colors['hover'], 8,
                'data-role="shortcut-hit-area" fill-opacity="0"')
         p += ui_glyph(name, 20, top + 12, 24, THEME_COLORS[theme]) + '</g>'
-    search_width = content_right - content_left - 3 * layout['controlSize'] - 3 * GRID['gap']
-    p += r(content_left, margin, search_width, layout['searchHeight'], colors['searchBackground'], 8,
+    search_width = content_right - content_left - 2 * layout['controlSize'] - 2 * GRID['gap']
+    p += r(content_left, margin, search_width, layout['searchHeight'], colors['searchBackground'], 20,
            f'data-role="search-field" stroke="{colors["controlBorder"]}" stroke-width="1"')
     p += ui_glyph('search', content_left + 12, margin + 10, 20, muted)
     p += t(content_left + 40, margin + 26, '搜索应用、拼音或首字母', VISUAL['font']['body'], muted)
-    for index, (name, label) in enumerate([('apps', '编辑布局'), ('more', '更多操作'), ('close', '收起菜单')]):
+    for index, (name, label) in enumerate([('more', '更多操作'), ('close', '收起菜单')]):
         x = content_left + search_width + GRID['gap'] + index * (layout['controlSize'] + GRID['gap'])
         p += f'<g data-toolbar="{name}" role="button" aria-label="{label}"><title>{label}</title>'
         p += r(x, margin + 2, layout['controlSize'], layout['controlSize'], colors['hover'], 8,
@@ -179,15 +179,17 @@ def build(theme):
     p += '<g data-catalog-action="refresh" role="button" aria-label="刷新应用目录"><title>刷新应用目录</title>'
     p += r(refresh_left, body_top + 2, 28, 28, colors['hover'], 6,
            'data-role="catalog-refresh-hit-area" fill-opacity="0"')
-    p += t(refresh_left + 14, body_top + 23, '↻', 20, fg, 400, 'text-anchor="middle"') + '</g>'
+    p += ui_glyph('refresh', refresh_left + 4, body_top + 6, 20, fg) + '</g>'
     rows = [('B', 'Blender', 'Blender'), ('C', 'Chrome', 'Chrome'), ('D', 'Discord', 'Discord'),
             ('E', 'Edge', 'Microsoft Edge'), ('F', 'Figma', 'Figma'),
             ('M', 'Excel', 'Microsoft Excel'), ('', 'Word', 'Microsoft Word'), ('V', 'VS Code', 'VS Code')]
     row_top = body_top + layout['headerHeight'] + GRID['gap']
     for letter, key, label in rows:
         if letter:
-            p += t(content_left + 6, row_top + 13, letter, VISUAL['font']['section'], muted, 600)
+            p += t(content_left + 22, row_top + 30, letter, 22, muted, 600, 'text-anchor="middle"')
             row_top += layout['catalogSectionHeight']
+        if row_top + layout['catalogRowHeight'] > MENU_HEIGHT - margin:
+            break
         p += f'<g data-catalog-app="{key}" data-row-height-dip="{layout["catalogRowHeight"]}">'
         p += r(content_left, row_top, layout['catalogWidth'], layout['catalogRowHeight'], colors['hover'], 6,
                'fill-opacity="0"')
@@ -216,7 +218,7 @@ def build(theme):
                   f'<stop stop-color="{shade(base, 1.05)}"/>'
                   f'<stop offset="1" stop-color="{shade(base, 1 / 1.04)}"/></linearGradient></defs>')
             p += r(x, y, w, h, f'url(#{gradient})', VISUAL['cornerRadiusDip']['tile'],
-                   f'data-base-color="{base}" stroke="#FFFFFF" stroke-opacity=".12" stroke-width=".7"')
+                   f'data-base-color="{base}" stroke="{shade(base, 1.12)}" stroke-width="1"')
             if app['size'] == 'small':
                 p += icon(name, x + 10, y + 10, 28)
             else:
@@ -241,9 +243,9 @@ def build(theme):
     out = ROOT / f'mockups/v2/xdstarter-desktop-{theme}-v2.svg'
     out.write_text(f'<svg xmlns="http://www.w3.org/2000/svg" width="{CANVAS_WIDTH}" height="{CANVAS_HEIGHT}" '
                    f'viewBox="0 0 {CANVAS_WIDTH} {CANVAS_HEIGHT}" data-design-revision="{VISUAL["designRevision"]}" '
-                   f'data-reference-scale="{SCALE}"><g font-family="Segoe UI Variable">' + p + '</g></svg>', encoding='utf-8')
+                   f'data-reference-scale="{SCALE}"><g font-family="Microsoft YaHei UI">' + p + '</g></svg>', encoding='utf-8')
     render_svg(out, out.with_suffix('.png'))
-    print(f'{theme}: revision 2.2; 980x680 DIP panel, symmetric 8 DIP gap; shared 10-column grid')
+    print(f'{theme}: revision 2.3; 980x680 DIP panel, symmetric 8 DIP gap; shared 10-column grid')
 
 
 if __name__ == '__main__':
