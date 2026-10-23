@@ -22,7 +22,9 @@
 #include <windows.h>
 
 #include "restricted_fixture.h"
+#include <shellapi.h>
 #include <shlobj.h>
+#include <shlwapi.h>
 #include <shobjidl.h>
 #endif
 
@@ -185,16 +187,11 @@ int main(int argc, char* argv[]) {
                 "two owned Programs roots and nested folders created");
     const auto userLink = QDir(userFolder).filePath(QStringLiteral("Same.lnk"));
     const auto commonLink = QDir(commonFolder).filePath(QStringLiteral("Same.lnk"));
-    test.expect(
-        createShortcut(userLink, helper, QStringLiteral("user-argument"), userRoot) &&
-            createShortcut(commonLink, helper, QStringLiteral("common-argument"), commonRoot) &&
-            createShortcut(QDir(userNested).filePath(QStringLiteral("User.lnk")), helper, {},
-                           userRoot) &&
-            createShortcut(QDir(commonNested).filePath(QStringLiteral("Common.lnk")), helper, {},
-                           commonRoot),
-        "different arguments and nested complementary children created");
     const QString localizedName = QStringLiteral("本地化工具");
     const auto localizeFixture = [&](const QString& directory) {
+        const auto nativeDirectory = QDir::toNativeSeparators(directory);
+        if (!PathMakeSystemFolderW(reinterpret_cast<LPCWSTR>(nativeDirectory.utf16())))
+            return false;
         QFile ini(QDir(directory).filePath(QStringLiteral("desktop.ini")));
         if (!ini.open(QIODevice::WriteOnly))
             return false;
@@ -205,15 +202,37 @@ int main(int argc, char* argv[]) {
                 content.size() * 2)
             return false;
         ini.close();
-        const auto nativeDirectory = QDir::toNativeSeparators(directory);
         const auto nativeIni = QDir::toNativeSeparators(ini.fileName());
-        return SetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeDirectory.utf16()),
-                                  FILE_ATTRIBUTE_READONLY) &&
-               SetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeIni.utf16()),
-                                  FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM);
+        wchar_t profileName[256]{};
+        const auto profileLength =
+            GetPrivateProfileStringW(L".ShellClassInfo", L"LocalizedResourceName", L"", profileName,
+                                     256, reinterpret_cast<LPCWSTR>(nativeIni.utf16()));
+        const auto profileValue =
+            QString::fromWCharArray(profileName, static_cast<int>(profileLength));
+        test.expect(profileValue == localizedName,
+                    "Windows profile API reads exact Chinese from UTF-16LE desktop.ini");
+        if (profileValue != localizedName) {
+            const QJsonObject diagnostics{{QStringLiteral("expected"), localizedName},
+                                          {QStringLiteral("profileValue"), profileValue}};
+            std::cerr << "Localization fixture: "
+                      << QJsonDocument(diagnostics).toJson(QJsonDocument::Compact).constData()
+                      << '\n';
+        }
+        return SetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeIni.utf16()),
+                                  FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM) != FALSE;
     };
     test.expect(localizeFixture(userFolder) && localizeFixture(separateFolder),
                 "localized names configured only inside owned temporary roots");
+    // Configure display metadata before any Shell COM object can cache a
+    // physical folder name while creating the shortcuts in these directories.
+    test.expect(
+        createShortcut(userLink, helper, QStringLiteral("user-argument"), userRoot) &&
+            createShortcut(commonLink, helper, QStringLiteral("common-argument"), commonRoot) &&
+            createShortcut(QDir(userNested).filePath(QStringLiteral("User.lnk")), helper, {},
+                           userRoot) &&
+            createShortcut(QDir(commonNested).filePath(QStringLiteral("Common.lnk")), helper, {},
+                           commonRoot),
+        "different arguments and nested complementary children created");
     xdstarter::WindowsApplicationPlatform mergedPlatform({userRoot, commonRoot});
     const auto merged = mergedPlatform.scanApplications();
     const auto folderId = xdstarter::applicationTargetId(QStringLiteral("folder"), userFolder);
@@ -247,6 +266,52 @@ int main(int argc, char* argv[]) {
                 "same named shortcuts with different parameters retain complete path identities");
     test.expect(localizedFolder && sameDisplayNameDistinctPath,
                 "real Shell localized folder names display without merging different paths");
+    if (!localizedFolder || !sameDisplayNameDistinctPath) {
+        QJsonArray folderNames;
+        for (const auto& entry : merged.applications) {
+            if (entry.type == QLatin1String("folder")) {
+                folderNames.append(QJsonObject{{QStringLiteral("name"), entry.name},
+                                               {QStringLiteral("path"), entry.shortcutPath}});
+            }
+        }
+        QJsonArray nativeFolders;
+        const auto diagnosticCom = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+        for (const auto& directory :
+             {userFolder, commonFolder, userNested, commonNested, separateFolder}) {
+            const auto nativeDirectory = QDir::toNativeSeparators(directory);
+            const auto nativeIni =
+                QDir::toNativeSeparators(QDir(directory).filePath(QStringLiteral("desktop.ini")));
+            SHFILEINFOW info{};
+            SetLastError(ERROR_SUCCESS);
+            const auto displayResult =
+                SHGetFileInfoW(reinterpret_cast<LPCWSTR>(nativeDirectory.utf16()), 0, &info,
+                               static_cast<UINT>(sizeof(info)), SHGFI_DISPLAYNAME);
+            const auto displayError = GetLastError();
+            const auto directoryAttributes =
+                GetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeDirectory.utf16()));
+            const auto iniAttributes =
+                GetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeIni.utf16()));
+            nativeFolders.append(QJsonObject{
+                {QStringLiteral("path"), directory},
+                {QStringLiteral("displayNameAvailable"), displayResult != 0},
+                {QStringLiteral("displayName"), QString::fromWCharArray(info.szDisplayName)},
+                {QStringLiteral("lastError"), static_cast<int>(displayError)},
+                {QStringLiteral("directoryAttributesHex"),
+                 QString::number(directoryAttributes, 16)},
+                {QStringLiteral("iniAttributesHex"), QString::number(iniAttributes, 16)}});
+        }
+        if (SUCCEEDED(diagnosticCom))
+            CoUninitialize();
+        const QJsonObject diagnostics{{QStringLiteral("expected"), localizedName},
+                                      {QStringLiteral("folders"), folderNames},
+                                      {QStringLiteral("nativeFolders"), nativeFolders},
+                                      {QStringLiteral("diagnosticComResultHex"),
+                                       QString::number(static_cast<quint32>(diagnosticCom), 16)},
+                                      {QStringLiteral("ansiCodePage"), static_cast<int>(GetACP())},
+                                      {QStringLiteral("kernelVersion"), QSysInfo::kernelVersion()}};
+        std::cerr << "Localized folder scan: "
+                  << QJsonDocument(diagnostics).toJson(QJsonDocument::Compact).constData() << '\n';
+    }
     test.expect(QDir(userNested).removeRecursively(), "owned user nested folder removed");
     const auto remaining = mergedPlatform.scanApplications();
     bool commonNestedRetained = false;

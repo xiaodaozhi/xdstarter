@@ -33,7 +33,14 @@
     "resizeCombinations": 80,
     "widthSnapCombinations": 200,
     "taskbarInputRegionCombinations": 40,
-    "nativeSizingAndRegionCases": 36
+    "nativeSizingAndRegionCases": 36,
+    "localFullRunSourceCommit": "8d3ca5834417f0df73d859c5811efe29871ed446",
+    "localizedFixtureFollowup": {
+      "ctest": "platform.applications",
+      "passed": true,
+      "seconds": 2.05,
+      "productBinaryUnchanged": true
+    }
   },
   "nativeFinalBinary": {
     "method": "single-instance IPC reveal; read-only Win32 and UIA point observation",
@@ -208,7 +215,8 @@
     "xdstarter_ui_tests.exe": "c4591a51f7fc44ac3fb4af1431cdc4fd522b48508aba4006388b1a5da695e86e",
     "xdstarter_desktop_window_host_tests.exe": "1522dd51f0dc862e1ddca531b3444ecd1a9f40951d8c998767f17c06fbf0e846",
     "xdstarter_native_taskbar_probe.exe": "0f9cb40732566a024a831dc1dba4c3d947575960837a71e71984e0bf0ed39c48",
-    "xdstarter_desktop_platform_tests.exe": "4cfedf5338739a5f0f585c73cde54deed441a48e6563ef058dc22231d0709868"
+    "xdstarter_desktop_platform_tests.exe": "4cfedf5338739a5f0f585c73cde54deed441a48e6563ef058dc22231d0709868",
+    "xdstarter_application_platform_tests.exe": "751e9575c98e2632da6cfae7c5063541abd6148b1810015c592b830d2828ab19"
   },
   "sourceSha256Lf": {
     "docs/design/tokens/tile-grid.json": "8a83a7666059540a81df87b807bbccb7533b3c281917e840d2214930872937a2",
@@ -244,8 +252,8 @@
     "src/services/prototype_service.cpp": "78f1947b092c0fa53154ae073482652158c2137078b539bb958f0d4bebeec00c",
     "src/services/prototype_service.h": "8e372901875755f0945c7ffbbe04ee9e2fb17f1b63064020e6f9323e2a00c2a5",
     "tests/core/tile_grid_tests.cpp": "e9081bb1f4685acb3c6ef4b3ead7cf57cfd3cf9354b406947761fe79c3039465",
-    "tests/platform/CMakeLists.txt": "5a4680c3a31e55b73ea078a97325e7479416069c09130e36f18fcba561c7afe6",
-    "tests/platform/application_platform_tests.cpp": "51dc6602a434494064a8a95841a392304789676481dac48ab8c8b8a8f497581a",
+    "tests/platform/CMakeLists.txt": "171b6aef1bd33216550d0c7e7a95d1ddb2801258601a12ef906a5b719130e0dc",
+    "tests/platform/application_platform_tests.cpp": "cc482ee155d259215c9cd0448a55eaa37641dd10bd8074ad5cd9e52ab38c8847",
     "tests/platform/desktop_platform_tests.cpp": "c0bd85d6d4211a5d6e90d2604502f22b227774dc4a980c9db77766ea5818bcc8",
     "tests/platform/desktop_width_snap_tests.cpp": "18ad9fb30a05140e7372e30f149a3c299ee7ff2312ed081cceb14c58c29344db",
     "tests/platform/native_taskbar_probe.cpp": "82c0cc23ddfcaa87c8ce947ca1813228536cb1bd1f5468a0596d0f236c1e5f00",
@@ -264,5 +272,22 @@
     "docs/design/validation/issue-48/light-about.png": "6ff5f1c87b55529416b342cbb25511b48ec25e9182ee21dccac593bac3e60f34",
     "docs/design/validation/issue-48/light-failure.png": "e1053f36184638b00aa2915220ede84cc81df1e8aaf865133965e318d3bd0300",
     "docs/design/validation/issue-48/light-menus.png": "bac53678f60e096d7baa68b3bb98f4877e662c01ee2bcdccc44d56f32ecfa8b0"
+  },
+  "ciFollowup": {
+    "firstHead": "8d3ca5834417f0df73d859c5811efe29871ed446",
+    "firstWindowsRun": 39943963835,
+    "firstWindowsSuitesPassed": 17,
+    "firstWindowsSuitesTotal": 18,
+    "failure": "real Shell localized folder display fixture; GUI, host and other suites passed",
+    "originalFixtureWasAlreadyUtf16LeBom": true,
+    "fixtureChanges": [
+      "use documented PathMakeSystemFolderW",
+      "configure metadata before Shell COM shortcut creation",
+      "independent exact Chinese INI readback",
+      "retain precise real Shell localized names and distinct-path assertion",
+      "failure-only native display, attributes, OS and code-page diagnostics"
+    ],
+    "currentHeadCi": "tracked in PR49; previous success is not substituted",
+    "runtimeUnchangedFromFirstHead": true
   }
 }

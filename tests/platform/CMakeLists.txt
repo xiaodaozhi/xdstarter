@@ -2,7 +2,7 @@ add_executable(xdstarter_application_platform_tests application_platform_tests.c
 target_link_libraries(xdstarter_application_platform_tests PRIVATE xdstarter_platform)
 if(WIN32)
     target_compile_definitions(xdstarter_application_platform_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
-    target_link_libraries(xdstarter_application_platform_tests PRIVATE ole32 shell32 uuid advapi32)
+    target_link_libraries(xdstarter_application_platform_tests PRIVATE ole32 shell32 shlwapi uuid advapi32)
     add_executable(xdstarter_launch_fixture launch_fixture.cpp)
     target_link_libraries(xdstarter_launch_fixture PRIVATE Qt6::Core)
     add_test(NAME platform.applications COMMAND xdstarter_application_platform_tests
