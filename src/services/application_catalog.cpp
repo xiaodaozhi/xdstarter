@@ -259,6 +259,17 @@ LaunchTarget ApplicationCatalog::target(const QString& id) const { return target
 bool ApplicationCatalog::containsApplication(const QString& id) const {
     return catalogIds_.contains(id);
 }
+QString ApplicationCatalog::canonicalApplicationId(const QString& id) const {
+    return equivalentTargetIds_.value(id, id);
+}
+QSet<QString> ApplicationCatalog::equivalentApplicationIds(const QString& id) const {
+    const auto representative = canonicalApplicationId(id);
+    QSet<QString> result{representative};
+    for (auto it = equivalentTargetIds_.cbegin(); it != equivalentTargetIds_.cend(); ++it)
+        if (it.value() == representative)
+            result.insert(it.key());
+    return result;
+}
 LaunchResult ApplicationCatalog::availability(const QString& id) const {
     return availability_.value(
         id, {false, QStringLiteral("正在检查应用是否可用…"), QStringLiteral("pending")});
@@ -268,7 +279,13 @@ QImage ApplicationCatalog::cachedIcon(const QString& id) const {
     const auto* image = icons_.object(id);
     return image ? *image : QImage{};
 }
-void ApplicationCatalog::setPinnedIds(const QSet<QString>& ids) { model_.setPinnedIds(ids); }
+void ApplicationCatalog::setPinnedIds(const QSet<QString>& ids) {
+    pinnedIds_ = ids;
+    auto displayed = ids;
+    for (const auto& id : ids)
+        displayed.insert(canonicalApplicationId(id));
+    model_.setPinnedIds(std::move(displayed));
+}
 
 void ApplicationCatalog::refreshApplications() {
     if (busy_ || !platform_)
@@ -311,8 +328,22 @@ void ApplicationCatalog::refreshApplications() {
                             self.catalogIds_.insert(entry.id);
                             self.availability_.insert(entry.id, {true, {}, {}});
                         }
+                        self.equivalentTargetIds_.clear();
+                        // Aliases only describe this successful scan. Never retain stale
+                        // equivalence after one source changes or disappears.
+                        for (auto it = snapshot.equivalentTargetIds.cbegin();
+                             it != snapshot.equivalentTargetIds.cend(); ++it) {
+                            if (self.equivalentTargetIds_.size() >= 4096)
+                                break;
+                            if (it.key().startsWith(QLatin1String("shortcut-")) &&
+                                it.key().size() == 73 && !self.catalogIds_.contains(it.key()) &&
+                                self.catalogIds_.contains(it.value()) &&
+                                self.targets_.value(it.value()).type == QLatin1String("shortcut"))
+                                self.equivalentTargetIds_.insert(it.key(), it.value());
+                        }
                         self.pruneTargets();
                         self.model_.replace(entries);
+                        self.setPinnedIds(self.pinnedIds_);
                         self.browser_.reconcile();
                         self.status_ = QStringLiteral("已读取 %1 个应用。").arg(entries.size());
                     } else {

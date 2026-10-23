@@ -18,6 +18,8 @@
 
 ## 技术设计
 
+[Issue #53](https://github.com/xiaodaozhi/xdstarter/issues/53) 跟踪公共／用户 Programs 中等价叶子快捷方式的重复展示，目标身份与原文件启动保持独立。[Issue #52](https://github.com/xiaodaozhi/xdstarter/issues/52) 补充开始按钮漏拦截诊断，并比较显式外部区域资格与独立进程内桥接实验；默认产品入口和真实 Windows 验证边界见 [ADR-0016](technical/adr/0016-start-capture-experiments.md)。隔离宿主、模拟输入与物理 Explorer 验收不能相互替代。
+
 | 文档 | 内容 |
 | --- | --- |
 | [技术架构](technical/architecture.md) | 模块边界与数据流 |

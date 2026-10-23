@@ -1,6 +1,7 @@
 #include "app/desktop_window_host.h"
 #include "platform/desktop_platform.h"
 #include "platform/desktop_tray.h"
+#include "platform/start_button_capture.h"
 #include "platform/win_key_capture.h"
 #include "services/desktop_shell_service.h"
 
@@ -109,7 +110,7 @@ class PlacementPlatform final : public xdstarter::DesktopPlatform {
         ++presentations;
         presentedHandle = nativeHandle;
         presentedWhileVisible = !observedWindow || observedWindow->isVisible();
-        return {};
+        return presentationResult;
     }
 
     xdstarter::DesktopPlacementResult placeWindow(
@@ -163,6 +164,7 @@ class PlacementPlatform final : public xdstarter::DesktopPlatform {
     quintptr foregroundHandle = 0;
     xdstarter::DesktopAnchorResult lastAnchor;
     QString placementError;
+    xdstarter::DesktopPresentationResult presentationResult;
 };
 
 class FakeTray final : public xdstarter::DesktopTray {
@@ -241,6 +243,30 @@ class FakeWinKeyCapture final : public xdstarter::WinKeyCapture {
     bool supported = true;
     int requests = 0;
     int stops = 0;
+};
+
+class RecordingStartButtonCapture final : public xdstarter::StartButtonCapture {
+  public:
+    void setEnabled(bool enabled) override {
+        generation = enabled ? beginEventSession() : endEventSession();
+        active = enabled;
+        emit statusChanged(active, QStringLiteral("Fixture hook state"), {});
+    }
+    void stop() override { setEnabled(false); }
+    bool isActive() const override { return active; }
+    bool isSupported() const override { return true; }
+    QJsonObject diagnosticSnapshot() const override { return {}; }
+    void recordHostObservation(const xdstarter::StartButtonHostObservation& observation) override {
+        observations.append(observation);
+    }
+    void toggle() { emit toggleRequested(); }
+    void queueFailure(quint64 observedGeneration) {
+        queueStatusChanged(observedGeneration, false, QStringLiteral("Delayed query failure"),
+                           QStringLiteral("fixture-delayed-query-failure"));
+    }
+    quint64 generation = 0;
+    bool active = false;
+    QList<xdstarter::StartButtonHostObservation> observations;
 };
 
 QImage trayIcon() {
@@ -348,6 +374,8 @@ class DesktopWindowHostTest : public QObject {
     void startButtonCaptureStartsInTrayAndCanPause();
     void startButtonCaptureStopsOnTrayLossAndShutdown();
     void startButtonCaptureRejectsUnavailableAndLateSignals();
+    void startButtonDiagnosticsDistinguishNativeForegroundAndHidden();
+    void startButtonOldQueuedFailureCannotDisableNewSession();
 
   private:
     bool originalQuitOnClose_ = false;
@@ -1519,6 +1547,90 @@ void DesktopWindowHostTest::canceledMigrationRetainsIntendedWindowSize() {
 
 // Opt-in, inert second application window for reproducible native focus tests.
 // Normal CTest never displays it or interacts with another desktop application.
+void DesktopWindowHostTest::startButtonDiagnosticsDistinguishNativeForegroundAndHidden() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    PlacementPlatform placement;
+    placement.observedWindow = &window;
+    placement.presentationResult = {true, true, false, false,
+                                    QStringLiteral("menu-foreground-denied")};
+    FakeTray tray;
+    RecordingStartButtonCapture capture;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.attachStartButtonCapture(capture);
+    host.start(trayIcon());
+    capture.toggle();
+    QTRY_VERIFY(window.isVisible());
+    QTRY_COMPARE(capture.observations.last().event, QStringLiteral("presentation-result"));
+    QVERIFY(capture.observations.last().nativeMeasured);
+    QVERIFY(!capture.observations.last().foreground);
+    QCOMPARE(capture.observations.last().errorCode, QStringLiteral("menu-foreground-denied"));
+    capture.toggle();
+    QVERIFY(!window.isVisible());
+    QCOMPARE(capture.observations.last().event, QStringLiteral("hidden"));
+    QVERIFY(!capture.observations.last().visible);
+    QVERIFY(!capture.observations.last().nativeMeasured);
+    placement.presentationResult = {true, true, false, true, {}};
+    capture.toggle();
+    QTRY_VERIFY(window.isVisible());
+    QTRY_COMPARE(capture.observations.last().event, QStringLiteral("presentation-result"));
+    QVERIFY(capture.observations.last().nativeMeasured);
+    QVERIFY(capture.observations.last().foreground);
+    capture.toggle();
+    QVERIFY(!window.isVisible());
+    // A Qt show or an unsupported platform result cannot confirm native focus,
+    // even if its unmeasured foreground field happens to be true.
+    placement.presentationResult = {false, true, false, true, {}};
+    capture.toggle();
+    QTRY_VERIFY(window.isVisible());
+    QTRY_COMPARE(capture.observations.last().event, QStringLiteral("presentation-result"));
+    QVERIFY(!capture.observations.last().nativeMeasured);
+    QVERIFY(!capture.observations.last().foreground);
+    host.dismissWindow();
+    placement.placementError = QStringLiteral("menu-input-region-failed");
+    capture.toggle();
+    QTRY_COMPARE(capture.observations.last().event, QStringLiteral("presentation-canceled"));
+    QCOMPARE(capture.observations.last().errorCode, QStringLiteral("menu-input-region-failed"));
+    QVERIFY(!window.isVisible());
+    placement.placementError.clear();
+    placement.afterConfigure = [&] { window.close(); };
+    capture.toggle();
+    QTRY_COMPARE(capture.observations.last().errorCode,
+                 QStringLiteral("window-closed-before-presentation"));
+    QCOMPARE(capture.observations.last().event, QStringLiteral("presentation-canceled"));
+    QVERIFY(!capture.observations.last().nativeMeasured);
+    QVERIFY(!window.isVisible());
+}
+
+void DesktopWindowHostTest::startButtonOldQueuedFailureCannotDisableNewSession() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    PlacementPlatform placement;
+    FakeTray tray;
+    RecordingStartButtonCapture capture;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.attachStartButtonCapture(capture);
+    host.start(trayIcon());
+    const auto oldGeneration = capture.generation;
+    capture.queueFailure(oldGeneration);
+    host.toggleStartButtonCapture(); // Pause before the queued failure is delivered.
+    host.toggleStartButtonCapture(); // A new real WinKeyCapture event session.
+    QVERIFY(capture.generation != oldGeneration);
+    QCoreApplication::processEvents();
+    QVERIFY(window.property("startButtonCaptureActive").toBool());
+    QVERIFY(capture.active);
+    capture.toggle();
+    QTRY_VERIFY(window.isVisible()); // The replacement session still reaches host.
+    capture.active = false;
+    capture.queueFailure(capture.generation);
+    QTRY_VERIFY(!window.property("startButtonCaptureActive").toBool());
+    QVERIFY(window.property("startButtonCaptureStatus")
+                .toString()
+                .contains(QStringLiteral("Delayed query failure")));
+}
+
 class ManualFocusWindow final : public QRasterWindow {
     void paintEvent(QPaintEvent *) override {
         QPainter painter(this);

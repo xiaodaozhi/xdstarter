@@ -31,6 +31,7 @@
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QSaveFile>
 #include <QStandardPaths>
 #include <QTimer>
 #include <QWindow>
@@ -115,7 +116,27 @@ int main(int argc, char *argv[]) {
         QStringLiteral("使用指定布局文件，便于隔离测试；默认保存到当前用户应用数据目录。"),
         QStringLiteral("path"));
     parser.addOption(layoutFileOption);
+    const QCommandLineOption captureModeOption(
+        QStringLiteral("start-capture-mode"),
+        QStringLiteral("开始按钮实验模式：point 或 area-cache；默认 point。"),
+        QStringLiteral("mode"), QStringLiteral("point"));
+    const QCommandLineOption captureDiagnosticsOption(
+        QStringLiteral("start-capture-diagnostics"),
+        QStringLiteral("定期将有界接管诊断写入指定文件，不记录应用列表或完整输入轨迹。"),
+        QStringLiteral("path"));
+    parser.addOption(captureModeOption);
+    parser.addOption(captureDiagnosticsOption);
     parser.process(application);
+    const QString captureMode = parser.value(captureModeOption);
+    if (captureMode != QLatin1String("point") && captureMode != QLatin1String("area-cache")) {
+        qCritical() << "Unknown start capture mode:" << captureMode;
+        return EXIT_FAILURE;
+    }
+    if (parser.isSet(smokeTestOption) &&
+        (parser.isSet(captureModeOption) || parser.isSet(captureDiagnosticsOption))) {
+        qCritical() << "Start capture experiments cannot run in smoke mode";
+        return EXIT_FAILURE;
+    }
 
     std::unique_ptr<xdstarter::SessionInstance> instance;
     bool pendingActivation = false;
@@ -127,8 +148,12 @@ int main(int argc, char *argv[]) {
             xdstarter::createPlatformIntegration()->allowForegroundActivation(ownerPid);
         });
         const auto result = instance->acquire();
-        if (result == xdstarter::SessionInstance::Result::ActivatedExisting)
+        if (result == xdstarter::SessionInstance::Result::ActivatedExisting) {
+            if (parser.isSet(captureModeOption) || parser.isSet(captureDiagnosticsOption))
+                qWarning() << "An existing instance keeps its capture settings; exit it before"
+                              " starting a capture experiment";
             return EXIT_SUCCESS;
+        }
         if (result == xdstarter::SessionInstance::Result::Failed) {
             qCritical() << instance->errorString();
             return EXIT_FAILURE;
@@ -200,11 +225,40 @@ int main(int argc, char *argv[]) {
     std::unique_ptr<xdstarter::WinKeyCapture> winKeyCapture;
     std::unique_ptr<xdstarter::WinKeyCapture> startButtonCapture;
     std::unique_ptr<xdstarter::DesktopWindowHost> desktopHost;
+    QTimer captureDiagnosticsTimer;
     if (desktopShell) {
         placement = xdstarter::createDesktopPlatform();
         tray = xdstarter::createDesktopTray();
         winKeyCapture = xdstarter::createWinKeyCapture();
-        startButtonCapture = xdstarter::createStartButtonCapture();
+        xdstarter::StartButtonCaptureOptions captureOptions;
+        if (captureMode == QLatin1String("area-cache"))
+            captureOptions.mode = xdstarter::StartButtonCaptureMode::ExperimentalAreaCache;
+        startButtonCapture = xdstarter::createStartButtonCapture(captureOptions);
+        if (parser.isSet(captureDiagnosticsOption)) {
+            const QString diagnosticsPath =
+                QFileInfo(parser.value(captureDiagnosticsOption)).absoluteFilePath();
+            const auto writeDiagnostics = [&, diagnosticsPath] {
+                auto snapshot =
+                    xdstarter::startButtonCaptureDiagnosticSnapshot(*startButtonCapture);
+                snapshot.insert(QStringLiteral("applicationVersion"),
+                                QGuiApplication::applicationVersion());
+                snapshot.insert(QStringLiteral("mode"), captureMode);
+                const auto bytes = QJsonDocument(snapshot).toJson(QJsonDocument::Indented);
+                QSaveFile output(diagnosticsPath);
+                output.setDirectWriteFallback(false);
+                if (!output.open(QIODevice::WriteOnly) || output.write(bytes) != bytes.size() ||
+                    !output.commit()) {
+                    qWarning() << "Cannot write start capture diagnostics:" << output.errorString();
+                    captureDiagnosticsTimer.stop();
+                }
+            };
+            captureDiagnosticsTimer.setInterval(2000);
+            QObject::connect(&captureDiagnosticsTimer, &QTimer::timeout, &application,
+                             writeDiagnostics);
+            QObject::connect(&application, &QCoreApplication::aboutToQuit, &application,
+                             writeDiagnostics);
+            captureDiagnosticsTimer.start();
+        }
         desktopHost = std::make_unique<xdstarter::DesktopWindowHost>(*window, *desktopShell,
                                                                      *placement, *tray);
         desktopHost->attachWinKeyCapture(*winKeyCapture);

@@ -2,6 +2,7 @@
 
 #include "platform/desktop_platform.h"
 #include "platform/desktop_tray.h"
+#include "platform/start_button_capture.h"
 #include "platform/win_key_capture.h"
 #include "services/desktop_shell_service.h"
 
@@ -149,6 +150,8 @@ DesktopWindowHost::DesktopWindowHost(QWindow &window, DesktopShellService &shell
     connect(&tray_, &DesktopTray::registrationChanged, this, &DesktopWindowHost::updateRecovery);
     connect(&window, &QWindow::visibleChanged, this, [this](bool visible) {
         if (!visible) {
+            recordCaptureHostObservation(QStringLiteral("hidden"));
+            startButtonTogglePending_ = false;
             cancelRevealPreparation();
             pendingReveal_ = false;
             focusTimer_.stop();
@@ -226,6 +229,9 @@ void DesktopWindowHost::checkRevealPreparation() {
         placementRequest_ = 0;
         shell_.invalidateStartButtonAnchor();
         anchorStatus_ = QStringLiteral("屏幕缩放尚未稳定，本次显示已取消；请从恢复入口重试。");
+        recordCaptureHostObservation(QStringLiteral("presentation-canceled"), nullptr,
+                                     QStringLiteral("placement-preparation-timeout"));
+        startButtonTogglePending_ = false;
         publishStatus();
         qWarning().noquote() << "Desktop placement preparation timed out; window remains hidden.";
         if (!stopping_ && !pendingReveal_ && !placementRequest_ && !recoveryAvailable_ && window_)
@@ -271,6 +277,9 @@ void DesktopWindowHost::finishRevealPreparation() {
     if (!isCurrentReveal(request))
         return;
     if (result.errorCode == QStringLiteral("menu-input-region-failed")) {
+        recordCaptureHostObservation(QStringLiteral("presentation-canceled"), nullptr,
+                                     result.errorCode);
+        startButtonTogglePending_ = false;
         cancelRevealPreparation();
         pendingReveal_ = false;
         placementRequest_ = 0;
@@ -311,6 +320,9 @@ void DesktopWindowHost::finishRevealPreparation() {
             pendingReveal_ = false;
             placementRequest_ = 0;
             anchorStatus_ = QStringLiteral("无法取得安全工作区，本次显示已取消。");
+            recordCaptureHostObservation(QStringLiteral("presentation-canceled"), nullptr,
+                                         QStringLiteral("safe-work-area-unavailable"));
+            startButtonTogglePending_ = false;
             publishStatus();
             if (!recoveryAvailable_)
                 emit exitRequested();
@@ -390,8 +402,11 @@ void DesktopWindowHost::attachStartButtonCapture(WinKeyCapture& capture) {
     startButtonCapture_ = &capture;
     connect(&capture, &WinKeyCapture::toggleRequested, this, [this] {
         if (!stopping_ && startButtonRequested_ && startButtonActive_ && startButtonCapture_ &&
-            startButtonCapture_->isActive())
+            startButtonCapture_->isActive()) {
+            startButtonTogglePending_ = true;
+            recordCaptureHostObservation(QStringLiteral("host-toggle-received"));
             toggleWindowFrom(QStringLiteral("start-button"));
+        }
     });
     connect(&capture, &WinKeyCapture::statusChanged, this,
             [this](bool active, const QString& message, const QString& errorCode) {
@@ -502,6 +517,8 @@ void DesktopWindowHost::showWindow() {
     pendingReveal_ = !window_->isVisible();
     if (!pendingReveal_) {
         if (placement_.hasOwnedForegroundDialog(window_->winId())) {
+            recordCaptureHostObservation(QStringLiteral("owned-dialog-protected"));
+            startButtonTogglePending_ = false;
             scheduleFocusCheck();
             return;
         }
@@ -527,6 +544,8 @@ void DesktopWindowHost::activatePresentedWindow() {
     if (stopping_ || !window_ || !window_->isVisible())
         return;
     const auto result = placement_.presentMenuWindow(window_->winId());
+    recordCaptureHostObservation(QStringLiteral("presentation-result"), &result);
+    startButtonTogglePending_ = false;
     if (result.supported)
         qInfo().noquote() << "Menu presentation:"
                           << QJsonDocument(
@@ -535,6 +554,26 @@ void DesktopWindowHost::activatePresentedWindow() {
                                              {QStringLiteral("foreground"), result.foreground},
                                              {QStringLiteral("errorCode"), result.errorCode}})
                                  .toJson(QJsonDocument::Compact);
+}
+
+void DesktopWindowHost::recordCaptureHostObservation(const QString& event,
+                                                     const DesktopPresentationResult* result,
+                                                     const QString& errorCode) {
+    if (!startButtonTogglePending_ || !startButtonCapture_ || !window_)
+        return;
+    StartButtonHostObservation observation;
+    observation.event = event;
+    observation.visible = window_->isVisible();
+    observation.minimized = window_->visibility() == QWindow::Minimized;
+    observation.errorCode = errorCode;
+    if (result && result->supported) {
+        observation.nativeMeasured = true;
+        observation.visible = result->visible;
+        observation.minimized = result->minimized;
+        observation.foreground = result->foreground;
+        observation.errorCode = result->errorCode;
+    }
+    recordStartButtonHostObservation(*startButtonCapture_, observation);
 }
 
 void DesktopWindowHost::toggleWindow() {
@@ -568,6 +607,9 @@ bool DesktopWindowHost::eventFilter(QObject *object, QEvent *event) {
         }
         rememberVisibleWindowSize();
         if (pendingReveal_) {
+            recordCaptureHostObservation(QStringLiteral("presentation-canceled"), nullptr,
+                                         QStringLiteral("window-closed-before-presentation"));
+            startButtonTogglePending_ = false;
             cancelRevealPreparation();
             pendingReveal_ = false;
             placementRequest_ = 0;
@@ -657,6 +699,11 @@ void DesktopWindowHost::dismiss(const QString &reason) {
     }
     if (dismissPending_)
         return;
+    if (pendingReveal_) {
+        recordCaptureHostObservation(QStringLiteral("presentation-canceled"), nullptr,
+                                     QStringLiteral("reveal-canceled-before-show"));
+        startButtonTogglePending_ = false;
+    }
     // Resize notifications can still be queued when the user immediately
     // dismisses the menu. Capture the current visible DIP size before hiding.
     rememberVisibleWindowSize();
@@ -708,6 +755,9 @@ void DesktopWindowHost::keepReachableAfterLaunch() {
 void DesktopWindowHost::shutdown() {
     if (stopping_)
         return;
+    recordCaptureHostObservation(QStringLiteral("presentation-canceled"), nullptr,
+                                 QStringLiteral("host-stopping"));
+    startButtonTogglePending_ = false;
     stopping_ = true;
     dismissTimer_.stop();
     dismissPending_ = false;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QHash>
 #include <QImage>
 #include <QString>
 #include <QStringList>
@@ -27,6 +28,9 @@ struct CatalogSnapshot {
     QVector<LaunchTarget> applications;
     QStringList warnings;
     bool success = false;
+    // Transient proof from this scan only: suppressed shortcut id -> displayed original id.
+    // Neither stable target identities nor persisted layouts are rewritten.
+    QHash<QString, QString> equivalentTargetIds;
 };
 
 struct LaunchResult {

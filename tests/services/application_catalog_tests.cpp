@@ -109,7 +109,56 @@ class ApplicationCatalogTests final : public QObject {
     void registeredMissingTargetsPreserveLayout_data();
     void registeredMissingTargetsPreserveLayout();
     void targetJsonRoundTripKeepsLaunchKindsSeparate();
+    void equivalentShortcutPinnedStateFollowsCurrentScan();
 };
+
+void ApplicationCatalogTests::equivalentShortcutPinnedStateFollowsCurrentScan() {
+    auto state = std::make_shared<FakeState>();
+    const auto user = shortcut(QStringLiteral("Bitwarden"));
+    auto common = user;
+    common.shortcutPath = QStringLiteral("C:/Common/Bitwarden.lnk");
+    common.id = applicationTargetId(common.type, common.shortcutPath);
+    common.iconKey = common.id;
+    state->snapshot = {{user}, {}, true, {{common.id, user.id}}};
+    ApplicationCatalog catalog(fakePlatform(state));
+    catalog.registerTargets({applicationTargetJson(common)});
+    catalog.setPinnedIds({common.id});
+    catalog.refreshApplications();
+    QTRY_VERIFY_WITH_TIMEOUT(!catalog.busy(), 3000);
+    QCOMPARE(catalog.canonicalApplicationId(common.id), user.id);
+    QCOMPARE(catalog.equivalentApplicationIds(user.id), QSet<QString>({user.id, common.id}));
+    auto* model = catalog.applicationsModel();
+    QCOMPARE(model->rowCount(), 1);
+    QVERIFY(model->index(0, 0).data(ApplicationListModel::Pinned).toBool());
+    // The old tile descriptor remains its original shortcut, never redirected.
+    QCOMPARE(catalog.target(common.id).shortcutPath, common.shortcutPath);
+    QVERIFY(catalog.launchApplication(common.id));
+    QTRY_VERIFY_WITH_TIMEOUT(!catalog.launchBusy(), 3000);
+    QCOMPARE(state->launches.load(), 1);
+
+    // A failed scan preserves both the old presentation and its proven mapping.
+    {
+        QMutexLocker lock(&state->mutex);
+        state->snapshot = {{}, {}, false};
+    }
+    catalog.refreshApplications();
+    QTRY_VERIFY_WITH_TIMEOUT(!catalog.busy(), 3000);
+    QCOMPARE(catalog.canonicalApplicationId(common.id), user.id);
+    QVERIFY(model->index(0, 0).data(ApplicationListModel::Pinned).toBool());
+    // A successful changed scan invalidates equivalence immediately.
+    {
+        QMutexLocker lock(&state->mutex);
+        state->snapshot = {{user, common}, {}, true};
+    }
+    catalog.refreshApplications();
+    QTRY_VERIFY_WITH_TIMEOUT(!catalog.busy(), 3000);
+    QCOMPARE(catalog.canonicalApplicationId(common.id), common.id);
+    QCOMPARE(model->rowCount(), 2);
+    const auto userRow = rowFor(model, user.id);
+    const auto commonRow = rowFor(model, common.id);
+    QVERIFY(!model->index(userRow, 0).data(ApplicationListModel::Pinned).toBool());
+    QVERIFY(model->index(commonRow, 0).data(ApplicationListModel::Pinned).toBool());
+}
 
 void ApplicationCatalogTests::scanNormalizesAndRunsInBackground() {
     auto state = std::make_shared<FakeState>();

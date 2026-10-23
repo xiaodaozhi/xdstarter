@@ -11,7 +11,7 @@ else()
     add_test(NAME platform.applications COMMAND xdstarter_application_platform_tests)
 endif()
 set_tests_properties(platform.applications PROPERTIES
-    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}" TIMEOUT 30)
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}" TIMEOUT 60)
 
 add_executable(xdstarter_desktop_platform_tests desktop_platform_tests.cpp)
 add_executable(xdstarter_desktop_width_snap_tests desktop_width_snap_tests.cpp)

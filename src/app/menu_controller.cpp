@@ -399,15 +399,17 @@ void MenuController::rebuildSearchEntries() {
         for (const auto& tile : group.tiles) {
             if (tile.targetId.isEmpty())
                 continue;
-            if (!positions.contains(tile.targetId)) {
+            const auto searchId =
+                catalog_ ? catalog_->canonicalApplicationId(tile.targetId) : tile.targetId;
+            if (!positions.contains(searchId)) {
                 const auto target = prototypeService_.targetForTile(tile.id);
                 auto name = target.value(QStringLiteral("name")).toString();
                 if (name.isEmpty())
                     name = tile.name;
-                positions.insert(tile.targetId, entries.size());
-                entries.append({tile.targetId, name, {}});
+                positions.insert(searchId, entries.size());
+                entries.append({searchId, name, {}});
             }
-            auto& entry = entries[positions.value(tile.targetId)];
+            auto& entry = entries[positions.value(searchId)];
             const auto originalName =
                 prototypeService_.targetForTile(tile.id).value(QStringLiteral("name")).toString();
             if (!originalName.isEmpty() && originalName != entry.displayName &&
@@ -457,7 +459,7 @@ void MenuController::refreshSearchResults() {
              real ? QStringLiteral("image://application-icons/") + match.targetId : QString{}},
             {QStringLiteral("available"), available.success},
             {QStringLiteral("unavailableReason"), available.message},
-            {QStringLiteral("pinned"), pinnedTargetIds_.contains(match.targetId)},
+            {QStringLiteral("pinned"), isApplicationPinned(match.targetId)},
         });
         ids.insert(match.targetId);
         if (!iconVersions_.contains(match.targetId)) {
@@ -575,6 +577,8 @@ bool MenuController::pinApplication(const QString& appId, const QString& groupId
                             true);
         return false;
     }
+    if (isApplicationPinned(appId))
+        return true;
     const auto result =
         prototypeService_.pinApplication(applicationTargetJson(catalog_->target(appId)), groupId);
     setOperationMessage(result.success ? QStringLiteral("应用已固定到磁贴布局。") : result.message,
@@ -587,7 +591,11 @@ bool MenuController::pinApplication(const QString& appId, const QString& groupId
 }
 
 bool MenuController::isApplicationPinned(const QString& appId) const {
-    return prototypeService_.isApplicationPinned(appId);
+    const auto canonical = catalog_ ? catalog_->canonicalApplicationId(appId) : appId;
+    for (const auto& pinned : pinnedTargetIds_)
+        if ((catalog_ ? catalog_->canonicalApplicationId(pinned) : pinned) == canonical)
+            return true;
+    return false;
 }
 
 QVariantMap MenuController::previewApplicationPlacement(const QString& appId,
@@ -598,7 +606,7 @@ QVariantMap MenuController::previewApplicationPlacement(const QString& appId,
         result.message = QStringLiteral("正在替换布局，请稍候。");
     else if (readOnly_)
         result.message = QStringLiteral("当前配置只读，不能固定应用。");
-    else if (prototypeService_.isApplicationPinned(appId))
+    else if (isApplicationPinned(appId))
         result.message = QStringLiteral("此应用已固定，可在磁贴区域移动。");
     else if (catalog_ && catalog_->containsApplication(appId))
         result = prototypeService_.checkApplicationPlacement(
@@ -622,6 +630,10 @@ bool MenuController::pinApplicationAt(const QString& appId, const QString& group
                             true);
         return false;
     }
+    if (isApplicationPinned(appId)) {
+        setOperationMessage(QStringLiteral("此应用已固定，可在磁贴区域移动。"), true);
+        return false;
+    }
     const auto result = prototypeService_.pinApplicationAt(
         applicationTargetJson(catalog_->target(appId)), groupId, column, row);
     setOperationMessage(result.success ? QStringLiteral("应用已固定到磁贴布局。") : result.message,
@@ -640,7 +652,8 @@ bool MenuController::unpinApplication(const QString& appId) {
         setOperationMessage(QStringLiteral("当前配置只读，不能取消固定。"), true);
         return false;
     }
-    const auto result = prototypeService_.unpinApplication(appId);
+    const auto result = prototypeService_.unpinApplications(
+        catalog_ ? catalog_->equivalentApplicationIds(appId) : QSet<QString>{appId});
     setOperationMessage(result.success ? QStringLiteral("已取消此应用的全部固定磁贴。")
                                        : result.message,
                         !result.success);

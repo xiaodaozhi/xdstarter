@@ -33,6 +33,7 @@ else()
 endif()
 
 option(XDSTARTER_BUILD_APP "Build the Qt Quick desktop prototype" ON)
+option(XDSTARTER_BUILD_START_BRIDGE_POC "Build the isolated Start input bridge experiment" OFF)
 option(XDSTARTER_ALLOW_ALTERNATE_MSVC "Validate an additional MSVC toolchain instead of the declared baseline" OFF)
 include(CTest)
 
@@ -63,6 +64,9 @@ if(XDSTARTER_BUILD_APP)
     add_subdirectory(src/platform)
     add_subdirectory(src/services)
     add_subdirectory(src/app)
+    if(WIN32 AND XDSTARTER_BUILD_START_BRIDGE_POC)
+        add_subdirectory(src/experimental/start_bridge)
+    endif()
     # Optional design tooling uses the same Qt SVG renderer as the product.
     add_subdirectory(docs/design/source/renderer EXCLUDE_FROM_ALL)
     if(BUILD_TESTING)
