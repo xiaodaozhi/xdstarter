@@ -48,8 +48,8 @@ ApplicationWindow {
     property bool startButtonCaptureActive: false
     property string startButtonCaptureStatus: qsTr("开始按钮使用系统入口。")
     readonly property bool compactLayout: panelWidth - shortcutRail.width - 2 * tokens.layout.contentMargin < tokens.layout.catalogWidth + tokens.layout.contentSpacing + controller.defaultGridWidth
-    readonly property real tileViewportWidth: Math.max(0, panelWidth - shortcutRail.width - 2 * tokens.layout.contentMargin - (compactLayout ? 0 : tokens.layout.catalogWidth + tokens.layout.contentSpacing) - groupVerticalScrollBar.width)
-    readonly property real resizeWidthBaseDip: shortcutRail.width + 2 * tokens.layout.contentMargin + (compactLayout ? 0 : tokens.layout.catalogWidth + tokens.layout.contentSpacing) + groupsScroll.rightPadding - controller.gridGap
+    readonly property real tileViewportWidth: Math.max(0, panelWidth - shortcutRail.width - 2 * tokens.layout.contentMargin - (compactLayout ? 0 : tokens.layout.catalogWidth + tokens.layout.contentSpacing))
+    readonly property real resizeWidthBaseDip: shortcutRail.width + 2 * tokens.layout.contentMargin + (compactLayout ? 0 : tokens.layout.catalogWidth + tokens.layout.contentSpacing) - controller.gridGap
     readonly property int resizeWidthPitchDip: controller.gridPitch
     onResizeWidthBaseDipChanged: {
         if (layoutWidthReady)
@@ -2034,9 +2034,13 @@ ApplicationWindow {
                         // RowLayout owns the viewport width. Its size hint must
                         // not come back from the viewport-dependent content.
                         implicitWidth: 0
-                        Layout.minimumWidth: 0
+                        Layout.minimumWidth: groupVerticalScrollBar.width
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        // Keep the content aligned with the toolbar. The bar
+                        // occupies the existing outer content margin instead
+                        // of permanently subtracting its width from the grid.
+                        Layout.rightMargin: -groupVerticalScrollBar.width
                         visible: !window.compactLayout || !window.showApplications || window.draggedApplicationId.length > 0
                         contentWidth: groupsFlickable.contentWidth
                         contentHeight: groupsFlickable.contentHeight
@@ -2046,11 +2050,20 @@ ApplicationWindow {
                         bottomPadding: effectiveScrollBarHeight
 
                         ScrollBar.horizontal: ScrollBar {
+                            parent: groupsScroll
+                            x: groupsScroll.leftPadding
+                            y: groupsScroll.height - height
+                            width: groupsScroll.availableWidth
                             policy: ScrollBar.AsNeeded
                             focusPolicy: Qt.NoFocus
                         }
                         ScrollBar.vertical: ScrollBar {
                             id: groupVerticalScrollBar
+                            objectName: "groupVerticalScrollBar"
+                            parent: groupsScroll
+                            x: groupsScroll.width - width
+                            y: groupsScroll.topPadding
+                            height: groupsScroll.availableHeight
                             policy: ScrollBar.AsNeeded
                             focusPolicy: Qt.NoFocus
                         }
@@ -2071,6 +2084,7 @@ ApplicationWindow {
                             Column {
                                 id: groupsColumn
 
+                                objectName: "groupsColumn"
                                 width: Math.max(window.tileViewportWidth, window.controller.previewWidth)
                                 spacing: window.tokens.layout.groupSpacing
 
@@ -2670,9 +2684,21 @@ ApplicationWindow {
             Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: window.theme.separator }
             RowLayout {
                 Button {
+                    id: aboutHomepageButton
+                    objectName: "aboutHomepageButton"
                     text: qsTr("项目主页")
                     flat: true
+                    leftPadding: 0
+                    rightPadding: 0
                     palette.buttonText: window.surfaceTheme.primary
+                    contentItem: Text {
+                        objectName: "aboutHomepageText"
+                        text: aboutHomepageButton.text
+                        font: aboutHomepageButton.font
+                        color: aboutHomepageButton.palette.buttonText
+                        horizontalAlignment: Text.AlignLeft
+                        verticalAlignment: Text.AlignVCenter
+                    }
                     onClicked: Qt.openUrlExternally("https://github.com/xiaodaozhi/xdstarter")
                 }
                 Item { Layout.fillWidth: true }

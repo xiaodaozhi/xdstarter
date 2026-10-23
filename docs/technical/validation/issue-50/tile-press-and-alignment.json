@@ -1,0 +1,431 @@
+{
+  "issue": 50,
+  "date": "2026-10-23",
+  "baseCommit": "dd9116f4efe5822e4eaff6f5519efacdf3e97383",
+  "status": "local final candidate passed; current-head CI and merge tracked in Issue50/linked PR",
+  "implementation": {
+    "tilePress": "visual-only projective matrix, stable input rectangle",
+    "pressMs": 90,
+    "releaseMs": 180,
+    "pointerPositionsPerSize": 9,
+    "sizes": 3,
+    "scrollBar": "inside existing content margin; same viewport and toolbar right edge",
+    "aboutLink": "zero horizontal padding and left-aligned text",
+    "dataFormatChanged": false
+  },
+  "environment": {
+    "qt": "6.8.2",
+    "compiler": "MSVC19.29.30159.0 additional v142 patch compatibility",
+    "sdk": "10.0.19041.0",
+    "formalExactBaselineExecuted": false,
+    "nativeQpa": "windows",
+    "nativeGraphicsApi": "Direct3D11",
+    "nativeDpr": 1.5
+  },
+  "checks": {
+    "releaseBuild": true,
+    "qmlLintDiagnostics": 0,
+    "ctest": {
+      "passed": 18,
+      "total": 18,
+      "seconds": 128.72
+    },
+    "gui": {
+      "passed": 97,
+      "failed": 0,
+      "skipped": 0
+    },
+    "host": {
+      "passed": 50,
+      "failed": 0
+    },
+    "nativePressWithoutBatchCapture": {
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 31.648
+    },
+    "nativeSymbolPixelCapture": {
+      "passed": 3,
+      "failed": 0,
+      "seconds": 10.681,
+      "sizesChecked": 3
+    },
+    "finalSurfaceAndAlignmentCapture": {
+      "passed": 4,
+      "failed": 0,
+      "seconds": 13.089
+    },
+    "alignmentCases": 12,
+    "repositoryCheck": {
+      "passed": true,
+      "files": 722
+    }
+  },
+  "logs": {
+    "build": "build/issue50-render-fix-build.log",
+    "ctest": "build/issue50-complete-ctest.log",
+    "lint": "build/issue50-complete-lint.log",
+    "native": "build/issue50-final-native.txt",
+    "nativePixels": "build/issue50-native-symbol-final.txt",
+    "surfaces": "build/issue50-final-surfaces.txt"
+  },
+  "projectedSymbolSamples": [
+    {
+      "dpr": 1.5,
+      "freshFrames": 2,
+      "graphicsApi": "Direct3D11",
+      "inputSceneGeometryDip": {
+        "height": 48,
+        "width": 48,
+        "x": 824,
+        "y": 320
+      },
+      "matrixRowMajor": [
+        0.9815880656242371,
+        -0.004757177084684372,
+        -0.09215465933084488,
+        0.7349681854248047,
+        -0.002062036655843258,
+        0.9815908670425415,
+        -0.09222639352083206,
+        0.6702156066894531,
+        0.05155092105269432,
+        0.05148027092218399,
+        0.9972609281539917,
+        -6.945497035980225,
+        -8.59182036947459e-05,
+        -8.580045687267557e-05,
+        -0.001662101480178535,
+        1.0115759372711182
+      ],
+      "phase": "pressed",
+      "projectedCornersDip": [
+        {
+          "depth": -6.945497035980225,
+          "homogeneousW": 1.0115759372711182,
+          "x": 0.7265764554402949,
+          "y": 0.662542244530016
+        },
+        {
+          "depth": -4.471053123474121,
+          "homogeneousW": 1.0074518918991089,
+          "x": 47.497270794726546,
+          "y": 0.5670088050005688
+        },
+        {
+          "depth": -1.9999995231628418,
+          "homogeneousW": 1.0033334493637085,
+          "x": 47.46464884804743,
+          "y": 47.52915914893583
+        },
+        {
+          "depth": -4.4744439125061035,
+          "homogeneousW": 1.0074574947357178,
+          "x": 0.5028924391482406,
+          "y": 47.432841395927994
+        }
+      ],
+      "qpa": "windows",
+      "tileId": "daily-small-1"
+    },
+    {
+      "dpr": 1.5,
+      "freshFrames": 2,
+      "graphicsApi": "Direct3D11",
+      "inputSceneGeometryDip": {
+        "height": 104,
+        "width": 104,
+        "x": 376,
+        "y": 152
+      },
+      "matrixRowMajor": [
+        0.974936842918396,
+        -0.01322463434189558,
+        -0.16631115972995758,
+        2.8775291442871094,
+        -0.006869162432849407,
+        0.9749590754508972,
+        -0.16657209396362305,
+        2.5458908081054688,
+        0.07925957441329956,
+        0.07900255918502808,
+        0.9935251474380493,
+        -18.45926284790039,
+        -0.00013209928874857724,
+        -0.00013167093857191503,
+        -0.0016558753559365869,
+        1.0307655334472656
+      ],
+      "phase": "pressed",
+      "projectedCornersDip": [
+        {
+          "depth": -18.45926284790039,
+          "homogeneousW": 1.0307655334472656,
+          "x": 2.7916464662538942,
+          "y": 2.469910328671517
+        },
+        {
+          "depth": -10.216266632080078,
+          "homogeneousW": 1.0170272588729858,
+          "x": 102.52524673152436,
+          "y": 1.8008422064932859
+        },
+        {
+          "depth": -2,
+          "homogeneousW": 1.0033334493637085,
+          "x": 102.55374789955721,
+          "y": 102.88429124722575
+        },
+        {
+          "depth": -10.242996215820312,
+          "homogeneousW": 1.0170717239379883,
+          "x": 1.4769569568101133,
+          "y": 102.19696017617517
+        }
+      ],
+      "qpa": "windows",
+      "tileId": "work-standard-1"
+    },
+    {
+      "dpr": 1.5,
+      "freshFrames": 2,
+      "graphicsApi": "Direct3D11",
+      "inputSceneGeometryDip": {
+        "height": 104,
+        "width": 216,
+        "x": 376,
+        "y": 320
+      },
+      "matrixRowMajor": [
+        0.9731753468513489,
+        -0.01880061998963356,
+        -0.2364339828491211,
+        6.076385498046875,
+        -0.004908665549010038,
+        0.9749481678009033,
+        -0.1667092740535736,
+        2.8929061889648438,
+        0.0566384494304657,
+        0.0791284367442131,
+        0.9951081275939941,
+        -22.463260650634766,
+        -9.43974155234173e-05,
+        -0.00013188071898184717,
+        -0.0016585135599598289,
+        1.0374388694763184
+      ],
+      "phase": "pressed",
+      "projectedCornersDip": [
+        {
+          "depth": -22.463260650634766,
+          "homogeneousW": 1.0374388694763184,
+          "x": 5.85711324389257,
+          "y": 2.7885149703516277
+        },
+        {
+          "depth": -10.229355812072754,
+          "homogeneousW": 1.0170490741729736,
+          "x": 212.65668107921704,
+          "y": 1.8019211566020203
+        },
+        {
+          "depth": -1.9999980926513672,
+          "homogeneousW": 1.0033334493637085,
+          "x": 213.61493530883456,
+          "y": 102.88429506852435
+        },
+        {
+          "depth": -14.233902931213379,
+          "homogeneousW": 1.0237232446670532,
+          "x": 4.025631424163407,
+          "y": 101.87081529038738
+        }
+      ],
+      "qpa": "windows",
+      "tileId": "daily-wide"
+    }
+  ],
+  "alignmentSamples": [
+    {
+      "columns": 10,
+      "contentRight": 928,
+      "dark": true,
+      "gridRight": 928,
+      "panelHeight": 950,
+      "panelWidth": 928,
+      "scrollBarRight": 938,
+      "snapped": true,
+      "verticalOverflow": false,
+      "viewportRight": 928
+    },
+    {
+      "columns": 10,
+      "contentRight": 928,
+      "dark": true,
+      "gridRight": 928,
+      "panelHeight": 480,
+      "panelWidth": 928,
+      "scrollBarRight": 938,
+      "snapped": true,
+      "verticalOverflow": false,
+      "viewportRight": 928
+    },
+    {
+      "columns": 12,
+      "contentRight": 1040,
+      "dark": true,
+      "gridRight": 1040,
+      "panelHeight": 480,
+      "panelWidth": 1040,
+      "scrollBarRight": 1050,
+      "snapped": true,
+      "verticalOverflow": true,
+      "viewportRight": 1040
+    },
+    {
+      "columns": 7,
+      "contentRight": 496,
+      "dark": true,
+      "gridRight": 496,
+      "panelHeight": 950,
+      "panelWidth": 496,
+      "scrollBarRight": 506,
+      "snapped": true,
+      "verticalOverflow": true,
+      "viewportRight": 496
+    },
+    {
+      "columns": 6,
+      "contentRight": 480,
+      "dark": true,
+      "gridRight": 440,
+      "panelHeight": 480,
+      "panelWidth": 480,
+      "scrollBarRight": 490,
+      "snapped": false,
+      "verticalOverflow": true,
+      "viewportRight": 480
+    },
+    {
+      "columns": 10,
+      "contentRight": 980,
+      "dark": true,
+      "gridRight": 928,
+      "panelHeight": 950,
+      "panelWidth": 980,
+      "scrollBarRight": 990,
+      "snapped": false,
+      "verticalOverflow": false,
+      "viewportRight": 980
+    },
+    {
+      "columns": 10,
+      "contentRight": 928,
+      "dark": false,
+      "gridRight": 928,
+      "panelHeight": 950,
+      "panelWidth": 928,
+      "scrollBarRight": 938,
+      "snapped": true,
+      "verticalOverflow": false,
+      "viewportRight": 928
+    },
+    {
+      "columns": 10,
+      "contentRight": 928,
+      "dark": false,
+      "gridRight": 928,
+      "panelHeight": 480,
+      "panelWidth": 928,
+      "scrollBarRight": 938,
+      "snapped": true,
+      "verticalOverflow": true,
+      "viewportRight": 928
+    },
+    {
+      "columns": 12,
+      "contentRight": 1040,
+      "dark": false,
+      "gridRight": 1040,
+      "panelHeight": 480,
+      "panelWidth": 1040,
+      "scrollBarRight": 1050,
+      "snapped": true,
+      "verticalOverflow": true,
+      "viewportRight": 1040
+    },
+    {
+      "columns": 7,
+      "contentRight": 496,
+      "dark": false,
+      "gridRight": 496,
+      "panelHeight": 950,
+      "panelWidth": 496,
+      "scrollBarRight": 506,
+      "snapped": true,
+      "verticalOverflow": true,
+      "viewportRight": 496
+    },
+    {
+      "columns": 6,
+      "contentRight": 480,
+      "dark": false,
+      "gridRight": 440,
+      "panelHeight": 480,
+      "panelWidth": 480,
+      "scrollBarRight": 490,
+      "snapped": false,
+      "verticalOverflow": true,
+      "viewportRight": 480
+    },
+    {
+      "columns": 10,
+      "contentRight": 980,
+      "dark": false,
+      "gridRight": 928,
+      "panelHeight": 950,
+      "panelWidth": 980,
+      "scrollBarRight": 990,
+      "snapped": false,
+      "verticalOverflow": false,
+      "viewportRight": 980
+    }
+  ],
+  "binariesSha256": {
+    "xdstarter.exe": "f87a3ac6bca18debf461596a89bdca364af75779084abeec2e24b50ee9db9bef",
+    "xdstarter_ui_tests.exe": "4ca04f9aa5012cb49fb03129874ae92fa29a5d2b4b0b4c910b638218acd7dd8b"
+  },
+  "sourceSha256Lf": {
+    "qml/Main.qml": "fe7e73b95c49082e8563862d291acd3d550b40a6d60ad5a0f3b54bdcfd96767c",
+    "qml/TileButton.qml": "ad1a9960dc46b6302259c6ceb6117c2eeb1c7dc4c543e0d9542745e85f90bf67",
+    "docs/design/tokens/visual.json": "de301b8e1f87e3612072e9148c7d2d5a9a8e7438a94be3930b2f0afec20a6d85",
+    "tests/ui/tst_prototype_window.cpp": "c38085d5e72ef7df5480ed7b7d80a04d551de575435e6f65beac6c26bbd51859"
+  },
+  "screenshotsSha256": {
+    "small-pressed.png": "37b701daa485da08b6c7010067f888a70fa1fee77e1a6bdfd8ba4b85e313d844",
+    "standard-pressed.png": "7fbfd2ed7b7ec9cd93fe3c8f55c808dc3e72d2629b69060926af0155ce5107e1",
+    "wide-pressed.png": "e7b06b912ac30e490a9e31f4b9d5ce2a93a8a6973e504b5bc8aaafdd13c64a99",
+    "compact-aligned.png": "aed340b19310a5a38406871b196d1d2ea57a230a29c8bd882d3ce9c7c1a1e5a8",
+    "about-left-aligned.png": "7d740e22b4e348596f7f6860db58ce127ae6b938e78f491abd3c2af3d46c43b1"
+  },
+  "retainedFailures": [
+    "Initial focused run: 4 passed and 30 failed; Basic horizontalPadding+2, Window hidden lifecycle and ScrollBar default attachment corrected without weakening projection/bounds assertions.",
+    "Second focused run: 33 passed and 1 failed; actual target-size wait added before comparing pixel/viewport bounds, and reflow settled before screenshot.",
+    "First complete run: 17/18, GUI95/96; stale group-title<=quantized-grid assumption replaced by exact group-header and 8 DIP actions separation contract.",
+    "Native batch export: 28 passed and 3 failed only on release multi-frame counts; same candidate without synchronous export passed31/31. Final candidate without batch export passed32/32; independent native pixel capture passed.",
+    "Native pressed frames revealed clipped symbol glyph disappearing; redundant clip removed, fixed dimensions/eliding retained; native pixel regression proves all three sizes render.",
+    "Initial sandbox MSVC ABI configure failed C1902; normal Windows user-session configure/build passed."
+  ],
+  "boundaries": {
+    "computerUse": false,
+    "systemSettingsChanged": false,
+    "userLayoutUsedForTests": false,
+    "physicalTaskbarMatrixRepeated": false,
+    "nativeTests": "QtTest-owned windows and synthetic Qt events, not physical Start gestures",
+    "samples": "in-memory letter tiles only; no real application catalog or user layout",
+    "offscreenAlpha": "RGB backing-store black outside the panel is not a native alpha claim",
+    "animationObservation": "batch native capture/PNG IO is separated from cadence assertions",
+    "preciseV142Baseline": "not available; additional patch compatibility is explicitly declared"
+  }
+}

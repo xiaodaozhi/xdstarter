@@ -24,8 +24,10 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QLineF>
 #include <QLockFile>
 #include <QMap>
+#include <QMatrix4x4>
 #include <QMutex>
 #include <QMutexLocker>
 #include <QQmlApplicationEngine>
@@ -42,6 +44,8 @@
 #include <QTemporaryDir>
 #include <QThread>
 #include <QUrl>
+#include <QVector4D>
+#include <QtMath>
 #include <QtTest>
 
 #include <algorithm>
@@ -334,10 +338,16 @@ class PrototypeWindowTest : public QObject {
     void categoryGlyphsAreCentered();
     void themeSwitchRetainsGeometry();
     void keyboardAndMouseSelection();
+    void tilePressPerspective_data();
+    void tilePressPerspective();
+    void tilePressSymbolsRemainRendered();
+    void tilePressCancellation();
+    void tilePressDragAndAlternateInput();
     void smallTilesExposeNames();
     void longNamesRemainBounded();
     void resizePreservesGeometryAndRevealsFocus();
     void responsiveColumnsAndPersistence();
+    void contentRightEdges();
     void directionalNavigation();
     void escapeClosesWindow();
     void mouseDragWithinGroup();
@@ -411,6 +421,7 @@ class PrototypeWindowTest : public QObject {
     void chooseGroupAction(const QString& itemName);
     void submitGroupName(const QString& name);
     void captureLayoutImportFrame(const QString& state);
+    void captureTilePressFrame(const QString& name, const QString& phase, QQuickItem* tile);
     QVariant modelValue(int row, const QByteArray& role) const;
 
     xdstarter::TileGrid grid_;
@@ -962,6 +973,414 @@ void PrototypeWindowTest::keyboardAndMouseSelection() {
     QVERIFY(window_->isVisible());
 }
 
+void PrototypeWindowTest::tilePressPerspective_data() {
+    QTest::addColumn<QString>("tileId");
+    QTest::addColumn<QPointF>("fraction");
+    const QList<QPair<QByteArray, QPointF>> positions{
+        {"top-left", {0.15, 0.15}},    {"top", {0.5, 0.15}},    {"top-right", {0.85, 0.15}},
+        {"left", {0.15, 0.5}},         {"center", {0.5, 0.5}},  {"right", {0.85, 0.5}},
+        {"bottom-left", {0.15, 0.85}}, {"bottom", {0.5, 0.85}}, {"bottom-right", {0.85, 0.85}}};
+    for (const auto& id : {QStringLiteral("daily-small-1"), QStringLiteral("work-standard-1"),
+                           QStringLiteral("daily-wide")}) {
+        for (const auto& position : positions) {
+            const auto name = id.toLatin1() + '-' + position.first;
+            QTest::newRow(name.constData()) << id << position.second;
+        }
+    }
+}
+
+void PrototypeWindowTest::tilePressPerspective() {
+    QFETCH(QString, tileId);
+    QFETCH(QPointF, fraction);
+    auto* tile = item(QStringLiteral("tile-") + tileId);
+    QVERIFY(tile);
+    tile->forceActiveFocus(Qt::OtherFocusReason);
+    QTRY_VERIFY(viewportScene().contains(tile->mapRectToScene(tile->boundingRect())));
+    QTRY_COMPARE(tile->property("appearScale").toReal(), 1.0);
+    auto* background = visualItem(tile, QStringLiteral("tilePressBackground"));
+    auto* content = visualItem(tile, QStringLiteral("tilePressContent"));
+    QVERIFY(background && content);
+    const auto inputGeometry = tile->mapRectToScene(tile->boundingRect());
+    const auto snapshot = service_->snapshot();
+    const auto captureName = QString::fromLatin1(QTest::currentDataTag());
+    const QPointF localPoint(tile->width() * fraction.x(), tile->height() * fraction.y());
+    const auto clickPosition = tile->mapToScene(localPoint).toPoint();
+    QSignalSpy activated(tile, SIGNAL(selected(QString)));
+    QSignalSpy progress(tile, SIGNAL(pressProgressChanged()));
+    QVERIFY(activated.isValid() && progress.isValid());
+    captureTilePressFrame(captureName, QStringLiteral("neutral"), tile);
+    QTest::mousePress(window_, Qt::LeftButton, Qt::NoModifier, clickPosition);
+    QVERIFY(tile->property("pointerPressActive").toBool());
+    QVERIFY(tile->property("pressAnimating").toBool());
+    QVERIFY(tile->property("pressProgress").toReal() < 1.0);
+    QTRY_COMPARE(tile->property("pressProgress").toReal(), 1.0);
+    QVERIFY(progress.count() >= 2);
+    QCOMPARE(activated.count(), 0);
+    QCOMPARE(tile->mapRectToScene(tile->boundingRect()), inputGeometry);
+    QCOMPARE(tile->scale(), 1.0);
+    QCOMPARE(service_->snapshot(), snapshot);
+
+    const auto matrix = tile->property("pressMatrix").value<QMatrix4x4>();
+    QVERIFY(!matrix.isIdentity());
+    const QList<QPointF> corners{
+        {0, 0}, {tile->width(), 0}, {tile->width(), tile->height()}, {0, tile->height()}};
+    QList<QPointF> projected;
+    QList<qreal> depths;
+    for (const auto& corner : corners) {
+        const auto point = background->mapToItem(tile, corner);
+        projected.append(point);
+        const auto contentPoint = content->mapToItem(tile, corner);
+        QVERIFY2(QLineF(contentPoint, point).length() < 0.001,
+                 qPrintable(QStringLiteral("corner=(%1,%2) background=(%3,%4 %5x%6) "
+                                           "content=(%7,%8 %9x%10) mapped=(%11,%12)/(%13,%14) "
+                                           "padding=%15 horizontal=%16 left=%17 right=%18")
+                                .arg(corner.x())
+                                .arg(corner.y())
+                                .arg(background->x())
+                                .arg(background->y())
+                                .arg(background->width())
+                                .arg(background->height())
+                                .arg(content->x())
+                                .arg(content->y())
+                                .arg(content->width())
+                                .arg(content->height())
+                                .arg(point.x())
+                                .arg(point.y())
+                                .arg(contentPoint.x())
+                                .arg(contentPoint.y())
+                                .arg(tile->property("padding").toReal())
+                                .arg(tile->property("horizontalPadding").toReal())
+                                .arg(tile->property("leftPadding").toReal())
+                                .arg(tile->property("rightPadding").toReal())));
+        const auto clip = matrix * QVector4D(corner.x(), corner.y(), 0, 1);
+        QVERIFY(clip.w() >= 1.0);
+        depths.append(clip.z());
+        QVERIFY(QLineF(point, QPointF(clip.x() / clip.w(), clip.y() / clip.w())).length() < 0.001);
+    }
+    // A real projective quadrilateral is not a parallelogram. A centered press
+    // intentionally keeps all depths equal and only depresses the plane.
+    const auto diagonalDifference = projected[0] + projected[2] - projected[1] - projected[3];
+    const bool horizontalTilt = fraction.x() != 0.5;
+    const bool verticalTilt = fraction.y() != 0.5;
+    if (horizontalTilt || verticalTilt) {
+        QVERIFY(std::hypot(diagonalDifference.x(), diagonalDifference.y()) > 0.01);
+        QVERIFY(std::abs(matrix(3, 0)) + std::abs(matrix(3, 1)) > 0.000001);
+    } else {
+        QVERIFY(std::hypot(diagonalDifference.x(), diagonalDifference.y()) < 0.001);
+        QCOMPARE(matrix(3, 0), 0.0f);
+        QCOMPARE(matrix(3, 1), 0.0f);
+        QVERIFY(QLineF(background->mapToItem(tile, tile->boundingRect().center()),
+                       tile->boundingRect().center())
+                    .length() < 0.001);
+    }
+    if (horizontalTilt && verticalTilt) {
+        for (qsizetype a = 0; a < depths.size(); ++a)
+            for (qsizetype b = a + 1; b < depths.size(); ++b)
+                QVERIFY(std::abs(depths[a] - depths[b]) > 0.0001);
+    }
+    const auto left = QLineF(projected[0], projected[3]).length();
+    const auto right = QLineF(projected[1], projected[2]).length();
+    const auto top = QLineF(projected[0], projected[1]).length();
+    const auto bottom = QLineF(projected[3], projected[2]).length();
+    if (fraction.x() < 0.5)
+        QVERIFY(left < right);
+    if (fraction.x() > 0.5)
+        QVERIFY(right < left);
+    if (fraction.y() < 0.5)
+        QVERIFY(top < bottom);
+    if (fraction.y() > 0.5)
+        QVERIFY(bottom < top);
+    captureTilePressFrame(captureName, QStringLiteral("pressed"), tile);
+
+    progress.clear();
+    QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, clickPosition);
+    QVERIFY(!tile->property("pointerPressActive").toBool());
+    QVERIFY(tile->property("pressAnimating").toBool());
+    QVERIFY(tile->property("pressProgress").toReal() > 0.0);
+    QCOMPARE(activated.count(), 1);
+    QTRY_COMPARE(tile->property("pressProgress").toReal(), 0.0);
+    QVERIFY(progress.count() >= 2);
+    QVERIFY(tile->property("pressMatrix").value<QMatrix4x4>().isIdentity());
+    QCOMPARE(tile->mapRectToScene(tile->boundingRect()), inputGeometry);
+    QCOMPARE(service_->snapshot(), snapshot);
+    captureTilePressFrame(captureName, QStringLiteral("restored"), tile);
+}
+
+void PrototypeWindowTest::tilePressSymbolsRemainRendered() {
+    const auto whitePixels = [this](const QImage& image, QQuickItem* symbol) {
+        const auto logical = symbol->mapRectToScene(symbol->boundingRect());
+        const qreal sx = qreal(image.width()) / window_->width();
+        const qreal sy = qreal(image.height()) / window_->height();
+        const QRect pixels(qFloor(logical.left() * sx), qFloor(logical.top() * sy),
+                           qCeil(logical.width() * sx), qCeil(logical.height() * sy));
+        int count = 0;
+        const auto region = pixels.intersected(image.rect());
+        for (int y = region.top(); y <= region.bottom(); ++y)
+            for (int x = region.left(); x <= region.right(); ++x) {
+                const auto color = image.pixelColor(x, y);
+                if (color.red() > 230 && color.green() > 230 && color.blue() > 230)
+                    ++count;
+            }
+        return count;
+    };
+    const auto before = service_->snapshot();
+    for (const auto* id : {"daily-small-1", "work-standard-1", "daily-wide"}) {
+        auto* tile = item(QStringLiteral("tile-") + QLatin1String(id));
+        QVERIFY(tile);
+        tile->forceActiveFocus(Qt::OtherFocusReason);
+        QTRY_VERIFY(viewportScene().contains(tile->mapRectToScene(tile->boundingRect())));
+        auto* symbol = visualItem(tile, QStringLiteral("tileSymbol"));
+        QVERIFY(symbol && symbol->isVisible());
+        QTest::qWait(50);
+        const auto neutral = window_->grabWindow();
+        QVERIFY(!neutral.isNull());
+        QVERIFY2(whitePixels(neutral, symbol) > 10, id);
+        const auto position = tile->mapToScene(QPointF(12, 12)).toPoint();
+        QTest::mousePress(window_, Qt::LeftButton, Qt::NoModifier, position);
+        QTRY_COMPARE(tile->property("pressProgress").toReal(), 1.0);
+        QTest::qWait(50);
+        const auto pressed = window_->grabWindow();
+        QVERIFY(!pressed.isNull());
+        QVERIFY2(
+            whitePixels(pressed, symbol) > 10,
+            qPrintable(QStringLiteral("%1 symbol disappeared under %2 projection")
+                           .arg(QLatin1String(id),
+                                graphicsApiName(window_->rendererInterface()->graphicsApi()))));
+        captureTilePressFrame(QLatin1String(id) + QStringLiteral("-symbol"),
+                              QStringLiteral("pressed"), tile);
+        QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, position);
+        QTRY_COMPARE(tile->property("pressProgress").toReal(), 0.0);
+    }
+    QCOMPARE(service_->snapshot(), before);
+}
+
+void PrototypeWindowTest::tilePressCancellation() {
+    auto* tile = item(QStringLiteral("tile-work-standard-1"));
+    QVERIFY(tile);
+    const auto before = service_->snapshot();
+    QSignalSpy activated(tile, SIGNAL(selected(QString)));
+    QVERIFY(activated.isValid());
+    const auto beginPress = [&] {
+        tile->forceActiveFocus(Qt::OtherFocusReason);
+        QTest::mousePress(window_, Qt::LeftButton, Qt::NoModifier,
+                          tile->mapToScene(QPointF(18, 18)).toPoint());
+    };
+    beginPress();
+    QTRY_COMPARE(tile->property("pressProgress").toReal(), 1.0);
+    // An outside release without an intervening move must not launch a tile or
+    // depend on drag.threshold having already suppressed its click.
+    QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, QPoint(1, 1));
+    QTRY_COMPARE(tile->property("pressProgress").toReal(), 0.0);
+    QCOMPARE(activated.count(), 0);
+
+    beginPress();
+    QTRY_COMPARE(tile->property("pressProgress").toReal(), 1.0);
+    auto* grabber = window_->mouseGrabberItem();
+    QVERIFY(grabber);
+    QCOMPARE(grabber->objectName(), QStringLiteral("tileEditPointer"));
+    grabber->ungrabMouse();
+    QTRY_VERIFY(!tile->property("pointerPressActive").toBool());
+    QTRY_COMPARE(tile->property("pressProgress").toReal(), 0.0);
+    QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier,
+                        tile->mapToScene(QPointF(18, 18)).toPoint());
+    QCOMPARE(activated.count(), 0);
+
+    beginPress();
+    QTRY_COMPARE(tile->property("pressProgress").toReal(), 1.0);
+    tile->setEnabled(false);
+    QTRY_COMPARE(tile->property("pressProgress").toReal(), 0.0);
+    QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier,
+                        tile->mapToScene(QPointF(18, 18)).toPoint());
+    QCOMPARE(activated.count(), 0);
+    tile->setEnabled(true);
+
+    beginPress();
+    QTRY_COMPARE(tile->property("pressProgress").toReal(), 1.0);
+    QSignalSpy visibility(tile, SIGNAL(visibleChanged()));
+    QVERIFY(visibility.isValid());
+    tile->setVisible(false);
+    if (tile->property("pressProgress").toReal() != 0.0) {
+        qInfo().noquote() << QStringLiteral("Hidden tile: visible=%1 windowVisible=%2 "
+                                            "visibleSignals=%3 active=%4 progress=%5 animation=%6 "
+                                            "grabber=%7")
+                                 .arg(tile->isVisible())
+                                 .arg(window_->isVisible())
+                                 .arg(visibility.count())
+                                 .arg(tile->property("pointerPressActive").toBool())
+                                 .arg(tile->property("pressProgress").toReal())
+                                 .arg(tile->property("pressAnimating").toBool())
+                                 .arg(window_->mouseGrabberItem()
+                                          ? window_->mouseGrabberItem()->objectName()
+                                          : QStringLiteral("none"));
+    }
+    QVERIFY(!tile->isVisible());
+    QCOMPARE(tile->property("pressProgress").toReal(), 0.0);
+    QVERIFY(!tile->property("pressAnimating").toBool());
+    QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, QPoint(1, 1));
+    tile->setVisible(true);
+    QVERIFY(tile->property("pressMatrix").value<QMatrix4x4>().isIdentity());
+    QCOMPARE(activated.count(), 0);
+
+    beginPress();
+    QTRY_COMPARE(tile->property("pressProgress").toReal(), 1.0);
+    QSignalSpy windowVisibility(window_, SIGNAL(visibleChanged(bool)));
+    QVERIFY(windowVisibility.isValid());
+    window_->hide();
+    if (tile->property("pressProgress").toReal() != 0.0) {
+        qInfo().noquote() << QStringLiteral("Hidden window: tileVisible=%1 windowVisible=%2 "
+                                            "windowSignals=%3 componentReady=%4 active=%5 "
+                                            "progress=%6 animation=%7")
+                                 .arg(tile->isVisible())
+                                 .arg(window_->isVisible())
+                                 .arg(windowVisibility.count())
+                                 .arg(tile->property("pressComponentReady").toBool())
+                                 .arg(tile->property("pointerPressActive").toBool())
+                                 .arg(tile->property("pressProgress").toReal())
+                                 .arg(tile->property("pressAnimating").toBool());
+    }
+    QCOMPARE(tile->property("pressProgress").toReal(), 0.0);
+    QVERIFY(!tile->property("pressAnimating").toBool());
+    QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, QPoint(1, 1));
+    window_->show();
+    QVERIFY(QTest::qWaitForWindowExposed(window_));
+    QVERIFY(tile->property("pressMatrix").value<QMatrix4x4>().isIdentity());
+    QCOMPARE(activated.count(), 0);
+    QCOMPARE(service_->snapshot(), before);
+}
+
+void PrototypeWindowTest::tilePressDragAndAlternateInput() {
+    const auto id = QStringLiteral("work-standard-1");
+    auto* tile = item(QStringLiteral("tile-") + id);
+    QVERIFY(tile);
+    const auto before = service_->snapshot();
+    const auto inputGeometry = tile->mapRectToScene(tile->boundingRect());
+    const QPointF localPress(19, 23);
+    const auto position = tile->mapToScene(localPress).toPoint();
+    QSignalSpy activated(tile, SIGNAL(selected(QString)));
+    QSignalSpy context(tile, SIGNAL(contextRequested(QString, QString, double, double)));
+    QVERIFY(activated.isValid() && context.isValid());
+    QTest::mousePress(window_, Qt::LeftButton, Qt::NoModifier, position);
+    QTRY_COMPARE(tile->property("pressProgress").toReal(), 1.0);
+    QTest::mouseMove(window_, position + QPoint(24, 0));
+    QTRY_VERIFY(window_->property("dragActive").toBool());
+    QCOMPARE(window_->property("dragOffsetX").toReal(), localPress.x());
+    QCOMPARE(window_->property("dragOffsetY").toReal(), localPress.y());
+    QVERIFY(!tile->property("pointerPressActive").toBool());
+    QTRY_COMPARE(tile->property("pressProgress").toReal(), 0.0);
+    QVERIFY(tile->property("pressMatrix").value<QMatrix4x4>().isIdentity());
+    QCOMPARE(tile->mapRectToScene(tile->boundingRect()), inputGeometry);
+    QCOMPARE(service_->snapshot(), before);
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!window_->property("dragActive").toBool());
+    QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, position + QPoint(24, 0));
+    QCOMPARE(activated.count(), 0);
+    QCOMPARE(service_->snapshot(), before);
+
+    QTest::mouseClick(window_, Qt::RightButton, Qt::NoModifier, position);
+    QTRY_VERIFY(sizeMenu()->property("opened").toBool());
+    QCOMPARE(context.count(), 1);
+    QCOMPARE(tile->property("pressProgress").toReal(), 0.0);
+    QVERIFY(tile->property("pressMatrix").value<QMatrix4x4>().isIdentity());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!sizeMenu()->property("visible").toBool());
+    tile->forceActiveFocus(Qt::TabFocusReason);
+    QTest::keyPress(window_, Qt::Key_Space);
+    QCOMPARE(tile->property("pressProgress").toReal(), 0.0);
+    QTest::keyRelease(window_, Qt::Key_Space);
+    QTRY_COMPARE(activated.count(), 1);
+    QTest::keyClick(window_, Qt::Key_Return);
+    QTRY_COMPARE(activated.count(), 2);
+    QTest::keyClick(window_, Qt::Key_Menu);
+    QTRY_VERIFY(sizeMenu()->property("opened").toBool());
+    QCOMPARE(tile->property("pressProgress").toReal(), 0.0);
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!sizeMenu()->property("visible").toBool());
+    tile->forceActiveFocus(Qt::TabFocusReason);
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QTRY_VERIFY(sizeMenu()->property("opened").toBool());
+    QCOMPARE(tile->property("pressProgress").toReal(), 0.0);
+    QCOMPARE(activated.count(), 2);
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!sizeMenu()->property("visible").toBool());
+    // A non-editing or read-only tile still has pointer feedback and activates,
+    // while movements beyond the editable drag threshold cannot change layout.
+    for (const bool readOnly : {false, true}) {
+        QVERIFY(tile->setProperty("editMode", readOnly));
+        QVERIFY(tile->setProperty("readOnly", readOnly));
+        QTest::mousePress(window_, Qt::LeftButton, Qt::NoModifier, position);
+        QTRY_COMPARE(tile->property("pressProgress").toReal(), 1.0);
+        QTest::mouseMove(window_, position + QPoint(24, 0));
+        QVERIFY(!window_->property("dragActive").toBool());
+        QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, position + QPoint(24, 0));
+        QTRY_COMPARE(tile->property("pressProgress").toReal(), 0.0);
+    }
+    QCOMPARE(activated.count(), 4);
+    QCOMPARE(service_->snapshot(), before);
+}
+
+void PrototypeWindowTest::captureTilePressFrame(const QString& name, const QString& phase,
+                                                QQuickItem* tile) {
+    const auto directory = qEnvironmentVariable("XDSTARTER_TILE_PRESS_CAPTURE_DIR");
+    if (directory.isEmpty())
+        return;
+    QVERIFY(QDir().mkpath(directory));
+    std::atomic_int frames{0};
+    const auto connection = connect(
+        window_, &QQuickWindow::afterRendering, window_, [&frames] { ++frames; },
+        Qt::DirectConnection);
+    QElapsedTimer elapsed;
+    elapsed.start();
+    while (frames.load() < 2 && elapsed.elapsed() < 3000) {
+        window_->requestUpdate();
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+    }
+    disconnect(connection);
+    QVERIFY2(frames.load() >= 2, "No fresh rendered frames for tile press capture");
+    const auto frame = window_->grabWindow();
+    QVERIFY(!frame.isNull());
+    const auto prefix = QDir(directory).filePath(name + '-' + phase);
+    QVERIFY(frame.save(prefix + QStringLiteral("-window.png")));
+    const auto sceneBounds = tile->mapRectToScene(tile->boundingRect());
+    const auto scaleX = static_cast<qreal>(frame.width()) / window_->width();
+    const auto scaleY = static_cast<qreal>(frame.height()) / window_->height();
+    const QRect crop(qFloor(sceneBounds.x() * scaleX) - 2, qFloor(sceneBounds.y() * scaleY) - 2,
+                     qCeil(sceneBounds.width() * scaleX) + 4,
+                     qCeil(sceneBounds.height() * scaleY) + 4);
+    QVERIFY(frame.copy(crop).save(prefix + QStringLiteral("-tile.png")));
+    auto* background = visualItem(tile, QStringLiteral("tilePressBackground"));
+    QVERIFY(background);
+    const auto matrix = tile->property("pressMatrix").value<QMatrix4x4>();
+    QJsonArray corners;
+    for (const auto& point : {QPointF(0, 0), QPointF(tile->width(), 0),
+                              QPointF(tile->width(), tile->height()), QPointF(0, tile->height())}) {
+        const auto projected = background->mapToItem(tile, point);
+        const auto clip = matrix * QVector4D(point.x(), point.y(), 0, 1);
+        corners.append(QJsonObject{{QStringLiteral("x"), projected.x()},
+                                   {QStringLiteral("y"), projected.y()},
+                                   {QStringLiteral("depth"), clip.z()},
+                                   {QStringLiteral("homogeneousW"), clip.w()}});
+    }
+    QJsonArray values;
+    for (int row = 0; row < 4; ++row)
+        for (int column = 0; column < 4; ++column)
+            values.append(matrix(row, column));
+    const QJsonObject record{
+        {QStringLiteral("phase"), phase},
+        {QStringLiteral("tileId"),
+         tile->property("tile").toMap().value(QStringLiteral("id")).toString()},
+        {QStringLiteral("qpa"), QGuiApplication::platformName()},
+        {QStringLiteral("graphicsApi"),
+         graphicsApiName(window_->rendererInterface()->graphicsApi())},
+        {QStringLiteral("freshFrames"), frames.load()},
+        {QStringLiteral("dpr"), window_->devicePixelRatio()},
+        {QStringLiteral("inputSceneGeometryDip"), rectangleJson(sceneBounds)},
+        {QStringLiteral("projectedCornersDip"), corners},
+        {QStringLiteral("matrixRowMajor"), values}};
+    QFile output(prefix + QStringLiteral(".json"));
+    QVERIFY(output.open(QIODevice::WriteOnly));
+    QVERIFY(output.write(QJsonDocument(record).toJson()) > 0);
+}
+
 void PrototypeWindowTest::smallTilesExposeNames() {
     auto* small = item(QStringLiteral("tile-daily-small-1"));
     QVERIFY(small);
@@ -1481,6 +1900,17 @@ void PrototypeWindowTest::futureConfigurationIsReadOnly() {
     QVERIFY(!item(QStringLiteral("renameTileItem"))->isEnabled());
     QVERIFY(!item(QStringLiteral("resetTileNameItem"))->isEnabled());
     QTest::keyClick(window_, Qt::Key_Escape);
+    settleMenus();
+    const int shadow = qRound(window_->property("shadowInset").toReal());
+    window_->resize(480 + 2 * shadow, 480 + 2 * shadow);
+    auto* groupsViewport = item(QStringLiteral("groupsFlickable"));
+    auto* close = item(QStringLiteral("closeMenuButton"));
+    QVERIFY(groupsViewport && close);
+    QTRY_COMPARE(groupsViewport->width(), qreal(368));
+    QTRY_VERIFY(qAbs(groupsViewport->mapToScene(QPointF(groupsViewport->width(), 0)).x() -
+                     close->mapToScene(QPointF(close->width(), 0)).x()) < 0.01);
+    QVERIFY(groupsViewport->property("contentWidth").toReal() > groupsViewport->width());
+    QCOMPARE(controller_->gridColumns(), 10);
     QVERIFY(!controller_->flushSave());
     destroyWindow();
     QVERIFY(file.open(QIODevice::ReadOnly));
@@ -2203,7 +2633,11 @@ void PrototypeWindowTest::groupManagementLifecycle() {
     QCOMPARE(label->property("text").toString(), longName);
     QCOMPARE(label->property("textFormat").toInt(), 0); // Text.PlainText.
     QTRY_VERIFY(label->property("truncated").toBool());
-    QVERIFY(label->width() <= item(QStringLiteral("grid-") + groupId)->width());
+    auto* group = item(QStringLiteral("group-") + groupId);
+    auto* groupActions = item(QStringLiteral("groupActions-") + groupId);
+    QVERIFY(group && groupActions);
+    QVERIFY(group->boundingRect().contains(label->mapRectToItem(group, label->boundingRect())));
+    QCOMPARE(label->mapToItem(group, QPointF(label->width(), 0)).x(), groupActions->x() - 8);
     auto* accessible = QAccessible::queryAccessibleInterface(
         item(QStringLiteral("groupActions-") + groupId));
     QVERIFY(accessible);
@@ -4391,6 +4825,121 @@ void PrototypeWindowTest::tileNameMouseContextFromSearchRestoresFocus() {
     QTRY_VERIFY(sizeMenu()->property("opened").toBool());
 }
 
+void PrototypeWindowTest::contentRightEdges() {
+    struct LayoutCase {
+        int panelWidth;
+        int panelHeight;
+        int columns;
+        bool snapped;
+    };
+    const QList<LayoutCase> cases{{928, 950, 10, true},  {928, 480, 10, true},
+                                  {1040, 480, 12, true}, {496, 950, 7, true},
+                                  {480, 480, 6, false},  {980, 950, 10, false}};
+    const int shadow = qRound(window_->property("shadowInset").toReal());
+    const auto right = [](QQuickItem* item) {
+        return item->mapToScene(QPointF(item->width(), 0)).x();
+    };
+    QJsonArray measurements;
+    bool sawOverflow = false;
+    bool sawNoOverflow = false;
+    const auto destination = qEnvironmentVariable("XDSTARTER_ALIGNMENT_CAPTURE_DIR");
+    if (!destination.isEmpty())
+        QVERIFY(QDir().mkpath(destination));
+    for (const bool dark : {true, false}) {
+        controller_->setDarkTheme(dark);
+        for (const auto& entry : cases) {
+            window_->resize(entry.panelWidth + 2 * shadow, entry.panelHeight + 2 * shadow);
+            QTRY_COMPARE(window_->width(), entry.panelWidth + 2 * shadow);
+            QTRY_COMPARE(window_->property("compactLayout").toBool(), entry.panelWidth < 928);
+            QTRY_VERIFY(!window_->property("layoutWidthPending").toBool());
+            QTRY_COMPARE(controller_->gridColumns(), entry.columns);
+            auto* viewport = item(QStringLiteral("groupsFlickable"));
+            auto* scroll = item(QStringLiteral("groupsScroll"));
+            auto* bar = item(QStringLiteral("groupVerticalScrollBar"));
+            auto* close = item(QStringLiteral("closeMenuButton"));
+            auto* actions = item(QStringLiteral("groupActions-work"));
+            auto* grid = item(QStringLiteral("grid-work"));
+            QVERIFY(viewport && scroll && bar && close && actions && grid);
+            QTRY_COMPARE(viewport->width(),
+                         qreal(entry.panelWidth - (entry.panelWidth < 928 ? 112 : 376)));
+            QTRY_VERIFY(qAbs(right(viewport) - right(close)) < 0.01);
+            QTRY_VERIFY(qAbs(right(actions) - right(close)) < 0.01);
+            QCOMPARE(window_->property("tileViewportWidth").toReal(), viewport->width());
+            QCOMPARE(right(scroll), right(close) + bar->width());
+            QVERIFY2(bar->mapToScene(QPointF(0, 0)).x() >= right(viewport) - 0.01,
+                     qPrintable(QStringLiteral("barLeft=%1 viewportRight=%2 scrollRight=%3 "
+                                               "width=%4 rightPadding=%5 barWidth=%6")
+                                    .arg(bar->mapToScene(QPointF(0, 0)).x())
+                                    .arg(right(viewport))
+                                    .arg(right(scroll))
+                                    .arg(scroll->width())
+                                    .arg(scroll->property("rightPadding").toReal())
+                                    .arg(bar->width())));
+            QVERIFY2(right(bar) <= shadow + entry.panelWidth,
+                     qPrintable(QStringLiteral("barRight=%1 panelRight=%2 requestedWidth=%3 "
+                                               "actualPanelWidth=%4 closeRight=%5")
+                                    .arg(right(bar))
+                                    .arg(shadow + entry.panelWidth)
+                                    .arg(entry.panelWidth)
+                                    .arg(window_->property("panelWidth").toReal())
+                                    .arg(right(close))));
+            QCOMPARE(grid->width(), qreal(entry.columns * 56 - 8));
+            if (entry.snapped) {
+                QTRY_VERIFY(qAbs(right(grid) - right(close)) < 0.01);
+                QCOMPARE(window_->property("resizeWidthBaseDip").toReal() + entry.columns * 56,
+                         qreal(entry.panelWidth));
+            } else {
+                QVERIFY(viewport->width() - grid->width() >= 0);
+                QVERIFY(viewport->width() - grid->width() < 56);
+            }
+            const bool overflow = viewport->property("contentHeight").toReal() > viewport->height();
+            sawOverflow |= overflow;
+            sawNoOverflow |= !overflow;
+            QCOMPARE(bar->property("size").toReal() < 1, overflow);
+            if (window_->property("compactLayout").toBool()) {
+                click(item(QStringLiteral("catalogViewButton")));
+                auto* catalog = item(QStringLiteral("catalogPanel"));
+                QTRY_VERIFY(catalog->isVisible());
+                QTRY_VERIFY(qAbs(right(catalog) - right(close)) < 0.01);
+                click(item(QStringLiteral("catalogViewButton")));
+                QTRY_VERIFY(scroll->isVisible());
+                QTRY_VERIFY(qAbs(right(viewport) - right(close)) < 0.01);
+            }
+            auto* search = item(QStringLiteral("searchField"));
+            QVERIFY(search->setProperty("text", QStringLiteral("missing-fixture")));
+            QTRY_VERIFY(controller_->searchActive());
+            click(item(QStringLiteral("clearSearchButton")));
+            QTRY_VERIFY(!controller_->searchActive());
+            QTRY_VERIFY(qAbs(right(viewport) - right(close)) < 0.01);
+            measurements.append(QJsonObject{{QStringLiteral("dark"), dark},
+                                            {QStringLiteral("panelWidth"), entry.panelWidth},
+                                            {QStringLiteral("panelHeight"), entry.panelHeight},
+                                            {QStringLiteral("columns"), entry.columns},
+                                            {QStringLiteral("snapped"), entry.snapped},
+                                            {QStringLiteral("verticalOverflow"), overflow},
+                                            {QStringLiteral("contentRight"), right(close)},
+                                            {QStringLiteral("viewportRight"), right(viewport)},
+                                            {QStringLiteral("gridRight"), right(grid)},
+                                            {QStringLiteral("scrollBarRight"), right(bar)}});
+            if (!destination.isEmpty()) {
+                QTest::qWait(220); // Capture after the bounded grid reflow has settled.
+                const auto name = QStringLiteral("%1-%2x%3.png")
+                                      .arg(dark ? QStringLiteral("dark") : QStringLiteral("light"))
+                                      .arg(entry.panelWidth)
+                                      .arg(entry.panelHeight);
+                QVERIFY(window_->grabWindow().save(QDir(destination).filePath(name)));
+            }
+        }
+    }
+    QVERIFY(sawOverflow && sawNoOverflow);
+    if (!destination.isEmpty()) {
+        QFile output(QDir(destination).filePath(QStringLiteral("alignment.json")));
+        QVERIFY(output.open(QIODevice::WriteOnly));
+        const auto bytes = QJsonDocument(measurements).toJson();
+        QCOMPARE(output.write(bytes), qint64(bytes.size()));
+    }
+}
+
 void PrototypeWindowTest::presentationSingleReveal() {
     QVERIFY(window_->setProperty("dismissalManaged", true));
     window_->hide();
@@ -4494,6 +5043,12 @@ void PrototypeWindowTest::approvedSurfaceStates() {
         QVERIFY(aboutDismiss);
         auto* aboutContent = about->property("contentItem").value<QQuickItem*>();
         QVERIFY(aboutContent);
+        auto* homepage = item(QStringLiteral("aboutHomepageButton"));
+        auto* homepageText = item(QStringLiteral("aboutHomepageText"));
+        QVERIFY(homepage && homepageText);
+        QCOMPARE(homepage->property("leftPadding").toReal(), qreal(0));
+        QCOMPARE(homepageText->property("horizontalAlignment").toInt(), int(Qt::AlignLeft));
+        QTRY_VERIFY(qAbs(homepageText->mapToItem(aboutContent, QPointF(0, 0)).x()) < 0.01);
         QTRY_VERIFY2(qAbs(aboutDismiss->mapToItem(aboutContent, QPointF(aboutDismiss->width(), 0)).x() -
                          aboutContent->width()) <= 1,
                      qPrintable(QStringLiteral("About close right=%1, content width=%2")
