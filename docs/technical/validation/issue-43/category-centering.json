@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "issue": 43,
+  "date": "2026-10-23",
+  "sourceBaseCommit": "f0dbc9c1fe117ead1d19f4d434aac237b6e6ce41",
+  "scope": "Offscreen/software QtTest of category glyph alignment with controlled catalog fixtures; no computer use.",
+  "toolchain": {
+    "qt": "6.8.2",
+    "compiler": "19.29.30153.0",
+    "windowsSdk": "10.0.19041.0"
+  },
+  "checks": {
+    "ctestSuitesPassed": 15,
+    "ctestSeconds": 90.81,
+    "guiPassed": 61,
+    "hostPassed": 38,
+    "categoryCasesPassed": 4,
+    "categoryGlyphPixelChecks": 112,
+    "allowedCenterOffsetDip": 1.0,
+    "qmlLint": "no diagnostics"
+  },
+  "cases": [
+    "dark-normal",
+    "light-normal",
+    "dark-short",
+    "light-short"
+  ],
+  "binaries": {
+    "xdstarter.exe": "e48c4d09c3b35bafb0e2e152582680b260ffb10e18dcfdfd8827e52f902309fe",
+    "xdstarter_ui_tests.exe": "1a577a65cc2f8240f8d1741efa70c240bc227562b790cdc86fd69c0a46539c25"
+  },
+  "captures": {
+    "docs/design/validation/issue-43/dark-normal.png": "d31a2c5d6eb1aee2d307ff8ca3dffa6f254c3ac06a543aa702506700fe596793",
+    "docs/design/validation/issue-43/light-normal.png": "a851fbc86d5041dd319b3ab2488915126e29773f876e96f4213ca9888d17fe6c",
+    "docs/design/validation/issue-43/dark-short.png": "137a190c6485a685416d5aeae2a54928e757d530b34c5fbe264fe58a997b2b65",
+    "docs/design/validation/issue-43/light-short.png": "204573acf285bcc3fd77789e2a540060f00bc4f71843561dc4e4f97f6b68a96e"
+  },
+  "sourceDigestFormat": "SHA-256 of committed Git blob bytes with LF normalization",
+  "sourceFiles": {
+    "qml/Main.qml": "808211a998f1e5e983bfc0ab2f388351b463d9acba7c08895c832d9f5b037aa4",
+    "tests/ui/tst_prototype_window.cpp": "e876c7d3fed7ea01948ea50128c09ef7f0057d3bf7de57d4e5de42e28915304f",
+    "docs/design/source/build_interaction_states.py": "76d0eecdefb9dabdc19c061cc6a937639044ee437a2c30546de419ee6e9ec5f7"
+  }
+}

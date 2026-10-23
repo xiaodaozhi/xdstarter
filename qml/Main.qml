@@ -204,14 +204,22 @@ ApplicationWindow {
     component CategoryGlyph: Item {
         id: categoryGlyph
         required property string label
+        implicitWidth: 32
+        implicitHeight: 32
+        TextMetrics {
+            id: categoryMetrics
+            text: categoryLetter.text
+            font: categoryLetter.font
+        }
         Text {
-            anchors.fill: parent
+            id: categoryLetter
+            // Center the visible glyph, excluding line leading and side bearings.
+            x: (categoryGlyph.width - categoryMetrics.tightBoundingRect.width) / 2 - categoryMetrics.tightBoundingRect.x
+            y: (categoryGlyph.height - categoryMetrics.tightBoundingRect.height) / 2 - baselineOffset - categoryMetrics.tightBoundingRect.y
             text: categoryGlyph.label === "🌐" ? "" : categoryGlyph.label
             font.family: window.font.family
             font.pixelSize: 22
             color: window.theme.secondary
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
         }
         Image {
             anchors.centerIn: parent
@@ -1512,6 +1520,7 @@ ApplicationWindow {
                                         anchors.verticalCenter: parent.verticalCenter
                                         width: 32
                                         height: 32
+                                        padding: 0
                                         text: catalogSection.section
                                         font.pixelSize: 22
                                         Accessible.name: qsTr("选择应用分类 %1").arg(text)
@@ -1773,6 +1782,7 @@ ApplicationWindow {
                                                 objectName: "alphabet-" + modelData
                                                 Layout.fillWidth: true
                                                 Layout.preferredHeight: 42
+                                                padding: 0
                                                 text: modelData
                                                 font.pixelSize: 20
                                                 enabled: window.alphabetOpen && window.applicationBrowser && window.applicationBrowser.sections.indexOf(modelData) >= 0

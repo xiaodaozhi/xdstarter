@@ -18,8 +18,8 @@ def build(theme):
     def rect(x, y, width, height, color, radius=10, stroke='none'):
         parts.append(f'<rect x="{x}" y="{y}" width="{width}" height="{height}" rx="{radius}" fill="{color}" stroke="{stroke}"/>')
 
-    def text(x, y, value, size=14, color=None, weight=400):
-        parts.append(f'<text x="{x}" y="{y}" fill="{color or colors["foreground"]}" font-size="{size}" font-weight="{weight}">{escape(value)}</text>')
+    def text(x, y, value, size=14, color=None, weight=400, anchor='start'):
+        parts.append(f'<text x="{x}" y="{y}" text-anchor="{anchor}" fill="{color or colors["foreground"]}" font-size="{size}" font-weight="{weight}">{escape(value)}</text>')
 
     def icon(name, x, y, color=None, size=20):
         parts.append(f'<g transform="translate({x} {y}) scale({size/24})" fill="none" stroke="{color or colors["foreground"]}" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">{glyph_paths(name)}</g>')
@@ -59,7 +59,7 @@ def build(theme):
         if letter == '🌐':
             icon('globe', x+10, y+10, size=24)
         else:
-            text(x+12, y+29, letter, 20, colors['foreground'] if letter in '#BGHWZ' else colors['secondary'])
+            text(x+22, y+29, letter, 20, colors['foreground'] if letter in '#BGHWZ' else colors['secondary'], anchor='middle')
     text(468, 706, '文件夹 / 覆盖列表区域展开', 18, weight=600)
     rect(468, 730, 300, 260, colors['surface'], 10, colors['controlBorder'])
     text(484, 762, '‹  Windows 工具', 16, weight=600)
