@@ -84,6 +84,31 @@ int main() {
     const TileGrid grid;
     PrototypeService prototype(grid);
     const auto defaults = prototype.snapshot();
+    for (const auto& columns : {QJsonValue{}, QJsonValue(3), QJsonValue(65), QJsonValue(4.5),
+                                QJsonValue(QStringLiteral("12"))}) {
+        auto invalid = defaults;
+        invalid.insert(QStringLiteral("gridColumns"), columns);
+        test.expect(!LayoutStore::validate(invalid).success,
+                    "schema four requires a bounded integer grid column budget");
+    }
+    auto missingColumns = defaults;
+    missingColumns.remove(QStringLiteral("gridColumns"));
+    test.expect(!LayoutStore::validate(missingColumns).success,
+                "schema four does not guess a missing column budget");
+    auto expanded =
+        changeTile(changeTile(defaults, QStringLiteral("column"), 10), QStringLiteral("row"), 4);
+    expanded.insert(QStringLiteral("gridColumns"), 12);
+    test.expect(LayoutStore::validate(expanded).success,
+                "schema four validates real columns beyond the legacy grid");
+    for (const int version : {1, 2, 3}) {
+        auto legacy = expanded;
+        legacy.insert(QStringLiteral("schemaVersion"), version);
+        test.expect(!LayoutStore::validate(legacy).success,
+                    "old schemas reject the new root field");
+        legacy.remove(QStringLiteral("gridColumns"));
+        test.expect(!LayoutStore::validate(legacy).success,
+                    "old schemas keep the original ten-column boundary");
+    }
     QTemporaryDir directory;
     test.expect(directory.isValid(), "temporary storage directory is available");
     if (!directory.isValid()) {
@@ -266,6 +291,7 @@ int main() {
 
     auto legacySnapshot = defaults;
     legacySnapshot.insert(QStringLiteral("schemaVersion"), 1);
+    legacySnapshot.remove(QStringLiteral("gridColumns"));
     const auto legacyPath = directory.filePath(QStringLiteral("legacy.json"));
     const QByteArray legacyBytes = QByteArray(" \n") +
                                    QJsonDocument(legacySnapshot).toJson(QJsonDocument::Indented) +
@@ -276,6 +302,7 @@ int main() {
     const PrototypeService migrated(grid, legacyPath, false);
     auto expectedMigration = legacySnapshot;
     expectedMigration.insert(QStringLiteral("schemaVersion"), LayoutStore::schemaVersion);
+    expectedMigration.insert(QStringLiteral("gridColumns"), 10);
     test.expect(
         migrated.loadResult().success && !migrated.isReadOnly() &&
             !migrated.loadResult().message.isEmpty() && migrated.snapshot() == expectedMigration &&
@@ -288,6 +315,7 @@ int main() {
 
     auto versionTwo = defaults;
     versionTwo.insert(QStringLiteral("schemaVersion"), 2);
+    versionTwo.remove(QStringLiteral("gridColumns"));
     const auto versionTwoPath = directory.filePath(QStringLiteral("version-two.json"));
     const auto versionTwoBytes = QByteArray(" \n") + QJsonDocument(versionTwo).toJson();
     test.expect(writeBytes(versionTwoPath, versionTwoBytes), "version two fixture writes");
@@ -301,9 +329,28 @@ int main() {
     PrototypeService renamedRestart(grid, versionTwoPath);
     test.expect(renamedRestart.snapshot() == versionTwoService.snapshot(),
                 "version three display overrides survive an independent service restart");
+    auto versionThree = defaults;
+    versionThree.insert(QStringLiteral("schemaVersion"), 3);
+    versionThree.remove(QStringLiteral("gridColumns"));
+    const auto versionThreePath = directory.filePath(QStringLiteral("version-three.json"));
+    const auto versionThreeBytes = QByteArray(" \n") + QJsonDocument(versionThree).toJson();
+    test.expect(writeBytes(versionThreePath, versionThreeBytes), "version three fixture writes");
+    PrototypeService versionThreeService(grid, versionThreePath);
+    test.expect(versionThreeService.loadResult().success &&
+                    versionThreeService.gridColumns() == 10 &&
+                    readBytes(versionThreePath) == versionThreeBytes &&
+                    versionThreeService.setGridColumns(12).success &&
+                    LayoutStore(versionThreePath).save(versionThreeService.snapshot()).success &&
+                    readBytes(versionThreePath + QStringLiteral(".bak")) == versionThreeBytes,
+                "schema three migrates in memory and first schema four save preserves exact bytes");
+    const auto expandedPath = directory.filePath(QStringLiteral("expanded.json"));
+    test.expect(LayoutStore(expandedPath).save(expanded).success &&
+                    LayoutStore(expandedPath).load(defaults).snapshot == expanded,
+                "expanded schema four coordinates survive atomic save and independent reload");
     for (const int oldVersion : {1, 2}) {
         auto oldWithOverride = changeTile(defaults, QStringLiteral("displayName"), QStringLiteral("unsafe old extension"));
         oldWithOverride.insert(QStringLiteral("schemaVersion"), oldVersion);
+        oldWithOverride.remove(QStringLiteral("gridColumns"));
         test.expect(!LayoutStore::validate(oldWithOverride).success,
                     "legacy schemas reject the new field rather than silently accepting it");
     }

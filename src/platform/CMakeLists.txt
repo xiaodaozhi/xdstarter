@@ -1,6 +1,7 @@
 add_library(xdstarter_platform STATIC platform_integration.cpp platform_integration.h
     application_platform.cpp application_platform.h
     desktop_platform.cpp desktop_platform.h
+    desktop_width_snap.cpp desktop_width_snap.h
     desktop_tray.cpp desktop_tray.h
     win_key_capture.cpp win_key_capture.h
     win_key_capture_state.cpp win_key_capture_state.h

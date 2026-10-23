@@ -10,7 +10,7 @@ XDStarter 是一款面向 Windows 11 的自定义磁贴开始菜单项目：保�
 
 ![XDStarter 深色界面设计稿](docs/design/mockups/v2/xdstarter-desktop-dark-v2.png)
 
-[浅色设计稿](docs/design/mockups/v2/xdstarter-desktop-light-v2.png) · [磁贴尺寸规范](docs/design/mockups/v2/xdstarter-tile-grid-v2.png) · [完整设计资产](docs/design/README.md) · [运行时视觉验收](docs/design/validation/issue-29/README.md)
+[浅色设计稿](docs/design/mockups/v2/xdstarter-desktop-light-v2.png) / [磁贴尺寸规范](docs/design/mockups/v2/xdstarter-tile-grid-v2.png) / [完整设计资产](docs/design/README.md) / [运行时视觉验收](docs/design/validation/issue-29/README.md)
 
 当前设计稿为 **v2 修订 2.2**，将顶部搜索、紧凑应用目录、分组磁贴和工具入口统一为完整布局；[Issue #29](https://github.com/xiaodaozhi/xdstarter/issues/29) 跟踪实际 QML 落地与视觉验收。参考画布为 1920×1200、150% 缩放，默认面板 980×680 DIP。可见面板距工作区左侧和底部任务栏均为 8 DIP，不随开始按钮位置切换。旧修订已[归档](docs/design/archive/v2-revision-2.1/README.md)。
 
@@ -71,17 +71,17 @@ $env:PATH = "$PWD/build/Qt/6.8.2/msvc2022_64/bin;$env:PATH"
 & ./build/app-release/bin/xdstarter.exe --layout-file "$PWD/build/manual-layout.json"
 ```
 
-普通首次启动显示空的“常用应用”分组，后台读取当前用户／公共开始菜单和打包应用。在“所有应用”中单击或按 Enter 启动；点击“固定”或右键／Shift+F10 选择目标分组，以标准尺寸固定到首个空位。再次固定同一应用不会重复创建磁贴；磁贴右键菜单可取消固定，不会卸载应用。窗口较窄时通过“所有应用／返回磁贴”切换视图。
+正常首次启动在托盘后台驻留，不弹出菜单；开始按钮或托盘图标可唤起同一实例。后台读取当前用户／公共开始菜单和打包应用，同层同相对路径文件夹合并并读取系统本地化显示名。在“所有应用”中单击或 Enter 启动，拖到磁贴区或通过右键／Shift+F10“固定为磁贴”，默认固定到最后一个分组；列表不显示逐项图钉。已固定应用可在右键菜单“取消固定磁贴”，不卸载应用。窄窗口支持目录与磁贴切换及受控拖拽。
 
 顶部搜索框或 Ctrl+F 可搜索应用目录与已固定目标，支持名称、英文、拼音全拼和首字母，例如“画图／huatu／ht”。结果按目标 id 去重，名称完整、前缀、包含、全拼、首字母依次排序，同档按规范化名称和 id 稳定排列；方向键选择、Enter 启动。搜索在专用后台线程运行，更新查询或目录后丢弃旧结果，最多展示前 100 项并提示总数；固定但失效的应用保留不可用说明。输入法预编辑不触发查询或启动，Esc 先交给输入法。清空查询还原浏览视图与滚动位置；重新唤起聚焦搜索框，保留当前进程中的查询，重启不保存查询。拼音来自随程序编译的 [Unicode Unihan 离线数据](third_party/unicode/README.md)，不发起网络搜索，也不把输入当成命令执行；范围及限制见 [ADR-0010](docs/technical/adr/0010-local-application-search.md)。
 
-左侧圆形头像打开账户设置，文档、下载和设置打开对应的受控系统入口；电源图标打开文字菜单，提供 Win 键唤起启用/暂停和“退出 XDStarter”，系统关机、重启与注销尚未启用。动作成功后收起，失败保留窗口并显示原因。右上角“收起菜单”按钮和 Esc 提供无标题栏时的键盘/鼠标入口。窗口获得焦点后，点击其他应用或桌面、切换应用会收起；内部菜单不被当作外部窗口，拖拽期间延后检查，外部收起不退出编辑模式或撤销已提交布局。托盘可用时收起后进程保留，可从托盘再次显示或退出；托盘不可用时最小化以保留任务栏恢复入口。唤起仅读取目标显示器、工作区和任务栏 DPI，不等待开始按钮识别。
+左侧圆形头像打开账户设置，文档、下载和设置打开受控系统入口；底部快捷按钮间距收紧，48×48 DIP命中区保持。电源文字菜单提供独立的Win键、开始按钮接管启用／暂停及退出，系统关机等操作尚未启用。菜单为置顶工具窗口，显示或隐藏均不占系统任务栏窗口按钮，通知区图标保留；自有对话框可覆盖菜单。外部点击、开始按钮、收起按钮和Esc共用收尾，退出动画后真正隐藏；已提交布局保留。托盘失效时暂停接管并显示持续可见的重试／退出恢复界面，不依赖最小化的任务栏按钮。
 
-每次启动默认关闭 Win 键唤起，不随布局恢复。支持环境且托盘可用时，可从电源菜单或托盘显式启用，单独按下并释放 Win 键切换菜单；托盘另提供暂停/恢复入口。暂停、失败或退出停止接管，托盘恢复也不自动重新启用。系统开始按钮始终保持原生入口，Win 组合键沿原始输入路径放行；本地 Windows 11 的启用条件不等于完整兼容保证，实际物理按键、组合键和恢复范围以本轮测试记录为准。
+每次启动默认关闭单独Win键唤起，不随布局恢复；支持且托盘可用时可显式启用。开始按钮点击服务在托盘注册成功后启用，仅接管取得实时点资格的完整左键；未识别点、右键和Win组合键保留原生路径。暂停、失败或退出释放对应接管，托盘恢复不自动重启已暂停的服务。当前物理验证范围按[测试策略](docs/technical/testing.md)记录，不扩大为所有Windows构建兼容。
 
-进入“编辑布局”后拖拽磁贴，或使用 Ctrl+方向键移动一格；右键或 Shift+F10 打开三档尺寸菜单。非法落点保留原布局，Esc 先关闭子菜单或取消拖拽，再清空搜索、退出编辑，最后收起菜单。外部收起会关闭子菜单并取消未提交拖拽，重新显示时聚焦搜索框。布局与深浅主题在编辑后自动合并保存，也可点击“保存布局”；再次启动使用同一文件恢复。普通启动默认使用用户应用数据目录；`--smoke-test` 使用三组样例，不连接真实目录、桌面动作、托盘或定位服务，也不读写布局文件。旧样例配置可以继续读取，样例磁贴不会启动应用。
+默认可直接拖拽磁贴，或Ctrl+方向键移动；磁贴右键／Shift+F10的“磁贴大小”子菜单提供小磁贴 (1×1)、中磁贴 (2×2)、宽磁贴 (4×2)。实体几何仍为48/104/216 DIP、8 DIP间隙。窗口宽度按共享56 DIP步距吸附，实际可用列随宽度改变；扩列保位，缩列原子重排，空间不足保留原布局。窗口最大可见面板不超过扣除任务栏与四方8 DIP边距的工作区。布局schema4记录gridColumns并严格兼容读取1/2/3；旧原字节在迁移保存时备份，未来版本只读。普通运行使用用户应用数据目录，smoke不连接真实目录／托盘或读写布局。
 
-编辑模式点击“新建分组”，或通过组标题右侧的“⋯”（管理分组）选择“重命名”“上移分组”“下移分组”“删除空分组”。组名去除首尾空白后不能为空、最多 128 个 UTF-16 代码单元，不接受控制字符或换行；同名分组允许存在，以稳定 id 区分。最多 32 组且至少保留一组，非空分组需先将磁贴移到其他组或明确取消固定，搬空后才能删除。分组操作保留磁贴标识、启动目标、坐标与尺寸，沿用现有布局保存和恢复；只读配置禁止修改。右键磁贴或 Shift+F10 可“修改显示名称”／“恢复原名称”，最多 128 个字符（表情可能占两个），取消或 Esc 不保存草稿；原应用名称、启动目标与几何不变，原名和新名均可搜索。显示覆盖保存为 schema 3，读取 schema 1/2 不自动改写，首次保存保留原字节备份。“更多 → 导入布局…”或“恢复上一份布局…”提供严格 JSON 校验、文件名／数量／主题预览和替换确认；确认成功落盘后才发布新布局，取消和失败保留当前内存。详见[导入事务](docs/technical/adr/0012-layout-import-transaction.md)，本轮 Windows 真机验收仍按[测试策略](docs/technical/testing.md)记录。
+从“更多 → 新建分组”管理分组，组标题菜单提供重命名、上移、下移和删除空组；组名严格校验，最多32组且至少保留一组。磁贴菜单可修改显示名称或恢复原名，仅影响当前磁贴；原名和覆盖名均可搜索。布局与主题自动合并保存，也可从更多菜单保存布局或导入布局。导入经严格校验、只读预览和确认后先落盘再发布，取消或失败保留内存；不再显示“恢复上一份布局”菜单项。详情见[导入事务](docs/technical/adr/0012-layout-import-transaction.md)与[动态列ADR](docs/technical/adr/0015-responsive-tile-columns.md)。
 
 完整命令与支持边界见[开发环境](docs/technical/development.md)、[测试策略](docs/technical/testing.md)。进度与证据见 [#4 工程](https://github.com/xiaodaozhi/xdstarter/issues/4)、[#5 几何](https://github.com/xiaodaozhi/xdstarter/issues/5)、[#7 应用目录与启动](https://github.com/xiaodaozhi/xdstarter/issues/7)、[#8 离线搜索](https://github.com/xiaodaozhi/xdstarter/issues/8)、[#9 编辑](https://github.com/xiaodaozhi/xdstarter/issues/9)、[#10 保存恢复](https://github.com/xiaodaozhi/xdstarter/issues/10)、[#14 设计接入与桌面恢复](https://github.com/xiaodaozhi/xdstarter/issues/14)、[#15 无边框菜单与焦点](https://github.com/xiaodaozhi/xdstarter/issues/15)、[#16 统一边距与自绘外观](https://github.com/xiaodaozhi/xdstarter/issues/16)、[#22 单独 Win 键原型](https://github.com/xiaodaozhi/xdstarter/issues/22)；设计重建方法见[设计资产说明](docs/design/README.md)。
 

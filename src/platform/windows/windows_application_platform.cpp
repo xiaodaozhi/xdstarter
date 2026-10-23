@@ -2,6 +2,7 @@
 
 #include <QDir>
 #include <QFileInfo>
+#include <QHash>
 #include <QSet>
 
 #include <algorithm>
@@ -318,7 +319,8 @@ QImage iconImage(HICON icon, int size) {
 
 bool scanShortcutDirectory(const QString& path, int depth, int& directories, int& entriesInspected,
                            bool& truncated, CatalogSnapshot& snapshot, QSet<QString>& visited,
-                           const QString& parentFolderId = {}) {
+                           QHash<QString, qsizetype>& folders, const QString& parentFolderId = {},
+                           const QString& relativePath = {}) {
     if (depth > maxDepth || directories >= maxDirectories ||
         snapshot.applications.size() >= maxApplications || entriesInspected >= maxEntries) {
         truncated = true;
@@ -384,15 +386,33 @@ bool scanShortcutDirectory(const QString& path, int depth, int& directories, int
                        !(data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
                 LaunchTarget folder;
                 folder.type = QStringLiteral("folder");
-                folder.name = name;
                 folder.symbol = QStringLiteral("▱");
                 folder.shortcutPath = QDir::fromNativeSeparators(entry.absoluteFilePath());
+                ComPtr<IShellItem> item;
+                folder.name =
+                    SUCCEEDED(shellItem(folder, item.put())) ? displayName(item.get(), name) : name;
                 folder.id = applicationTargetId(folder.type, folder.shortcutPath);
                 folder.iconKey = folder.id;
                 folder.parentFolderId = parentFolderId;
-                snapshot.applications.append(folder);
+                const auto relative =
+                    relativePath.isEmpty() ? name : relativePath + QLatin1Char('/') + name;
+                const auto key = QDir::cleanPath(relative).toCaseFolded();
+                const auto previous = folders.constFind(key);
+                if (previous != folders.cend()) {
+                    auto& representative = snapshot.applications[*previous];
+                    // Shell display names are presentation only. Merge by relative parsing path,
+                    // never by a localized name, and keep the first real folder's stable identity.
+                    if (representative.name == QFileInfo(representative.shortcutPath).fileName() &&
+                        folder.name != name)
+                        representative.name = folder.name;
+                    folder.id = representative.id;
+                } else {
+                    folders.insert(key, snapshot.applications.size());
+                    snapshot.applications.append(folder);
+                }
                 scanShortcutDirectory(entry.absoluteFilePath(), depth + 1, directories,
-                                      entriesInspected, truncated, snapshot, visited, folder.id);
+                                      entriesInspected, truncated, snapshot, visited, folders,
+                                      folder.id, relative);
             }
         }
         if (!FindNextFileW(search, &data)) {
@@ -485,6 +505,7 @@ CatalogSnapshot WindowsApplicationPlatform::scanApplications() {
     int entriesInspected = 0;
     bool truncated = false;
     QSet<QString> visited;
+    QHash<QString, qsizetype> folders;
     bool readableRoot = false;
     for (const QString& root : roots) {
         if (!QFileInfo(root).isDir()) {
@@ -492,7 +513,7 @@ CatalogSnapshot WindowsApplicationPlatform::scanApplications() {
             continue;
         }
         readableRoot = scanShortcutDirectory(root, 0, directories, entriesInspected, truncated,
-                                             snapshot, visited) ||
+                                             snapshot, visited, folders) ||
                        readableRoot;
     }
     const bool packagedRead = includePackaged_ && scanPackagedApplications(snapshot);

@@ -1,0 +1,293 @@
+{
+  "schemaVersion": 1,
+  "issue": 48,
+  "date": "2026-10-23",
+  "sourceBaseCommit": "a9abf252a6668c431928b2bbad5cafd1801bef55",
+  "status": "implemented-automated-regression-and-read-only-native-observation-passed",
+  "designApproval": {
+    "revision": "2.4-candidate-1",
+    "userAccepted": true,
+    "userConfirmedActualColumnsFollowWindowWidth": true
+  },
+  "toolchain": {
+    "qt": "6.8.2",
+    "compiler": "19.29.30159.0",
+    "toolset": "14.29.30133",
+    "windowsSdk": "10.0.19041.0",
+    "alternateMsvc": true,
+    "formalCompilerBaselineUnchanged": "19.29.30153.0",
+    "classification": "additional local v142 patch compatibility, not exact formal baseline"
+  },
+  "checks": {
+    "ctestSuitesPassed": 18,
+    "ctestSeconds": 106.95,
+    "qtTestPassed": {
+      "services.session_instance": 6,
+      "services.application_browser": 11,
+      "ui.prototype": 66,
+      "ui.desktop_window_host": 50
+    },
+    "qmlLint": "no diagnostics",
+    "toolingTestsPassed": 13,
+    "dockingCombinations": 240,
+    "resizeCombinations": 80,
+    "widthSnapCombinations": 200,
+    "taskbarInputRegionCombinations": 40,
+    "nativeSizingAndRegionCases": 36,
+    "localFullRunSourceCommit": "8d3ca5834417f0df73d859c5811efe29871ed446",
+    "localizedFixtureFollowup": {
+      "ctest": "platform.applications",
+      "passed": true,
+      "seconds": 2.05,
+      "productBinaryUnchanged": true
+    }
+  },
+  "nativeFinalBinary": {
+    "method": "single-instance IPC reveal; read-only Win32 and UIA point observation",
+    "observedAtUtc": "2026-10-23T10:59:41.260Z",
+    "taskbarEdge": "bottom",
+    "menuOuterPhysicalRect": [
+      -24,
+      460,
+      1542,
+      1092
+    ],
+    "taskbarPhysicalRect": [
+      0,
+      1528,
+      2400,
+      72
+    ],
+    "startPhysicalRect": [
+      0,
+      1528,
+      83,
+      72
+    ],
+    "extendedStyleHex": "80088",
+    "topmost": true,
+    "toolWindow": true,
+    "appWindow": false,
+    "visible": true,
+    "minimized": false,
+    "regionKind": 3,
+    "menuBeforeTaskbarInZOrder": true,
+    "geometryStable": true,
+    "inputInjected": false,
+    "capturePermissionGrantedByProbe": false,
+    "observedCursorUnchanged": false,
+    "pointerNote": "Probe contains no pointer movement; external physical pointer movement is reported independently.",
+    "samples": [
+      {
+        "name": "center",
+        "point": [
+          41,
+          1563
+        ],
+        "menuHit": false,
+        "taskbarRootHit": true,
+        "uiaSucceeded": true,
+        "uiaStartOrDescendant": true
+      },
+      {
+        "name": "top-left",
+        "point": [
+          1,
+          1529
+        ],
+        "menuHit": false,
+        "taskbarRootHit": true,
+        "uiaSucceeded": true,
+        "uiaStartOrDescendant": true
+      },
+      {
+        "name": "top-right",
+        "point": [
+          81,
+          1529
+        ],
+        "menuHit": false,
+        "taskbarRootHit": true,
+        "uiaSucceeded": true,
+        "uiaStartOrDescendant": true
+      },
+      {
+        "name": "bottom-left",
+        "point": [
+          1,
+          1598
+        ],
+        "menuHit": false,
+        "taskbarRootHit": true,
+        "uiaSucceeded": true,
+        "uiaStartOrDescendant": true
+      },
+      {
+        "name": "bottom-right",
+        "point": [
+          81,
+          1598
+        ],
+        "menuHit": false,
+        "taskbarRootHit": true,
+        "uiaSucceeded": true,
+        "uiaStartOrDescendant": true
+      },
+      {
+        "name": "taskbar-inner-edge-1dip",
+        "point": [
+          41,
+          1529
+        ],
+        "menuHit": false,
+        "taskbarRootHit": true,
+        "uiaSucceeded": true,
+        "uiaStartOrDescendant": true
+      },
+      {
+        "name": "taskbar-inner-edge-4dip",
+        "point": [
+          41,
+          1533
+        ],
+        "menuHit": false,
+        "taskbarRootHit": true,
+        "uiaSucceeded": true,
+        "uiaStartOrDescendant": true
+      },
+      {
+        "name": "taskbar-inner-edge-8dip",
+        "point": [
+          41,
+          1539
+        ],
+        "menuHit": false,
+        "taskbarRootHit": true,
+        "uiaSucceeded": true,
+        "uiaStartOrDescendant": true
+      },
+      {
+        "name": "taskbar-inner-edge-16dip",
+        "point": [
+          41,
+          1551
+        ],
+        "menuHit": false,
+        "taskbarRootHit": true,
+        "uiaSucceeded": true,
+        "uiaStartOrDescendant": true
+      }
+    ],
+    "menuHitCount": 0,
+    "cleanup": "isolated process verified by PID and executable path, controlled stop; not normal-exit acceptance"
+  },
+  "retainedFailures": [
+    "First full run: 16/18 suites; geometry/focus/tooltip regressions retained and fixed.",
+    "Sandbox IPC: three session-primary failures; unchanged checks pass in normal Windows session.",
+    "First Topmost candidate: 6/9 Start points hit menu shadow; no binary hash recorded for this diagnostic candidate.",
+    "INT_MIN QRect intersection intermediate overflow fixed using qint64 local intersection; symmetric INT_MAX regression.",
+    "Hidden STATIC SetWindowPos returned success without TOPMOST bit; actual denial now reported, real Qt/product bit remains required.",
+    "Directory hover disabled by Qt Controls default; diagnostic global hover passes, production explicitly enables hover without test override.",
+    "About header close alignment failed exact geometry assertion; flexible space added and final right alignment verified.",
+    "Previous fixed candidate first UIA sample timed out at 100 ms while Win32 all nine hit taskbar; subsequent full observation passed."
+  ],
+  "boundaries": {
+    "computerUse": false,
+    "systemSettingsChanged": false,
+    "fourEdgesAndTwoAlignments": "current pure/native owned-window regression; prior Issue45 physical matrix remains prior-binary evidence",
+    "physicalStartGesturesRepeatedThisRound": false,
+    "nativeObservationEnvironment": "Windows26300.9711, primary2400x1600, DPR1.5, bottom taskbar",
+    "notExpanded": [
+      "real system scale switching",
+      "dynamic mixed-DPI and hotplug",
+      "auto-hide and Explorer restart",
+      "another Windows build",
+      "screen-reader acceptance"
+    ],
+    "broaderTrackingIssuesRemainOpen": [
+      6,
+      33
+    ],
+    "samplesOnly": "QtTest screenshots use in-memory letter tiles and no real application catalog; offscreen RGB backing-store boundary applies"
+  },
+  "binariesSha256": {
+    "xdstarter.exe": "0230252fc23b41faaee4e4633b6fe06ad4015022195273b8e9a54b8ed34072a6",
+    "xdstarter_ui_tests.exe": "c4591a51f7fc44ac3fb4af1431cdc4fd522b48508aba4006388b1a5da695e86e",
+    "xdstarter_desktop_window_host_tests.exe": "1522dd51f0dc862e1ddca531b3444ecd1a9f40951d8c998767f17c06fbf0e846",
+    "xdstarter_native_taskbar_probe.exe": "0f9cb40732566a024a831dc1dba4c3d947575960837a71e71984e0bf0ed39c48",
+    "xdstarter_desktop_platform_tests.exe": "4cfedf5338739a5f0f585c73cde54deed441a48e6563ef058dc22231d0709868",
+    "xdstarter_application_platform_tests.exe": "751e9575c98e2632da6cfae7c5063541abd6148b1810015c592b830d2828ab19"
+  },
+  "sourceSha256Lf": {
+    "docs/design/tokens/tile-grid.json": "8a83a7666059540a81df87b807bbccb7533b3c281917e840d2214930872937a2",
+    "docs/design/tokens/visual.json": "17fdeb6128bb3fd9690b841c3c14096caf775dd1fe47537fab4689cfdb68294a",
+    "qml/FloatingSurface.qml": "706940620da3f241a754cb81c8fda8b96dbc3a54156693d8f12377f778b642a1",
+    "qml/Hint.qml": "6e730b702486a8ca3d8c473921da8bc867201c1c90e9686b92712229d40febd7",
+    "qml/LayoutImportDialog.qml": "96aba25048d6da9060f2c1e2305368bf1c1d085028ac627f00f2a1bc1b55a635",
+    "qml/Main.qml": "f3f24a731389783c6155c71f5af0089297a6e854e77154317dd2816f98112207",
+    "qml/MenuGlyph.qml": "0a0c86c000ff707cc4dee591a143b142853367dbcedd4704b4f69c9b35345ef5",
+    "qml/ShortcutRail.qml": "8ada23044986e341f09075d55e08e12a899e1a0d0706d45783e633d0cd6d2e84",
+    "qml/TileButton.qml": "b08e6ef85144df6a08cec87c846916393bd2ce38ed1e5ca87c969390484fc078",
+    "qml/TileGroup.qml": "3c2c9cba41a74559a49999e14dc46af948a3cd063585aa4d8b736364c93c39a1",
+    "src/app/CMakeLists.txt": "1d743e9df3e94cd991bf191d4a6b578a4cca26edb906fc586a53ec72e064eb22",
+    "src/app/desktop_window_host.cpp": "373433c706fe008b01485aa14045f3e8f7f6b381068c62565a6131b3e42bd276",
+    "src/app/desktop_window_host.h": "c0fdad7857978600e56c979b719312033f2f3a5742d2eafcf5cdc72f91e9ee2a",
+    "src/app/interface_font.cpp": "ba865cd0685aad6747dc15143f58182eec1c954866d30efd6c90b21ab260779d",
+    "src/app/interface_font.h": "61fce4f3d892bd2f6000ea8911e1736cef81b168bbe6a84ef80041be7cd19403",
+    "src/app/main.cpp": "c96aacf3df63f547894d7e0f185e068aac261d2ec40a356800d34e4b08018e55",
+    "src/app/menu_controller.cpp": "7e80a60090321d680d0e3ab4f311293111ecb5e8d7bb4a7e2f22f4b964988f57",
+    "src/app/menu_controller.h": "a66d9dbeae6d0c653d1b0f1f89d82ec6eef2f55e0bab480ca0d8c53011e25ca2",
+    "src/core/tile_grid.cpp": "ecfe2cc8f0addc3450dd5d0d54c70d083ca21803b578b05a5d5f8fb284a2ec38",
+    "src/core/tile_grid.h": "ad9e59d50730d6b5079b3c62c236464972dfbd8584fb8f86843f4900446ec373",
+    "src/platform/CMakeLists.txt": "10c1824b8fd9925d7f2802d8d78daf3d8f6236085754415e2ff72e4ec3c314d8",
+    "src/platform/desktop_platform.cpp": "185c248a96fb5f281192c2adad0ee8faa0e57450ae499ba9e6b4a2055e329042",
+    "src/platform/desktop_platform.h": "2548834eee3665c64ca6b43da3668122f0ca9e3d93df961d9def37eb3b32e927",
+    "src/platform/desktop_width_snap.cpp": "6ab4947831a43490165956372abfd75f5e7dd3ac4c78f8169d73bb2eac5368b2",
+    "src/platform/desktop_width_snap.h": "f33af999da629648dc696bc41fcf15f6a79896562fdc6ea47e0ecb88d13d8bf2",
+    "src/platform/windows/windows_application_platform.cpp": "6ff6bc6692113a3cec87f1351373f660db6665f785602f3fceea6a44bacbfc61",
+    "src/platform/windows/windows_desktop_platform.cpp": "fb41bc2427298248389336c075fecb90d188c272a99ad321bd77367e89b4a3ab",
+    "src/platform/windows/windows_desktop_platform.h": "9055cf6e1044c6a052c779bae8a137fe21e5f0a07461616859ccbab3c3605bb7",
+    "src/services/layout_store.cpp": "f306e3821b703b8c4b67f53fc982d7614874cb7b60cd49ec3a112cafa4613738",
+    "src/services/layout_store.h": "07a931d6f1751c45aeb421c5fd0372628021b7053a9895a4d9e2145b6cf6fbb2",
+    "src/services/prototype_service.cpp": "78f1947b092c0fa53154ae073482652158c2137078b539bb958f0d4bebeec00c",
+    "src/services/prototype_service.h": "8e372901875755f0945c7ffbbe04ee9e2fb17f1b63064020e6f9323e2a00c2a5",
+    "tests/core/tile_grid_tests.cpp": "e9081bb1f4685acb3c6ef4b3ead7cf57cfd3cf9354b406947761fe79c3039465",
+    "tests/platform/CMakeLists.txt": "171b6aef1bd33216550d0c7e7a95d1ddb2801258601a12ef906a5b719130e0dc",
+    "tests/platform/application_platform_tests.cpp": "cc482ee155d259215c9cd0448a55eaa37641dd10bd8074ad5cd9e52ab38c8847",
+    "tests/platform/desktop_platform_tests.cpp": "c0bd85d6d4211a5d6e90d2604502f22b227774dc4a980c9db77766ea5818bcc8",
+    "tests/platform/desktop_width_snap_tests.cpp": "18ad9fb30a05140e7372e30f149a3c299ee7ff2312ed081cceb14c58c29344db",
+    "tests/platform/native_taskbar_probe.cpp": "82c0cc23ddfcaa87c8ce947ca1813228536cb1bd1f5468a0596d0f236c1e5f00",
+    "tests/services/layout_import_tests.cpp": "240dcd985ab8509fb85c4a94ccd9d626e53ccb9cca5ed74f6c9a8444333f136e",
+    "tests/services/layout_store_tests.cpp": "c91224543175d23f203314d3e5bb103d12d51e6c969d34ca4ca1d8567c37b40c",
+    "tests/services/prototype_service_tests.cpp": "62f083a6b023ec042069dd39925a43b1bee4eb0584bed75e8c4208aafd47997e",
+    "tests/ui/native_chrome_probe.cpp": "e3a4f63d5e174084ab8be8d65cd3ca73a00d8e2939b176b2ae8cb483a71e0273",
+    "tests/ui/tst_desktop_window_host.cpp": "4dc8ce40b6a00df3072da0276c55f9e9c6e2a21582016ece3967ccf45c52a802",
+    "tests/ui/tst_prototype_window.cpp": "a0463aeececb9e300461bcf190f21898fc64924e2b982518f06ba630d174ddac",
+    "tests/ui/visual_acceptance_probe.cpp": "17a30cc7ac3f031852f652b28461cbc4801ae32b06939981912daf80210a98c7"
+  },
+  "sampleScreenshotsSha256": {
+    "docs/design/validation/issue-48/dark-about.png": "19d278d08dab0329e5d9686c6398b09d85675d244caf1e1ddecf3635333d4283",
+    "docs/design/validation/issue-48/dark-failure.png": "53e6bcbb0fc0abbbdf0a04efdf840eee1e46d592732116956fc6f78645a61957",
+    "docs/design/validation/issue-48/dark-menus.png": "05ef47be31db39551c1815550a87a94dbbd6213ad1e5c08e18b4ddf88ef622ee",
+    "docs/design/validation/issue-48/light-about.png": "6ff5f1c87b55529416b342cbb25511b48ec25e9182ee21dccac593bac3e60f34",
+    "docs/design/validation/issue-48/light-failure.png": "e1053f36184638b00aa2915220ede84cc81df1e8aaf865133965e318d3bd0300",
+    "docs/design/validation/issue-48/light-menus.png": "bac53678f60e096d7baa68b3bb98f4877e662c01ee2bcdccc44d56f32ecfa8b0"
+  },
+  "ciFollowup": {
+    "firstHead": "8d3ca5834417f0df73d859c5811efe29871ed446",
+    "firstWindowsRun": 39943963835,
+    "firstWindowsSuitesPassed": 17,
+    "firstWindowsSuitesTotal": 18,
+    "failure": "real Shell localized folder display fixture; GUI, host and other suites passed",
+    "originalFixtureWasAlreadyUtf16LeBom": true,
+    "fixtureChanges": [
+      "use documented PathMakeSystemFolderW",
+      "configure metadata before Shell COM shortcut creation",
+      "independent exact Chinese INI readback",
+      "retain precise real Shell localized names and distinct-path assertion",
+      "failure-only native display, attributes, OS and code-page diagnostics"
+    ],
+    "currentHeadCi": "tracked in PR49; previous success is not substituted",
+    "runtimeUnchangedFromFirstHead": true
+  }
+}

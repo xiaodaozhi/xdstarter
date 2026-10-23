@@ -3,6 +3,7 @@
 - 日期：2026-10-23
 - 状态：已采纳；实际验收按程序版本记录于测试策略
 - 跟踪：[Issue #45](https://github.com/xiaodaozhi/xdstarter/issues/45)、父 [#6](https://github.com/xiaodaozhi/xdstarter/issues/6)、兼容矩阵 [#33](https://github.com/xiaodaozhi/xdstarter/issues/33)
+- 窗口行为修订：[Issue #48](https://github.com/xiaodaozhi/xdstarter/issues/48)。旧程序的验收与失败记录保留原版本身份，不能替代新候选验证。
 - 补充：ADR-0009 的只读研究；替代 ADR-0013 的“只有排查、未接管”现状以及仅水平居中的布局策略
 
 ## 背景与决定
@@ -42,6 +43,38 @@ UIA、WinEvent 和原生查询不是一个原子事务，微软也不保证提�
 通用矩形约束不含 Win32，覆盖五档缩放、负坐标、四边／四角的80组组合，另验最小尺寸及整数边界。原生回归只向测试自有隐藏 HWND 发送 sizing 单元消息，覆盖八个边／角、三个准备／归一化阶段和三个非活动／其他窗口／移除后的透传场景，共14项；夹具拦截 sizing 命令，不进入系统模态输入循环。Qt6.8.2 的应用级 nativeEventFilter 会跳过 `WM_SIZING`，因此不能用该入口替代本窗口处理器；初版八项原生用例失败也保留为实际失败。
 
 依据：[Qt6.8.2 消息分派源码](https://github.com/qt/qtbase/blob/v6.8.2/src/plugins/platforms/windows/qwindowscontext.cpp)、[Qt 系统 resize 入口](https://github.com/qt/qtbase/blob/v6.8.2/src/plugins/platforms/windows/qwindowswindow.cpp)、[WM_SIZING](https://learn.microsoft.com/en-us/windows/win32/winmsg/wm-sizing)、[WM_WINDOWPOSCHANGING](https://learn.microsoft.com/en-us/windows/win32/winmsg/wm-windowposchanging)、[SetWindowSubclass](https://learn.microsoft.com/en-us/windows/win32/api/commctrl/nf-commctrl-setwindowsubclass)。
+
+## Issue #48：窗口生命周期与边界修订
+
+当前实现将主菜单类型改为 `Qt.Tool | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint | Qt.WindowStaysOnTopHint`。Windows 层在隐藏阶段设置 `WS_EX_TOOLWINDOW`、清除 `WS_EX_APPWINDOW`，并请求 topmost；保留透明合成样式，以本窗口 region 排除任务栏交集，不向 Explorer 注入代码。目标是在菜单显示与隐藏时均不产生普通任务栏窗口按钮，同时保持正常键盘输入。实际 HWND 样式、层级和 Shell 表现仍须按当前候选验证，不能以 Qt flags 声明替代实际结果。
+
+隐藏原生 STATIC fixture 曾出现 `SetWindowPos` 返回成功而实际 extended style 只有 `0x80`、没有 TOPMOST 的结果；原 style `0x84000000` 未变，窗口始终隐藏。这不是产品真机置顶失败的证据，也不能记作隐藏置顶成功。Microsoft 的 `SetWindowPos` 说明对提升窗口要求前台激活权限。实现分别刷新 frame 与请求 topmost，随后读取实际位；未生效必须返回 `success=false` 与 `menu-topmost-state-denied`。用户唤起在恢复前台后再进行一次有界请求并实测 TOPMOST，不用计时器循环抢焦点。隐藏 fixture 只允许实测成功或上述明确拒绝，实际 Qt 窗口和可见候选仍须强检 TOPMOST。
+
+自有原生文件／设置对话框继续以菜单为 owner。重复唤起只在真正自有前台对话框存在时保留其交互，不将菜单本身的前台身份误当成对话框保护。`hasOwnedForegroundDialog()` 排除根窗口并复核精确 owner 链和前台稳定性；失焦判断继续使用包含菜单本身的 `hasOwnedForegroundWindow()`，归属语义不变。没有永久抢焦点或反复提升窗口的计时器。
+
+host 在隐藏阶段完成几何与 DPR 准备后调用 `stagePresentation()`，停止旧动画并将进度置为 0，然后才显示原生窗口，本轮仅调用一次进入动画。独立 GUI fixture 的自行显示入口与受 host 管理的产品入口明确区分；排队回调核对显示代次。已显示窗口的重复唤起使用 `restorePresentationFocus()`，取消正在进行的退出而不重播进入动画。旧弹层仅剩退出动画时，焦点恢复等待其关闭；真正仍在交互的内部弹层保持其焦点。
+
+开始按钮、右上角收起、Esc 和外部失焦继续进入同一 host 收起转换。退出动画完成后隐藏 HWND；重复收起不重新延长计时器，动画期间重新唤起使旧隐藏失效。首次激活被拒绝时仍保留原有焦点防误收起边界。
+
+旧的“无托盘则最小化并保留任务栏按钮”恢复策略由本次修订替换。托盘失效会暂停两类接管，恢复并保持一个可见、非最小化的 Tool 窗口，提供持续可见的重试与退出入口。外部失焦不隐藏最后的恢复窗口；主动收起或关闭最后窗口请求正常退出。单例 IPC 可再次唤起，但不作为唯一可发现的恢复方式。托盘恢复不会自动重新启用已暂停或失败的输入接管。此前 ADR 与测试中的最小化记录属于当时版本，不修改其事实。
+
+尚未完成可信原生定位的无托盘紧急恢复入口采用更保守的几何：整个透明外窗及阴影都放在工作区四边 8 DIP 以内，最大尺寸亦受此约束，并临时关闭边框拖动。这一恢复状态优先保持原生开始按钮和重试／退出可达；不沿用正常菜单“可见面板 8 DIP、部分阴影跨出工作区”的策略。重试注册成功后重新经过隐藏定位和 region 建立，恢复正常面板间距及方向对应的可拖动边，不永久关闭缩放。
+
+普通原生定位失败但仍可取得 Qt 工作区的降级显示使用同样的完整外窗边界，本轮禁用缩放，下一次成功原生定位才恢复正常边缘。降级状态不继续套用旧显示器／任务栏方向的排除 region；确切的 region 建立失败仍直接取消显示，不走该回退。
+
+可见面板允许矩形由 `desktopMenuWorkArea()` 四边各扣除指定间距产生，当前为 8 DIP。显示准备先夹限旧尺寸，并统一 Qt maximumSize、有效 minimumSize 与原生 `WM_SIZING` 的允许外窗矩形；小工作区的有效最小值不得大于最大值。拖动边不能突破允许矩形，非拖动边保持固定；工作区在可见期间缩小时，原生缩放再次读取当前显示器工作区，较小边界优先。宽度吸附在相同最小／最大范围内选择档位，吸附后复核边界。透明外窗仍计入 24 DIP 阴影留白，面板与外窗边界分别计算。
+
+topmost 带来单独的输入命中问题：24 DIP 阴影留白大于 8 DIP 面板间距，外窗可与任务栏重叠。2026-10-23 正常桌面权限下，只读探针观察隔离布局候选 PID 33672：外窗为 `[-24,460,1542,1092]`，底部任务栏始于物理 y=1528，Start 矩形为 `[0,1528,83,72]`，region 尚未设置。菜单位于任务栏之前，9 个 Start 采样点中有 6 个被菜单命中，UIA 也未识别为 Start；中心点仍属于任务栏。该实际失败保存在本地 `build/validation/issue48-product-probe/start-overlap.json`，不因后续修复覆写。探针没有注入输入，采样几何稳定；指针前后位置不同，不将其描述为桌面没有用户活动。此轮隔离候选的清理不作为从菜单正常退出的验收证据。
+
+因此采用有实际失败依据的原生 region 修复：纯 Qt 几何 helper 将完整外窗的本地物理区域减去与任务栏矩形的交集，仅裁掉覆盖任务栏的阴影，保留可见面板 8 DIP 间距和其余方向／屏幕边的阴影。不将整个工作区作为一刀切裁剪，也不依赖仅对[同线程其他窗口有效的 HTTRANSPARENT](https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-nchittest)。任务栏实际几何缺失时，仅使用显示器相对工作区的唯一预留条带回退，不赋予点击资格。
+
+Windows 在最终定位后对本进程 GUI 线程的菜单 HWND 调用 `SetWindowRgn`。同一自有窗口子类在位置、尺寸、显示和 DPI 的 Qt 默认处理完成后复核并重套，避免 Qt 清空 mask 或尺寸变化留下旧区域；比较已有 region 并使用重入保护，防止该 API 产生的窗口位置消息形成循环。API 成功后将 HRGN 所有权交给系统；失败才由调用方释放。无法建立所需区域时取消本轮显示，不能回退为继续覆盖任务栏的窗口。新源码增加纯几何、自有隐藏 HWND 和 host 失败分支回归，但本段不声称修复已经通过构建或原生点位复测。
+
+局部 region 的交集直接用 `qint64` 端点运算，不对全局坐标使用 QRect 的通用归一化交集：[固定 Qt 6.8.2 实现](https://github.com/qt/qtbase/blob/v6.8.2/src/corelib/tools/qrect.cpp#L936)包含 `left()-1`／`top()-1`，有效矩形处于 INT_MIN 时也可能溢出。边界回归同时覆盖 INT_MIN 与 INT_MAX，只在转换为非负局部范围后构造 QRegion。
+
+`--run --observe-start-overlap PID` 对当前可见候选进行只读 HWND、Z 序、region、Start UIA 矩形及边缘／中心点采样，不移动指针、不发送输入、不安装 Hook，也不赋予点击资格。样式声明、命中采样和真实左／右键验收分别记录，修复后须使用同一模式确认实际命中，而不是以 region 已设置为通过证据。
+
+依据：[Microsoft 任务栏按钮规则](https://learn.microsoft.com/en-us/windows/win32/shell/taskbar)、[SetWindowPos 与 owner 层级](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowpos)、[Qt 6.8.2 Windows 窗口实现](https://github.com/qt/qtbase/blob/v6.8.2/src/plugins/platforms/windows/qwindowswindow.cpp)、[Layered Windows 命中规则](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features#layered-windows)、[SetWindowRgn 坐标、消息与所有权规则](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowrgn)。源码调查与待验证边界另见[窗口研究](../research/menu-window-followup-48.md)，实际结果见测试策略与 Issue / PR。
 
 ## 验证与依据
 

@@ -1,0 +1,58 @@
+{
+  "issue": 48,
+  "revision": "2.4-candidate-1",
+  "status": "approved-by-user-2026-10-23",
+  "appliedToRuntime": true,
+  "runtimeVerification": "recorded separately in Issue 48 and testing documentation",
+  "fontFamily": "Microsoft YaHei UI",
+  "menu": {
+    "radiusDip": 8,
+    "paddingDip": 6,
+    "rowHeightDip": 36,
+    "rowRadiusDip": 4,
+    "iconSizeDip": 16,
+    "textInsetDip": 38,
+    "pointerHover": "quiet neutral surface, no accent flash",
+    "checkmark": "rounded vector path in the shared leading icon slot"
+  },
+  "tooltip": {
+    "radiusDip": 4,
+    "shadow": false,
+    "delayMs": 600,
+    "paddingHorizontalDip": 10,
+    "paddingVerticalDip": 7
+  },
+  "feedback": {
+    "radiusDip": 8,
+    "shadow": "soft ambient and contact layers",
+    "showFor": [
+      "actionable failure requiring user attention"
+    ],
+    "silentFor": [
+      "application launch",
+      "pin or unpin",
+      "successful refresh",
+      "successful save"
+    ]
+  },
+  "dialog": {
+    "radiusDip": 12,
+    "paddingDip": 24,
+    "shadow": "soft ambient and contact layers"
+  },
+  "motion": {
+    "hoverMs": 0,
+    "pressMs": 0,
+    "menuEnterMs": 120,
+    "menuExitMs": 90,
+    "oneEnterPerReveal": true
+  },
+  "copy": {
+    "generatedMiddleDotSeparators": false,
+    "tileSizes": [
+      "小磁贴 (1×1)",
+      "中磁贴 (2×2)",
+      "宽磁贴 (4×2)"
+    ]
+  }
+}

@@ -230,6 +230,8 @@ int runNativeChromeProbe() {
                                 revealGeometry == geometry;
             const bool flags = window->flags().testFlag(Qt::FramelessWindowHint) &&
                                window->flags().testFlag(Qt::NoDropShadowWindowHint) &&
+                               (window->flags() & Qt::WindowType_Mask) == Qt::Tool &&
+                               window->flags().testFlag(Qt::WindowStaysOnTopHint) &&
                                window->color().alpha() == 0;
             cycles.append(QJsonObject{
                 {QStringLiteral("cycle"), cycle + 1},

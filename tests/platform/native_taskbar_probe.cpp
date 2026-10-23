@@ -3,6 +3,7 @@
 #include "platform/desktop_platform.h"
 
 #include <QCryptographicHash>
+#include <QDateTime>
 #include <QFile>
 #include <QGuiApplication>
 #include <QJsonArray>
@@ -18,8 +19,13 @@
 #include <windows.h>
 
 #include <commctrl.h>
+#include <objbase.h>
+#include <oleauto.h>
+#include <uiautomation.h>
+#include <wrl/client.h>
 
 #include <iostream>
+#include <thread>
 
 namespace {
 LRESULT CALLBACK blockFixtureSizingCommand(HWND window, UINT message, WPARAM wparam, LPARAM lparam,
@@ -82,6 +88,7 @@ struct ProductObservation {
     DWORD processId;
     const QList<xdstarter::DesktopAnchorResult>* monitors;
     QJsonArray samples;
+    HWND window = nullptr;
 };
 BOOL CALLBACK observeProduct(HWND window, LPARAM parameter) {
     auto& context = *reinterpret_cast<ProductObservation*>(parameter);
@@ -92,6 +99,7 @@ BOOL CALLBACK observeProduct(HWND window, LPARAM parameter) {
         GetAncestor(window, GA_ROOT) != window || !GetWindowTextW(window, title, 64) ||
         wcscmp(title, L"XDStarter") != 0)
         return TRUE;
+    context.window = window;
     const auto monitor = MonitorFromWindow(window, MONITOR_DEFAULTTONULL);
     MONITORINFOEXW info{};
     info.cbSize = sizeof(info);
@@ -124,6 +132,225 @@ BOOL CALLBACK observeProduct(HWND window, LPARAM parameter) {
     }
     return TRUE;
 }
+
+QJsonObject windowIdentity(HWND window) {
+    DWORD process = 0;
+    const DWORD thread = GetWindowThreadProcessId(window, &process);
+    RECT bounds{};
+    GetWindowRect(window, &bounds);
+    wchar_t className[128]{};
+    GetClassNameW(window, className, 128);
+    HRGN region = CreateRectRgn(0, 0, 0, 0);
+    const int regionKind = region ? GetWindowRgn(window, region) : ERROR;
+    if (region)
+        DeleteObject(region);
+    return {{QStringLiteral("handle"), QString::number(reinterpret_cast<quintptr>(window), 16)},
+            {QStringLiteral("processId"), static_cast<qint64>(process)},
+            {QStringLiteral("threadId"), static_cast<qint64>(thread)},
+            {QStringLiteral("className"), QString::fromWCharArray(className)},
+            {QStringLiteral("rect"), jsonRect(rect(bounds))},
+            {QStringLiteral("style"), QString::number(GetWindowLongPtrW(window, GWL_STYLE), 16)},
+            {QStringLiteral("extendedStyle"),
+             QString::number(GetWindowLongPtrW(window, GWL_EXSTYLE), 16)},
+            {QStringLiteral("visible"), IsWindowVisible(window) != FALSE},
+            {QStringLiteral("minimized"), IsIconic(window) != FALSE},
+            {QStringLiteral("regionKind"), regionKind}};
+}
+
+QJsonObject observeStartOverlap(HWND menu, const xdstarter::DesktopAnchorResult& anchor) {
+    using Microsoft::WRL::ComPtr;
+    QJsonObject result{{QStringLiteral("readOnly"), true},
+                       {QStringLiteral("inputInjected"), false},
+                       {QStringLiteral("capturePermissionGranted"), false},
+                       {QStringLiteral("observedAtUtc"),
+                        QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)}};
+    struct ObservationContext {
+        DPI_AWARENESS_CONTEXT previous =
+            SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+        HRESULT initialized = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+        ~ObservationContext() {
+            if (SUCCEEDED(initialized))
+                CoUninitialize();
+            if (previous)
+                SetThreadDpiAwarenessContext(previous);
+        }
+    } context;
+    const auto finish = [&](QString error = {}) {
+        result.insert(QStringLiteral("error"), error);
+        result.insert(QStringLiteral("measurementCompleted"), error.isEmpty());
+        return result;
+    };
+    if (FAILED(context.initialized))
+        return finish(QStringLiteral("com-initialization-failed"));
+    HWND taskbar = nullptr;
+    HWND candidate = GetTopWindow(nullptr);
+    for (int index = 0; candidate && index < 8192;
+         candidate = GetWindow(candidate, GW_HWNDNEXT), ++index) {
+        wchar_t name[64]{};
+        RECT bounds{};
+        if (GetClassNameW(candidate, name, 64) && IsWindowVisible(candidate) &&
+            (wcscmp(name, L"Shell_TrayWnd") == 0 || wcscmp(name, L"Shell_SecondaryTrayWnd") == 0) &&
+            GetWindowRect(candidate, &bounds) && rect(bounds) == anchor.taskbarPhysicalRect) {
+            taskbar = candidate;
+            break;
+        }
+    }
+    if (!taskbar)
+        return finish(QStringLiteral("taskbar-window-unavailable"));
+    result.insert(QStringLiteral("menu"), windowIdentity(menu));
+    result.insert(QStringLiteral("taskbar"), windowIdentity(taskbar));
+    result.insert(QStringLiteral("taskbarEdge"),
+                  static_cast<int>(xdstarter::desktopTaskbarEdge(anchor)));
+    bool menuBeforeTaskbar = false;
+    candidate = GetTopWindow(nullptr);
+    for (int index = 0; candidate && index < 8192;
+         candidate = GetWindow(candidate, GW_HWNDNEXT), ++index) {
+        if (candidate == taskbar)
+            break;
+        if (candidate == menu) {
+            menuBeforeTaskbar = true;
+            break;
+        }
+    }
+    result.insert(QStringLiteral("menuBeforeTaskbarInZOrder"), menuBeforeTaskbar);
+    ComPtr<IUIAutomation> automation;
+    HRESULT status = CoCreateInstance(CLSID_CUIAutomation8, nullptr, CLSCTX_INPROC_SERVER,
+                                      IID_PPV_ARGS(automation.GetAddressOf()));
+    if (FAILED(status))
+        return finish(QStringLiteral("uia-unavailable"));
+    ComPtr<IUIAutomation2> bounded;
+    if (FAILED(automation.As(&bounded)) || FAILED(bounded->put_ConnectionTimeout(100)) ||
+        FAILED(bounded->put_TransactionTimeout(100)))
+        return finish(QStringLiteral("uia-timeout-configuration-failed"));
+    ComPtr<IUIAutomationElement> root;
+    if (FAILED(automation->ElementFromHandle(taskbar, root.GetAddressOf())))
+        return finish(QStringLiteral("uia-taskbar-unavailable"));
+    VARIANT identifier{};
+    identifier.vt = VT_BSTR;
+    identifier.bstrVal = SysAllocString(L"StartButton");
+    if (!identifier.bstrVal)
+        return finish(QStringLiteral("uia-out-of-memory"));
+    ComPtr<IUIAutomationCondition> idCondition;
+    status = automation->CreatePropertyCondition(UIA_AutomationIdPropertyId, identifier,
+                                                 idCondition.GetAddressOf());
+    VariantClear(&identifier);
+    VARIANT type{};
+    type.vt = VT_I4;
+    type.lVal = UIA_ButtonControlTypeId;
+    ComPtr<IUIAutomationCondition> typeCondition;
+    ComPtr<IUIAutomationCondition> condition;
+    if (FAILED(status) ||
+        FAILED(automation->CreatePropertyCondition(UIA_ControlTypePropertyId, type,
+                                                   typeCondition.GetAddressOf())) ||
+        FAILED(automation->CreateAndCondition(idCondition.Get(), typeCondition.Get(),
+                                              condition.GetAddressOf())))
+        return finish(QStringLiteral("uia-condition-failed"));
+    ComPtr<IUIAutomationElementArray> starts;
+    int count = 0;
+    if (FAILED(root->FindAll(TreeScope_Descendants, condition.Get(), starts.GetAddressOf())) ||
+        FAILED(starts->get_Length(&count)) || count != 1)
+        return finish(QStringLiteral("start-button-not-uniquely-identified"));
+    ComPtr<IUIAutomationElement> start;
+    RECT rawStart{};
+    BOOL offscreen = TRUE;
+    int provider = 0;
+    DWORD taskbarProcess = 0;
+    GetWindowThreadProcessId(taskbar, &taskbarProcess);
+    if (FAILED(starts->GetElement(0, start.GetAddressOf())) ||
+        FAILED(start->get_CurrentBoundingRectangle(&rawStart)) ||
+        FAILED(start->get_CurrentIsOffscreen(&offscreen)) || offscreen ||
+        FAILED(start->get_CurrentProcessId(&provider)) || provider != int(taskbarProcess))
+        return finish(QStringLiteral("start-button-unavailable"));
+    const QRect button = rect(rawStart);
+    if (!button.isValid() || button.width() > 256 || button.height() > 256 ||
+        !anchor.taskbarPhysicalRect.contains(button))
+        return finish(QStringLiteral("start-button-bounds-invalid"));
+    result.insert(QStringLiteral("startButton"), jsonRect(button));
+    QRect menuRect;
+    RECT rawMenu{};
+    if (GetWindowRect(menu, &rawMenu))
+        menuRect = rect(rawMenu);
+    result.insert(QStringLiteral("outerOverlap"), jsonRect(menuRect.intersected(button)));
+    ComPtr<IUIAutomationTreeWalker> walker;
+    if (FAILED(automation->get_RawViewWalker(walker.GetAddressOf())))
+        return finish(QStringLiteral("uia-walker-unavailable"));
+    QList<QPair<QString, QPoint>> points{
+        {QStringLiteral("center"), button.center()},
+        {QStringLiteral("top-left"), button.topLeft() + QPoint(1, 1)},
+        {QStringLiteral("top-right"), button.topRight() + QPoint(-1, 1)},
+        {QStringLiteral("bottom-left"), button.bottomLeft() + QPoint(1, -1)},
+        {QStringLiteral("bottom-right"), button.bottomRight() + QPoint(-1, -1)}};
+    const qreal dpr = GetDpiForWindow(menu) / 96.0;
+    for (int dip : {1, 4, 8, 16}) {
+        const int offset = qMax(1, qRound(dip * dpr));
+        QPoint point = button.center();
+        switch (xdstarter::desktopTaskbarEdge(anchor)) {
+        case xdstarter::TaskbarEdge::Bottom:
+            point.setY(qMin(button.bottom(), button.top() + offset - 1));
+            break;
+        case xdstarter::TaskbarEdge::Top:
+            point.setY(qMax(button.top(), button.bottom() - offset + 1));
+            break;
+        case xdstarter::TaskbarEdge::Left:
+            point.setX(qMax(button.left(), button.right() - offset + 1));
+            break;
+        case xdstarter::TaskbarEdge::Right:
+            point.setX(qMin(button.right(), button.left() + offset - 1));
+            break;
+        }
+        points.append({QStringLiteral("taskbar-inner-edge-%1dip").arg(dip), point});
+    }
+    QJsonArray samples;
+    int menuHits = 0;
+    POINT cursorBefore{}, cursorAfter{};
+    GetPhysicalCursorPos(&cursorBefore);
+    for (const auto& namedPoint : points) {
+        const auto point = namedPoint.second;
+        const POINT nativePoint{point.x(), point.y()};
+        const HWND hit = WindowFromPoint(nativePoint);
+        const HWND hitRoot = GetAncestor(hit, GA_ROOT);
+        const bool menuHit = hitRoot == menu;
+        menuHits += menuHit ? 1 : 0;
+        ComPtr<IUIAutomationElement> current;
+        const HRESULT pointResult =
+            automation->ElementFromPoint(nativePoint, current.GetAddressOf());
+        BOOL isStart = FALSE;
+        for (int depth = 0; SUCCEEDED(pointResult) && current && depth < 8; ++depth) {
+            if (FAILED(automation->CompareElements(start.Get(), current.Get(), &isStart)) ||
+                isStart)
+                break;
+            ComPtr<IUIAutomationElement> parent;
+            if (FAILED(walker->GetParentElement(current.Get(), parent.GetAddressOf())))
+                break;
+            current = parent;
+        }
+        samples.append(QJsonObject{
+            {QStringLiteral("name"), namedPoint.first},
+            {QStringLiteral("point"), QJsonArray{point.x(), point.y()}},
+            {QStringLiteral("insideMenuOuterRect"), menuRect.contains(point)},
+            {QStringLiteral("windowHit"), windowIdentity(hit)},
+            {QStringLiteral("rootHitHandle"),
+             QString::number(reinterpret_cast<quintptr>(hitRoot), 16)},
+            {QStringLiteral("menuHit"), menuHit},
+            {QStringLiteral("taskbarRootHit"), hitRoot == taskbar},
+            {QStringLiteral("uiaSucceeded"), SUCCEEDED(pointResult)},
+            {QStringLiteral("uiaStartOrDescendant"), isStart != FALSE},
+            {QStringLiteral("uiaResult"), QString::number(static_cast<quint32>(pointResult), 16)}});
+    }
+    GetPhysicalCursorPos(&cursorAfter);
+    result.insert(QStringLiteral("samples"), samples);
+    result.insert(QStringLiteral("menuHitCount"), menuHits);
+    result.insert(QStringLiteral("cursorUnchangedDuringObservation"),
+                  cursorBefore.x == cursorAfter.x && cursorBefore.y == cursorAfter.y);
+    RECT finalMenu{}, finalTaskbar{}, finalStart{};
+    const bool stable =
+        IsWindowVisible(menu) && !IsIconic(menu) && GetWindowRect(menu, &finalMenu) &&
+        GetWindowRect(taskbar, &finalTaskbar) && rect(finalMenu) == menuRect &&
+        rect(finalTaskbar) == anchor.taskbarPhysicalRect &&
+        SUCCEEDED(start->get_CurrentBoundingRectangle(&finalStart)) && rect(finalStart) == button;
+    result.insert(QStringLiteral("geometryStable"), stable);
+    return finish(stable ? QString{} : QStringLiteral("windows-changed-during-observation"));
+}
 } // namespace
 
 int main(int argc, char** argv) {
@@ -134,7 +361,7 @@ int main(int argc, char** argv) {
     }
     if (app.arguments().contains(QStringLiteral("--resize-filter-test"))) {
         QWindow menu;
-        menu.setFlags(Qt::Window | Qt::FramelessWindowHint);
+        menu.setFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
         menu.setMinimumSize(QSize(528, 528));
         menu.resize(1028, 728);
         const HWND native = reinterpret_cast<HWND>(menu.winId());
@@ -149,6 +376,19 @@ int main(int argc, char** argv) {
         {
             auto platform = xdstarter::createDesktopPlatform();
             const auto appearance = platform->configureMenuWindow(menu.winId());
+            const auto extended = GetWindowLongPtrW(native, GWL_EXSTYLE);
+            if (!(extended & WS_EX_TOOLWINDOW) || (extended & WS_EX_APPWINDOW) ||
+                !(extended & WS_EX_TOPMOST) || IsWindowVisible(native))
+                ++failures;
+            {
+                QWindow owned;
+                owned.setFlags(Qt::Dialog | Qt::FramelessWindowHint);
+                owned.setTransientParent(&menu);
+                const HWND dialog = reinterpret_cast<HWND>(owned.winId());
+                if (GetWindow(dialog, GW_OWNER) != native ||
+                    !(GetWindowLongPtrW(native, GWL_EXSTYLE) & WS_EX_TOPMOST))
+                    ++failures;
+            }
             std::cerr << "Native fixture window=" << IsWindow(native)
                       << " configure=" << appearance.errorCode.toStdString() << '\n';
             for (UINT edge : {WMSZ_LEFT, WMSZ_RIGHT, WMSZ_TOP, WMSZ_BOTTOM, WMSZ_TOPLEFT,
@@ -171,6 +411,19 @@ int main(int argc, char** argv) {
                     ++failures;
                 SendMessageW(native, WM_EXITSIZEMOVE, 0, 0);
             }
+            const QRect allowed = rect(origin).adjusted(-30, -40, 80, 90);
+            menu.setProperty("menuOuterBoundsPhysical", allowed);
+            for (UINT edge : {WMSZ_LEFT, WMSZ_RIGHT, WMSZ_TOP, WMSZ_BOTTOM, WMSZ_TOPLEFT,
+                              WMSZ_TOPRIGHT, WMSZ_BOTTOMLEFT, WMSZ_BOTTOMRIGHT}) {
+                SendMessageW(native, WM_ENTERSIZEMOVE, 0, 0);
+                RECT proposed{origin.left - 1000, origin.top - 1000, origin.right + 1000,
+                              origin.bottom + 1000};
+                SendMessageW(native, WM_SIZING, edge, reinterpret_cast<LPARAM>(&proposed));
+                if (!allowed.contains(rect(proposed)))
+                    ++failures;
+                SendMessageW(native, WM_EXITSIZEMOVE, 0, 0);
+            }
+            menu.setProperty("menuOuterBoundsPhysical", QRect{});
             SendMessageW(native, WM_SYSCOMMAND, SC_SIZE | WMSZ_BOTTOM, 0);
             SetWindowPos(native, nullptr, origin.left + 24, origin.top + 24,
                          origin.right - origin.left, origin.bottom - origin.top,
@@ -197,6 +450,71 @@ int main(int argc, char** argv) {
             if (outside.left != 0 || outside.top != 0 || outside.right != 800 ||
                 outside.bottom != 800)
                 ++failures;
+            for (int edge = 0; edge < 4; ++edge) {
+                xdstarter::DesktopAnchorResult anchor;
+                anchor.monitorPhysicalRect = QRect(-1200, -800, 2400, 1600);
+                const auto screen = anchor.monitorPhysicalRect;
+                constexpr int thickness = 72;
+                if (edge == 0) {
+                    anchor.taskbarPhysicalRect = QRect(
+                        screen.left(), screen.bottom() - thickness + 1, screen.width(), thickness);
+                    anchor.workAreaPhysicalRect = screen.adjusted(0, 0, 0, -thickness);
+                } else if (edge == 1) {
+                    anchor.taskbarPhysicalRect =
+                        QRect(screen.topLeft(), QSize(screen.width(), thickness));
+                    anchor.workAreaPhysicalRect = screen.adjusted(0, thickness, 0, 0);
+                } else if (edge == 2) {
+                    anchor.taskbarPhysicalRect =
+                        QRect(screen.topLeft(), QSize(thickness, screen.height()));
+                    anchor.workAreaPhysicalRect = screen.adjusted(thickness, 0, 0, 0);
+                } else {
+                    anchor.taskbarPhysicalRect = QRect(screen.right() - thickness + 1, screen.top(),
+                                                       thickness, screen.height());
+                    anchor.workAreaPhysicalRect = screen.adjusted(0, 0, -thickness, 0);
+                }
+                const auto placed = platform->placeWindow(menu.winId(), anchor, 12, false, 36);
+                const auto checkRegion = [&] {
+                    RECT actual{};
+                    if (!GetWindowRect(native, &actual))
+                        return false;
+                    const QRect outer = rect(actual);
+                    HRGN region = CreateRectRgn(0, 0, 0, 0);
+                    if (!region)
+                        return false;
+                    bool passed = GetWindowRgn(native, region) != ERROR;
+                    const QRect overlap = outer.intersected(anchor.taskbarPhysicalRect);
+                    if (overlap.isValid()) {
+                        const QPoint point = overlap.center() - outer.topLeft();
+                        passed = passed && !PtInRegion(region, point.x(), point.y());
+                    }
+                    for (QPoint local : {QPoint(0, outer.height() / 2),
+                                         QPoint(outer.width() - 1, outer.height() / 2),
+                                         QPoint(outer.width() / 2, 0),
+                                         QPoint(outer.width() / 2, outer.height() - 1),
+                                         QPoint(outer.width() / 2, outer.height() / 2)}) {
+                        const bool excluded =
+                            anchor.taskbarPhysicalRect.contains(local + outer.topLeft());
+                        passed = passed &&
+                                 (PtInRegion(region, local.x(), local.y()) != FALSE) != excluded;
+                    }
+                    DeleteObject(region);
+                    return passed && !IsWindowVisible(native);
+                };
+                if (!placed.success || !checkRegion())
+                    ++failures;
+                RECT positioned{};
+                GetWindowRect(native, &positioned);
+                SetWindowPos(native, nullptr, positioned.left + 7, positioned.top + 7,
+                             positioned.right - positioned.left + 31,
+                             positioned.bottom - positioned.top - 15,
+                             SWP_NOACTIVATE | SWP_NOZORDER);
+                if (!checkRegion())
+                    ++failures;
+                menu.setMask(QRegion(QRect(0, 0, 1, 1)));
+                menu.setMask(QRegion{});
+                if (!checkRegion())
+                    ++failures;
+            }
             QWindow unrelated;
             const HWND other = reinterpret_cast<HWND>(unrelated.winId());
             SendMessageW(other, WM_ENTERSIZEMOVE, 0, 0);
@@ -220,6 +538,10 @@ int main(int argc, char** argv) {
                                                {QStringLiteral("ownWindowSizingCases"), 8},
                                                {QStringLiteral("inactiveAndUnrelatedCases"), 3},
                                                {QStringLiteral("sizingPhaseCases"), 3},
+                                               {QStringLiteral("boundedSizingCases"), 8},
+                                               {QStringLiteral("hiddenWindowPolicyCases"), 1},
+                                               {QStringLiteral("ownedDialogPolicyCases"), 1},
+                                               {QStringLiteral("taskbarInputRegionCases"), 12},
                                                {QStringLiteral("scope"),
                                                 "WM_SIZING unit messages target only fixture-owned "
                                                 "HWNDs; no global input."}})
@@ -261,13 +583,39 @@ int main(int argc, char** argv) {
     const auto previous = SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     QList<xdstarter::DesktopAnchorResult> monitors;
     EnumDisplayMonitors(nullptr, nullptr, collectMonitor, reinterpret_cast<LPARAM>(&monitors));
-    const int observeIndex = app.arguments().indexOf(QStringLiteral("--observe-product"));
+    const int overlapIndex = app.arguments().indexOf(QStringLiteral("--observe-start-overlap"));
+    const int observeIndex = overlapIndex >= 0
+                                 ? overlapIndex
+                                 : app.arguments().indexOf(QStringLiteral("--observe-product"));
     if (observeIndex >= 0) {
         bool converted = false;
         const auto pid = app.arguments().value(observeIndex + 1).toUInt(&converted);
         ProductObservation observation{pid, &monitors, {}};
         if (converted && pid)
             EnumWindows(observeProduct, reinterpret_cast<LPARAM>(&observation));
+        if (overlapIndex >= 0) {
+            QJsonObject result{{QStringLiteral("measurementCompleted"), false},
+                               {QStringLiteral("error"), "expected-one-visible-product-window"}};
+            if (observation.samples.size() == 1 && observation.window) {
+                const auto monitor = MonitorFromWindow(observation.window, MONITOR_DEFAULTTONULL);
+                MONITORINFOEXW info{};
+                info.cbSize = sizeof(info);
+                if (GetMonitorInfoW(monitor, reinterpret_cast<MONITORINFO*>(&info))) {
+                    for (const auto& anchor : monitors) {
+                        if (anchor.monitorName != QString::fromWCharArray(info.szDevice))
+                            continue;
+                        std::thread worker(
+                            [&] { result = observeStartOverlap(observation.window, anchor); });
+                        worker.join();
+                        break;
+                    }
+                }
+            }
+            std::cout << QJsonDocument(result).toJson().constData();
+            if (previous)
+                SetThreadDpiAwarenessContext(previous);
+            return result.value(QStringLiteral("measurementCompleted")).toBool() ? 0 : 1;
+        }
         std::cout << QJsonDocument(
                          QJsonObject{{QStringLiteral("kernelVersion"), QSysInfo::kernelVersion()},
                                      {QStringLiteral("samples"), observation.samples}})
@@ -287,7 +635,8 @@ int main(int argc, char** argv) {
             continue;
         }
         QWindow window;
-        window.setFlags(Qt::Window | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint);
+        window.setFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::NoDropShadowWindowHint |
+                        Qt::WindowStaysOnTopHint);
         window.setSurfaceType(QSurface::RasterSurface);
         window.setScreen(screen);
         window.setGeometry(

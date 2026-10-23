@@ -1,5 +1,18 @@
 # 视觉设计与资产
 
+[Issue #48](https://github.com/xiaodaozhi/xdstarter/issues/48) 的 **2.4 交互表面稿已于2026-10-23由用户验收**。它修订菜单、尺寸子菜单、关于、浮动反馈与tooltip，完整桌面磁贴几何沿用下文基准；运行时检查另记于测试策略。
+
+| 已验收交互稿 | 浅色 | 深色 |
+| --- | --- | --- |
+| 右键、下拉与尺寸子菜单 | [PNG](mockups/v2/proposals/issue-48/menus-light.png) / [SVG](mockups/v2/proposals/issue-48/menus-light.svg) | [PNG](mockups/v2/proposals/issue-48/menus-dark.png) / [SVG](mockups/v2/proposals/issue-48/menus-dark.svg) |
+| 关于、必要错误提示、tooltip与目录空态 | [PNG](mockups/v2/proposals/issue-48/overlays-light.png) / [SVG](mockups/v2/proposals/issue-48/overlays-light.svg) | [PNG](mockups/v2/proposals/issue-48/overlays-dark.png) / [SVG](mockups/v2/proposals/issue-48/overlays-dark.svg) |
+
+表面使用独立的`interactionSurface` tokens：菜单8 DIP圆角、36 DIP行高、统一38 DIP文本起点；勾选与图标均为16 DIP矢量图形。菜单、浮动提示和对话框使用柔和分层投影，tooltip仅4 DIP圆角且无投影。鼠标悬停直接进入中性底色，避免强调色中间态。正常打开应用、固定、刷新和保存不弹浮动提示；错误反馈可关闭。新稿及内置文案不使用中点作分隔符，用户和系统提供的名称不被清洗。
+
+源码为[source/build_surface_proposal_48.py](source/build_surface_proposal_48.py)，[proposal.json](mockups/v2/proposals/issue-48/proposal.json)记录设计验收身份；PNG由现有Qt SVG工具离屏导出，字体仍为系统Microsoft YaHei UI，不分发字体。当前实现采用schema4动态列，数据与吸附取舍见[ADR-0015](../technical/adr/0015-responsive-tile-columns.md)。
+
+运行时样例已通过QtTest与目视核对：[浅色菜单](validation/issue-48/light-menus.png)／[深色菜单](validation/issue-48/dark-menus.png)、[浅色关于](validation/issue-48/light-about.png)／[深色关于](validation/issue-48/dark-about.png)、[浅色必要错误提示](validation/issue-48/light-failure.png)／[深色必要错误提示](validation/issue-48/dark-failure.png)。这些是内存样例的离屏抓帧，主窗口之外的RGB背景不代表Windows透明合成；菜单位置与样例编辑状态可不同，字体、图标位、hover、圆角、模态层、阴影及关闭对齐分别验证。精确程序和检查身份见[测试策略](../technical/testing.md)。
+
 当前基准：**v2 精确网格矢量稿，修订 2.3**，由 [Issue #41](https://github.com/xiaodaozhi/xdstarter/issues/41) 更新，沿用 [Issue #29](https://github.com/xiaodaozhi/xdstarter/issues/29) 的完整菜单布局。本修订统一此前的窗口外观与完整正文布局：顶部以搜索为主入口，右侧提供更多和收起图标；正文并列应用目录与磁贴分组，正常浏览不常驻品牌大标题、调试提示或保存按钮。源文件、tokens 和当前桌面导出同时维护。
 
 设计导出说明目标布局；实际 QML 抓帧、有效缩放、产品交互和重启的结果统一记录在[测试策略](../technical/testing.md)，不能以 SVG/PNG 导出代替运行时验收。Mica/Acrylic 与完整系统接管仍由 [#6](https://github.com/xiaodaozhi/xdstarter/issues/6) 跟踪，本轮采用实色面板。

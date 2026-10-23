@@ -87,6 +87,7 @@ int main(int argc, char *argv[]) {
     QGuiApplication::setOrganizationName(QStringLiteral("xiaodaozhi"));
     QGuiApplication::setOrganizationDomain(QStringLiteral("github.com/xiaodaozhi"));
     QGuiApplication::setApplicationName(QStringLiteral("XDStarter"));
+    QGuiApplication::setApplicationVersion(QStringLiteral(XDSTARTER_VERSION));
     xdstarter::configureInterfaceFont();
     QIcon applicationIcon;
     for (const int size : {16, 20, 24, 32, 40, 48, 64, 96, 128, 256, 512, 1024}) {

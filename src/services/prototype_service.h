@@ -36,6 +36,8 @@ class PrototypeService final {
                               bool sampleMode = true);
 
     [[nodiscard]] QVector<PreviewGroup> previewGroups() const;
+    [[nodiscard]] int gridColumns() const;
+    [[nodiscard]] LayoutResult setGridColumns(int columns);
     [[nodiscard]] QString neighborTileId(const QString& tileId, const QString& direction) const;
     [[nodiscard]] LayoutResult checkPlacement(const QString& tileId, const QString& groupId,
                                               int column, int row, TileSize size) const;
@@ -44,6 +46,12 @@ class PrototypeService final {
     [[nodiscard]] LayoutResult resizeTile(const QString& tileId, TileSize size);
     [[nodiscard]] LayoutResult pinApplication(const QJsonObject& target,
                                               const QString& groupId = {});
+    [[nodiscard]] LayoutResult checkApplicationPlacement(const QJsonObject& target,
+                                                         const QString& groupId, int column,
+                                                         int row) const;
+    [[nodiscard]] LayoutResult pinApplicationAt(const QJsonObject& target, const QString& groupId,
+                                                int column, int row);
+    [[nodiscard]] LayoutResult unpinApplication(const QString& applicationId);
     [[nodiscard]] LayoutResult unpinTile(const QString& tileId);
     [[nodiscard]] LayoutResult renameTile(const QString& tileId, const QString& displayName);
     [[nodiscard]] LayoutResult resetTileDisplayName(const QString& tileId);
@@ -62,6 +70,7 @@ class PrototypeService final {
 
   private:
     const TileGrid& grid_;
+    int gridColumns_ = 0;
     QVector<PreviewGroup> groups_;
     QJsonObject preferences_;
     QJsonArray targets_;
@@ -72,7 +81,8 @@ class PrototypeService final {
     void updateGroupGeometry(PreviewGroup& group) const;
     [[nodiscard]] LayoutResult planPlacement(const QString& tileId, const QString& groupId,
                                              int column, int row, TileSize size,
-                                             QVector<PreviewGroup>& planned) const;
+                                             QVector<PreviewGroup>& planned,
+                                             const PreviewTile* inserted = nullptr) const;
     [[nodiscard]] LayoutResult updateTileDisplayName(const QString& tileId,
                                                     const QString& displayName, bool reset);
 };

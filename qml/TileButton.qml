@@ -11,6 +11,7 @@ Button {
     required property var tokens
     property var motion: ({})
     property bool keyboardNavigation: false
+    property bool hintsEnabled: true
     property bool editMode: false
     property bool readOnly: false
     property bool dragging: false
@@ -62,6 +63,13 @@ Button {
     }
     ParallelAnimation {
         running: tileButton.motion.hasPrevious === true
+        onFinished: {
+            if (tileButton.activeFocus)
+                Qt.callLater(function () {
+                    if (tileButton.activeFocus)
+                        tileButton.focused(tileButton);
+                });
+        }
         NumberAnimation {
             target: tileButton
             property: "x"
@@ -193,8 +201,8 @@ Button {
         objectName: "tileToolTip"
         width: Math.min(380, implicitWidth)
         parent: tileButton
-        visible: !tileButton.dragging && (tileButton.pointerHovered || tileButton.activeFocus)
-        text: tileButton.tile.name + " · " + tileButton.tile.dimensions + (tileButton.targetAvailable ? "" : "\n" + (tileButton.tile.unavailableReason || qsTr("应用不可用；可右键取消固定。")))
+        visible: tileButton.hintsEnabled && !tileButton.dragging && (tileButton.pointerHovered || (tileButton.keyboardNavigation && tileButton.activeFocus))
+        text: tileButton.tile.name + "\n" + tileButton.tile.dimensions + (tileButton.targetAvailable ? "" : "\n" + (tileButton.tile.unavailableReason || qsTr("应用不可用；可右键取消固定。")))
         timeout: -1
         contentItem: Text {
             text: tileNameTip.text

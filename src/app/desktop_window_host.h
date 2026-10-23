@@ -3,6 +3,7 @@
 #include "platform/desktop_platform.h"
 
 #include <QElapsedTimer>
+#include <QImage>
 #include <QObject>
 #include <QPointer>
 #include <QTimer>
@@ -57,6 +58,7 @@ class DesktopWindowHost final : public QObject {
 
   private slots:
     void scheduleFocusCheck();
+    void retryTrayRegistration();
 
   signals:
     void exitRequested();
@@ -83,6 +85,8 @@ class DesktopWindowHost final : public QObject {
     void cancelRevealPreparation();
     bool isCurrentReveal(quint64 request) const;
     void rememberVisibleWindowSize();
+    void updateWindowConstraints();
+    void showRecoveryWindow();
     QPointer<QWindow> window_;
     DesktopShellService &shell_;
     DesktopPlatform &placement_;
@@ -107,9 +111,12 @@ class DesktopWindowHost final : public QObject {
     // Survives canceled screen migrations, which may temporarily change Qt's
     // logical size while preserving the native physical rectangle.
     QSize intendedWindowSize_;
+    QSize preferredMinimumSize_;
+    QImage trayIcon_;
     quint64 placementRequest_ = 0;
     quint64 preparationRequest_ = 0;
     bool recoveryAvailable_ = false;
+    bool recoveryWindowLayout_ = false;
     bool stopping_ = false;
     bool previousQuitOnClose_ = true;
     bool focusArmed_ = false;

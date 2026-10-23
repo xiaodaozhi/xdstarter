@@ -6,7 +6,23 @@
 
 GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查看 PNG，核对字体、应用图标、长名称、间隙及辅助功能信息的表达。
 
-## 当前：最终程序桌面复测与四边任务栏（Issue #45）
+## 当前：第二轮菜单、窗口与动态列（Issue #48）
+
+用户已验收[2.4浮层设计](../design/README.md)，并确认可用磁贴列数随窗口变化。运行时采用统一矢量图标位、尺寸子菜单、安静中性hover、柔和阴影、模态关于框和仅必要失败提示；tooltip保留600 ms延时、4 DIP圆角且无阴影。目录固定改为拖动／右键，默认最后分组，合并公共／用户同路径目录并读取Shell本地化名称。动态列数和严格格式4的兼容策略见 [ADR-0015](adr/0015-responsive-tile-columns.md)。
+
+当前测试优先级为纯几何、领域／存储、QtTest、自有隐藏HWND消息，以及只读产品观测。没有使用Computer Use，没有更改Windows任务栏或显示设置。旧#45的四边×双对齐物理矩阵保持原程序身份，不计为#48最终程序已逐组重测。正式工具基线仍为MSVC19.29.30153.0；本机新鲜配置实际发现既有v142安装为19.29.30159.0，使用明确的替代MSVC开关验证附加兼容，不冒充精确基线通过，Qt6.8.2与SDK19041不变。
+
+目录本地化隔离夹具按照微软[Desktop.ini定制流程](https://learn.microsoft.com/en-us/windows/win32/shell/how-to-customize-folders-with-desktop-ini)，在创建快捷方式等Shell COM操作之前完成目录定制，先用[PathMakeSystemFolderW](https://learn.microsoft.com/en-us/windows/win32/api/shlwapi/nf-shlwapi-pathmakesystemfolderw)设置受控目录属性，以UTF-16LE BOM写入`desktop.ini`，在设置ini的系统／隐藏属性前通过`GetPrivateProfileStringW`精确读回中文，再独立检查真实Shell显示名及同显示名不同路径不合并；失败时记录受控目录的Shell显示名、`SHGetFileInfoW`显示名、实际属性、系统版本及ANSI代码页，不把读回成功替代Shell验收。PR #49首轮[Windows CI](https://github.com/xiaodaozhi/xdstarter/actions/runs/39943963835/job/120381935785)在`8d3ca58`为17/18套通过，仅真实Shell本地化断言失败；该head的夹具已是UTF-16LE，故不能在没有读回与实际名称证据时归因为系统代码页。使用官方属性设置入口属于候选夹具修正，后续head的CI结果单独跟踪，不由本机通过推断远程兼容性。修订仅涉及测试和文档，本机重建受影响目标并单独复测`platform.applications`通过，产品EXE散列与正在运行的用户版本保持不变。
+
+回归保留了真实失败：首轮18套中16套通过，平台样式与GUI边界失败；后续GUI发现列表分类滚动后的hover位置、关闭提示的Return键路径及弹层退出焦点竞态，均按实际交互修正。受限会话不能创建单例IPC时的三项失败与正常会话重测分别记录，未放宽产品权限校验。首次置顶候选的只读开始按钮9点采样中6点命中窗口阴影，中心仍正常；因此不能只凭中心点通过推断按钮全区域可用。该隔离诊断进程按精确PID／路径受控结束，不记作正常退出验收。
+
+2026-10-23，提交8d3ca58对应运行时代码的Release构建、QML lint（无诊断）、**18/18 CTest，106.95秒**通过；GUI **66/66**、host **50/50**、单例IPC **6/6**、工具单元测试 **13/13**，均无失败或跳过。停靠参数240组、缩放边角80组、宽度吸附200组、任务栏输入region40组与自有隐藏HWND36项通过。最后只补关于框右上按钮的真实右对齐，精确几何断言等待布局完成，未放宽容差。当前日志为`build/issue48-final6-build.log`、`build/issue48-final6-lint.log`、`build/issue48-final6-ctest.log`，增量构建确认和早期失败日志分别保留；Qt头文件既有C4702警告不记为QML诊断。
+
+同一最终产品EXE **`0230252fc23b41faaee4e4633b6fe06ad4015022195273b8e9a54b8ed34072a6`** 在本机Windows26300.9711、主屏2400×1600、DPR1.5、底部任务栏完成只读观测：TOOLWINDOW与TOPMOST位均存在、APPWINDOW位不存在，窗口可见且非最小化、Z序在任务栏之前；中心、四角及靠菜单侧1/4/8/16 DIP共9点，Win32与UIA均命中系统任务栏／Start，菜单命中为0，矩形稳定。窗口region只去除任务栏交集，外窗和面板几何未因裁剪移动。探针不注入输入、不移动指针或授予资格；最终观测期间外部物理指针位置有变化，按实际值保留，不伪称指针静止。上一候选一次100 ms UIA超时与后续完整通过也分开保留。
+
+公开的[脱敏结构化证据](validation/issue-48/interaction-and-layout.json)保存源码LF散列、程序与截图散列、计数、失败历史和边界。[深色菜单](../design/validation/issue-48/dark-menus.png)、[浅色菜单](../design/validation/issue-48/light-menus.png)、[深色关于](../design/validation/issue-48/dark-about.png)、[浅色关于](../design/validation/issue-48/light-about.png)、[深色错误提示](../design/validation/issue-48/dark-failure.png)、[浅色错误提示](../design/validation/issue-48/light-failure.png)为QtTest内存字母磁贴抓帧，已目视检查；不含真实目录，不作为Windows完整透明桌面或物理开始点击的截图证据。诊断实例均按精确PID／路径受控清理，不修改用户正式布局，也不计为正常退出验收。父#6／#33继续开放，本轮未重做旧#45的八组物理设置、系统缩放与混合DPI矩阵。
+
+## 历史：最终程序桌面复测与四边任务栏（Issue #45）
 
 2026-10-23，在 Windows **26300.9711 / 26H2**、主屏2400×1600、DPR1.5，以同一最终 EXE **`2b85e41994b95852437f86d666a2f481a024d11995bf960890935331e6823760`** 完成以下八组真实任务栏设置、开始按钮显示／收起、允许边框的物理缩放和重开定位。用户更改设置并操作真实鼠标，代理只读测量指定测试产品 HWND、工作区和真实任务栏；不注入全局输入。测量时由同例 IPC 唤起，物理点击结果与测量分别记录。
 

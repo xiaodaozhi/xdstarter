@@ -196,8 +196,9 @@ LayoutResult writeSnapshot(const QString& path, const QJsonObject& snapshot) {
 LayoutStore::LayoutStore(QString path) : path_(std::move(path)) {}
 
 LayoutResult LayoutStore::validate(const QJsonObject& snapshot) {
-    if (!keys(snapshot, {QStringLiteral("schemaVersion"), QStringLiteral("targets"),
-                         QStringLiteral("groups"), QStringLiteral("preferences")}) ||
+    if (!keys(snapshot,
+              {QStringLiteral("schemaVersion"), QStringLiteral("targets"), QStringLiteral("groups"),
+               QStringLiteral("preferences"), QStringLiteral("gridColumns")}) ||
         !integer(snapshot.value(QStringLiteral("schemaVersion")), 1, schemaVersion) ||
         !snapshot.value(QStringLiteral("targets")).isArray() ||
         !snapshot.value(QStringLiteral("groups")).isArray() ||
@@ -207,6 +208,12 @@ LayoutResult LayoutStore::validate(const QJsonObject& snapshot) {
     const auto targets = snapshot.value(QStringLiteral("targets")).toArray();
     const auto groups = snapshot.value(QStringLiteral("groups")).toArray();
     const auto version = snapshot.value(QStringLiteral("schemaVersion")).toInt();
+    const int columns =
+        version >= 4 ? snapshot.value(QStringLiteral("gridColumns")).toInt() : grid_tokens::columns;
+    if ((version >= 4 && !integer(snapshot.value(QStringLiteral("gridColumns")),
+                                  TileGrid::minimumColumns, TileGrid::maximumColumns)) ||
+        (version < 4 && snapshot.contains(QStringLiteral("gridColumns"))))
+        return failure(QStringLiteral("网格列数与配置版本不兼容"));
     if ((version == 1 && targets.isEmpty()) || targets.size() > maximumTiles || groups.isEmpty() ||
         groups.size() > maximumGroups) {
         return failure(QStringLiteral("配置的目标或分组数量超出限制"));
@@ -268,24 +275,22 @@ LayoutResult LayoutStore::validate(const QJsonObject& snapshot) {
                             character.category() == QChar::Separator_Line ||
                             character.category() == QChar::Separator_Paragraph;
                  }));
-            if (!keys(tile,
-                      {QStringLiteral("id"), QStringLiteral("targetId"), QStringLiteral("column"),
-                       QStringLiteral("row"), QStringLiteral("size"), QStringLiteral("displayName")}) ||
-                !validDisplayName ||
-                !text(tileId) || tileIds.contains(tileId.toString()) ||
+            if (!keys(tile, {QStringLiteral("id"), QStringLiteral("targetId"),
+                             QStringLiteral("column"), QStringLiteral("row"),
+                             QStringLiteral("size"), QStringLiteral("displayName")}) ||
+                !validDisplayName || !text(tileId) || tileIds.contains(tileId.toString()) ||
                 !tile.value(QStringLiteral("targetId")).isString() ||
                 !targetIds.contains(tile.value(QStringLiteral("targetId")).toString()) || !size ||
-                !integer(column, 0, grid_tokens::columns - 1) ||
-                !integer(row, 0, maximumRows - 1) ||
+                !integer(column, 0, columns - 1) || !integer(row, 0, maximumRows - 1) ||
                 row.toInt() + (*size == TileSize::Small      ? grid_tokens::smallRows
                                : *size == TileSize::Standard ? grid_tokens::standardRows
                                                              : grid_tokens::wideRows) >
                     maximumRows) {
                 return failure(QStringLiteral("磁贴标识、引用、尺寸、格坐标或显示名称无效"));
             }
-            const auto rectangle = grid.rectangle(column.toInt(), row.toInt(), *size);
+            const auto rectangle = grid.rectangle(column.toInt(), row.toInt(), *size, columns);
             if (!rectangle) {
-                return failure(QStringLiteral("磁贴超出十列网格"));
+                return failure(QStringLiteral("磁贴超出当前列数网格"));
             }
             for (const auto& other : rectangles) {
                 if (overlap(*rectangle, other)) {

@@ -24,7 +24,7 @@ struct LayoutLoadResult {
 
 class LayoutStore final {
   public:
-    static constexpr int schemaVersion = 3;
+    static constexpr int schemaVersion = 4;
     static constexpr int maximumGroups = 32;
     static constexpr int maximumGroupNameLength = 128;
     static constexpr int maximumTileDisplayNameLength = 128;

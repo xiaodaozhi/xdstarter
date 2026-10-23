@@ -358,11 +358,14 @@ void testDockingMatrix(TestContext& test) {
                         const QRect panel = xdstarter::desktopPopupPhysicalRect(size, anchor, gap);
                         test.expect(panel.isValid() && anchor.workAreaPhysicalRect.contains(panel),
                                     "all sizes/scales remain in native work area");
-                        test.expect(
-                            panel.size() ==
-                                QSize(qMin(size.width(), anchor.workAreaPhysicalRect.width()),
-                                      qMin(size.height(), anchor.workAreaPhysicalRect.height())),
-                            "oversized panels are clamped per axis");
+                        test.expect(panel.size() ==
+                                        QSize(qMin(size.width(),
+                                                   anchor.workAreaPhysicalRect.width() - 2 * gap),
+                                              qMin(size.height(),
+                                                   anchor.workAreaPhysicalRect.height() - 2 * gap)),
+                                    "oversized panels are clamped per axis");
+                        test.expect(xdstarter::desktopMenuPanelBounds(anchor, gap).contains(panel),
+                                    "all four configured margins survive oversized requests");
                         const auto area = anchor.workAreaPhysicalRect;
                         if (centered && edge >= 2)
                             test.expect(qAbs(qint64(panel.top()) + panel.bottom() - area.top() -
@@ -402,6 +405,81 @@ void testDockingMatrix(TestContext& test) {
                     "already reserved space is never subtracted twice");
     }
     std::cout << "Taskbar matrix: " << cases << " parameter combinations\n";
+}
+
+void testMenuTaskbarInputRegion(TestContext& test) {
+    int cases = 0;
+    for (double dpr : {1.0, 1.25, 1.5, 1.75, 2.0}) {
+        for (QPoint origin : {QPoint(0, 0), QPoint(-2560, -1440)}) {
+            for (int edge = 0; edge < 4; ++edge) {
+                xdstarter::DesktopAnchorResult anchor;
+                anchor.monitorPhysicalRect = QRect(origin, QSize(2560, 1440));
+                const auto screen = anchor.monitorPhysicalRect;
+                const int thickness = qRound(48 * dpr);
+                if (edge == 0) {
+                    anchor.taskbarPhysicalRect = QRect(
+                        screen.left(), screen.bottom() - thickness + 1, screen.width(), thickness);
+                    anchor.workAreaPhysicalRect = screen.adjusted(0, 0, 0, -thickness);
+                } else if (edge == 1) {
+                    anchor.taskbarPhysicalRect =
+                        QRect(screen.topLeft(), QSize(screen.width(), thickness));
+                    anchor.workAreaPhysicalRect = screen.adjusted(0, thickness, 0, 0);
+                } else if (edge == 2) {
+                    anchor.taskbarPhysicalRect =
+                        QRect(screen.topLeft(), QSize(thickness, screen.height()));
+                    anchor.workAreaPhysicalRect = screen.adjusted(thickness, 0, 0, 0);
+                } else {
+                    anchor.taskbarPhysicalRect = QRect(screen.right() - thickness + 1, screen.top(),
+                                                       thickness, screen.height());
+                    anchor.workAreaPhysicalRect = screen.adjusted(0, 0, -thickness, 0);
+                }
+                const int inset = qRound(24 * dpr);
+                const auto panel = xdstarter::desktopPopupPhysicalRect(
+                    QSize(qRound(980 * dpr), qRound(680 * dpr)), anchor, qRound(8 * dpr));
+                const QRect outer = panel.adjusted(-inset, -inset, inset, inset);
+                const QRegion region =
+                    xdstarter::desktopMenuInputRegion(outer, anchor.taskbarPhysicalRect);
+                const QRegion full(0, 0, outer.width(), outer.height());
+                const QRect overlap = outer.intersected(anchor.taskbarPhysicalRect);
+                const QRegion cut(overlap.translated(-outer.topLeft()));
+                test.expect(overlap.isValid() && !cut.isEmpty(),
+                            "fixture shadow genuinely overlaps taskbar");
+                test.expect(region.intersected(cut).isEmpty(),
+                            "no taskbar pixel belongs to the input region");
+                test.expect(region.united(cut) == full,
+                            "only taskbar pixels are clipped; other shadow retained");
+                test.expect(
+                    QRegion(panel.translated(-outer.topLeft())).subtracted(region).isEmpty(),
+                    "visible panel and four-side margin geometry are unchanged");
+                ++cases;
+            }
+        }
+    }
+    const QRect outer(-100, -200, 400, 300);
+    const QRegion full(0, 0, 400, 300);
+    test.expect(xdstarter::desktopMenuInputRegion(outer, {}) == full,
+                "missing taskbar does not clip arbitrary screen-edge shadow");
+    test.expect(xdstarter::desktopMenuInputRegion(outer, QRect(900, 900, 10, 10)) == full,
+                "non-overlapping taskbar leaves the complete outer window");
+    test.expect(xdstarter::desktopMenuInputRegion(outer, outer).isEmpty(),
+                "a completely covered fixture has an empty region rather than full pass-through");
+    test.expect(xdstarter::desktopMenuInputRegion({}, outer).isEmpty(),
+                "invalid outer bounds rejected");
+    const int low = std::numeric_limits<int>::min();
+    const int high = std::numeric_limits<int>::max();
+    const QRect extreme(low, low, 100, 100);
+    test.expect(xdstarter::desktopMenuInputRegion(extreme, QRect(low, low, 100, 10)) ==
+                    QRegion(0, 10, 100, 90),
+                "local region conversion does not negate INT_MIN desktop coordinates");
+    const QRect upper(QPoint(high - 99, high - 99), QPoint(high, high));
+    test.expect(xdstarter::desktopMenuInputRegion(
+                    upper, QRect(QPoint(high - 9, high - 99), QPoint(high, high))) ==
+                    QRegion(0, 0, 90, 100),
+                "local region conversion does not increment INT_MAX desktop coordinates");
+    test.expect(
+        xdstarter::desktopMenuInputRegion(QRect(QPoint(low, 0), QPoint(high, 100)), {}).isEmpty(),
+        "unrepresentable outer span rejected before region allocation");
+    std::cout << "Taskbar input-region matrix: " << cases << " combinations\n";
 }
 
 void testResizeAndMissingTaskbar(TestContext& test) {
@@ -454,11 +532,29 @@ void testResizeAndMissingTaskbar(TestContext& test) {
                 test.expect(constrained.width() >= minimum.width() &&
                                 constrained.height() >= minimum.height(),
                             "minimum dimensions remain valid after fixing the opposite edges");
+                const QRect allowed = initial.adjusted(-30, -40, 80, 90);
+                const QRect huge = allowed.adjusted(-1000, -1000, 1000, 1000);
+                const QRect bounded =
+                    desktopResizePhysicalRect(initial, huge, edge, minimum, allowed);
+                test.expect(allowed.contains(bounded), "sizing cannot escape any work-area edge");
+                test.expect(edge.testFlag(Qt::LeftEdge) || bounded.left() == initial.left(),
+                            "maximum sizing keeps the opposite left edge fixed");
+                test.expect(edge.testFlag(Qt::TopEdge) || bounded.top() == initial.top(),
+                            "maximum sizing keeps the opposite top edge fixed");
+                test.expect(edge.testFlag(Qt::RightEdge) || bounded.right() == initial.right(),
+                            "maximum sizing keeps the opposite right edge fixed");
+                test.expect(edge.testFlag(Qt::BottomEdge) || bounded.bottom() == initial.bottom(),
+                            "maximum sizing keeps the opposite bottom edge fixed");
                 ++cases;
             }
         }
     }
     const QRect origin(0, 0, 1000, 1000);
+    const QRect reduced(50, 60, 300, 200);
+    const QRect shrunk = desktopResizePhysicalRect(origin, origin, Qt::BottomEdge | Qt::RightEdge,
+                                                   QSize(528, 528), reduced);
+    test.expect(shrunk == reduced,
+                "work-area shrink takes priority over an unavailable minimum size");
     const QRect oversized(QPoint(std::numeric_limits<int>::min() + 1, 0), QPoint(1000, 1000));
     test.expect(desktopResizePhysicalRect(origin, oversized, Qt::LeftEdge, QSize(1, 1)) == origin,
                 "a representable endpoint must not overflow the resulting QSize span");
@@ -556,6 +652,7 @@ int main(int argc, char* argv[]) {
 
     TestContext test;
     testDockingMatrix(test);
+    testMenuTaskbarInputRegion(test);
     testResizeAndMissingTaskbar(test);
     testStartButtonHitClassification(test);
     for (const auto& action : {QStringLiteral("documents"), QStringLiteral("downloads"),
@@ -669,8 +766,8 @@ int main(int argc, char* argv[]) {
                 "right taskbar popup stays within the work area");
 
     test.expect(xdstarter::desktopPopupPhysicalRect(QSize(2400, 1600), anchor) ==
-                    anchor.workAreaPhysicalRect,
-                "oversized popup is bounded by the entire work area");
+                    anchor.workAreaPhysicalRect.adjusted(8, 8, -8, -8),
+                "oversized popup retains all four work-area margins");
     test.expect(xdstarter::desktopPopupPhysicalRect(QSize(), anchor).isEmpty(),
                 "invalid window dimensions are rejected");
     constexpr int maximum = std::numeric_limits<int>::max();
@@ -680,9 +777,8 @@ int main(int argc, char* argv[]) {
     // width before subtracting 1, which overflows for this valid endpoint span.
     anchor.workAreaPhysicalRect =
         QRect(QPoint(maximum - 99, maximum - 99), QPoint(maximum, maximum));
-    test.expect(xdstarter::desktopPopupPhysicalRect(QSize(100, 100), anchor, maximum) ==
-                    anchor.workAreaPhysicalRect,
-                "INT_MAX work-area endpoints and large gap do not overflow placement");
+    test.expect(!xdstarter::desktopPopupPhysicalRect(QSize(100, 100), anchor, maximum).isValid(),
+                "a work area too small for the requested gap is rejected without overflow");
     test.expect(xdstarter::desktopPopupPhysicalRect(QSize(60, 60), anchor, 0) ==
                     QRect(QPoint(maximum - 99, maximum - 59), QPoint(maximum - 40, maximum)),
                 "result endpoint construction remains valid when bottom reaches INT_MAX");
@@ -784,15 +880,36 @@ int main(int argc, char* argv[]) {
                     "native metrics reject an owned surface from another GUI thread");
         const auto appearance =
             platform->configureMenuWindow(reinterpret_cast<quintptr>(hidden.handle()));
-        test.expect(appearance.success == appearance.nativeDecorationsDisabled,
-                    "appearance success means all native decorations were disabled");
+        const bool topmostDenied =
+            appearance.errorCode == QStringLiteral("menu-topmost-state-denied");
+        test.expect(
+            appearance.success == (appearance.nativeDecorationsDisabled && !topmostDenied),
+            "appearance succeeds only when decorations and measured topmost policy succeed");
         test.expect(appearance.success ? appearance.errorCode.isEmpty()
                                        : !appearance.errorCode.isEmpty(),
                     "unsupported compositor requests carry an explicit fallback reason");
         test.expect(!appearance.message.isEmpty(), "appearance always describes the actual request result");
-        test.expect(GetWindowLongPtrW(hidden.handle(), GWL_STYLE) == styleBefore &&
-                        GetWindowLongPtrW(hidden.handle(), GWL_EXSTYLE) == extendedBefore,
-                    "appearance never adds caption, resize, layered or other Qt window styles");
+        const auto extendedAfter = GetWindowLongPtrW(hidden.handle(), GWL_EXSTYLE);
+        const LONG_PTR menuStyles = WS_EX_TOOLWINDOW | WS_EX_APPWINDOW | WS_EX_TOPMOST;
+        const auto styleAfter = GetWindowLongPtrW(hidden.handle(), GWL_STYLE);
+        const bool menuPolicy =
+            styleAfter == styleBefore &&
+            (extendedAfter & ~menuStyles) == (extendedBefore & ~menuStyles) &&
+            (extendedAfter & WS_EX_TOOLWINDOW) && !(extendedAfter & WS_EX_APPWINDOW) &&
+            ((extendedAfter & WS_EX_TOPMOST) ? !topmostDenied
+                                             : (!appearance.success && topmostDenied));
+        if (!menuPolicy)
+            std::cerr << "Native menu policy diagnostic: styleBefore=0x" << std::hex << styleBefore
+                      << " styleAfter=0x" << styleAfter << " extendedBefore=0x" << extendedBefore
+                      << " extendedAfter=0x" << extendedAfter << std::dec
+                      << " visible=" << IsWindowVisible(hidden.handle())
+                      << " iconic=" << IsIconic(hidden.handle())
+                      << " appearance=" << appearance.errorCode.toStdString() << '\n';
+        test.expect(menuPolicy, "hidden menu excludes taskbar buttons and measures or explicitly "
+                                "denies topmost without mutating alpha styles");
+        if (topmostDenied)
+            std::cout << "INFO: hidden background STATIC fixture did not acquire TOPMOST; "
+                         "configuration explicitly reported menu-topmost-state-denied\n";
         RECT boundsAfter{};
         GetWindowRect(hidden.handle(), &boundsAfter);
         test.expect(EqualRect(&boundsBefore, &boundsAfter) && !IsWindowVisible(hidden.handle()),
@@ -887,9 +1004,17 @@ int main(int argc, char* argv[]) {
         const LONG_PTR styleBefore = GetWindowLongPtrW(layered.handle(), GWL_EXSTYLE);
         const auto layeredAppearance =
             platform->configureMenuWindow(reinterpret_cast<quintptr>(layered.handle()));
-        test.expect(layeredAppearance.success == layeredAppearance.nativeDecorationsDisabled &&
-                        layeredAppearance.errorCode != QStringLiteral("layered-window-unsupported") &&
-                        GetWindowLongPtrW(layered.handle(), GWL_EXSTYLE) == styleBefore &&
+        const bool topmostDenied =
+            layeredAppearance.errorCode == QStringLiteral("menu-topmost-state-denied");
+        test.expect(layeredAppearance.success ==
+                            (layeredAppearance.nativeDecorationsDisabled && !topmostDenied) &&
+                        ((GetWindowLongPtrW(layered.handle(), GWL_EXSTYLE) & WS_EX_TOPMOST)
+                             ? !topmostDenied
+                             : (!layeredAppearance.success && topmostDenied)) &&
+                        layeredAppearance.errorCode !=
+                            QStringLiteral("layered-window-unsupported") &&
+                        (GetWindowLongPtrW(layered.handle(), GWL_EXSTYLE) & WS_EX_LAYERED) ==
+                            (styleBefore & WS_EX_LAYERED) &&
                         !IsWindowVisible(layered.handle()),
                     "Qt alpha surfaces are configured without rejecting or mutating layered style");
     }
