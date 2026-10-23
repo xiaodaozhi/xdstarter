@@ -11,6 +11,7 @@ Item {
     required property color titleColor
     property var tileTransitions: ({})
     property bool keyboardNavigation: false
+    property bool hintsEnabled: true
     property bool darkTheme: true
     readonly property var theme: tokens.themes[darkTheme ? "dark" : "light"]
     readonly property real occupiedGridHeight: {
@@ -95,7 +96,7 @@ Item {
                 font.family: groupLabel.font.family
 
                 width: Math.min(380, implicitWidth)
-                visible: titleHover.hovered && groupLabel.truncated
+                visible: tileGroup.hintsEnabled && titleHover.hovered && groupLabel.truncated
                 text: tileGroup.group.name
                 contentItem: Text {
                     font.family: groupLabel.font.family
@@ -148,7 +149,7 @@ Item {
                 font.family: groupLabel.font.family
 
                 width: Math.min(380, implicitWidth)
-                visible: groupActions.enabled && (groupActions.hovered || groupActions.activeFocus)
+                visible: tileGroup.hintsEnabled && groupActions.enabled && (groupActions.hovered || (tileGroup.keyboardNavigation && groupActions.activeFocus))
                 text: groupActions.Accessible.name
                 contentItem: Text {
                     text: actionsToolTip.text
@@ -214,6 +215,7 @@ Item {
             model: tileGroup.group.tiles
 
             delegate: TileButton {
+                hintsEnabled: tileGroup.hintsEnabled
                 required property var modelData
 
                 keyboardNavigation: tileGroup.keyboardNavigation

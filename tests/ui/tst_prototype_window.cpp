@@ -327,6 +327,7 @@ class PrototypeWindowTest : public QObject {
     void cleanup();
     void prototypeWindowLoads();
     void interactionRefinements();
+    void approvedSurfaceStates();
     void adaptiveResizeHandles();
     void catalogAlphabetAndFolderOverlay();
     void categoryGlyphsAreCentered_data();
@@ -336,6 +337,7 @@ class PrototypeWindowTest : public QObject {
     void smallTilesExposeNames();
     void longNamesRemainBounded();
     void resizePreservesGeometryAndRevealsFocus();
+    void responsiveColumnsAndPersistence();
     void directionalNavigation();
     void escapeClosesWindow();
     void mouseDragWithinGroup();
@@ -364,6 +366,7 @@ class PrototypeWindowTest : public QObject {
     void winKeyCaptureControlRequiresExplicitIntent();
     void startButtonCaptureControl();
     void framelessWindowDismissalIntent();
+    void presentationSingleReveal();
     void customChromePixels();
     void shadowMarginDismissal();
     void internalPopupsGuardAndCleanup();
@@ -646,6 +649,13 @@ void PrototypeWindowTest::catalogAlphabetAndFolderOverlay() {
     child.parentFolderId = folder.id;
     state->applications.append(folder);
     state->applications.append(child);
+    auto emptyFolder = folder;
+    emptyFolder.name = QStringLiteral("空目录");
+    emptyFolder.shortcutPath += QStringLiteral("/Empty");
+    emptyFolder.id = xdstarter::applicationTargetId(emptyFolder.type, emptyFolder.shortcutPath);
+    emptyFolder.iconKey = emptyFolder.id;
+    emptyFolder.parentFolderId = folder.id;
+    state->applications.append(emptyFolder);
     destroyWindow();
     createWindow({}, true, state);
     QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 3);
@@ -654,12 +664,10 @@ void PrototypeWindowTest::catalogAlphabetAndFolderOverlay() {
     QTRY_COMPARE(settledTile->mapRectToScene(settledTile->boundingRect()).size(),
                  settledTile->size());
     auto* first = item(QStringLiteral("applicationLaunch-") + state->applications.first().id);
-    auto* pin = item(QStringLiteral("pinButton-") + state->applications.first().id);
-    QVERIFY(first && pin);
-    QTest::mouseMove(window_, QPoint(1, 1));
-    QTRY_COMPARE(pin->opacity(), qreal(0));
-    QTest::mouseMove(window_, first->mapToScene(QPointF(12, 12)).toPoint());
-    QTRY_COMPARE(pin->opacity(), qreal(1));
+    QVERIFY(first);
+    QVERIFY(!item(QStringLiteral("pinButton-") + state->applications.first().id));
+    QCOMPARE(first->width(),
+             item(QStringLiteral("appRow-") + state->applications.first().id)->width());
     auto* section = item(QStringLiteral("sectionButton-A"));
     QVERIFY(section);
     QCOMPARE(section->size(), QSizeF(32, 32));
@@ -681,17 +689,60 @@ void PrototypeWindowTest::catalogAlphabetAndFolderOverlay() {
     window_->resize(initialSize);
     click(item(QStringLiteral("alphabet-G")));
     QTRY_VERIFY(!window_->property("alphabetOpen").toBool());
+    QTRY_VERIFY(!alphabet->isVisible());
+    auto* applicationList = item(QStringLiteral("applicationList"));
+    QVERIFY(applicationList);
+    QVERIFY(QMetaObject::invokeMethod(applicationList, "positionViewAtBeginning"));
     auto* folderButton = item(QStringLiteral("applicationLaunch-") + folder.id);
     QVERIFY(folderButton);
+    QTRY_VERIFY(viewport->mapRectToScene(viewport->boundingRect())
+                    .contains(first->mapRectToScene(first->boundingRect())));
+    QTRY_VERIFY(viewport->mapRectToScene(viewport->boundingRect())
+                    .contains(folderButton->mapRectToScene(folderButton->boundingRect())));
+    QTest::mouseClick(window_, Qt::RightButton, Qt::NoModifier,
+                      folderButton->mapToScene(folderButton->boundingRect().center()).toPoint());
+    QTRY_VERIFY(folderButton->hasActiveFocus());
+    QTest::mouseMove(window_, first->mapToScene(first->boundingRect().center()).toPoint());
+    auto* folderTip =
+        folderButton->findChild<QObject*>(QStringLiteral("applicationToolTip-") + folder.id);
+    QVERIFY(folderTip);
+    QTRY_VERIFY(!folderTip->property("visible").toBool());
+    auto* applicationTip = first->findChild<QObject*>(QStringLiteral("applicationToolTip-") +
+                                                      state->applications.first().id);
+    QVERIFY(applicationTip);
+    QTRY_VERIFY(first->property("hovered").toBool());
+    QVERIFY(folderButton->hasActiveFocus());
+    QTest::qWait(300);
+    QVERIFY(!applicationTip->property("visible").toBool());
+    QTRY_VERIFY(applicationTip->property("visible").toBool());
+    QVERIFY(!folderTip->property("visible").toBool());
     click(folderButton);
     QTRY_VERIFY(catalog_->applicationsModel()->property("inFolder").toBool());
-    QCOMPARE(catalog_->applicationsModel()->rowCount(), 1);
+    QCOMPARE(catalog_->applicationsModel()->rowCount(), 2);
     auto* overlay = item(QStringLiteral("folderOverlay"));
     QVERIFY(overlay && overlay->isVisible());
     QCOMPARE(overlay->size(), viewport->size());
     QCOMPARE(state->launches.load(), 0);
     capture(QStringLiteral("folder-dark.png"));
     QTRY_VERIFY(item(QStringLiteral("folderBackButton"))->isVisible());
+    auto* emptyButton = item(QStringLiteral("applicationLaunch-") + emptyFolder.id);
+    QVERIFY(emptyButton);
+    click(emptyButton);
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 0);
+    auto* emptyHint = item(QStringLiteral("emptyCatalogHint"));
+    auto* folderHeader = item(QStringLiteral("catalogFolderHeader"));
+    auto* backIcon = item(QStringLiteral("folderBackIcon"));
+    auto* back = item(QStringLiteral("folderBackButton"));
+    QVERIFY(emptyHint && folderHeader && backIcon && back);
+    QTRY_VERIFY(emptyHint->isVisible());
+    QVERIFY(emptyHint->mapRectToScene(emptyHint->boundingRect()).top() >=
+            folderHeader->mapRectToScene(folderHeader->boundingRect()).bottom());
+    const auto iconCenter = backIcon->mapToScene(backIcon->boundingRect().center());
+    const auto buttonCenter = back->mapToScene(back->boundingRect().center());
+    QVERIFY(std::abs(iconCenter.x() - buttonCenter.x()) <= 1);
+    QVERIFY(std::abs(iconCenter.y() - buttonCenter.y()) <= 1);
+    click(back);
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 2);
     click(item(QStringLiteral("folderBackButton")));
     QTRY_VERIFY(!catalog_->applicationsModel()->property("inFolder").toBool());
     QCOMPARE(catalog_->applicationsModel()->rowCount(), 3);
@@ -827,6 +878,13 @@ void PrototypeWindowTest::click(QQuickItem* target) {
     QVERIFY(targetWindow);
     QTest::mouseClick(targetWindow, Qt::LeftButton, Qt::NoModifier,
                       target->mapToScene(target->boundingRect().center()).toPoint());
+    if (name == QLatin1String("themeButton")) {
+        auto* submenu = window_->findChild<QObject*>(QStringLiteral("appearanceMenu"));
+        QVERIFY(submenu);
+        QTRY_VERIFY(submenu->property("opened").toBool());
+        click(item(window_->property("darkTheme").toBool() ? QStringLiteral("appearanceLightItem")
+                                                           : QStringLiteral("appearanceDarkItem")));
+    }
 }
 
 void PrototypeWindowTest::openMoreMenu() {
@@ -871,6 +929,9 @@ void PrototypeWindowTest::themeSwitchRetainsGeometry() {
 
     openMoreMenu();
     themeButton->forceActiveFocus(Qt::TabFocusReason);
+    QTest::keyClick(window_, Qt::Key_Return);
+    QTRY_VERIFY(item(QStringLiteral("appearanceDarkItem"))->isVisible());
+    item(QStringLiteral("appearanceDarkItem"))->forceActiveFocus(Qt::TabFocusReason);
     QTest::keyClick(window_, Qt::Key_Return);
     QTRY_VERIFY(window_->property("darkTheme").toBool());
     QCOMPARE(surface->property("color").value<QColor>(), originalColor);
@@ -919,12 +980,16 @@ void PrototypeWindowTest::smallTilesExposeNames() {
     QVERIFY(accessible);
     QCOMPARE(accessible->text(QAccessible::Name), name);
     QVERIFY(tooltip->property("text").toString().contains(name));
-    small->forceActiveFocus(Qt::TabFocusReason);
-    QTRY_VERIFY(small->hasActiveFocus());
-    QTRY_VERIFY(tooltip->property("visible").toBool());
-    QVERIFY(small->property("visualFocus").toBool());
-    item(QStringLiteral("moreMenuButton"))->forceActiveFocus(Qt::TabFocusReason);
     QTest::mouseMove(window_, QPoint(1, 1));
+    item(QStringLiteral("moreMenuButton"))->forceActiveFocus(Qt::OtherFocusReason);
+    for (int count = 0; count < 64 && !small->hasActiveFocus(); ++count)
+        QTest::keyClick(window_, Qt::Key_Tab);
+    QTRY_VERIFY(small->hasActiveFocus());
+    QVERIFY(controller_->keyboardNavigation());
+    QTRY_VERIFY_WITH_TIMEOUT(tooltip->property("visible").toBool(), 1500);
+    QVERIFY(small->property("visualFocus").toBool());
+    QTest::keyClick(window_, Qt::Key_Tab);
+    QTRY_VERIFY(!small->hasActiveFocus());
     QTRY_VERIFY(!tooltip->property("visible").toBool());
 }
 
@@ -957,14 +1022,52 @@ void PrototypeWindowTest::resizePreservesGeometryAndRevealsFocus() {
     const int shadow = qRound(window_->property("shadowInset").toReal());
     window_->resize(480 + 2 * shadow, 480 + 2 * shadow);
     QTRY_COMPARE(window_->size(), QSize(480 + 2 * shadow, 480 + 2 * shadow));
-    QTRY_VERIFY(flickable->width() < 552);
+    QTRY_VERIFY(controller_->gridColumns() < 10);
+    last = item(QStringLiteral("tile-entertainment-standard-3"));
+    QVERIFY(last);
     last->forceActiveFocus(Qt::TabFocusReason);
     QTRY_VERIFY(last->hasActiveFocus());
-    QTRY_VERIFY(flickable->property("contentX").toReal() > 0);
+    QTRY_COMPARE(flickable->property("contentX").toReal(), 0.0);
     QTRY_VERIFY(flickable->property("contentY").toReal() > 0);
     QTRY_VERIFY(flickable->boundingRect().adjusted(-0.5, -0.5, 0.5, 0.5).contains(
         last->mapRectToItem(flickable, last->boundingRect())));
-    QCOMPARE(tileGeometries(), geometry);
+    const auto resized = tileGeometries();
+    QCOMPARE(resized.keys(), geometry.keys());
+    for (auto tile = geometry.cbegin(); tile != geometry.cend(); ++tile)
+        QCOMPARE(resized.value(tile.key()).size(), tile.value().size());
+}
+
+void PrototypeWindowTest::responsiveColumnsAndPersistence() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = directory.filePath(QStringLiteral("responsive.json"));
+    destroyWindow();
+    createWindow(path, true);
+    const auto targets = service_->snapshot().value(QStringLiteral("targets"));
+    const int shadow = qRound(window_->property("shadowInset").toReal());
+    window_->resize(1280 + 2 * shadow, 680 + 2 * shadow);
+    QTRY_VERIFY(controller_->gridColumns() > 10);
+    const int wideColumns = controller_->gridColumns();
+    QVERIFY(controller_->moveTile(QStringLiteral("work-standard-1"), QStringLiteral("work"),
+                                  wideColumns - 2, 4));
+    QCOMPARE(tileData(QStringLiteral("work-standard-1")).value(QStringLiteral("column")).toInt(),
+             wideColumns - 2);
+    window_->resize(480 + 2 * shadow, 480 + 2 * shadow);
+    QTRY_VERIFY(controller_->gridColumns() < 10);
+    QVERIFY(xdstarter::LayoutStore::validate(service_->snapshot()).success);
+    QCOMPARE(service_->snapshot().value(QStringLiteral("targets")), targets);
+    for (const auto& group : service_->previewGroups())
+        for (const auto& tile : group.tiles)
+            QVERIFY(tile.rectangle.x + tile.rectangle.width <= group.width);
+    QVERIFY(controller_->flushSave());
+    const xdstarter::PrototypeService restarted(grid_, path, true);
+    auto expected = service_->snapshot();
+    auto preferences = expected.value(QStringLiteral("preferences")).toObject();
+    preferences.insert(QStringLiteral("theme"),
+                       controller_->darkTheme() ? QStringLiteral("dark") : QStringLiteral("light"));
+    expected.insert(QStringLiteral("preferences"), preferences);
+    QCOMPARE(restarted.snapshot(), expected);
+    QCOMPARE(restarted.gridColumns(), controller_->gridColumns());
 }
 
 void PrototypeWindowTest::directionalNavigation() {
@@ -1134,6 +1237,19 @@ void PrototypeWindowTest::openSizeMenu(const QString& tileId, bool keyboard) {
 void PrototypeWindowTest::chooseSize(const QString& itemName, bool keyboard) {
     QTRY_VERIFY(item(itemName));
     QTRY_VERIFY(sizeMenu()->property("opened").toBool());
+    auto* submenu = window_->findChild<QObject*>(QStringLiteral("tileDimensionsMenu"));
+    QVERIFY(submenu);
+    if (itemName.startsWith(QLatin1String("size")) && !submenu->property("opened").toBool()) {
+        auto* dimensions = item(QStringLiteral("tileDimensionsMenuItem"));
+        QVERIFY(dimensions);
+        if (keyboard) {
+            dimensions->forceActiveFocus(Qt::TabFocusReason);
+            QTest::keyClick(window_, Qt::Key_Right);
+        } else {
+            click(dimensions);
+        }
+        QTRY_VERIFY(submenu->property("opened").toBool());
+    }
     QTRY_VERIFY(item(itemName)->isVisible());
     QTRY_VERIFY(item(itemName)->isEnabled());
     if (keyboard) {
@@ -1197,8 +1313,15 @@ void PrototypeWindowTest::sizeMenuTextRemainsReadable() {
         const auto theme = visualTokens_.value(QStringLiteral("themes")).toMap()
                                .value(dark ? QStringLiteral("dark") : QStringLiteral("light")).toMap();
         const QColor foreground(theme.value(QStringLiteral("foreground")).toString());
-        const QColor hover(theme.value(QStringLiteral("hover")).toString());
-        const QColor pressed(theme.value(QStringLiteral("pressed")).toString());
+        const auto surfaceTheme =
+            visualTokens_.value(QStringLiteral("interactionSurface"))
+                .toMap()
+                .value(QStringLiteral("themes"))
+                .toMap()
+                .value(dark ? QStringLiteral("dark") : QStringLiteral("light"))
+                .toMap();
+        const QColor hover(surfaceTheme.value(QStringLiteral("hover")).toString());
+        const QColor pressed(surfaceTheme.value(QStringLiteral("pressed")).toString());
         openSizeMenu(QStringLiteral("work-standard-1"), true);
         for (const auto* name : {"sizeSmallItem", "sizeStandardItem", "sizeWideItem"}) {
             auto* option = item(QLatin1String(name));
@@ -1330,7 +1453,7 @@ void PrototypeWindowTest::futureConfigurationIsReadOnly() {
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
     const auto path = directory.filePath(QStringLiteral("layout.json"));
-    const QByteArray original = "{\"schemaVersion\":4,\"futureData\":\"keep\"}";
+    const QByteArray original = "{\"schemaVersion\":999,\"futureData\":\"keep\"}";
     QFile file(path);
     QVERIFY(file.open(QIODevice::WriteOnly));
     QCOMPARE(file.write(original), qint64(original.size()));
@@ -1363,6 +1486,48 @@ void PrototypeWindowTest::futureConfigurationIsReadOnly() {
     QVERIFY(file.open(QIODevice::ReadOnly));
     QCOMPARE(file.readAll(), original);
     QVERIFY(!QFile::exists(path + QStringLiteral(".bak")));
+    file.close();
+
+    // A newer file can appear after startup. The controller then becomes read-only while
+    // the service still retains its initially writable load result.
+    QVERIFY(QFile::remove(path));
+    const auto state = std::make_shared<CatalogTestState>();
+    createWindow(path, false, state);
+    QVERIFY(!controller_->readOnly());
+    QVERIFY(!service_->isReadOnly());
+    pinFirstApplication(state);
+    QVERIFY(controller_->flushSave());
+    const auto writableSnapshot = service_->snapshot();
+    QFile backup(path + QStringLiteral(".bak"));
+    QVERIFY(backup.open(QIODevice::ReadOnly));
+    const auto originalBackup = backup.readAll();
+    backup.close();
+    QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
+    QCOMPARE(file.write(original), qint64(original.size()));
+    file.close();
+    controller_->requestSave();
+    QTRY_VERIFY(controller_->readOnly());
+    QTRY_VERIFY(!controller_->saving());
+    QVERIFY(!service_->isReadOnly());
+    const auto pinnedId = state->applications.first().id;
+    const auto otherId = state->applications.last().id;
+    QSignalSpy groupsChanged(controller_.get(), &xdstarter::MenuController::groupsChanged);
+    QVERIFY(!controller_->unpinApplication(pinnedId));
+    QVERIFY(!controller_->pinApplication(otherId));
+    QVERIFY(!controller_->pinApplicationAt(otherId, QStringLiteral("default"), 0, 0));
+    QVERIFY(!controller_->previewApplicationPlacement(otherId, QStringLiteral("default"), 0, 0)
+                 .value(QStringLiteral("valid"))
+                 .toBool());
+    QVERIFY(!controller_->setGridColumnsForWidth(216));
+    QCOMPARE(service_->snapshot(), writableSnapshot);
+    QCOMPARE(groupsChanged.count(), 0);
+    QVERIFY(controller_->isApplicationPinned(pinnedId));
+    QVERIFY(!controller_->flushSave());
+    destroyWindow();
+    QVERIFY(file.open(QIODevice::ReadOnly));
+    QCOMPARE(file.readAll(), original);
+    QVERIFY(backup.open(QIODevice::ReadOnly));
+    QCOMPARE(backup.readAll(), originalBackup);
 }
 
 QVariant PrototypeWindowTest::modelValue(int row, const QByteArray& role) const {
@@ -1382,15 +1547,16 @@ QVariant PrototypeWindowTest::modelValue(int row, const QByteArray& role) const 
 void PrototypeWindowTest::pinFirstApplication(const std::shared_ptr<CatalogTestState>& state) {
     QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), state->applications.size());
     const auto applicationId = state->applications.first().id;
-    const auto buttonName = QStringLiteral("pinButton-") + applicationId;
+    const auto buttonName = QStringLiteral("applicationLaunch-") + applicationId;
     QTRY_VERIFY(item(buttonName));
     QVERIFY(item(buttonName)->isEnabled());
-    click(item(buttonName));
+    QTest::mouseClick(
+        window_, Qt::RightButton, Qt::NoModifier,
+        item(buttonName)->mapToScene(item(buttonName)->boundingRect().center()).toPoint());
     auto* menu = window_->findChild<QObject*>(QStringLiteral("pinApplicationMenu"));
     QVERIFY(menu);
     QTRY_VERIFY(menu->property("visible").toBool());
-    const auto groupId = controller_->groups().first().toMap().value(QStringLiteral("id")).toString();
-    const auto groupItem = QStringLiteral("pinToGroup-") + groupId;
+    const auto groupItem = QStringLiteral("applicationPinAction");
     QTRY_VERIFY(item(groupItem));
     QTRY_VERIFY(menu->property("opened").toBool());
     item(groupItem)->forceActiveFocus(Qt::TabFocusReason);
@@ -1399,7 +1565,9 @@ void PrototypeWindowTest::pinFirstApplication(const std::shared_ptr<CatalogTestS
     QTest::keyClick(item(groupItem)->window(), Qt::Key_Return);
     QTRY_VERIFY(!menu->property("visible").toBool());
     QTRY_COMPARE(tileGeometries().size(), 1);
-    QTRY_VERIFY(!item(buttonName)->isEnabled());
+    QVERIFY(item(buttonName)->isEnabled());
+    QVERIFY(controller_->isApplicationPinned(applicationId));
+    QTRY_VERIFY(item(buttonName)->hasActiveFocus());
 }
 
 void PrototypeWindowTest::applicationDirectoryAndPinning() {
@@ -1462,12 +1630,50 @@ void PrototypeWindowTest::applicationDirectoryAndPinning() {
     openSizeMenu(tileId, true);
     chooseSize(QStringLiteral("unpinTileItem"), true);
     QTRY_COMPARE(tileGeometries().size(), 0);
-    QTRY_VERIFY(item(QStringLiteral("pinButton-") + applicationId)->isEnabled());
+    QVERIFY(!item(QStringLiteral("pinButton-") + applicationId));
+    QVERIFY(!controller_->isApplicationPinned(applicationId));
     QCOMPARE(catalog_->applicationsModel()->rowCount(), 2);
     QCOMPARE(state->launches.load(), 0);
     QTRY_VERIFY(item(QStringLiteral("moreMenuButton"))->hasActiveFocus());
 
-    // Compact browsing changes panes without changing or shrinking the tile grid.
+    // Drag the actual catalogue delegate through its threshold and release over the grid.
+    auto* catalogueButton = item(launchButton);
+    QVERIFY(catalogueButton);
+    const auto cataloguePress =
+        catalogueButton->mapToScene(catalogueButton->boundingRect().center()).toPoint();
+    const auto beforeCatalogueDrag = service_->snapshot();
+    QTest::mousePress(window_, Qt::LeftButton, Qt::NoModifier, cataloguePress);
+    QTest::mouseMove(window_, cataloguePress + QPoint(24, 0), 20);
+    QTRY_COMPARE(window_->property("draggedApplicationId").toString(), applicationId);
+    QCOMPARE(service_->snapshot(), beforeCatalogueDrag);
+    moveMouseToGrid(QStringLiteral("default"), QPointF(52, 52));
+    QVERIFY(window_->property("dragValid").toBool());
+    QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier,
+                        gridPosition(QStringLiteral("default"), QPointF(52, 52)));
+    QTRY_COMPARE(tileGeometries().size(), 1);
+    QVERIFY(controller_->isApplicationPinned(applicationId));
+    QTest::mouseClick(window_, Qt::RightButton, Qt::NoModifier, cataloguePress);
+    auto* applicationMenu = window_->findChild<QObject*>(QStringLiteral("pinApplicationMenu"));
+    QVERIFY(applicationMenu);
+    QTRY_VERIFY(applicationMenu->property("opened").toBool());
+    QCOMPARE(item(QStringLiteral("applicationPinAction"))->property("text").toString(),
+             QStringLiteral("取消固定磁贴"));
+    click(item(QStringLiteral("applicationPinAction")));
+    QTRY_COMPARE(tileGeometries().size(), 0);
+    QTRY_VERIFY(!applicationMenu->property("visible").toBool());
+    QTRY_VERIFY(item(launchButton)->hasActiveFocus());
+    QVERIFY(!controller_->isApplicationPinned(applicationId));
+    QCOMPARE(state->launches.load(), 0);
+    const auto beforeCancelledCatalogueDrag = service_->snapshot();
+    QTest::mousePress(window_, Qt::LeftButton, Qt::NoModifier, cataloguePress);
+    QTest::mouseMove(window_, cataloguePress + QPoint(24, 0), 20);
+    QTRY_VERIFY(window_->property("dragActive").toBool());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!window_->property("dragActive").toBool());
+    QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, QPoint(1, 1));
+    QCOMPARE(service_->snapshot(), beforeCancelledCatalogueDrag);
+
+    // Compact browsing changes panes while a debounced resize adjusts real columns.
     const int shadow = qRound(window_->property("shadowInset").toReal());
     window_->resize(480 + 2 * shadow, 480 + 2 * shadow);
     QTRY_VERIFY(item(QStringLiteral("catalogViewButton"))->isVisible());
@@ -1475,9 +1681,28 @@ void PrototypeWindowTest::applicationDirectoryAndPinning() {
     click(item(QStringLiteral("catalogViewButton")));
     QTRY_VERIFY(item(QStringLiteral("catalogPanel"))->isVisible());
     QVERIFY(!item(QStringLiteral("groupsScroll"))->isVisible());
-    click(item(QStringLiteral("catalogViewButton")));
+    QTest::qWait(600); // Settle the deliberate width-to-grid debounce before starting a drag.
+    catalogueButton = item(launchButton);
+    QVERIFY(catalogueButton);
+    const auto compactPress =
+        catalogueButton->mapToScene(catalogueButton->boundingRect().center()).toPoint();
+    QTest::mousePress(window_, Qt::LeftButton, Qt::NoModifier, compactPress);
+    QTest::mouseMove(window_, compactPress + QPoint(24, 0), 20);
+    QTRY_COMPARE(window_->property("draggedApplicationId").toString(), applicationId);
+    QVERIFY(item(QStringLiteral("catalogPanel"))->isVisible());
+    QVERIFY(item(QStringLiteral("groupsScroll"))->isVisible());
+    moveMouseToGrid(QStringLiteral("default"), QPointF(52, 52));
+    QVERIFY(window_->property("dragValid").toBool());
+    QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier,
+                        gridPosition(QStringLiteral("default"), QPointF(52, 52)));
+    QTRY_VERIFY(!window_->property("dragActive").toBool());
+    QTRY_VERIFY(controller_->isApplicationPinned(applicationId));
     QTRY_VERIFY(item(QStringLiteral("groupsScroll"))->isVisible());
-    QCOMPARE(item(QStringLiteral("grid-default"))->width(), qreal(552));
+    QVERIFY(!item(QStringLiteral("catalogPanel"))->isVisible());
+    QVERIFY(controller_->unpinApplication(applicationId));
+    QTRY_VERIFY(controller_->gridColumns() < 10);
+    QCOMPARE(item(QStringLiteral("grid-default"))->width(),
+             qreal(controller_->gridColumns() * controller_->gridPitch() - controller_->gridGap()));
 
     window_->resize(980 + 2 * shadow, 680 + 2 * shadow);
     QTRY_VERIFY(item(QStringLiteral("catalogPanel"))->isVisible());
@@ -1491,6 +1716,21 @@ void PrototypeWindowTest::applicationDirectoryAndPinning() {
     QTRY_VERIFY(!controller_->catalogBusy());
     QCOMPARE(catalog_->applicationsModel()->rowCount(), 2);
     QVERIFY(state->workerOnly);
+
+    // A refresh may remove the source while its context menu is open. Restore an
+    // actual fallback control rather than leaving focus in the destroyed delegate.
+    auto* refreshedApplication = item(launchButton);
+    QVERIFY(refreshedApplication);
+    QTest::mouseClick(
+        window_, Qt::RightButton, Qt::NoModifier,
+        refreshedApplication->mapToScene(refreshedApplication->boundingRect().center()).toPoint());
+    QTRY_VERIFY(applicationMenu->property("opened").toBool());
+    state->includeApplications = false;
+    controller_->refreshApplications();
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 0);
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!applicationMenu->property("visible").toBool());
+    QTRY_VERIFY(item(QStringLiteral("moreMenuButton"))->hasActiveFocus());
 }
 
 void PrototypeWindowTest::applicationLaunchLifecycle() {
@@ -1649,6 +1889,8 @@ void PrototypeWindowTest::searchPreservesBrowsing() {
     click(item(QStringLiteral("catalogViewButton")));
     QTRY_VERIFY(window_->property("showApplications").toBool());
     QTRY_VERIFY(item(QStringLiteral("catalogPanel"))->isVisible());
+    QTRY_VERIFY(controller_->gridColumns() < 10);
+    const auto compactBefore = controller_->groups();
     QVERIFY(applications->setProperty("contentY", 180.0));
     QTRY_COMPARE(applications->property("contentY").toReal(), qreal(180));
     QVERIFY(field->setProperty("text", QStringLiteral("App 01")));
@@ -1661,8 +1903,9 @@ void PrototypeWindowTest::searchPreservesBrowsing() {
     QVERIFY(window_->property("showApplications").toBool());
     QVERIFY(!item(QStringLiteral("groupsScroll"))->isVisible());
     QTRY_COMPARE(applications->property("contentY").toReal(), qreal(180));
-    QCOMPARE(controller_->groups(), before);
-    QCOMPARE(item(QStringLiteral("grid-work"))->width(), qreal(552));
+    QCOMPARE(controller_->groups(), compactBefore);
+    QCOMPARE(item(QStringLiteral("grid-work"))->width(),
+             qreal(controller_->gridColumns() * controller_->gridPitch() - controller_->gridGap()));
     QCOMPARE(state->launches.load(), 0);
 }
 
@@ -2060,7 +2303,15 @@ void PrototypeWindowTest::groupNameCompositionAndCancellation() {
     QCOMPARE(controller_->groups().size(), 1);
     QVERIFY(field->property("text").toString().isEmpty());
     QVERIFY(QMetaObject::invokeMethod(window_, "prepareForPresentation"));
-    QTRY_VERIFY(item(QStringLiteral("searchField"))->hasActiveFocus());
+    QTRY_VERIFY2(
+        item(QStringLiteral("searchField"))->hasActiveFocus(),
+        qPrintable(QStringLiteral("focus=%1 suspended=%2 popup=%3 pending=%4 staged=%5")
+                       .arg(window_->activeFocusItem() ? window_->activeFocusItem()->objectName()
+                                                       : QStringLiteral("none"))
+                       .arg(window_->property("presentationSuspended").toBool())
+                       .arg(window_->property("internalPopupVisible").toBool())
+                       .arg(window_->property("presentationFocusPending").toBool())
+                       .arg(window_->property("presentationStaged").toBool())));
     QVERIFY(controller_->editMode());
 
     while (controller_->groups().size() < controller_->maximumGroups()) {
@@ -2083,13 +2334,17 @@ void PrototypeWindowTest::groupCatalogMoveAndRestart() {
     submitGroupName(QStringLiteral("工具 Tools"));
     const auto newId = controller_->groups().last().toMap().value(QStringLiteral("id")).toString();
     const auto applicationId = state->applications.first().id;
-    click(item(QStringLiteral("pinButton-") + applicationId));
+    auto* applicationRow = item(QStringLiteral("applicationLaunch-") + applicationId);
+    QVERIFY(applicationRow);
+    QTest::mouseClick(
+        window_, Qt::RightButton, Qt::NoModifier,
+        applicationRow->mapToScene(applicationRow->boundingRect().center()).toPoint());
     auto* pinMenu = window_->findChild<QObject*>(QStringLiteral("pinApplicationMenu"));
     QVERIFY(pinMenu);
     QTRY_VERIFY(pinMenu->property("opened").toBool());
-    auto* pinToNewGroup = item(QStringLiteral("pinToGroup-") + newId);
+    auto* pinToNewGroup = item(QStringLiteral("applicationPinAction"));
     QVERIFY(pinToNewGroup && pinToNewGroup->isEnabled());
-    QCOMPARE(pinToNewGroup->property("text").toString(), QStringLiteral("工具 Tools"));
+    QCOMPARE(pinToNewGroup->property("text").toString(), QStringLiteral("固定为磁贴"));
     pinToNewGroup->forceActiveFocus(Qt::TabFocusReason);
     QTest::keyClick(window_, Qt::Key_Return);
     QTRY_COMPARE(tileGeometries().size(), 1);
@@ -2354,11 +2609,15 @@ void PrototypeWindowTest::shortcutRailAssetsAndTheme() {
     for (const bool dark : {true, false}) {
         controller_->setDarkTheme(dark);
         const auto theme = dark ? QStringLiteral("dark") : QStringLiteral("light");
+        QQuickItem* previousShortcut = nullptr;
         for (const auto* action : {"account", "documents", "downloads", "settings", "power"}) {
             const auto id = QLatin1String(action);
             auto* button = item(QStringLiteral("shortcut-") + id);
             QVERIFY(button);
             QCOMPARE(button->size(), QSizeF(48, 48));
+            if (previousShortcut)
+                QCOMPARE(button->y(), previousShortcut->y() + previousShortcut->height());
+            previousShortcut = id == QLatin1String("account") ? nullptr : button;
             auto* accessible = QAccessible::queryAccessibleInterface(button);
             QVERIFY(accessible);
             QVERIFY(!accessible->text(QAccessible::Name).isEmpty());
@@ -2589,7 +2848,8 @@ void PrototypeWindowTest::winKeyCaptureControlRequiresExplicitIntent() {
 void PrototypeWindowTest::framelessWindowDismissalIntent() {
     QVERIFY(window_->flags().testFlag(Qt::FramelessWindowHint));
     QVERIFY(window_->flags().testFlag(Qt::NoDropShadowWindowHint));
-    QCOMPARE(window_->flags() & Qt::WindowType_Mask, Qt::WindowFlags(Qt::Window));
+    QCOMPARE(window_->flags() & Qt::WindowType_Mask, Qt::WindowFlags(Qt::Tool));
+    QVERIFY(window_->flags().testFlag(Qt::WindowStaysOnTopHint));
     QCOMPARE(window_->color().alpha(), 0);
     auto* surface = item(QStringLiteral("menuSurface"));
     QVERIFY(surface);
@@ -2979,6 +3239,8 @@ void PrototypeWindowTest::renderedGroups() {
     window_->resize(width, height);
     window_->setPosition(available.center() - QPoint(width / 2, height / 2));
     QTRY_COMPARE(window_->size(), QSize(width, height));
+    QTRY_VERIFY(!window_->property("layoutWidthPending").toBool());
+    QCOMPARE(controller_->gridColumns(), 10);
     auto* flickable = item(QStringLiteral("groupsFlickable"));
     auto* themeButton = item(QStringLiteral("moreMenuButton"));
     QVERIFY(flickable);
@@ -3312,7 +3574,7 @@ void PrototypeWindowTest::tileNamesAreLiteralText() {
     auto* tile = item(QStringLiteral("tile-work-standard-1"));
     QVERIFY(tile);
     auto data = tile->property("tile").toMap();
-    const auto literal = QStringLiteral("<b>工具 Tools</b>");
+    const auto literal = QStringLiteral("<b>工具 · Tools</b>");
     data.insert(QStringLiteral("name"), literal);
     data.insert(QStringLiteral("symbol"), QStringLiteral("<b>X</b>"));
     QVERIFY(tile->setProperty("tile", data));
@@ -3366,8 +3628,13 @@ void PrototypeWindowTest::tileNamesAreLiteralText() {
     QVERIFY(tipText);
     QVERIFY(tipText->property("text").toString().contains(literal));
     QCOMPARE(tipText->property("textFormat").toInt(), int(Qt::PlainText));
-    tile->forceActiveFocus(Qt::TabFocusReason);
-    QTRY_VERIFY(tooltip->property("visible").toBool());
+    QTest::mouseMove(window_, QPoint(1, 1));
+    item(QStringLiteral("moreMenuButton"))->forceActiveFocus(Qt::OtherFocusReason);
+    for (int count = 0; count < 64 && !tile->hasActiveFocus(); ++count)
+        QTest::keyClick(window_, Qt::Key_Tab);
+    QTRY_VERIFY(tile->hasActiveFocus());
+    QVERIFY(controller_->keyboardNavigation());
+    QTRY_VERIFY_WITH_TIMEOUT(tooltip->property("visible").toBool(), 1500);
     QVERIFY(tooltip->property("width").toReal() <= 380);
 }
 
@@ -3534,6 +3801,7 @@ void PrototypeWindowTest::tileDisplayNameSharedTargetAliases() {
     tiles.append(duplicate); group.insert(QStringLiteral("tiles"), tiles); groups[0] = group;
     snapshot.insert(QStringLiteral("groups"), groups);
     snapshot.insert(QStringLiteral("schemaVersion"), 2);
+    snapshot.remove(QStringLiteral("gridColumns"));
     const auto bytes = QJsonDocument(snapshot).toJson();
     destroyWindow();
     QFile file(path);
@@ -4121,6 +4389,163 @@ void PrototypeWindowTest::tileNameMouseContextFromSearchRestoresFocus() {
     QTRY_VERIFY(!sizeMenu()->property("visible").toBool());
     QTest::keyClick(window_, Qt::Key_Menu);
     QTRY_VERIFY(sizeMenu()->property("opened").toBool());
+}
+
+void PrototypeWindowTest::presentationSingleReveal() {
+    QVERIFY(window_->setProperty("dismissalManaged", true));
+    window_->hide();
+    QVERIFY(QMetaObject::invokeMethod(window_, "stagePresentation"));
+    QCOMPARE(window_->property("revealProgress").toReal(), qreal(0));
+    qreal firstVisibleProgress = -1;
+    connect(window_, &QWindow::visibleChanged, this, [&](bool visible) {
+        if (visible && firstVisibleProgress < 0)
+            firstVisibleProgress = window_->property("revealProgress").toReal();
+    });
+    window_->show();
+    QCOMPARE(firstVisibleProgress, qreal(0));
+    QCOMPARE(window_->property("revealProgress").toReal(), qreal(0));
+    QVERIFY(QMetaObject::invokeMethod(window_, "prepareForPresentation"));
+    QTRY_VERIFY(window_->property("revealProgress").toReal() > 0);
+    const qreal progress = window_->property("revealProgress").toReal();
+    const int generation = window_->property("presentationGeneration").toInt();
+    QVERIFY(QMetaObject::invokeMethod(window_, "prepareForPresentation"));
+    QTest::qWait(20);
+    QVERIFY(window_->property("revealProgress").toReal() >= progress);
+    QCOMPARE(window_->property("presentationGeneration").toInt(), generation);
+    QTRY_COMPARE(window_->property("revealProgress").toReal(), qreal(1));
+
+    // A queued standalone visibility callback cannot restart a newer managed reveal.
+    window_->hide();
+    QVERIFY(window_->setProperty("dismissalManaged", false));
+    window_->show();
+    window_->hide();
+    QVERIFY(window_->setProperty("dismissalManaged", true));
+    QVERIFY(QMetaObject::invokeMethod(window_, "stagePresentation"));
+    const int currentGeneration = window_->property("presentationGeneration").toInt();
+    window_->show();
+    QVERIFY(QMetaObject::invokeMethod(window_, "prepareForPresentation"));
+    QTest::qWait(40);
+    QCOMPARE(window_->property("presentationGeneration").toInt(), currentGeneration);
+    QVERIFY(!window_->property("presentationStaged").toBool());
+    QTRY_COMPARE(window_->property("revealProgress").toReal(), qreal(1));
+}
+
+void PrototypeWindowTest::approvedSurfaceStates() {
+    const auto capture = [&](const QString& state) {
+        const auto directory = QString::fromLocal8Bit(qgetenv("XDSTARTER_SURFACE_CAPTURE_DIR"));
+        if (directory.isEmpty())
+            return;
+        QVERIFY(QDir().mkpath(directory));
+        window_->requestUpdate();
+        QTest::qWait(180);
+        const auto frame = window_->grabWindow();
+        QVERIFY(!frame.isNull());
+        QVERIFY(frame.save(QDir(directory).filePath(state + QStringLiteral(".png"))));
+    };
+    for (const bool dark : {true, false}) {
+        controller_->setDarkTheme(dark);
+        const auto variant = dark ? QStringLiteral("dark") : QStringLiteral("light");
+        const auto colors = visualTokens_.value(QStringLiteral("interactionSurface"))
+                                .toMap()
+                                .value(QStringLiteral("themes"))
+                                .toMap()
+                                .value(variant)
+                                .toMap();
+        openSizeMenu(QStringLiteral("work-standard-1"), false);
+        auto* dimensions = item(QStringLiteral("tileDimensionsMenuItem"));
+        QVERIFY(dimensions);
+        QCOMPARE(dimensions->property("leftPadding").toReal(), qreal(38));
+        click(dimensions);
+        auto* submenu = window_->findChild<QObject*>(QStringLiteral("tileDimensionsMenu"));
+        QVERIFY(submenu);
+        QTRY_VERIFY(submenu->property("opened").toBool());
+        auto* medium = item(QStringLiteral("sizeStandardItem"));
+        QVERIFY(medium);
+        QCOMPARE(medium->property("text").toString(), QStringLiteral("中磁贴 (2×2)"));
+        QCOMPARE(medium->property("leftPadding").toReal(),
+                 dimensions->property("leftPadding").toReal());
+        auto* check = medium->property("indicator").value<QQuickItem*>();
+        QVERIFY(check);
+        QCOMPARE(check->property("name").toString(), QStringLiteral("check"));
+        QTRY_COMPARE(check->property("status").toInt(), 1);
+        auto* wide = item(QStringLiteral("sizeWideItem"));
+        QVERIFY(wide);
+        QTest::mouseMove(window_, wide->mapToScene(wide->boundingRect().center()).toPoint());
+        QTRY_VERIFY(wide->property("hovered").toBool());
+        auto* background = wide->property("background").value<QQuickItem*>();
+        QVERIFY(background);
+        // The first hover frame is already the final neutral color; no accent flash.
+        const QColor hover(colors.value(QStringLiteral("hover")).toString());
+        for (int frame = 0; frame < 6; ++frame) {
+            QTest::qWait(16);
+            QCOMPARE(background->property("color").value<QColor>(), hover);
+        }
+        capture(variant + QStringLiteral("-menus"));
+        QVERIFY(QMetaObject::invokeMethod(sizeMenu(), "close"));
+        QTRY_VERIFY(!submenu->property("visible").toBool());
+        QTRY_VERIFY(!sizeMenu()->property("visible").toBool());
+
+        QVERIFY(QMetaObject::invokeMethod(window_, "openAbout"));
+        auto* about = window_->findChild<QObject*>(QStringLiteral("aboutPopup"));
+        QVERIFY(about);
+        QTRY_VERIFY(about->property("opened").toBool());
+        QVERIFY(about->property("modal").toBool());
+        auto* aboutDismiss = item(QStringLiteral("aboutDismissButton"));
+        QVERIFY(aboutDismiss);
+        auto* aboutContent = about->property("contentItem").value<QQuickItem*>();
+        QVERIFY(aboutContent);
+        QTRY_VERIFY2(qAbs(aboutDismiss->mapToItem(aboutContent, QPointF(aboutDismiss->width(), 0)).x() -
+                         aboutContent->width()) <= 1,
+                     qPrintable(QStringLiteral("About close right=%1, content width=%2")
+                                    .arg(aboutDismiss->mapToItem(aboutContent,
+                                                               QPointF(aboutDismiss->width(), 0)).x())
+                                    .arg(aboutContent->width())));
+        auto* aboutBackground = about->property("background").value<QQuickItem*>();
+        QVERIFY(aboutBackground);
+        QCOMPARE(aboutBackground->property("radius").toReal(), qreal(12));
+        QVERIFY(aboutBackground->property("shadowEnabled").toBool());
+        capture(variant + QStringLiteral("-about"));
+        click(item(QStringLiteral("closeAboutButton")));
+        QTRY_VERIFY(!about->property("visible").toBool());
+
+        window_->setProperty("selectionStatus", QStringLiteral("正在打开测试应用"));
+        window_->setProperty("selectionStatusError", false);
+        QVERIFY(!window_->property("showSelectionFeedback").toBool());
+        const QString launchError = QStringLiteral("测试应用暂时不可用，请重试。");
+        QVERIFY(QMetaObject::invokeMethod(controller_.get(), "launchFailed",
+                                          Q_ARG(QString, launchError)));
+        auto* feedback = item(QStringLiteral("feedbackPanel"));
+        QVERIFY(feedback);
+        QTRY_VERIFY(feedback->isVisible());
+        capture(variant + QStringLiteral("-failure"));
+        click(item(QStringLiteral("feedbackCloseButton")));
+        QTRY_VERIFY(!feedback->isVisible());
+        // Quiet successful edits must not resurrect a dismissed launch error.
+        QVERIFY(controller_->moveTile(QStringLiteral("work-standard-1"), QStringLiteral("daily"), 0,
+                                      dark ? 4 : 6));
+        QTest::qWait(180);
+        QVERIFY(!feedback->isVisible());
+        // Retrying and receiving the same failure is a new error event.
+        QVERIFY(QMetaObject::invokeMethod(controller_.get(), "launchFailed",
+                                          Q_ARG(QString, launchError)));
+        QTRY_VERIFY(feedback->isVisible());
+        auto* feedbackClose = item(QStringLiteral("feedbackCloseButton"));
+        feedbackClose->forceActiveFocus(Qt::TabFocusReason);
+        QTRY_VERIFY(feedbackClose->hasActiveFocus());
+        QTest::keyClick(window_, Qt::Key_Return);
+        QTRY_VERIFY(!feedback->isVisible());
+        QTRY_VERIFY(item(QStringLiteral("searchField"))->hasActiveFocus());
+        QVERIFY(!feedbackClose->isEnabled());
+    }
+    QQmlComponent component(engine_.get());
+    component.setData("import QtQuick\nimport XDStarter\nHint {}", QUrl{});
+    std::unique_ptr<QObject> tooltip(component.create());
+    QVERIFY2(tooltip, qPrintable(component.errorString()));
+    QCOMPARE(tooltip->property("delay").toInt(), 600);
+    auto* tooltipBackground = tooltip->property("background").value<QQuickItem*>();
+    QVERIFY(tooltipBackground);
+    QCOMPARE(tooltipBackground->property("radius").toReal(), qreal(4));
+    QVERIFY(!tooltipBackground->findChild<QObject*>(QStringLiteral("floatingSurfaceShadow")));
 }
 
 int main(int argc, char* argv[]) {

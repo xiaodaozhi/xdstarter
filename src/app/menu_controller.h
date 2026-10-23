@@ -42,7 +42,10 @@ class MenuController : public QObject {
     Q_PROPERTY(int previewWidth READ previewWidth NOTIFY groupsChanged)
     Q_PROPERTY(int previewHeight READ previewHeight NOTIFY groupsChanged)
     Q_PROPERTY(int gridPitch READ gridPitch CONSTANT)
-    Q_PROPERTY(int gridColumns READ gridColumns CONSTANT)
+    Q_PROPERTY(int gridGap READ gridGap CONSTANT)
+    Q_PROPERTY(int minimumGridWidth READ minimumGridWidth CONSTANT)
+    Q_PROPERTY(int defaultGridWidth READ defaultGridWidth CONSTANT)
+    Q_PROPERTY(int gridColumns READ gridColumns NOTIFY groupsChanged)
     Q_PROPERTY(bool editMode READ editMode WRITE setEditMode NOTIFY editModeChanged)
     Q_PROPERTY(bool keyboardNavigation READ keyboardNavigation NOTIFY keyboardNavigationChanged)
     Q_PROPERTY(bool darkTheme READ darkTheme WRITE setDarkTheme NOTIFY darkThemeChanged)
@@ -95,7 +98,11 @@ class MenuController : public QObject {
     [[nodiscard]] int previewHeight() const;
     Q_INVOKABLE QString neighborTileId(const QString& tileId, const QString& direction) const;
     [[nodiscard]] int gridPitch() const;
+    [[nodiscard]] int gridGap() const;
+    [[nodiscard]] int minimumGridWidth() const;
+    [[nodiscard]] int defaultGridWidth() const;
     [[nodiscard]] int gridColumns() const;
+    Q_INVOKABLE bool setGridColumnsForWidth(qreal availableWidth);
     [[nodiscard]] bool editMode() const;
     [[nodiscard]] bool keyboardNavigation() const { return keyboardNavigation_; }
     void setEditMode(bool enabled);
@@ -141,6 +148,13 @@ class MenuController : public QObject {
     Q_INVOKABLE bool launchApplication(const QString& appId);
     Q_INVOKABLE bool launchTile(const QString& tileId);
     Q_INVOKABLE bool pinApplication(const QString& appId, const QString& groupId = {});
+    Q_INVOKABLE bool isApplicationPinned(const QString& appId) const;
+    Q_INVOKABLE QVariantMap previewApplicationPlacement(const QString& appId,
+                                                        const QString& groupId, int column,
+                                                        int row) const;
+    Q_INVOKABLE bool pinApplicationAt(const QString& appId, const QString& groupId, int column,
+                                      int row);
+    Q_INVOKABLE bool unpinApplication(const QString& appId);
     Q_INVOKABLE bool unpinTile(const QString& tileId);
     Q_INVOKABLE bool renameTile(const QString& tileId, const QString& displayName);
     Q_INVOKABLE bool resetTileDisplayName(const QString& tileId);

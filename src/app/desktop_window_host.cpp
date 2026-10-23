@@ -77,6 +77,7 @@ DesktopWindowHost::DesktopWindowHost(QWindow &window, DesktopShellService &shell
                                      DesktopPlatform &placement, DesktopTray &tray, QObject *parent)
     : QObject(parent), window_(&window), shell_(shell), placement_(placement), tray_(tray),
       previousQuitOnClose_(QGuiApplication::quitOnLastWindowClosed()) {
+    preferredMinimumSize_ = window.minimumSize();
     window.installEventFilter(this);
     focusTimer_.setSingleShot(true);
     focusTimer_.setInterval(100);
@@ -92,7 +93,7 @@ DesktopWindowHost::DesktopWindowHost(QWindow &window, DesktopShellService &shell
         if (recoveryAvailable_)
             window_->hide();
         else
-            window_->showMinimized();
+            showRecoveryWindow();
     });
     connect(qGuiApp, &QGuiApplication::focusWindowChanged, this,
             &DesktopWindowHost::scheduleFocusCheck);
@@ -117,6 +118,8 @@ DesktopWindowHost::DesktopWindowHost(QWindow &window, DesktopShellService &shell
     if (windowMeta->indexOfSignal("startButtonCaptureToggleRequested()") >= 0)
         connect(&window, SIGNAL(startButtonCaptureToggleRequested()), this,
                 SLOT(toggleStartButtonCapture()));
+    if (windowMeta->indexOfSignal("trayRecoveryRetryRequested()") >= 0)
+        connect(&window, SIGNAL(trayRecoveryRetryRequested()), this, SLOT(retryTrayRegistration()));
     const int blockedProperty = windowMeta->indexOfProperty("dismissalBlocked");
     if (blockedProperty >= 0) {
         const auto property = windowMeta->property(blockedProperty);
@@ -153,6 +156,8 @@ DesktopWindowHost::DesktopWindowHost(QWindow &window, DesktopShellService &shell
             prepareWindow("prepareForDismissal");
             placementRequest_ = 0;
             shell_.invalidateStartButtonAnchor();
+            if (started_ && !stopping_ && !recoveryAvailable_)
+                QTimer::singleShot(0, this, &DesktopWindowHost::showRecoveryWindow);
         }
     });
     connect(&shell_, &DesktopShellService::startButtonAnchorReady, this,
@@ -169,6 +174,7 @@ void DesktopWindowHost::beginRevealPreparation(const DesktopAnchorResult &anchor
     cancelRevealPreparation();
     preparationRequest_ = request;
     revealAnchor_ = anchor;
+    window_->setProperty("menuConservativeWorkAreaFallback", false);
     window_->setProperty("allowedResizeEdges", static_cast<int>(desktopResizeEdges(anchor)));
     targetScreen_ = anchor.monitorName.isEmpty() ? window_->screen()
                                                : placement_.screenForAnchor(anchor);
@@ -223,11 +229,13 @@ void DesktopWindowHost::checkRevealPreparation() {
         publishStatus();
         qWarning().noquote() << "Desktop placement preparation timed out; window remains hidden.";
         if (!stopping_ && !pendingReveal_ && !placementRequest_ && !recoveryAvailable_ && window_)
-            window_->showMinimized();
+            showRecoveryWindow();
         return;
     }
     const qreal renderDpr = window_->devicePixelRatio();
     const qreal screenDpr = targetScreen_ ? targetScreen_->devicePixelRatio() : renderDpr;
+    if (targetScreen_ && window_->screen() == targetScreen_ && qFuzzyCompare(renderDpr, screenDpr))
+        updateWindowConstraints();
     if (targetScreen_ && window_->screen() == targetScreen_ &&
         qFuzzyCompare(renderDpr, screenDpr) && !intendedWindowSize_.isEmpty() &&
         window_->size() != intendedWindowSize_) {
@@ -262,6 +270,16 @@ void DesktopWindowHost::finishRevealPreparation() {
     const auto result = placement_.placeWindow(window_->winId(), anchor, gap, false, inset);
     if (!isCurrentReveal(request))
         return;
+    if (result.errorCode == QStringLiteral("menu-input-region-failed")) {
+        cancelRevealPreparation();
+        pendingReveal_ = false;
+        placementRequest_ = 0;
+        anchorStatus_ = result.message;
+        publishStatus();
+        if (!recoveryAvailable_)
+            emit exitRequested();
+        return;
+    }
     anchorStatus_ = result.success ? QStringLiteral("面板按任务栏方向停靠，边距为 %1 DIP。")
                                          .arg(windowMetric(window_, "screenGapDip", 8))
                                    : QStringLiteral("原生定位不可用，使用 Qt 工作区边距回退。");
@@ -287,11 +305,26 @@ void DesktopWindowHost::finishRevealPreparation() {
             break;
         }
         const int logicalGap = qRound(windowMetric(window_, "screenGapDip", 8));
-        const int logicalInset = qRound(windowMetric(window_, "shadowInset", 0));
-        const auto panel = desktopPopupPhysicalRect(
-            window_->size() - QSize(2 * logicalInset, 2 * logicalInset), logical, logicalGap);
-        if (panel.isValid())
-            window_->setPosition(panel.topLeft() - QPoint(logicalInset, logicalInset));
+        const auto bounds = desktopMenuPanelBounds(logical, logicalGap);
+        if (!bounds.isValid()) {
+            cancelRevealPreparation();
+            pendingReveal_ = false;
+            placementRequest_ = 0;
+            anchorStatus_ = QStringLiteral("无法取得安全工作区，本次显示已取消。");
+            publishStatus();
+            if (!recoveryAvailable_)
+                emit exitRequested();
+            return;
+        }
+        // A placement error may precede region initialization. Keep the whole
+        // outer HWND off the taskbar for this one fallback presentation.
+        window_->setProperty("menuConservativeWorkAreaFallback", true);
+        window_->setProperty("allowedResizeEdges", 0);
+        window_->setMinimumSize(preferredMinimumSize_.boundedTo(bounds.size()));
+        window_->setMaximumSize(bounds.size());
+        window_->resize(window_->size().boundedTo(bounds.size()));
+        const auto outer = desktopPopupPhysicalRect(window_->size(), logical, logicalGap);
+        window_->setPosition(outer.topLeft());
     }
     if (!isCurrentReveal(request))
         return;
@@ -322,6 +355,7 @@ void DesktopWindowHost::finishRevealPreparation() {
                .toJson(QJsonDocument::Compact);
     cancelRevealPreparation();
     pendingReveal_ = false;
+    prepareWindow("stagePresentation");
     window_->showNormal();
     if (stopping_ || !window_ || !window_->isVisible() || placementRequest_ != request)
         return;
@@ -340,6 +374,7 @@ DesktopWindowHost::~DesktopWindowHost() {
 void DesktopWindowHost::start(const QImage& icon, bool showInitially) {
     if (stopping_ || started_)
         return;
+    trayIcon_ = icon;
     const auto result = tray_.start(icon);
     updateRecovery(result.success && tray_.isAvailable(), result.message);
     started_ = true;
@@ -466,7 +501,11 @@ void DesktopWindowHost::showWindow() {
         window_->hide();
     pendingReveal_ = !window_->isVisible();
     if (!pendingReveal_) {
-        prepareWindow("prepareForPresentation");
+        if (placement_.hasOwnedForegroundDialog(window_->winId())) {
+            scheduleFocusCheck();
+            return;
+        }
+        prepareWindow("restorePresentationFocus");
         window_->raise();
         window_->requestActivate();
         activatePresentedWindow();
@@ -522,6 +561,11 @@ void DesktopWindowHost::toggleWindowFrom(const QString &source) {
 
 bool DesktopWindowHost::eventFilter(QObject *object, QEvent *event) {
     if (object == window_ && event->type() == QEvent::Close) {
+        if (started_ && !stopping_ && !recoveryAvailable_) {
+            event->ignore();
+            emit exitRequested();
+            return true;
+        }
         rememberVisibleWindowSize();
         if (pendingReveal_) {
             cancelRevealPreparation();
@@ -574,7 +618,8 @@ void DesktopWindowHost::scheduleFocusCheck() {
 
 void DesktopWindowHost::checkFocus() {
     if (stopping_ || !window_ || !window_->isVisible() ||
-        window_->visibility() == QWindow::Minimized || trayMenuActive_ || !focusArmed_)
+        window_->visibility() == QWindow::Minimized || trayMenuActive_ || !focusArmed_ ||
+        !recoveryAvailable_)
         return;
     if (ownsFocus())
         return;
@@ -605,6 +650,13 @@ void DesktopWindowHost::prepareWindow(const char *method) {
 void DesktopWindowHost::dismiss(const QString &reason) {
     if (stopping_ || !window_)
         return;
+    if (!recoveryAvailable_) {
+        if (reason != QStringLiteral("external-focus"))
+            emit exitRequested();
+        return;
+    }
+    if (dismissPending_)
+        return;
     // Resize notifications can still be queued when the user immediately
     // dismisses the menu. Capture the current visible DIP size before hiding.
     rememberVisibleWindowSize();
@@ -621,10 +673,8 @@ void DesktopWindowHost::dismiss(const QString &reason) {
         dismissPending_ = true;
         prepareWindow("animateDismissal");
         dismissTimer_.start(duration);
-    } else if (recoveryAvailable_) {
-        window_->hide();
     } else {
-        window_->showMinimized();
+        window_->hide();
     }
     qInfo().noquote() << "Menu dismissal:"
                       << QJsonDocument(QJsonObject{{QStringLiteral("reason"), reason},
@@ -647,11 +697,11 @@ void DesktopWindowHost::configureAppearance() {
 }
 
 void DesktopWindowHost::keepReachableAfterLaunch() {
-    // QML hides immediately after success. If tray registration failed, keep
-    // a taskbar entry without stealing focus from the launched application.
+    // A tool window has no taskbar fallback. Keep a visible retry/exit surface
+    // when the notification area cannot provide a recovery entry.
     QTimer::singleShot(0, this, [this] {
         if (!stopping_ && !recoveryAvailable_ && !pendingReveal_ && window_ && !window_->isVisible())
-            window_->showMinimized();
+            showRecoveryWindow();
     });
 }
 
@@ -704,13 +754,31 @@ void DesktopWindowHost::updateRecovery(bool available, const QString &message) {
         winKeyStatus_ = QStringLiteral("托盘恢复入口不可用，Win 键唤起已暂停；系统开始菜单保持原生行为。");
     }
     QGuiApplication::setQuitOnLastWindowClosed(!available);
-    trayStatus_ = available ? QStringLiteral("托盘可显示、收起和退出 XDStarter。")
-                            : QStringLiteral("托盘不可用，保留普通窗口及任务栏恢复入口。");
+    trayStatus_ =
+        available
+            ? QStringLiteral("托盘可显示、收起和退出 XDStarter。")
+            : QStringLiteral("托盘不可用，请重试注册或退出 XDStarter。关闭此恢复窗口会退出程序。");
     if (!message.isEmpty())
         trayStatus_ += QLatin1Char(' ') + message;
     publishStatus();
-    if (started_ && !available && window_ && !window_->isVisible() && !pendingReveal_)
-        window_->showMinimized();
+    if (started_ && available && recoveryWindowLayout_ && window_) {
+        // The emergency surface keeps its whole transparent HWND inside the
+        // work area. Re-enter the normal hidden placement/region lifecycle so
+        // retry restores both panel margins and direction-aware resize edges.
+        recoveryWindowLayout_ = false;
+        window_->hide();
+        showWindow();
+        return;
+    }
+    if (started_ && !available) {
+        dismissTimer_.stop();
+        dismissPending_ = false;
+        if (window_ && (!window_->isVisible() || window_->visibility() == QWindow::Minimized) &&
+            !pendingReveal_)
+            showRecoveryWindow();
+        else if (window_ && window_->isVisible())
+            prepareWindow("restorePresentationFocus");
+    }
 }
 
 void DesktopWindowHost::publishStatus() {
@@ -721,6 +789,87 @@ void DesktopWindowHost::publishStatus() {
                                                       QLatin1Char('\n') + appearanceStatus_ +
                                                       QLatin1Char('\n') + winKeyStatus_ +
                                                       QLatin1Char('\n') + startButtonStatus_);
+    if (window_) {
+        window_->setProperty("trayRecoveryUnavailable", !recoveryAvailable_);
+        window_->setProperty("trayRecoveryMessage", trayStatus_);
+    }
+}
+
+void DesktopWindowHost::retryTrayRegistration() {
+    if (stopping_ || !started_ || recoveryAvailable_)
+        return;
+    const auto result = tray_.start(trayIcon_);
+    updateRecovery(result.success && tray_.isAvailable(), result.message);
+}
+
+void DesktopWindowHost::showRecoveryWindow() {
+    if (stopping_ || !started_ || recoveryAvailable_ || !window_ || pendingReveal_)
+        return;
+    dismissTimer_.stop();
+    dismissPending_ = false;
+    if (window_->isVisible() && window_->visibility() != QWindow::Minimized)
+        return;
+    cancelRevealPreparation();
+    if (window_->isVisible())
+        window_->hide();
+    configureAppearance();
+    recoveryWindowLayout_ = true;
+    window_->setProperty("menuConservativeWorkAreaFallback", true);
+    window_->setProperty("allowedResizeEdges", 0);
+    const auto* screen = window_->screen();
+    if (!screen) {
+        emit exitRequested();
+        return;
+    }
+    if (screen) {
+        DesktopAnchorResult logical;
+        logical.monitorPhysicalRect = screen->geometry();
+        logical.workAreaPhysicalRect = screen->availableGeometry();
+        const int gap = qRound(windowMetric(window_, "screenGapDip", 8));
+        const QRect bounds = desktopMenuPanelBounds(logical, gap);
+        if (!bounds.isValid()) {
+            emit exitRequested();
+            return;
+        }
+        if (bounds.isValid()) {
+            // There may not yet be a trustworthy native placement/region.
+            // Keep even the shadow HWND off the taskbar for this recovery
+            // surface, and disable edge dragging until registration succeeds.
+            const QSize maximum = bounds.size();
+            window_->setMinimumSize(preferredMinimumSize_.boundedTo(maximum));
+            window_->setMaximumSize(maximum);
+            window_->resize(window_->size().boundedTo(maximum));
+            const QRect outer = desktopPopupPhysicalRect(window_->size(), logical, gap);
+            window_->setPosition(outer.topLeft());
+        }
+    }
+    prepareWindow("stagePresentation");
+    window_->showNormal();
+    activatePresentedWindow();
+    prepareWindow("prepareForPresentation");
+}
+
+void DesktopWindowHost::updateWindowConstraints() {
+    if (!window_)
+        return;
+    const qreal scale = window_->devicePixelRatio();
+    const int gap = qRound(windowMetric(window_, "screenGapDip", 8) * scale);
+    const int inset = qRound(windowMetric(window_, "shadowInset", 0) * scale);
+    const QRect panel = desktopMenuPanelBounds(revealAnchor_, gap);
+    if (!panel.isValid())
+        return;
+    if (qint64(panel.left()) - inset < std::numeric_limits<int>::min() ||
+        qint64(panel.top()) - inset < std::numeric_limits<int>::min() ||
+        qint64(panel.right()) + inset > std::numeric_limits<int>::max() ||
+        qint64(panel.bottom()) + inset > std::numeric_limits<int>::max())
+        return;
+    const QRect outer = panel.adjusted(-inset, -inset, inset, inset);
+    window_->setProperty("menuOuterBoundsPhysical", outer);
+    const QSize maximum(qMax(1, static_cast<int>(std::floor(outer.width() / scale))),
+                        qMax(1, static_cast<int>(std::floor(outer.height() / scale))));
+    window_->setMinimumSize(preferredMinimumSize_.boundedTo(maximum));
+    window_->setMaximumSize(maximum);
+    intendedWindowSize_ = intendedWindowSize_.boundedTo(maximum);
 }
 
 void DesktopWindowHost::publishStartButtonCapture() {

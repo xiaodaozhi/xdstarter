@@ -6,7 +6,7 @@
 python3 -m unittest discover -s tests/tooling -v
 ```
 
-`core/` 为无 Qt 的 C++20 几何行为测试。`core-debug` 与 `core-release` 验证相同可观察行为，测试不使用会在 Release 中消失的 assert。Windows Qt 应用开启 `BUILD_TESTING` 时共注册十七套 CTest：
+`core/` 为无 Qt 的 C++20 几何行为测试。`core-debug` 与 `core-release` 验证相同可观察行为，测试不使用会在 Release 中消失的 assert。Windows Qt 应用开启 `BUILD_TESTING` 时共注册十八套 CTest；注册数量不表示本轮已经全部通过，实际结果按程序版本记录：
 
 | 目录/入口 | CTest | 范围 |
 | --- | --- | --- |
@@ -22,7 +22,8 @@ python3 -m unittest discover -s tests/tooling -v
 | `services/application_catalog_tests.cpp` | `services.application_catalog` | worker 调用、目录刷新、图标更新/缓存预算、启动复核与失效目标保留 |
 | `platform/` | `platform.applications` | Windows 隔离快捷方式、原生图标、失效目标及受控 helper 实际启动与参数/工作目录 |
 | `platform/desktop_platform_tests.cpp` | `platform.desktop` | 桌面动作白名单、可信/失败面板矩形一致、工作区夹限/极值/阴影留白转换、原生装饰抑制与窗口所有权边界及托盘旧会话事件失效；只读 UIA probe 显式执行 |
-| `platform/native_taskbar_probe.cpp` | `platform.native-menu-resize`（仅 Windows） | 自有隐藏 HWND 的14项原生 sizing 消息回归，不发送全局输入 |
+| `platform/desktop_width_snap_tests.cpp` | `platform.desktop-width-snap` | 五档缩放、负坐标、左右拖动、最近档位、最大边界及非法输入的宽度吸附 |
+| `platform/native_taskbar_probe.cpp` | `platform.native-menu-resize`（仅 Windows） | 自有隐藏 HWND 的 36 项原生消息／窗口策略回归：原 24 项边角、非活动、阶段、最大边界与窗口策略，另加四边各 3 项 region／重新定位与尺寸／Qt mask 清空重套；不发送全局输入 |
 | `services/desktop_shell_service_tests.cpp` | `services.desktop_shell` | 注入平台上的后台动作、成功/失败、重复请求拦截、查询合并/失效与析构等待 |
 | 产品 `--smoke-test` | `app.qml_smoke` | 从资源加载 QML/token 后退出，不读写用户布局 |
 | `ui/` | `ui.prototype` | 真实 Qt Quick 窗口的交互、编辑、保存恢复、只读与像素截图 |
@@ -31,7 +32,7 @@ python3 -m unittest discover -s tests/tooling -v
 产品与 GUI 测试共用 `xdstarter_add_ui` 编译的 QML、controller 与视觉资源；Qt6::Test 只进入测试目标。GUI 测试使用独立临时配置，覆盖鼠标组内/跨组拖拽、冲突与 Esc 取消、三档尺寸菜单、Ctrl+方向键移动、重建窗口恢复布局/主题、失败重试和未来版本只读，另检查两主题下尺寸菜单高亮/按下文字与勾选的对比度，并保留原有名称、导航、主题、最小窗口与磁贴像素几何回归。无边框窗口与共享圆角 token、可键盘收起按钮、`Popup.Item` 内部菜单、呈现清理契约和外部释放取消拖拽预览继续回归；本轮改为透明外窗、自绘边框/阴影与侧栏背景圆角裁切，正文尺寸及共享磁贴几何不变。清理不得改变已提交布局或退出编辑模式。
 
 ```powershell
-# 使用toolchain.json正式工具和默认项目Qt缓存，包含构建、lint与十七套CTest。
+# 使用toolchain.json正式工具和默认项目Qt缓存，包含构建、lint与十八套CTest。
 ./scripts/build-windows.ps1 -InstallTools -Python python -Preset app-release -Fresh
 $env:XDSTARTER_QT_ROOT = "$PWD/build/Qt/6.8.2/msvc2022_64"
 ./scripts/verify-windows-ui.ps1 -QtPrefix $env:XDSTARTER_QT_ROOT
@@ -69,6 +70,28 @@ Windows 产品唤起调用 `queryMenuAnchor()`，仅后台读取显示器、工�
 ## 功能测试优先级
 
 参考 xdzip，日常变更优先使用纯算法、服务 fixture、QtTest 和本机 IPC 子进程；没有必要时不使用 computer use。截图由 QtTest 抓帧并直接查看本地图片，设计导出与运行时截图分别标记。系统显示／任务栏配置、Explorer 重启及物理输入法等无法由单元测试证明的内容保留明确验证边界；不为完成普通回归反复操作用户桌面。
+
+### Issue #48 当前测试范围
+
+2026-10-23最终本机附加v142补丁兼容构建：18/18 CTest、GUI66/66、host50/50、IPC6/6与工具13/13通过，QML lint无诊断；实际编译器19.29.30159.0，不标为精确正式基线19.29.30153.0通过。同一产品EXE只读Start九点Win32／UIA全通过，旧#45物理矩阵不沿用为新程序亲测。完整散列与边界见[本轮证据](../docs/technical/validation/issue-48/interaction-and-layout.json)。
+
+本轮新增或调整的检查围绕可观察行为展开：Tool／Topmost 的原生样式与自有对话框边界；隐藏阶段先将进入进度归零、每轮只播放一次、快速取消退出和迟到回调；带退出动画的统一隐藏、重复收起不延长、托盘丢失时恢复最小化窗口及重试／退出；工作区四边间距、有效最小／最大尺寸与有界吸附。纯 region 矩阵另有 40 组四边／五档 DPR／负坐标组合，验证只扣任务栏交集、面板和其余阴影保留，以及极值和无交集边界。Host 的假平台分别模拟前台就是菜单根窗口和真正 owned dialog，不能把二者合为同一保护分支；region 应用失败必须取消显示，不能走未排除任务栏的 Qt 回退。
+
+隐藏后台 STATIC fixture 不通过激活或抢前台来取得置顶权限；断言保持原 styles、TOOLWINDOW=true、APPWINDOW=false，并要求实际 TOPMOST 或明确 `success=false / menu-topmost-state-denied`，不接受其他错误代替实测。实际 Qt 原生 fixture 和可见产品候选仍强检 TOPMOST。Host 另验无托盘紧急恢复时整个透明外窗及最大尺寸都在工作区 8 DIP 内、边框拖动关闭，托盘重试成功后重新定位并恢复方向对应缩放边。纯 region 极值覆盖 INT_MIN 与 INT_MAX，避免 QRect 通用交集的归一化中间值溢出。
+
+普通定位错误的 Qt 降级显示另验完整外窗在工作区内、该轮禁用缩放，后续原生定位成功恢复正常 region 和缩放边；不能把 `menu-input-region-failed` 混入可见降级分支。
+
+QML 用例另覆盖新右键／下拉菜单及尺寸子菜单、统一图标位、hover 无强调色闪动、关于卡片、必要错误反馈与关闭、紧凑无阴影 tooltip、目录返回与空状态、目录拖动固定，以及动态列数、重排和持久化。目录扫描和固定使用隔离数据，常规测试不修改真实开始菜单，不启用真实全局 Hook。回归范围不代表尚未运行或仍失败的用例已经通过；当前完整构建、GUI 与原生结果见[测试策略](../docs/technical/testing.md)和 [Issue #48](https://github.com/xiaodaozhi/xdstarter/issues/48)。
+
+Topmost 的透明外窗可能跨入任务栏，必须单独检查 Start 上沿实际命中。以下命令只读观察一个已经显示的指定测试候选，不会启动、显示、移动或关闭产品，不移动鼠标，也不合成输入或安装 Hook：
+
+```powershell
+$candidateProcessId = 12345 # 替换为当前已显示候选的实际进程号。
+$env:PATH = "$PWD/build/Qt/6.8.2/msvc2022_64/bin;$env:PATH"
+./build/issue48-release/xdstarter_native_taskbar_probe.exe --run --observe-start-overlap $candidateProcessId
+```
+
+输出包括菜单／任务栏 HWND、物理边界、style / extendedStyle、region、相对 Z 序，以及唯一 StartButton 的 UIA 矩形；采样按钮中心、四角和靠菜单一侧 1／4／8／16 DIP，分别记录 `WindowFromPoint` 与 UIA 是否仍属于 Start。COM worker 对 UIA 连接和事务设 100 ms 限制，采样后复核几何稳定。`measurementCompleted` 仅表示测量完成，`menuHitCount > 0` 仍是需要处理的命中结果；正常退出码不等于 Start 点击通过。结果不授予输入资格，且不替代真实左键、右键与 Win+X 验收。单次观察不扩大 Windows 支持矩阵。
 
 Issue #41 的 `interactionRefinements` 与 `catalogAlphabetAndFolderOverlay` 覆盖默认编辑、中文字体、圆形清除、Tab／点击焦点门控、600 ms tooltip、移除旧入口、hover 图钉、分类全视口覆盖和文件夹导航不启动应用。`XDSTARTER_INTERACTION_CAPTURE_DIR` 可把深浅更多菜单抓帧保存到调用者指定的本地目录；它不读取真实目录或注册托盘。
 

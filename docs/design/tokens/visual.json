@@ -91,5 +91,49 @@
     "exitMs": 120,
     "moveMs": 200
   },
-  "fontFamily": "Microsoft YaHei UI"
+  "fontFamily": "Microsoft YaHei UI",
+  "interactionSurface": {
+    "revision": "2.4",
+    "menuRadiusDip": 8,
+    "rowRadiusDip": 4,
+    "tooltipRadiusDip": 4,
+    "glyphs": {
+      "pin": "<path d=\"m9 3.5 7.5 0-1 6 3 3v1.5h-13v-1.5l3-3-1-6ZM12 14v7\"/>",
+      "unpin": "<path d=\"M16.5 3.5h-8l1 4M16.5 3.5l-1 6 3 3v1.5h-6M8 10l-2.5 2.5V14h3M12 17v4M3 3l18 18\"/>",
+      "add": "<path d=\"M12 5v14M5 12h14\"/>",
+      "close": "<path d=\"m6 6 12 12M18 6 6 18\"/>",
+      "apps": "<rect x=\"4\" y=\"4\" width=\"6\" height=\"6\" rx=\"1.25\"/><rect x=\"14\" y=\"4\" width=\"6\" height=\"6\" rx=\"1.25\"/><rect x=\"4\" y=\"14\" width=\"6\" height=\"6\" rx=\"1.25\"/><rect x=\"14\" y=\"14\" width=\"6\" height=\"6\" rx=\"1.25\"/>",
+      "refresh": "<path d=\"M19.5 9A8 8 0 1 0 20 14M19.5 3.5V9H14\"/>",
+      "check": "<path d=\"m5 12 4.5 4.5L19 7\"/>",
+      "chevron-right": "<path d=\"m9 6 6 6-6 6\"/>",
+      "chevron-left": "<path d=\"m15 6-6 6 6 6\"/>",
+      "edit": "<path d=\"m5 16-1 4 4-1L19 8l-3-3ZM14 7l3 3\"/>",
+      "open": "<path d=\"M13 5h6v6M19 5l-9 9M10 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-4\"/>",
+      "save": "<path d=\"M5 4h12l3 3v13H4V4ZM8 4v6h8V4M8 20v-6h8v6\"/>",
+      "import": "<path d=\"M12 3v11m-4-4 4 4 4-4M5 15v5h14v-5\"/>",
+      "info": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 11v6M12 7v.2\"/>",
+      "error": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 6.5v7M12 17v.2\"/>",
+      "folder": "<path d=\"M3.5 6h6l2 2h9v11h-17ZM3.5 8V5h6l2 2\"/>",
+      "theme": "<path d=\"M12 3a9 9 0 1 0 9 9h-9Z\"/><path d=\"M12 3v9h9\"/>",
+      "tile-size": "<rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"2\"/><path d=\"M4 12h16M12 4v16\"/>"
+    },
+    "themes": {
+      "light": {
+        "card": "#FFFFFF",
+        "hover": "#EEF2F6",
+        "pressed": "#E2E8EF",
+        "primary": "#2164D7",
+        "onPrimary": "#FFFFFF",
+        "disabled": "#97A2B0"
+      },
+      "dark": {
+        "card": "#253247",
+        "hover": "#334359",
+        "pressed": "#3D506B",
+        "primary": "#93BDFF",
+        "onPrimary": "#102341",
+        "disabled": "#728196"
+      }
+    }
+  }
 }

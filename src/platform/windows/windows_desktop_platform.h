@@ -21,6 +21,7 @@ class WindowsDesktopPlatform final : public DesktopPlatform {
     [[nodiscard]] QScreen *screenForAnchor(const DesktopAnchorResult &anchor) override;
     [[nodiscard]] DesktopWindowMetricsResult queryWindowMetrics(quintptr nativeHandle) override;
     [[nodiscard]] bool hasOwnedForegroundWindow(quintptr menuHandle) override;
+    [[nodiscard]] bool hasOwnedForegroundDialog(quintptr menuHandle) override;
     [[nodiscard]] DesktopPresentationResult presentMenuWindow(quintptr nativeHandle) override;
     [[nodiscard]] DesktopPlacementResult placeWindow(quintptr nativeHandle,
                                                      const DesktopAnchorResult& anchor,

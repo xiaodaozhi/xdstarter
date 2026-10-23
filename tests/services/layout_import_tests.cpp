@@ -20,7 +20,7 @@ namespace {
 using namespace xdstarter;
 
 QJsonObject fixtureSnapshot(int version = LayoutStore::schemaVersion) {
-    return {
+    QJsonObject snapshot{
         {QStringLiteral("schemaVersion"), version},
         {QStringLiteral("targets"),
          QJsonArray{QJsonObject{{QStringLiteral("id"), QStringLiteral("import-target")},
@@ -39,6 +39,9 @@ QJsonObject fixtureSnapshot(int version = LayoutStore::schemaVersion) {
                                      {QStringLiteral("size"), QStringLiteral("standard")}}}}}}},
         {QStringLiteral("preferences"),
          QJsonObject{{QStringLiteral("theme"), QStringLiteral("light")}}}};
+    if (version >= 4)
+        snapshot.insert(QStringLiteral("gridColumns"), 10);
+    return snapshot;
 }
 
 QJsonObject changedTile(QJsonObject snapshot, const QString& key, const QJsonValue& value) {
@@ -164,6 +167,7 @@ void LayoutImportTests::oldVersionsNormalizeWithoutWriting_data() {
     QTest::addColumn<int>("version");
     QTest::newRow("schema-one") << 1;
     QTest::newRow("schema-two") << 2;
+    QTest::newRow("schema-three") << 3;
 }
 
 void LayoutImportTests::oldVersionsNormalizeWithoutWriting() {
@@ -190,6 +194,7 @@ void LayoutImportTests::oldVersionsNormalizeWithoutWriting() {
     QVERIFY2(preview.success, qPrintable(preview.message));
     auto normalized = source;
     normalized.insert(QStringLiteral("schemaVersion"), LayoutStore::schemaVersion);
+    normalized.insert(QStringLiteral("gridColumns"), 10);
     QCOMPARE(preview.snapshot, normalized);
     QCOMPARE(preview.sourceVersion, version);
     QCOMPARE(preview.groupCount, 1);
@@ -216,6 +221,8 @@ void LayoutImportTests::currentOverridesAndEmptyLayoutsArePreserved() {
     for (const int version : {2, LayoutStore::schemaVersion}) {
         auto snapshot = empty.snapshot();
         snapshot.insert(QStringLiteral("schemaVersion"), version);
+        if (version < 4)
+            snapshot.remove(QStringLiteral("gridColumns"));
         QVERIFY(writeBytes(path, bytes(snapshot)));
         const auto preview = readLayoutImport(path);
         QVERIFY2(preview.success, qPrintable(preview.message));

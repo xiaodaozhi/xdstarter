@@ -275,6 +275,88 @@ void checkTileDisplayNames(TestContext& test, const xdstarter::TileGrid& grid) {
                 "one shared target descriptor is unchanged by multiple independent labels");
 }
 
+void checkDynamicColumns(TestContext& test, const xdstarter::TileGrid& grid) {
+    using namespace xdstarter;
+    PrototypeService service(grid);
+    const auto original = service.snapshot();
+    const auto originalGroups = service.previewGroups();
+    test.expect(service.setGridColumns(11).success && service.gridColumns() == 11 &&
+                    service.previewGroups().first().width == grid.width(11),
+                "expanding adds actual logical placement columns");
+    for (qsizetype group = 0; group < originalGroups.size(); ++group) {
+        const auto expanded = service.previewGroups()[group];
+        for (qsizetype tile = 0; tile < expanded.tiles.size(); ++tile)
+            test.expect(sameRectangle(originalGroups[group].tiles[tile].rectangle,
+                                      expanded.tiles[tile].rectangle),
+                        "expanding columns preserves each original tile position");
+    }
+    test.expect(service.moveTile(QStringLiteral("work-standard-1"), QStringLiteral("work"), 10, 3)
+                        .success == false,
+                "a two-cell tile still needs its full span at the dynamic edge");
+    test.expect(
+        service.setGridColumns(12).success &&
+            service.moveTile(QStringLiteral("work-standard-1"), QStringLiteral("work"), 10, 3)
+                .success,
+        "a wider budget permits a real position beyond legacy column nine");
+    test.expect(service.setGridColumns(4).success && service.gridColumns() == 4 &&
+                    LayoutStore::validate(service.snapshot()).success,
+                "shrinking reflows overflow while preserving all layout invariants");
+    const auto shrunk = service.snapshot();
+    test.expect(shrunk.value(QStringLiteral("targets")) ==
+                    original.value(QStringLiteral("targets")),
+                "responsive reflow retains original target descriptors");
+    const auto shrunkGroups = service.previewGroups();
+    for (qsizetype group = 0; group < originalGroups.size(); ++group)
+        for (qsizetype tile = 0; tile < originalGroups[group].tiles.size(); ++tile)
+            test.expect(
+                originalGroups[group].tiles[tile].id == shrunkGroups[group].tiles[tile].id &&
+                    originalGroups[group].tiles[tile].targetId ==
+                        shrunkGroups[group].tiles[tile].targetId &&
+                    originalGroups[group].tiles[tile].size == shrunkGroups[group].tiles[tile].size,
+                "reflow preserves model order, stable IDs and tile size");
+    PrototypeService repeated(grid);
+    test.expect(
+        repeated.setGridColumns(12).success &&
+            repeated.moveTile(QStringLiteral("work-standard-1"), QStringLiteral("work"), 10, 3)
+                .success &&
+            repeated.setGridColumns(4).success && repeated.snapshot() == shrunk,
+        "the same resize sequence has deterministic displacement");
+    for (const int invalid : {0, 3, 65})
+        test.expect(!service.setGridColumns(invalid).success && service.snapshot() == shrunk,
+                    "invalid column changes leave the complete snapshot unchanged");
+    test.expect(
+        service.setGridColumns(64).success &&
+            service.moveTile(QStringLiteral("work-wide-long"), QStringLiteral("work"), 60, 62)
+                .success &&
+            LayoutStore::validate(service.snapshot()).success,
+        "the supported maximum accepts a wide tile at its final valid boundary");
+    PrototypeService restarted(grid);
+    test.expect(restarted.restoreSnapshot(service.snapshot()).success &&
+                    restarted.gridColumns() == 64 && restarted.snapshot() == service.snapshot(),
+                "dynamic columns and distant positions round trip without truncation");
+    auto full = original;
+    auto groups = full.value(QStringLiteral("groups")).toArray();
+    auto group = groups[0].toObject();
+    QJsonArray tiles;
+    for (int row = 0; row < 64; ++row)
+        for (int column = 0; column < 10; ++column) {
+            if (tiles.size() == 300)
+                break;
+            tiles.append(QJsonObject{
+                {QStringLiteral("id"), QStringLiteral("full-responsive-%1").arg(tiles.size())},
+                {QStringLiteral("targetId"), QStringLiteral("prototype-work-standard-1")},
+                {QStringLiteral("column"), column},
+                {QStringLiteral("row"), row},
+                {QStringLiteral("size"), QStringLiteral("small")}});
+        }
+    group.insert(QStringLiteral("tiles"), tiles);
+    full.insert(QStringLiteral("groups"), QJsonArray{group});
+    PrototypeService packed(grid);
+    test.expect(packed.restoreSnapshot(full).success, "dense responsive fixture is valid");
+    test.expect(!packed.setGridColumns(4).success && packed.snapshot() == full,
+                "insufficient narrow capacity rejects the entire reflow without losing tiles");
+}
+
 } // namespace
 
 int main() {
@@ -283,6 +365,7 @@ int main() {
     const TileGrid grid;
     checkGroupManagement(test, grid);
     checkTileDisplayNames(test, grid);
+    checkDynamicColumns(test, grid);
     PrototypeService service(grid);
     const auto groups = service.previewGroups();
     test.expect(groups.size() == 3, "preview contains three independent groups");
@@ -590,6 +673,14 @@ int main() {
                         QJsonArray{shortcut(QStringLiteral("full-target"))});
     test.expect(applications.restoreSnapshot(fullSnapshot).success &&
                     !applications.pinApplication(shortcut(QStringLiteral("overflow"))).success &&
+                    !applications
+                         .checkApplicationPlacement(shortcut(QStringLiteral("overflow")),
+                                                    QStringLiteral("default"), 0, 0)
+                         .success &&
+                    !applications
+                         .pinApplicationAt(shortcut(QStringLiteral("overflow")),
+                                           QStringLiteral("default"), 0, 0)
+                         .success &&
                     applications.snapshot() == fullSnapshot,
                 "a full 64-row group reports failure instead of overwriting or exceeding bounds");
     test.expect(applications.unpinTile(QStringLiteral("full-0-0")).success &&
@@ -598,6 +689,70 @@ int main() {
                         1 &&
                     LayoutStore::validate(applications.snapshot()).success,
                 "unpin retains target metadata when another restored tile still references it");
+
+    PrototypeService catalogPins(grid, {}, false);
+    const auto earlierGroup = catalogPins.createGroup(QStringLiteral("Earlier"));
+    const auto lastGroup = catalogPins.createGroup(QStringLiteral("Last"));
+    const auto lastPin = catalogPins.pinApplication(shortcut(QStringLiteral("last-app")));
+    test.expect(earlierGroup.success && lastGroup.success && lastPin.success &&
+                    catalogPins.previewGroups().last().id == lastGroup.groupId &&
+                    catalogPins.previewGroups().last().tiles.first().id == lastPin.tileId,
+                "catalog context pinning defaults to the last group");
+    test.expect(catalogPins.moveGroupBy(lastGroup.groupId, -1).success &&
+                    catalogPins.pinApplication(shortcut(QStringLiteral("ordered-app"))).success &&
+                    catalogPins.previewGroups().last().id == earlierGroup.groupId &&
+                    catalogPins.previewGroups().last().tiles.first().targetId ==
+                        QLatin1String("ordered-app"),
+                "default destination follows current group order");
+    const auto beforeCatalogPreview = catalogPins.snapshot();
+    const auto newTarget = shortcut(QStringLiteral("dragged-app"));
+    const auto catalogPreview =
+        catalogPins.checkApplicationPlacement(newTarget, lastGroup.groupId, 0, 0);
+    test.expect(catalogPreview.success && catalogPins.snapshot() == beforeCatalogPreview,
+                "catalog drag preview does not insert target metadata or a tile");
+    const auto dropped = catalogPins.pinApplicationAt(newTarget, lastGroup.groupId, 0, 0);
+    const auto destinationAfterDrop = catalogPins.previewGroups()[1];
+    test.expect(dropped.success && destinationAfterDrop.tiles.size() == 2 &&
+                    destinationAfterDrop.tiles.first().id == lastPin.tileId &&
+                    destinationAfterDrop.tiles.first().column == 2 &&
+                    destinationAfterDrop.tiles.last().id == dropped.tileId &&
+                    destinationAfterDrop.tiles.last().column == 0 &&
+                    LayoutStore::validate(catalogPins.snapshot()).success,
+                "dropping a new catalog tile reserves its cells and displaces existing tiles");
+    const auto afterDrop = catalogPins.snapshot();
+    test.expect(!catalogPins
+                        .pinApplicationAt(shortcut(QStringLiteral("outside-app")),
+                                          lastGroup.groupId, catalogPins.gridColumns() - 1, 0)
+                        .success &&
+                    catalogPins.snapshot() == afterDrop &&
+                    catalogPins.pinApplicationAt(newTarget, earlierGroup.groupId, 4, 4).tileId ==
+                        dropped.tileId &&
+                    catalogPins.snapshot() == afterDrop,
+                "invalid drops roll back and already pinned applications never duplicate or move");
+    auto restoredDuplicates = catalogPins.snapshot();
+    auto duplicateGroups = restoredDuplicates.value(QStringLiteral("groups")).toArray();
+    auto duplicateGroup = duplicateGroups[0].toObject();
+    auto duplicateTiles = duplicateGroup.value(QStringLiteral("tiles")).toArray();
+    duplicateTiles.append(QJsonObject{{QStringLiteral("id"), QStringLiteral("restored-duplicate")},
+                                      {QStringLiteral("targetId"), QStringLiteral("last-app")},
+                                      {QStringLiteral("column"), 0},
+                                      {QStringLiteral("row"), 20},
+                                      {QStringLiteral("size"), QStringLiteral("standard")}});
+    duplicateGroup.insert(QStringLiteral("tiles"), duplicateTiles);
+    duplicateGroups[0] = duplicateGroup;
+    restoredDuplicates.insert(QStringLiteral("groups"), duplicateGroups);
+    test.expect(catalogPins.restoreSnapshot(restoredDuplicates).success &&
+                    catalogPins.unpinApplication(QStringLiteral("last-app")).success &&
+                    !catalogPins.isApplicationPinned(QStringLiteral("last-app")) &&
+                    catalogPins.isApplicationPinned(QStringLiteral("ordered-app")) &&
+                    catalogPins.isApplicationPinned(QStringLiteral("dragged-app")) &&
+                    catalogPins.targetForTile(lastPin.tileId).isEmpty() &&
+                    LayoutStore::validate(catalogPins.snapshot()).success,
+                "app unpin atomically removes all restored duplicate references across groups");
+    const auto afterAppUnpin = catalogPins.snapshot();
+    test.expect(!catalogPins.unpinApplication(QStringLiteral("absent-app")).success &&
+                    catalogPins.snapshot() == afterAppUnpin,
+                "unknown app unpin is a nonmutating failure");
 
     PrototypeService packed(grid);
     for (int iteration = 0; iteration < 180; ++iteration) {

@@ -53,6 +53,24 @@ int main() {
                     {4 * pitch, pitch, wideWidth, standardWidth},
                     "wide tile occupies four columns and two rows");
     test.expect(grid.width() == 10 * cell + 9 * gap, "group width includes nine internal gaps");
+    for (int columns = TileGrid::minimumColumns; columns <= TileGrid::maximumColumns; ++columns) {
+        test.expect(grid.width(columns) == columns * pitch - gap,
+                    "dynamic columns preserve the shared extent");
+        test.expect(TileGrid::columnsForWidth(grid.width(columns)) == columns &&
+                        TileGrid::columnsForWidth(grid.width(columns) + pitch - 0.01) == columns,
+                    "only a complete additional column increases the width budget");
+        test.expect(grid.rectangle(columns - 4, 2, TileSize::Wide, columns).has_value() &&
+                        !grid.rectangle(columns - 3, 2, TileSize::Wide, columns),
+                    "wide tile boundary follows each active column budget");
+    }
+    for (const int columns : {-1, 0, 3, 65, std::numeric_limits<int>::max()})
+        test.expect(!grid.rectangle(0, 0, TileSize::Small, columns) && grid.width(columns) == 0,
+                    "unsupported dynamic column counts are rejected");
+    test.expect(TileGrid::columnsForWidth(std::numeric_limits<double>::infinity()) ==
+                        TileGrid::minimumColumns &&
+                    TileGrid::columnsForWidth(-100) == TileGrid::minimumColumns &&
+                    TileGrid::columnsForWidth(1e20) == TileGrid::maximumColumns,
+                "viewport column budgets are finite and bounded");
 
     const auto smallTopLeft = grid.rectangle(0, 0, TileSize::Small);
     const auto smallBottomRight = grid.rectangle(1, 1, TileSize::Small);

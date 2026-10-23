@@ -2,6 +2,8 @@
 
 #include "xdstarter/grid_tokens.h"
 
+#include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <limits>
 
@@ -34,9 +36,13 @@ constexpr std::int64_t extent(int span) {
 } // namespace
 
 std::optional<TileRect> TileGrid::rectangle(int column, int row, TileSize size) const {
+    return rectangle(column, row, size, grid_tokens::columns);
+}
+
+std::optional<TileRect> TileGrid::rectangle(int column, int row, TileSize size, int columns) const {
     const auto span = spanFor(size);
-    if (!span || column < 0 || row < 0 || column >= grid_tokens::columns ||
-        span->columns > grid_tokens::columns - column) {
+    if (!span || columns < minimumColumns || columns > maximumColumns || column < 0 || row < 0 ||
+        column >= columns || span->columns > columns - column) {
         return std::nullopt;
     }
 
@@ -53,6 +59,19 @@ std::optional<TileRect> TileGrid::rectangle(int column, int row, TileSize size) 
                     static_cast<int>(tileHeight)};
 }
 
-int TileGrid::width() const { return static_cast<int>(extent(grid_tokens::columns)); }
+int TileGrid::width() const { return width(grid_tokens::columns); }
+
+int TileGrid::width(int columns) const {
+    return columns >= minimumColumns && columns <= maximumColumns
+               ? static_cast<int>(extent(columns))
+               : 0;
+}
+
+int TileGrid::columnsForWidth(double availableWidth) {
+    if (!std::isfinite(availableWidth))
+        return minimumColumns;
+    const double columns = std::floor((availableWidth + grid_tokens::gap) / pitch);
+    return static_cast<int>(std::clamp(columns, double(minimumColumns), double(maximumColumns)));
+}
 
 } // namespace xdstarter

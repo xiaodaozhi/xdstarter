@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <optional>
 #include <utility>
 
@@ -308,7 +309,26 @@ QString MenuController::neighborTileId(const QString& tileId, const QString& dir
 }
 
 int MenuController::gridPitch() const { return grid_tokens::cell + grid_tokens::gap; }
-int MenuController::gridColumns() const { return grid_tokens::columns; }
+int MenuController::gridGap() const { return grid_tokens::gap; }
+int MenuController::minimumGridWidth() const { return TileGrid{}.width(TileGrid::minimumColumns); }
+int MenuController::defaultGridWidth() const { return TileGrid{}.width(); }
+int MenuController::gridColumns() const { return prototypeService_.gridColumns(); }
+
+bool MenuController::setGridColumnsForWidth(qreal availableWidth) {
+    if (readOnly_ || importCommitting() || !std::isfinite(availableWidth) || availableWidth <= 0)
+        return false;
+    const int columns = TileGrid::columnsForWidth(availableWidth);
+    if (columns == gridColumns())
+        return true;
+    const auto result = prototypeService_.setGridColumns(columns);
+    if (!result.success) {
+        setOperationMessage(result.message, true);
+        return false;
+    }
+    refreshGroups();
+    scheduleSave();
+    return true;
+}
 bool MenuController::editMode() const { return editMode_; }
 bool MenuController::darkTheme() const { return darkTheme_; }
 bool MenuController::readOnly() const { return readOnly_; }
@@ -358,7 +378,7 @@ QString MenuController::searchStatus() const {
     else
         status = QStringLiteral("找到 %1 项应用。").arg(search_->matchCount());
     if (catalogBusy())
-        status += QStringLiteral(" · 应用目录更新中");
+        status += QStringLiteral(" 当前应用目录正在更新。");
     return status;
 }
 
@@ -558,6 +578,71 @@ bool MenuController::pinApplication(const QString& appId, const QString& groupId
     const auto result =
         prototypeService_.pinApplication(applicationTargetJson(catalog_->target(appId)), groupId);
     setOperationMessage(result.success ? QStringLiteral("应用已固定到磁贴布局。") : result.message,
+                        !result.success);
+    if (!result.success)
+        return false;
+    refreshGroups();
+    scheduleSave();
+    return true;
+}
+
+bool MenuController::isApplicationPinned(const QString& appId) const {
+    return prototypeService_.isApplicationPinned(appId);
+}
+
+QVariantMap MenuController::previewApplicationPlacement(const QString& appId,
+                                                        const QString& groupId, int column,
+                                                        int row) const {
+    LayoutResult result{false, QStringLiteral("应用目录中找不到该应用，请刷新后重试。")};
+    if (importCommitting())
+        result.message = QStringLiteral("正在替换布局，请稍候。");
+    else if (readOnly_)
+        result.message = QStringLiteral("当前配置只读，不能固定应用。");
+    else if (prototypeService_.isApplicationPinned(appId))
+        result.message = QStringLiteral("此应用已固定，可在磁贴区域移动。");
+    else if (catalog_ && catalog_->containsApplication(appId))
+        result = prototypeService_.checkApplicationPlacement(
+            applicationTargetJson(catalog_->target(appId)), groupId, column, row);
+    return {
+        {QStringLiteral("valid"), result.success},
+        {QStringLiteral("message"), result.message},
+        {QStringLiteral("x"), double(column) * gridPitch()},
+        {QStringLiteral("y"), double(row) * gridPitch()},
+        {QStringLiteral("width"), grid_tokens::standardColumns * gridPitch() - grid_tokens::gap},
+        {QStringLiteral("height"), grid_tokens::standardRows * gridPitch() - grid_tokens::gap}};
+}
+
+bool MenuController::pinApplicationAt(const QString& appId, const QString& groupId, int column,
+                                      int row) {
+    if (rejectImportMutation())
+        return false;
+    if (readOnly_ || !catalog_ || !catalog_->containsApplication(appId)) {
+        setOperationMessage(readOnly_ ? QStringLiteral("当前配置只读，不能固定应用。")
+                                      : QStringLiteral("应用目录中找不到该应用，请刷新后重试。"),
+                            true);
+        return false;
+    }
+    const auto result = prototypeService_.pinApplicationAt(
+        applicationTargetJson(catalog_->target(appId)), groupId, column, row);
+    setOperationMessage(result.success ? QStringLiteral("应用已固定到磁贴布局。") : result.message,
+                        !result.success);
+    if (!result.success)
+        return false;
+    refreshGroups();
+    scheduleSave();
+    return true;
+}
+
+bool MenuController::unpinApplication(const QString& appId) {
+    if (rejectImportMutation())
+        return false;
+    if (readOnly_) {
+        setOperationMessage(QStringLiteral("当前配置只读，不能取消固定。"), true);
+        return false;
+    }
+    const auto result = prototypeService_.unpinApplication(appId);
+    setOperationMessage(result.success ? QStringLiteral("已取消此应用的全部固定磁贴。")
+                                       : result.message,
                         !result.success);
     if (!result.success)
         return false;

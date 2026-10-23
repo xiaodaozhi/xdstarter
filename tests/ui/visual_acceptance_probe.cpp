@@ -235,10 +235,12 @@ QJsonObject fixtureSnapshot(const QVector<xdstarter::LaunchTarget>& applications
                              {13, 6, 0, "standard"}, {14, 8, 0, "standard"}}));
     }
     return {{QStringLiteral("schemaVersion"), xdstarter::LayoutStore::schemaVersion},
-            {QStringLiteral("targets"), targets}, {QStringLiteral("groups"), groups},
+            {QStringLiteral("gridColumns"), 10},
+            {QStringLiteral("targets"), targets},
+            {QStringLiteral("groups"), groups},
             {QStringLiteral("preferences"),
-             QJsonObject{{QStringLiteral("theme"), dark ? QStringLiteral("dark")
-                                                        : QStringLiteral("light")}}}};
+             QJsonObject{{QStringLiteral("theme"),
+                          dark ? QStringLiteral("dark") : QStringLiteral("light")}}}};
 }
 
 class Fixture final {

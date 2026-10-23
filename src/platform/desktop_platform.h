@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QRect>
+#include <QRegion>
 #include <QSize>
 #include <QString>
 
@@ -38,10 +39,17 @@ enum class TaskbarEdge { Bottom, Top, Left, Right };
 // Keep the non-dragged outer edges fixed, including transparent shadow space.
 // Native sizing may otherwise snap that space inside the monitor work area.
 [[nodiscard]] QRect desktopResizePhysicalRect(QRect initial, QRect proposed, Qt::Edges edges,
-                                              QSize minimumOuterSize);
+                                              QSize minimumOuterSize,
+                                              QRect allowedOuterBounds = {});
 // Excludes a revealed auto-hide taskbar even if Windows' rcWork still covers
 // the whole monitor. Already reserved appbar areas are not subtracted twice.
 [[nodiscard]] QRect desktopMenuWorkArea(const DesktopAnchorResult& anchor);
+// Visible panel bounds after reserving the configured gap on all four sides.
+[[nodiscard]] QRect desktopMenuPanelBounds(const DesktopAnchorResult& anchor,
+                                           int gapPhysicalPixels = 8);
+// Local physical-pixel window region. Only the taskbar overlap is excluded;
+// all remaining shadow pixels, including screen-edge space, are retained.
+[[nodiscard]] QRegion desktopMenuInputRegion(QRect outerPhysical, QRect taskbarPhysical);
 
 // These handles are diagnostic integer values, not persistent identities or
 // permission to consume input. No native types cross the platform boundary.
@@ -106,9 +114,10 @@ struct DesktopPlacementResult {
 };
 
 struct DesktopAppearanceResult {
-    // Native decorations are suppressed; Qt Quick owns the border, radius and
-    // shadow. Accepted requests are not a cross-system visual guarantee.
+    // Success includes actual window policy (Tool/no AppWindow/Topmost) as well
+    // as decoration suppression. DWM requests alone are not visual evidence.
     bool success = false;
+    // Reports DWM suppression independently, including when Topmost is denied.
     bool nativeDecorationsDisabled = false;
     QString message;
     QString errorCode;
@@ -151,8 +160,8 @@ class DesktopPlatform {
     // with a work-area-only query that performs no COM or UIA operation.
     [[nodiscard]] virtual DesktopAnchorResult queryMenuAnchor();
     // A short native GUI operation for this thread's own top-level window.
-    // Suppresses native rounding, border and shadow, including on Qt alpha
-    // surfaces. Does not mutate Qt styles, hit testing, regions or input hooks.
+    // Suppresses native decoration and configures hidden menu taskbar/topmost
+    // behavior, preserving alpha styles. No hit testing, regions or hooks.
     [[nodiscard]] virtual DesktopAppearanceResult configureMenuWindow(quintptr nativeHandle);
     // Short GUI-thread mapping from the native anchor identity to exactly one
     // live Qt screen. Workers must not call this or access returned QScreen.
@@ -164,8 +173,12 @@ class DesktopPlatform {
     // only when the current foreground is this process's menu or its owned
     // window. Unsupported adapters return false; no activation or caching.
     [[nodiscard]] virtual bool hasOwnedForegroundWindow(quintptr menuHandle);
+    // Same ownership boundary, excluding the menu itself. Used only to avoid
+    // raising a repeated reveal over an actual owned dialog.
+    [[nodiscard]] virtual bool hasOwnedForegroundDialog(quintptr menuHandle);
     // User-requested reveal only, after Qt has made its surface visible. Restore
     // this thread's own HWND even when a launcher supplied SW_HIDE/minimized.
+    // Exact owned foreground dialogs are preserved rather than covered.
     [[nodiscard]] virtual DesktopPresentationResult presentMenuWindow(quintptr nativeHandle);
     // A short native GUI operation, with no Shell/COM/IO. Only a top-level window
     // owned by this process may be placed. The window's real physical size is

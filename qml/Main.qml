@@ -4,7 +4,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs as FileDialogs
-import QtQml.Models
 import XDStarter
 
 ApplicationWindow {
@@ -14,6 +13,7 @@ ApplicationWindow {
 
     readonly property var tokens: controller.visualTokens
     readonly property var theme: tokens.themes[darkTheme ? "dark" : "light"]
+    readonly property var surfaceTheme: tokens.interactionSurface.themes[darkTheme ? "dark" : "light"]
     readonly property real shadowInset: tokens.menuChrome.shadowInsetDip
     readonly property real screenGapDip: tokens.menuChrome.screenGapDip
     readonly property real panelWidth: width - 2 * shadowInset
@@ -21,10 +21,24 @@ ApplicationWindow {
     property bool darkTheme: controller.darkTheme
     property string selectionStatus: ""
     property bool selectionStatusError: false
-    readonly property bool showSelectionFeedback: selectionStatus.length > 0 && (selectionStatusError || selectionFeedbackTimer.running)
-    readonly property bool showDesktopFeedback: controller.desktopActionStatus.length > 0 && (controller.desktopActionError || controller.desktopActionBusy || desktopFeedbackTimer.running)
-    readonly property bool showOperationFeedback: dragActive || controller.operationMessage.length > 0 && controller.operationMessage !== controller.desktopActionStatus && (controller.operationError || operationFeedbackTimer.running)
-    readonly property bool showPersistenceFeedback: controller.persistenceStatus.length > 0 && (controller.readOnly || controller.persistenceError || controller.saving || persistenceFeedbackTimer.running)
+    property string dismissedSelectionError: ""
+    property string dismissedDesktopError: ""
+    property string dismissedOperationError: ""
+    property string dismissedPersistenceError: ""
+    readonly property bool showSelectionFeedback: selectionStatus.length > 0 && selectionStatusError && selectionStatus !== dismissedSelectionError
+    readonly property bool showDesktopFeedback: controller.desktopActionStatus.length > 0 && controller.desktopActionError && controller.desktopActionStatus !== dismissedDesktopError
+    readonly property bool showOperationFeedback: !dragActive && controller.operationMessage.length > 0 && controller.operationMessage !== controller.desktopActionStatus && controller.operationError && controller.operationMessage !== dismissedOperationError
+    readonly property bool showPersistenceFeedback: controller.persistenceStatus.length > 0 && (controller.readOnly || controller.persistenceError) && controller.persistenceStatus !== dismissedPersistenceError
+
+    function dismissFeedback(): void {
+        const restoreFocus = feedbackCloseButton.activeFocus;
+        dismissedSelectionError = selectionStatus;
+        dismissedDesktopError = controller.desktopActionStatus;
+        dismissedOperationError = controller.operationMessage;
+        dismissedPersistenceError = controller.persistenceStatus;
+        if (restoreFocus && visible && !presentationSuspended && !internalPopupVisible)
+            searchField.forceActiveFocus(Qt.OtherFocusReason);
+    }
     property string integrationStatus: ""
     property bool winKeyCaptureAvailable: false
     property bool winKeyCaptureActive: false
@@ -33,7 +47,49 @@ ApplicationWindow {
     property bool startButtonCaptureAvailable: false
     property bool startButtonCaptureActive: false
     property string startButtonCaptureStatus: qsTr("开始按钮使用系统入口。")
-    readonly property bool compactLayout: panelWidth - shortcutRail.width - 2 * tokens.layout.contentMargin < tokens.layout.catalogWidth + tokens.layout.contentSpacing + 552
+    readonly property bool compactLayout: panelWidth - shortcutRail.width - 2 * tokens.layout.contentMargin < tokens.layout.catalogWidth + tokens.layout.contentSpacing + controller.defaultGridWidth
+    readonly property real tileViewportWidth: Math.max(0, panelWidth - shortcutRail.width - 2 * tokens.layout.contentMargin - (compactLayout ? 0 : tokens.layout.catalogWidth + tokens.layout.contentSpacing) - groupVerticalScrollBar.width)
+    readonly property real resizeWidthBaseDip: shortcutRail.width + 2 * tokens.layout.contentMargin + (compactLayout ? 0 : tokens.layout.catalogWidth + tokens.layout.contentSpacing) + groupsScroll.rightPadding - controller.gridGap
+    readonly property int resizeWidthPitchDip: controller.gridPitch
+    onResizeWidthBaseDipChanged: {
+        if (layoutWidthReady)
+            scheduleLayoutColumns();
+    }
+    property bool layoutWidthPending: false
+    property bool layoutWidthReady: false
+    onWidthChanged: {
+        if (!layoutWidthReady)
+            return;
+        if (dragActive)
+            cancelDrag();
+        scheduleLayoutColumns();
+    }
+    property int observedGridColumns: controller.gridColumns
+
+    function scheduleLayoutColumns(): void {
+        layoutWidthPending = true;
+        layoutWidthCommit.restart();
+    }
+
+    function commitLayoutColumns(): void {
+        if (!layoutWidthPending || !visible || presentationSuspended || controller.readOnly)
+            return;
+        if (controller.importCommitting || dragActive) {
+            layoutWidthCommit.restart();
+            return;
+        }
+        const available = tileViewportWidth;
+        if (available > 0) {
+            layoutWidthPending = false;
+            controller.setGridColumnsForWidth(available);
+        }
+    }
+
+    Timer {
+        id: layoutWidthCommit
+        interval: 500
+        onTriggered: window.commitLayoutColumns()
+    }
     property bool showApplications: false
     readonly property var applicationBrowser: controller.applications
     property bool alphabetOpen: false
@@ -102,6 +158,7 @@ ApplicationWindow {
     property string pinApplicationId: ""
     property string pinApplicationName: ""
     property bool pinApplicationPinned: false
+    property Item pinMenuReturnTarget: null
     property string focusedTileId: ""
     property string dismissedTileId: ""
     property bool dismissalFocusSaved: false
@@ -116,7 +173,8 @@ ApplicationWindow {
     readonly property var managedGroup: controller.groups.find(group => group.id === managedGroupId) || null
     readonly property int managedGroupIndex: controller.groups.findIndex(group => group.id === managedGroupId)
     property string draggedTileId: ""
-    readonly property bool dragActive: draggedTileId.length > 0
+    property string draggedApplicationId: ""
+    readonly property bool dragActive: draggedTileId.length > 0 || draggedApplicationId.length > 0
     property real dragPointerX: 0
     property real dragPointerY: 0
     property real dragOffsetX: 0
@@ -135,7 +193,13 @@ ApplicationWindow {
     property string resizeTileId: ""
     property string resizeTileSize: ""
     readonly property int dismissAnimationDuration: 120
-    property real revealProgress: 1
+    property real revealProgress: 0
+    property bool presentationStaged: false
+    property int presentationGeneration: 0
+    property bool presentationComponentReady: false
+    property bool presentationFocusPending: false
+    property bool trayRecoveryUnavailable: false
+    property string trayRecoveryMessage: ""
     NumberAnimation {
         id: revealMotion
         target: window
@@ -160,13 +224,19 @@ ApplicationWindow {
     property bool dismissalManaged: false
     property bool presentationSuspended: false
     readonly property bool internalPopupVisible: resizeMenu.visible || pinMenu.visible || powerMenu.visible || aboutPopup.visible || groupMenu.visible || groupNameDialog.visible || moreMenu.visible || tileNameDialog.visible || layoutFileDialog.visible || layoutImportDialog.visible
+    onInternalPopupVisibleChanged: {
+        if (!internalPopupVisible && presentationFocusPending)
+            schedulePresentationFocus();
+    }
     readonly property bool dismissalBlocked: dragActive || internalPopupVisible
+    readonly property bool hintsPermitted: visible && !presentationSuspended && !internalPopupVisible && !dragActive && !alphabetOpen && !folderTransition.running
     readonly property bool contextShortcutsEnabled: visible && !presentationSuspended && !internalPopupVisible && !dragActive && !controller.searchActive && !searchField.inputMethodComposing && !alphabetOpen && !folderTransition.running
     readonly property TileButton tileContextTarget: activeFocusItem as TileButton
 
     signal dismissRequested
     signal winKeyCaptureToggleRequested
     signal startButtonCaptureToggleRequested
+    signal trayRecoveryRetryRequested
 
     objectName: "prototypeWindow"
     width: tokens.defaultMenuSizeDip.width + 2 * shadowInset
@@ -175,7 +245,7 @@ ApplicationWindow {
     minimumHeight: 480 + 2 * shadowInset
     visible: true
     title: qsTr("XDStarter")
-    flags: Qt.Window | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint
+    flags: Qt.Tool | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint | Qt.WindowStaysOnTopHint
     color: "transparent"
 
     background: MenuChrome {
@@ -197,7 +267,7 @@ ApplicationWindow {
     palette.text: theme.foreground
     palette.button: theme.surface
     palette.buttonText: theme.foreground
-    palette.toolTipBase: theme.surface
+    palette.toolTipBase: surfaceTheme.card
     palette.toolTipText: theme.foreground
     palette.mid: theme.controlBorder
     palette.highlight: tokens.brand.blue
@@ -274,7 +344,7 @@ ApplicationWindow {
         focusPolicy: Qt.StrongFocus
         opacity: enabled ? 1 : 0.45
         Hint {
-            visible: iconButton.enabled && (iconButton.hovered || iconButton.activeFocus) && text.length > 0
+            visible: window.hintsPermitted && iconButton.enabled && (iconButton.hovered || (window.controller.keyboardNavigation && iconButton.activeFocus)) && text.length > 0
             text: iconButton.hintText
         }
         background: Rectangle {
@@ -287,21 +357,25 @@ ApplicationWindow {
 
     component ActionMenu: Menu {
         padding: 6
+        overlap: -8
         font.family: window.font.family
+        palette.highlight: window.surfaceTheme.hover
+        palette.highlightedText: window.theme.foreground
+        delegate: ActionMenuItem {}
         enter: Transition {
             ParallelAnimation {
                 NumberAnimation {
                     property: "opacity"
                     from: 0
                     to: 1
-                    duration: 140
+                    duration: 120
                     easing.type: Easing.OutCubic
                 }
                 NumberAnimation {
                     property: "scale"
-                    from: 0.96
+                    from: 0.98
                     to: 1
-                    duration: 180
+                    duration: 120
                     easing.type: Easing.OutCubic
                 }
             }
@@ -311,77 +385,65 @@ ApplicationWindow {
                 NumberAnimation {
                     property: "opacity"
                     to: 0
-                    duration: 100
+                    duration: 90
                 }
                 NumberAnimation {
                     property: "scale"
-                    to: 0.97
-                    duration: 100
+                    to: 0.98
+                    duration: 90
                 }
             }
         }
-        background: Item {
-            Rectangle {
-                anchors.fill: parent
-                anchors.margins: -4
-                anchors.topMargin: 1
-                anchors.bottomMargin: -7
-                radius: 14
-                color: "#14000000"
-            }
-            Rectangle {
-                anchors.fill: parent
-                radius: 10
-                color: window.theme.surface
-                border.width: 1
-                border.color: window.theme.controlBorder
-            }
+        background: FloatingSurface {
+            radius: window.tokens.interactionSurface.menuRadiusDip
+            color: window.surfaceTheme.card
+            borderColor: window.theme.controlBorder
+            darkTheme: window.darkTheme
         }
     }
 
     component ActionMenuItem: MenuItem {
         id: menuAction
+        hoverEnabled: true
+        property string actionIcon: subMenu !== null ? (subMenu.objectName === "tileDimensionsMenu" ? "tile-size" : subMenu.objectName === "appearanceMenu" ? "theme" : "") : ""
+        objectName: subMenu !== null ? (subMenu.objectName === "appearanceMenu" ? "themeButton" : subMenu.objectName + "Item") : ""
         font.family: window.font.family
-        scale: down ? 0.985 : 1
-        Behavior on scale {
-            NumberAnimation {
-                duration: 90
-                easing.type: Easing.OutCubic
-            }
-        }
-
+        palette.highlight: window.surfaceTheme.hover
+        palette.highlightedText: window.theme.foreground
         implicitHeight: 36
-        leftPadding: 12
-        rightPadding: 12
-        opacity: enabled ? 1 : 0.45
-        indicator: Text {
-            font.family: window.font.family
-            x: 12
+        leftPadding: 38
+        rightPadding: 32
+        indicator: MenuGlyph {
+            objectName: "menuLeadingGlyph"
+            paths: window.tokens.interactionSurface.glyphs
+            x: 14
             anchors.verticalCenter: parent.verticalCenter
-            visible: menuAction.checkable && menuAction.checked
-            text: "✓"
-            color: window.theme.foreground
-            font.pixelSize: 15
+            name: menuAction.checkable ? (menuAction.checked ? "check" : "") : menuAction.actionIcon
+            color: menuAction.enabled ? window.theme.foreground : window.surfaceTheme.disabled
+        }
+        arrow: MenuGlyph {
+            paths: window.tokens.interactionSurface.glyphs
+            name: "chevron-right"
+            visible: menuAction.subMenu !== null
+            width: 14
+            height: 14
+            x: menuAction.width - width - 13
+            anchors.verticalCenter: parent.verticalCenter
+            color: menuAction.enabled ? window.theme.foreground : window.surfaceTheme.disabled
         }
         contentItem: Text {
-            leftPadding: menuAction.checkable ? 22 : 0
             text: menuAction.text
             textFormat: Text.PlainText
             font: menuAction.font
-            color: window.theme.foreground
+            color: menuAction.enabled ? window.theme.foreground : window.surfaceTheme.disabled
             verticalAlignment: Text.AlignVCenter
             elide: Text.ElideRight
         }
         background: Rectangle {
-            radius: 5
-            color: !menuAction.enabled ? "transparent" : menuAction.down ? window.theme.pressed : menuAction.highlighted || menuAction.hovered ? window.theme.hover : "transparent"
-            Behavior on color {
-                ColorAnimation {
-                    duration: 90
-                }
-            }
+            radius: window.tokens.interactionSurface.rowRadiusDip
+            color: !menuAction.enabled ? "transparent" : menuAction.down ? window.surfaceTheme.pressed : menuAction.highlighted || menuAction.hovered ? window.surfaceTheme.hover : "transparent"
             border.width: (menuAction.activeFocus && window.controller.keyboardNavigation) ? 1 : 0
-            border.color: window.tokens.brand.blue
+            border.color: window.surfaceTheme.primary
         }
     }
 
@@ -424,10 +486,22 @@ ApplicationWindow {
         pinApplicationId = applicationId;
         pinApplicationName = name;
         pinApplicationPinned = pinned;
+        pinMenuReturnTarget = source;
         const position = source.mapToItem(contentItem, 0, source.height);
         pinMenu.x = Math.max(shadowInset, Math.min(position.x, width - shadowInset - pinMenu.width));
         pinMenu.y = Math.max(shadowInset, Math.min(position.y, height - shadowInset - pinMenu.height));
         pinMenu.open();
+    }
+
+    function restoreApplicationMenuFocus(): void {
+        const target = pinMenuReturnTarget;
+        pinMenuReturnTarget = null;
+        if (!visible || presentationSuspended || internalPopupVisible || dragActive)
+            return;
+        if (target && target.visible && target.enabled)
+            target.forceActiveFocus(Qt.OtherFocusReason);
+        else
+            moreMenuButton.forceActiveFocus(Qt.OtherFocusReason);
     }
 
     function findTileItem(id: string): TileButton {
@@ -492,18 +566,19 @@ ApplicationWindow {
             focusedTileId = tileId;
         } else {
             removalMotion.restart();
-            Qt.callLater(function () {
-                moreMenuButton.forceActiveFocus(Qt.OtherFocusReason);
-            });
         }
     }
 
-    function pinCurrentApplication(groupId: string): void {
+    function pinCurrentApplication(): void {
         pinMenu.close();
-        controller.pinApplication(pinApplicationId, groupId);
+        if (controller.isApplicationPinned(pinApplicationId))
+            controller.unpinApplication(pinApplicationId);
+        else
+            controller.pinApplication(pinApplicationId);
     }
 
     function ensureTileVisible(tileItem: Item): void {
+        groupsColumn.forceLayout();
         const position = tileItem.mapToItem(groupsColumn, 0, 0);
         let nextX = groupsFlickable.contentX;
         let nextY = groupsFlickable.contentY;
@@ -539,6 +614,17 @@ ApplicationWindow {
     function restoreTileFocus(): void {
         if (visible && !presentationSuspended && !internalPopupVisible && !dragActive && !controller.searchActive && !searchField.activeFocus && focusedGroupId.length === 0)
             focusTileById(focusedTileId);
+    }
+
+    function restoreTileContextFocus(): void {
+        if (!visible || presentationSuspended || internalPopupVisible || dragActive || controller.searchActive)
+            return;
+        if (resizeTileId.length > 0 && !tileById(resizeTileId)) {
+            focusedTileId = "";
+            moreMenuButton.forceActiveFocus(Qt.OtherFocusReason);
+        } else {
+            restoreTileFocus();
+        }
     }
 
     function restoreGroupFocus(): void {
@@ -870,7 +956,9 @@ ApplicationWindow {
     }
 
     function prepareForDismissal(): void {
+        presentationFocusPending = false;
         if (!presentationSuspended) {
+            ++presentationGeneration;
             dismissedTileId = dragActive ? draggedTileId : focusedTileId;
             dismissalFocusSaved = true;
         }
@@ -888,14 +976,68 @@ ApplicationWindow {
         persistenceFeedbackTimer.stop();
     }
 
-    function prepareForPresentation(): void {
+    function stagePresentation(): void {
+        presentationFocusPending = false;
+        ++presentationGeneration;
         dismissMotion.stop();
-        revealMotion.restart();
+        revealMotion.stop();
+        revealProgress = 0;
+        presentationStaged = true;
         presentationSuspended = true;
         closeInternalPopups();
         cancelDrag();
+    }
+
+    function restorePresentationFocus(): void {
+        const resumingDismissal = presentationSuspended;
+        dismissMotion.stop();
+        revealMotion.stop();
+        revealProgress = 1;
+        presentationStaged = false;
         presentationSuspended = false;
+        presentationFocusPending = resumingDismissal;
+        if (!internalPopupVisible)
+            searchField.forceActiveFocus(Qt.OtherFocusReason);
+        if (presentationFocusPending)
+            schedulePresentationFocus();
+    }
+
+    function schedulePresentationFocus(): void {
+        const generation = presentationGeneration;
+        Qt.callLater(function () {
+            if (window.presentationFocusPending && generation === window.presentationGeneration && window.visible && !window.presentationSuspended && !window.internalPopupVisible) {
+                window.presentationFocusPending = false;
+                searchField.forceActiveFocus(Qt.OtherFocusReason);
+            }
+        });
+    }
+
+    function queuePopupFocusRestore(action: var): void {
+        // A popup's visibleChanged precedes its closed signal. Presentation
+        // focus wins over callbacks queued by the old popup during dismissal.
+        if (presentationSuspended || presentationFocusPending)
+            return;
+        const generation = presentationGeneration;
+        Qt.callLater(function () {
+            if (generation === window.presentationGeneration && window.visible && !window.presentationSuspended && !window.presentationFocusPending && !window.internalPopupVisible)
+                action();
+        });
+    }
+
+    function prepareForPresentation(): void {
+        if (!visible)
+            return;
+        if (!presentationStaged) {
+            if (presentationSuspended)
+                restorePresentationFocus();
+            return;
+        }
+        presentationStaged = false;
+        presentationSuspended = false;
+        revealMotion.restart();
         searchField.forceActiveFocus(Qt.OtherFocusReason);
+        presentationFocusPending = true;
+        schedulePresentationFocus();
         if (dismissalFocusSaved)
             focusedTileId = dismissedTileId;
     }
@@ -957,6 +1099,18 @@ ApplicationWindow {
         updateDrag(sceneX, sceneY);
     }
 
+    function startApplicationDrag(applicationId: string, sceneX: real, sceneY: real): void {
+        if (controller.readOnly || controller.importCommitting || controller.isApplicationPinned(applicationId))
+            return;
+        draggedApplicationId = applicationId;
+        focusedTileId = "";
+        draggedWidth = controller.previewApplicationPlacement(applicationId, "", 0, 0).width;
+        draggedHeight = draggedWidth;
+        dragOffsetX = draggedWidth / 2;
+        dragOffsetY = draggedHeight / 2;
+        updateDrag(sceneX, sceneY);
+    }
+
     function updateDrag(sceneX: real, sceneY: real): void {
         if (!dragActive)
             return;
@@ -980,7 +1134,7 @@ ApplicationWindow {
             dragTargetGroupId = group.group.id;
             dragColumn = Math.round((position.x - dragOffsetX) / controller.gridPitch);
             dragRow = Math.round((position.y - dragOffsetY) / controller.gridPitch);
-            const placement = controller.previewPlacement(draggedTileId, dragTargetGroupId, dragColumn, dragRow);
+            const placement = draggedApplicationId.length > 0 ? controller.previewApplicationPlacement(draggedApplicationId, dragTargetGroupId, dragColumn, dragRow) : controller.previewPlacement(draggedTileId, dragTargetGroupId, dragColumn, dragRow);
             dragValid = placement.valid;
             dragMessage = dragValid ? qsTr("松开移至「%1」第 %2 列、第 %3 行；Esc 取消。").arg(group.group.name).arg(dragColumn + 1).arg(dragRow + 1) : placement.message;
             const location = group.gridItem.mapToItem(contentItem, placement.x, placement.y);
@@ -996,14 +1150,20 @@ ApplicationWindow {
         if (!dragActive)
             return;
         const tileId = draggedTileId;
+        const applicationId = draggedApplicationId;
         const targetId = dragTargetGroupId;
         const valid = dragValid;
         const column = dragColumn;
         const row = dragRow;
         const message = dragMessage;
         clearDragPreview();
-        if (valid)
-            controller.moveTile(tileId, targetId, column, row);
+        if (valid) {
+            if (applicationId.length > 0) {
+                if (controller.pinApplicationAt(applicationId, targetId, column, row) && compactLayout)
+                    showApplications = false;
+            } else
+                controller.moveTile(tileId, targetId, column, row);
+        }
         else
             selectionStatus = qsTr("未移动：%1").arg(message);
         Qt.callLater(restoreTileFocus);
@@ -1026,6 +1186,7 @@ ApplicationWindow {
         previewWidth = 0;
         previewHeight = 0;
         draggedTileId = "";
+        draggedApplicationId = "";
     }
 
     function handleEscape(): void {
@@ -1068,6 +1229,10 @@ ApplicationWindow {
         }
 
         function onGroupsChanged(): void {
+            if (window.observedGridColumns !== window.controller.gridColumns) {
+                window.cancelDrag();
+                window.observedGridColumns = window.controller.gridColumns;
+            }
             Qt.callLater(window.restoreTileFocus);
             Qt.callLater(window.restoreGroupFocus);
         }
@@ -1118,21 +1283,28 @@ ApplicationWindow {
         }
 
         function onLaunchFailed(message: string): void {
+            window.dismissedSelectionError = "";
             window.selectionStatus = qsTr("启动失败：%1").arg(message);
             window.selectionStatusError = true;
         }
 
         function onOperationMessageChanged(): void {
+            if (!window.controller.operationError)
+                window.dismissedOperationError = "";
             if (window.visible && !window.presentationSuspended)
                 operationFeedbackTimer.restart();
         }
 
         function onPersistenceStatusChanged(): void {
+            if (!window.controller.readOnly && !window.controller.persistenceError)
+                window.dismissedPersistenceError = "";
             if (window.visible && !window.presentationSuspended)
                 persistenceFeedbackTimer.restart();
         }
 
         function onDesktopActionStateChanged(): void {
+            if (!window.controller.desktopActionError)
+                window.dismissedDesktopError = "";
             if (window.visible && !window.presentationSuspended)
                 desktopFeedbackTimer.restart();
         }
@@ -1264,6 +1436,7 @@ ApplicationWindow {
 
         ShortcutRail {
             id: shortcutRail
+            hintsEnabled: window.hintsPermitted
 
             Layout.preferredWidth: window.tokens.layout.railWidth
             Layout.fillHeight: true
@@ -1417,10 +1590,10 @@ ApplicationWindow {
                         id: catalogPanel
 
                         objectName: "catalogPanel"
-                        visible: !window.compactLayout || window.showApplications
-                        Layout.preferredWidth: window.compactLayout ? -1 : window.tokens.layout.catalogWidth
-                        Layout.maximumWidth: window.compactLayout ? Number.POSITIVE_INFINITY : window.tokens.layout.catalogWidth
-                        Layout.fillWidth: window.compactLayout
+                        visible: !window.compactLayout || window.showApplications || window.draggedApplicationId.length > 0
+                        Layout.preferredWidth: window.compactLayout ? (window.draggedApplicationId.length > 0 ? 96 : -1) : window.tokens.layout.catalogWidth
+                        Layout.maximumWidth: window.compactLayout ? (window.draggedApplicationId.length > 0 ? 96 : Number.POSITIVE_INFINITY) : window.tokens.layout.catalogWidth
+                        Layout.fillWidth: window.compactLayout && window.draggedApplicationId.length === 0
                         Layout.fillHeight: true
                         spacing: 8
 
@@ -1436,13 +1609,6 @@ ApplicationWindow {
                                 textFormat: Text.PlainText
                                 font.pixelSize: window.tokens.font.heading
                                 font.bold: true
-                            }
-
-                            Label {
-                                text: "A–Z"
-                                color: window.theme.secondary
-                                font.pixelSize: window.tokens.font.caption
-                                Accessible.name: qsTr("应用按现有目录顺序显示，字母与首字符分节。")
                             }
 
                             IconButton {
@@ -1475,33 +1641,47 @@ ApplicationWindow {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             clip: true
+                            Item {
+                                id: folderHeader
+                                objectName: "catalogFolderHeader"
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                height: window.applicationBrowser && window.applicationBrowser.inFolder ? 44 : 0
+                                visible: height > 0
+                                RowLayout {
+                                    anchors.fill: parent
+                                    IconButton {
+                                        objectName: "folderBackButton"
+                                        contentItem: Item {
+                                            MenuGlyph {
+                                                objectName: "folderBackIcon"
+                                                paths: window.tokens.interactionSurface.glyphs
+                                                name: "chevron-left"
+                                                color: window.theme.foreground
+                                                anchors.centerIn: parent
+                                            }
+                                        }
+                                        Accessible.name: qsTr("返回上一级")
+                                        onClicked: window.navigateCatalogFolder("..")
+                                    }
+                                    Label {
+                                        Layout.fillWidth: true
+                                        text: window.applicationBrowser ? window.applicationBrowser.folderName : ""
+                                        color: window.theme.foreground
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                            }
                             ListView {
                                 id: applicationsList
 
                                 objectName: "applicationList"
-                                anchors.fill: parent
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.top: folderHeader.bottom
+                                anchors.bottom: parent.bottom
                                 enabled: !window.alphabetOpen && !folderTransition.running
-                                header: Item {
-                                    width: applicationsList.width
-                                    height: window.applicationBrowser && window.applicationBrowser.inFolder ? 44 : 0
-                                    visible: height > 0
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        IconButton {
-                                            objectName: "folderBackButton"
-                                            text: "‹"
-                                            font.pixelSize: 24
-                                            Accessible.name: qsTr("返回上一级")
-                                            onClicked: window.navigateCatalogFolder("..")
-                                        }
-                                        Label {
-                                            Layout.fillWidth: true
-                                            text: window.applicationBrowser ? window.applicationBrowser.folderName : ""
-                                            color: window.theme.foreground
-                                            elide: Text.ElideRight
-                                        }
-                                    }
-                                }
                                 clip: true
                                 spacing: 0
                                 model: window.controller.applications
@@ -1554,10 +1734,7 @@ ApplicationWindow {
                                     required property bool available
                                     required property bool pinned
                                     required property int index
-                                    HoverHandler {
-                                        id: rowHover
-                                    }
-                                    readonly property string displayType: kind === "packaged" ? qsTr("打包应用") : qsTr("开始菜单快捷方式")
+                                    readonly property string displayType: kind === "folder" ? qsTr("文件夹") : kind === "packaged" ? qsTr("打包应用") : qsTr("开始菜单快捷方式")
 
                                     objectName: "appRow-" + appId
                                     width: applicationsList.width
@@ -1569,6 +1746,7 @@ ApplicationWindow {
 
                                     ItemDelegate {
                                         id: appButton
+                                        hoverEnabled: true
 
                                         function requestContextMenu(): void {
                                             if (appRow.kind !== "folder")
@@ -1578,14 +1756,13 @@ ApplicationWindow {
                                         objectName: "applicationLaunch-" + appRow.appId
                                         focus: true
                                         anchors.left: parent.left
-                                        anchors.right: pinButton.left
+                                        anchors.right: parent.right
                                         anchors.top: parent.top
                                         anchors.bottom: parent.bottom
-                                        anchors.rightMargin: 4
                                         enabled: appRow.available !== false
                                         padding: 6
                                         Accessible.name: appRow.displayName
-                                        Accessible.description: qsTr("%1。按 Enter 启动，Shift 加 F10 固定到分组。").arg(appRow.displayType)
+                                        Accessible.description: appRow.kind === "folder" ? qsTr("文件夹。按 Enter 展开。") : qsTr("%1。按 Enter 启动，拖动或按 Shift 加 F10 管理固定磁贴。").arg(appRow.displayType)
                                         onClicked: appRow.kind === "folder" ? window.navigateCatalogFolder(appRow.appId) : window.activateApplication(appRow.appId)
                                         Keys.onReturnPressed: appRow.kind === "folder" ? window.navigateCatalogFolder(appRow.appId) : window.activateApplication(appRow.appId)
                                         Keys.onEnterPressed: appRow.kind === "folder" ? window.navigateCatalogFolder(appRow.appId) : window.activateApplication(appRow.appId)
@@ -1618,11 +1795,12 @@ ApplicationWindow {
 
                                         Hint {
                                             id: applicationToolTip
+                                            objectName: "applicationToolTip-" + appRow.appId
                                             delay: 600
                                             font.family: window.font.family
 
-                                            visible: appButton.hovered || appButton.activeFocus
-                                            text: appRow.displayName + " · " + appRow.displayType
+                                            visible: window.visible && !window.presentationSuspended && !window.internalPopupVisible && !window.alphabetOpen && !window.dragActive && !folderTransition.running && (appButton.hovered || (appButton.activeFocus && window.controller.keyboardNavigation))
+                                            text: appRow.displayName + "\n" + appRow.displayType
                                             timeout: -1
                                             contentItem: Text {
                                                 text: applicationToolTip.text
@@ -1682,50 +1860,84 @@ ApplicationWindow {
                                         }
 
                                         MouseArea {
+                                            id: applicationPointer
+                                            property point pressPosition: Qt.point(0, 0)
+                                            property bool suppressClick: false
                                             anchors.fill: parent
-                                            acceptedButtons: Qt.RightButton
-                                            onClicked: {
+                                            acceptedButtons: Qt.RightButton | (appRow.kind !== "folder" && !window.controller.readOnly && !window.controller.importCommitting ? Qt.LeftButton : Qt.NoButton)
+                                            preventStealing: appRow.kind !== "folder"
+                                            onPressed: mouse => {
                                                 appButton.forceActiveFocus(Qt.MouseFocusReason);
-                                                appButton.requestContextMenu();
+                                                pressPosition = Qt.point(mouse.x, mouse.y);
+                                                suppressClick = false;
+                                            }
+                                            onPositionChanged: mouse => {
+                                                if (!(pressedButtons & Qt.LeftButton))
+                                                    return;
+                                                const dx = mouse.x - pressPosition.x;
+                                                const dy = mouse.y - pressPosition.y;
+                                                const position = appButton.mapToItem(null, mouse.x, mouse.y);
+                                                if (!suppressClick && dx * dx + dy * dy >= drag.threshold * drag.threshold) {
+                                                    suppressClick = true;
+                                                    window.startApplicationDrag(appRow.appId, position.x, position.y);
+                                                } else if (window.draggedApplicationId === appRow.appId) {
+                                                    window.updateDrag(position.x, position.y);
+                                                }
+                                            }
+                                            onReleased: mouse => {
+                                                if (mouse.button !== Qt.LeftButton)
+                                                    return;
+                                                if (window.draggedApplicationId === appRow.appId) {
+                                                    const position = appButton.mapToItem(null, mouse.x, mouse.y);
+                                                    window.updateDrag(position.x, position.y);
+                                                    window.finishDrag();
+                                                } else if (!suppressClick) {
+                                                    window.activateApplication(appRow.appId);
+                                                }
+                                            }
+                                            onClicked: mouse => {
+                                                if (mouse.button === Qt.RightButton)
+                                                    appButton.requestContextMenu();
+                                            }
+                                            onCanceled: {
+                                                if (window.draggedApplicationId === appRow.appId)
+                                                    window.cancelDrag();
                                             }
                                         }
-                                    }
-
-                                    IconButton {
-                                        id: pinButton
-
-                                        objectName: "pinButton-" + appRow.appId
-                                        opacity: rowHover.hovered && appRow.kind !== "folder" ? 1 : 0
-                                        focusPolicy: Qt.NoFocus
-                                        Behavior on opacity {
-                                            NumberAnimation {
-                                                duration: 100
-                                            }
-                                        }
-                                        anchors.right: parent.right
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: 28
-                                        height: 32
-                                        icon.width: 16
-                                        icon.height: 16
-                                        icon.source: "qrc:/xdstarter/ui/" + (window.darkTheme ? "dark" : "light") + "/pin.svg"
-                                        enabled: appRow.kind !== "folder" && !window.controller.readOnly && !window.controller.importCommitting && !appRow.pinned
-                                        Accessible.name: appRow.pinned ? qsTr("已固定 %1").arg(appRow.displayName) : qsTr("固定 %1").arg(appRow.displayName)
-                                        onClicked: window.openPinMenu(appRow.appId, appRow.displayName, appRow.pinned, pinButton)
-                                        Keys.onReturnPressed: window.openPinMenu(appRow.appId, appRow.displayName, appRow.pinned, pinButton)
-                                        Keys.onEnterPressed: window.openPinMenu(appRow.appId, appRow.displayName, appRow.pinned, pinButton)
                                     }
                                 }
 
-                                Label {
-                                    objectName: "emptyCatalogHint"
-                                    anchors.fill: parent
-                                    anchors.margins: 12
+                                ColumnLayout {
+                                    anchors.centerIn: parent
+                                    width: Math.max(0, parent.width - 24)
+                                    spacing: 10
                                     visible: applicationsList.count === 0
-                                    text: window.controller.catalogBusy ? qsTr("正在读取应用目录…") : qsTr("暂未找到可用应用。可刷新目录后重试。")
-                                    textFormat: Text.PlainText
-                                    color: window.theme.secondary
-                                    wrapMode: Text.WordWrap
+                                    MenuGlyph {
+                                        Layout.alignment: Qt.AlignHCenter
+                                        Layout.preferredWidth: 36
+                                        Layout.preferredHeight: 36
+                                        paths: window.tokens.interactionSurface.glyphs
+                                        name: "folder"
+                                        color: window.theme.secondary
+                                        visible: !window.controller.catalogBusy && window.applicationBrowser && window.applicationBrowser.inFolder
+                                    }
+                                    Label {
+                                        objectName: "emptyCatalogHint"
+                                        Layout.fillWidth: true
+                                        horizontalAlignment: Text.AlignHCenter
+                                        text: window.controller.catalogBusy ? qsTr("正在读取应用目录…") : window.applicationBrowser && window.applicationBrowser.inFolder ? qsTr("此文件夹为空。") : qsTr("暂未找到可用应用。可刷新目录后重试。")
+                                        textFormat: Text.PlainText
+                                        color: window.theme.secondary
+                                        wrapMode: Text.WordWrap
+                                    }
+                                    Label {
+                                        Layout.fillWidth: true
+                                        horizontalAlignment: Text.AlignHCenter
+                                        visible: !window.controller.catalogBusy && window.applicationBrowser && window.applicationBrowser.inFolder
+                                        text: qsTr("使用上方返回按钮查看全部应用。")
+                                        color: window.theme.secondary
+                                        wrapMode: Text.WordWrap
+                                    }
                                 }
                             }
                             Rectangle {
@@ -1819,14 +2031,18 @@ ApplicationWindow {
                         id: groupsScroll
 
                         objectName: "groupsScroll"
+                        // RowLayout owns the viewport width. Its size hint must
+                        // not come back from the viewport-dependent content.
+                        implicitWidth: 0
+                        Layout.minimumWidth: 0
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        visible: !window.compactLayout || !window.showApplications
+                        visible: !window.compactLayout || !window.showApplications || window.draggedApplicationId.length > 0
                         contentWidth: groupsFlickable.contentWidth
                         contentHeight: groupsFlickable.contentHeight
                         clip: true
                         focusPolicy: Qt.NoFocus
-                        rightPadding: effectiveScrollBarWidth
+                        rightPadding: groupVerticalScrollBar.width
                         bottomPadding: effectiveScrollBarHeight
 
                         ScrollBar.horizontal: ScrollBar {
@@ -1834,6 +2050,7 @@ ApplicationWindow {
                             focusPolicy: Qt.NoFocus
                         }
                         ScrollBar.vertical: ScrollBar {
+                            id: groupVerticalScrollBar
                             policy: ScrollBar.AsNeeded
                             focusPolicy: Qt.NoFocus
                         }
@@ -1854,6 +2071,7 @@ ApplicationWindow {
                             Column {
                                 id: groupsColumn
 
+                                width: Math.max(window.tileViewportWidth, window.controller.previewWidth)
                                 spacing: window.tokens.layout.groupSpacing
 
                                 Repeater {
@@ -1871,8 +2089,10 @@ ApplicationWindow {
                                     }
 
                                     delegate: TileGroup {
+                                        hintsEnabled: window.hintsPermitted
                                         required property var modelData
 
+                                        width: groupsColumn.width
                                         keyboardNavigation: window.controller.keyboardNavigation
                                         tileTransitions: window.controller.tileTransitions
                                         group: modelData
@@ -1994,8 +2214,8 @@ ApplicationWindow {
                                 font.family: window.font.family
 
                                 objectName: "searchResultToolTip"
-                                visible: searchRow.hovered || searchRow.activeFocus
-                                text: searchRow.modelData.displayName + " · " + (searchRow.modelData.available === false ? searchRow.modelData.unavailableReason : searchRow.displayType)
+                                visible: window.hintsPermitted && (searchRow.hovered || (window.controller.keyboardNavigation && searchRow.activeFocus))
+                                text: searchRow.modelData.displayName + "\n" + (searchRow.modelData.available === false ? searchRow.modelData.unavailableReason : searchRow.displayType)
                                 timeout: -1
                                 contentItem: Text {
                                     text: searchResultToolTip.text
@@ -2057,7 +2277,7 @@ ApplicationWindow {
 
                                     Label {
                                         Layout.fillWidth: true
-                                        text: searchRow.modelData.available === false ? searchRow.modelData.unavailableReason : searchRow.displayType + (searchRow.modelData.pinned ? qsTr(" · 已固定") : "")
+                                        text: searchRow.modelData.available === false ? searchRow.modelData.unavailableReason : searchRow.displayType + (searchRow.modelData.pinned ? qsTr("，已固定") : "")
                                         textFormat: Text.PlainText
                                         color: window.theme.secondary
                                         font.pixelSize: 12
@@ -2095,7 +2315,13 @@ ApplicationWindow {
         anchors.bottomMargin: window.shadowInset + window.tokens.layout.contentMargin
         z: 900
         padding: 16
-        readonly property bool feedbackShown: window.showSelectionFeedback || window.showDesktopFeedback || window.showOperationFeedback || window.showPersistenceFeedback
+        leftPadding: 48
+        rightPadding: 44
+        readonly property bool feedbackShown: !window.trayRecoveryUnavailable && !window.internalPopupVisible && (window.showSelectionFeedback || window.showDesktopFeedback || window.showOperationFeedback || window.showPersistenceFeedback)
+        onFeedbackShownChanged: {
+            if (!feedbackShown && feedbackCloseButton.activeFocus && window.visible && !window.presentationSuspended && !window.internalPopupVisible)
+                searchField.forceActiveFocus(Qt.OtherFocusReason);
+        }
         opacity: feedbackShown ? 1 : 0
         visible: opacity > 0
         Behavior on opacity {
@@ -2104,18 +2330,19 @@ ApplicationWindow {
                 easing.type: Easing.OutCubic
             }
         }
-        background: Rectangle {
-            radius: 12
-            color: window.theme.surface
-            border.width: 1
-            border.color: window.theme.menuBorder
-            Rectangle {
-                x: 1
-                y: 12
-                width: 3
-                height: Math.max(0, parent.height - 24)
-                radius: 1.5
-                color: window.controller.operationError || window.controller.persistenceError ? window.theme.errorForeground : window.tokens.brand.blue
+        background: FloatingSurface {
+            radius: 8
+            color: window.surfaceTheme.card
+            borderColor: window.theme.controlBorder
+            darkTheme: window.darkTheme
+            MenuGlyph {
+                x: 16
+                y: 18
+                width: 22
+                height: 22
+                paths: window.tokens.interactionSurface.glyphs
+                name: "error"
+                color: window.theme.errorForeground
             }
         }
 
@@ -2174,6 +2401,60 @@ ApplicationWindow {
                 Accessible.name: text
             }
         }
+        Button {
+            id: feedbackCloseButton
+            objectName: "feedbackCloseButton"
+            enabled: feedbackPanel.feedbackShown
+            parent: feedbackPanel
+            x: parent.width - width - 8
+            y: 8
+            width: 28
+            height: 28
+            padding: 6
+            Accessible.name: qsTr("关闭提示")
+            onClicked: window.dismissFeedback()
+            Keys.onReturnPressed: window.dismissFeedback()
+            Keys.onEnterPressed: window.dismissFeedback()
+            background: Rectangle { radius: 4; color: feedbackCloseButton.hovered ? window.surfaceTheme.hover : "transparent" }
+            contentItem: MenuGlyph { paths: window.tokens.interactionSurface.glyphs; name: "close"; color: window.theme.secondary }
+        }
+    }
+
+    Pane {
+        objectName: "trayRecoveryPanel"
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: window.shadowInset + 24
+        anchors.rightMargin: window.shadowInset + 24
+        anchors.bottomMargin: window.shadowInset + 24
+        z: 950
+        visible: window.trayRecoveryUnavailable
+        padding: 20
+        background: FloatingSurface {
+            color: window.surfaceTheme.card
+            borderColor: window.theme.controlBorder
+            darkTheme: window.darkTheme
+        }
+        contentItem: ColumnLayout {
+            spacing: 12
+            Label {
+                text: qsTr("托盘图标暂时不可用")
+                font.bold: true
+                color: window.theme.foreground
+            }
+            Label {
+                Layout.fillWidth: true
+                text: window.trayRecoveryMessage
+                textFormat: Text.PlainText
+                wrapMode: Text.WordWrap
+                color: window.theme.secondary
+            }
+            RowLayout {
+                ActionButton { objectName: "retryTrayButton"; text: qsTr("重试托盘"); onClicked: window.trayRecoveryRetryRequested() }
+                ActionButton { objectName: "recoveryExitButton"; text: qsTr("退出 XDStarter"); onClicked: window.controller.requestExit() }
+            }
+        }
     }
 
     ActionMenu {
@@ -2183,9 +2464,32 @@ ApplicationWindow {
         parent: window.contentItem
         popupType: Popup.Item
         title: qsTr("更多选项")
+        ActionMenu {
+            id: appearanceMenu
+            objectName: "appearanceMenu"
+            title: qsTr("外观主题")
+            width: 204
+            enabled: !window.controller.readOnly && !window.controller.importCommitting
+            ActionMenuItem {
+                objectName: "appearanceLightItem"
+                text: qsTr("浅色")
+                checkable: true
+                checked: !window.darkTheme
+                onTriggered: { if (window.darkTheme) window.toggleTheme(); }
+            }
+            ActionMenuItem {
+                objectName: "appearanceDarkItem"
+                text: qsTr("深色")
+                checkable: true
+                checked: window.darkTheme
+                onTriggered: { if (!window.darkTheme) window.toggleTheme(); }
+            }
+        }
+
         ActionMenuItem {
             id: newGroupButton
             objectName: "newGroupButton"
+            actionIcon: "add"
             text: qsTr("新建分组…")
             enabled: !window.controller.readOnly && !window.controller.importCommitting && window.controller.groups.length < window.controller.maximumGroups
             onTriggered: window.openGroupNameDialog("")
@@ -2193,28 +2497,21 @@ ApplicationWindow {
             Keys.onEnterPressed: window.openGroupNameDialog("")
         }
         ActionSeparator {}
+
+
         width: 240
-        onClosed: Qt.callLater(function () {
+        onClosed: window.queuePopupFocusRestore(function () {
             if (window.groupFocusPending)
                 window.restoreGroupFocus();
             else if (window.visible && !window.presentationSuspended && !window.internalPopupVisible)
                 moreMenuButton.forceActiveFocus(Qt.OtherFocusReason);
         })
 
-        ActionMenuItem {
-            id: themeButton
 
-            objectName: "themeButton"
-            text: window.darkTheme ? qsTr("切换浅色") : qsTr("切换深色")
-            enabled: !window.controller.readOnly && !window.controller.importCommitting
-            Accessible.description: qsTr("切换深浅主题并保存偏好。")
-            onTriggered: window.toggleTheme()
-            Keys.onReturnPressed: window.toggleTheme()
-            Keys.onEnterPressed: window.toggleTheme()
-        }
 
         ActionMenuItem {
             objectName: "saveLayoutButton"
+            actionIcon: "save"
             text: window.controller.saving ? qsTr("正在保存") : qsTr("保存布局")
             enabled: !window.controller.readOnly && !window.controller.importCommitting && !window.controller.saving && !window.dragActive
             onTriggered: window.saveLayout()
@@ -2226,6 +2523,7 @@ ApplicationWindow {
 
         ActionMenuItem {
             objectName: "importLayoutButton"
+            actionIcon: "import"
             text: qsTr("导入布局…")
             enabled: window.controller.layoutImportSupported && !window.controller.readOnly && !window.controller.importCommitting && !window.controller.importBusy && !window.dragActive
             onTriggered: window.openLayoutImport()
@@ -2237,6 +2535,7 @@ ApplicationWindow {
 
         ActionMenuItem {
             objectName: "aboutButton"
+            actionIcon: "info"
             text: qsTr("关于 XDStarter")
             onTriggered: window.openAbout()
             Keys.onReturnPressed: window.openAbout()
@@ -2284,65 +2583,118 @@ ApplicationWindow {
         parent: window.contentItem
         popupType: Popup.Item
         anchors.centerIn: parent
-        width: Math.min(440, window.width - 48)
-        padding: 20
+        width: Math.min(448, window.panelWidth - 48)
+        padding: 24
         focus: true
+        modal: true
+        Overlay.modal: Item {
+            Rectangle {
+                x: window.shadowInset
+                y: window.shadowInset
+                width: window.panelWidth
+                height: window.panelHeight
+                radius: window.tokens.cornerRadiusDip.menu
+                color: Qt.rgba(0, 0, 0, 0.4)
+            }
+        }
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        onClosed: Qt.callLater(function () {
+        onClosed: window.queuePopupFocusRestore(function () {
             if (window.visible && !window.presentationSuspended && !window.internalPopupVisible)
                 moreMenuButton.forceActiveFocus(Qt.OtherFocusReason);
         })
 
         contentItem: ColumnLayout {
-            spacing: 12
-
+            spacing: 20
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 20
+                Image {
+                    source: "qrc:/xdstarter/app/xdstarter-app-icon.svg"
+                    Layout.preferredWidth: 52
+                    Layout.preferredHeight: 52
+                    sourceSize.width: 104
+                    sourceSize.height: 104
+                }
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 4
+                    Label { text: "XDStarter"; font.pixelSize: 24; font.bold: true; color: window.theme.foreground }
+                    Label { text: qsTr("Windows 磁贴开始菜单"); color: window.theme.secondary; font.pixelSize: 13 }
+                }
+                Item { Layout.fillWidth: true }
+                Button {
+                    id: aboutDismissButton
+                    objectName: "aboutDismissButton"
+                    Layout.alignment: Qt.AlignTop
+                    Layout.preferredWidth: 28
+                    Layout.preferredHeight: 28
+                    padding: 6
+                    Accessible.name: qsTr("关闭关于")
+                    onClicked: aboutPopup.close()
+                    background: Rectangle { radius: 4; color: aboutDismissButton.down ? window.surfaceTheme.pressed : aboutDismissButton.hovered ? window.surfaceTheme.hover : "transparent" }
+                    contentItem: MenuGlyph { paths: window.tokens.interactionSurface.glyphs; name: "close"; color: window.theme.secondary }
+                }
+            }
+            Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: window.theme.separator }
+            RowLayout {
+                Label { text: qsTr("版本"); color: window.theme.secondary }
+                Item { Layout.fillWidth: true }
+                Label { objectName: "aboutVersion"; text: Qt.application.version.length > 0 ? qsTr("%1（开发版）").arg(Qt.application.version) : qsTr("开发版"); color: window.theme.foreground }
+            }
             Label {
-                text: qsTr("关于 XDStarter")
+                Layout.fillWidth: true
+                text: qsTr("通过拖动和右键管理常用应用。\n默认在后台运行，可从托盘管理。")
                 textFormat: Text.PlainText
-                font.pixelSize: window.tokens.font.heading
-                font.bold: true
                 color: window.theme.foreground
-            }
-
-            Label {
-                Layout.fillWidth: true
-                text: window.controller.platformName + "\n" + window.controller.platformStatus
-                textFormat: Text.PlainText
-                color: window.theme.secondary
                 wrapMode: Text.WordWrap
             }
-
-            Label {
+            Rectangle {
                 Layout.fillWidth: true
-                text: window.integrationStatus
-                textFormat: Text.PlainText
-                visible: text.length > 0
-                color: window.theme.secondary
-                wrapMode: Text.WordWrap
+                implicitHeight: 46
+                radius: 6
+                color: window.surfaceTheme.hover
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 12
+                    spacing: 12
+                    MenuGlyph {
+                        paths: window.tokens.interactionSurface.glyphs
+                        name: window.startButtonCaptureActive ? "check" : "info"
+                        color: window.surfaceTheme.primary
+                    }
+                    Label { text: qsTr("开始按钮接管"); color: window.theme.foreground; font.pixelSize: 13 }
+                    Item { Layout.fillWidth: true }
+                    Label { text: window.startButtonCaptureActive ? qsTr("已启用") : qsTr("未启用"); color: window.theme.secondary; font.pixelSize: 13 }
+                }
             }
-
-            Label {
-                Layout.fillWidth: true
-                text: qsTr("单击或 Enter 启动应用，右键固定或调整磁贴。编辑时可用 Ctrl + 方向键移动，Esc 取消。")
-                textFormat: Text.PlainText
-                color: window.theme.foreground
-                wrapMode: Text.WordWrap
-            }
-
-            ActionButton {
-                objectName: "closeAboutButton"
-                text: qsTr("关闭")
-                onClicked: aboutPopup.close()
-                Keys.onReturnPressed: aboutPopup.close()
-                Keys.onEnterPressed: aboutPopup.close()
+            Rectangle { Layout.fillWidth: true; implicitHeight: 1; color: window.theme.separator }
+            RowLayout {
+                Button {
+                    text: qsTr("项目主页")
+                    flat: true
+                    palette.buttonText: window.surfaceTheme.primary
+                    onClicked: Qt.openUrlExternally("https://github.com/xiaodaozhi/xdstarter")
+                }
+                Item { Layout.fillWidth: true }
+                ActionButton {
+                    id: aboutCloseButton
+                    objectName: "closeAboutButton"
+                    text: qsTr("关闭")
+                    palette.buttonText: window.surfaceTheme.onPrimary
+                    contentItem: Text { text: aboutCloseButton.text; font: aboutCloseButton.font; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: window.surfaceTheme.onPrimary }
+                    background: Rectangle { radius: 6; color: aboutCloseButton.down ? Qt.darker(window.surfaceTheme.primary, 1.12) : aboutCloseButton.hovered ? Qt.lighter(window.surfaceTheme.primary, 1.06) : window.surfaceTheme.primary }
+                    onClicked: aboutPopup.close()
+                    Keys.onReturnPressed: aboutPopup.close()
+                    Keys.onEnterPressed: aboutPopup.close()
+                }
             }
         }
-
-        background: Rectangle {
-            radius: window.tokens.cornerRadiusDip.menu
-            color: window.theme.surface
-            border.width: 1
-            border.color: window.theme.controlBorder
+        background: FloatingSurface {
+            radius: 12
+            color: window.surfaceTheme.card
+            borderColor: window.theme.controlBorder
+            darkTheme: window.darkTheme
+            elevation: 2
         }
     }
 
@@ -2354,7 +2706,7 @@ ApplicationWindow {
         parent: window.contentItem
         popupType: Popup.Item
         width: Math.min(300, window.panelWidth - 32)
-        onClosed: Qt.callLater(window.restoreGroupFocus)
+        onClosed: window.queuePopupFocusRestore(window.restoreGroupFocus)
 
         ActionMenuItem {
             objectName: "groupRenameAction"
@@ -2460,7 +2812,7 @@ ApplicationWindow {
             }
             groupNameField.clear();
             window.groupNameError = "";
-            Qt.callLater(window.restoreGroupFocus);
+            window.queuePopupFocusRestore(window.restoreGroupFocus);
         }
 
         background: Rectangle {
@@ -2606,7 +2958,7 @@ ApplicationWindow {
             tileNameField.clear();
             window.tileNameError = "";
             window.namingTileId = "";
-            Qt.callLater(window.restoreTileFocus);
+            window.queuePopupFocusRestore(window.restoreTileFocus);
         }
 
         background: Rectangle {
@@ -2794,10 +3146,43 @@ ApplicationWindow {
         width: 240
         parent: window.contentItem
         popupType: Popup.Item
-        onClosed: Qt.callLater(window.restoreTileFocus)
+        onClosed: window.queuePopupFocusRestore(window.restoreTileContextFocus)
+
+        ActionMenuItem {
+            objectName: "openContextTileItem"
+            text: qsTr("打开")
+            actionIcon: "open"
+            enabled: window.contextTile !== null && !window.controller.launchBusy
+            onTriggered: { resizeMenu.close(); window.activateTile(window.resizeTileId); }
+        }
+
+        ActionMenu {
+            objectName: "tileDimensionsMenu"
+            title: qsTr("磁贴大小")
+            width: 232
+            SizeMenuItem {
+                objectName: "sizeSmallItem"
+                text: qsTr("小磁贴 (1×1)")
+                checked: window.resizeTileSize === "small"
+                onTriggered: window.resizeCurrentTile("small")
+            }
+            SizeMenuItem {
+                objectName: "sizeStandardItem"
+                text: qsTr("中磁贴 (2×2)")
+                checked: window.resizeTileSize === "standard"
+                onTriggered: window.resizeCurrentTile("standard")
+            }
+            SizeMenuItem {
+                objectName: "sizeWideItem"
+                text: qsTr("宽磁贴 (4×2)")
+                checked: window.resizeTileSize === "wide"
+                onTriggered: window.resizeCurrentTile("wide")
+            }
+        }
 
         ActionMenuItem {
             objectName: "renameTileItem"
+            actionIcon: "edit"
             text: qsTr("修改显示名称")
             enabled: !window.controller.readOnly && !window.controller.importCommitting && window.contextTile !== null
             onTriggered: window.openTileNameDialog()
@@ -2814,28 +3199,9 @@ ApplicationWindow {
             Keys.onEnterPressed: window.resetCurrentTileName()
         }
 
-        ActionSeparator {}
 
-        SizeMenuItem {
-            objectName: "sizeSmallItem"
-            text: qsTr("小磁贴 · 1×1")
-            checked: window.resizeTileSize === "small"
-            onTriggered: window.resizeCurrentTile("small")
-        }
 
-        SizeMenuItem {
-            objectName: "sizeStandardItem"
-            text: qsTr("标准磁贴 · 2×2")
-            checked: window.resizeTileSize === "standard"
-            onTriggered: window.resizeCurrentTile("standard")
-        }
 
-        SizeMenuItem {
-            objectName: "sizeWideItem"
-            text: qsTr("宽磁贴 · 4×2")
-            checked: window.resizeTileSize === "wide"
-            onTriggered: window.resizeCurrentTile("wide")
-        }
 
         ActionSeparator {}
 
@@ -2843,7 +3209,8 @@ ApplicationWindow {
             id: unpinOption
 
             objectName: "unpinTileItem"
-            text: qsTr("取消固定")
+            text: qsTr("取消固定磁贴")
+            actionIcon: "unpin"
             enabled: !window.controller.readOnly && !window.controller.importCommitting
             onTriggered: window.unpinCurrentTile()
             Keys.onReturnPressed: window.unpinCurrentTile()
@@ -2855,62 +3222,29 @@ ApplicationWindow {
         id: pinMenu
 
         objectName: "pinApplicationMenu"
-        title: qsTr("固定到分组")
+        title: qsTr("应用")
         parent: window.contentItem
         popupType: Popup.Item
-        width: Math.min(320, window.width - 48)
+        width: Math.min(236, window.panelWidth - 32)
+        onClosed: window.queuePopupFocusRestore(window.restoreApplicationMenuFocus)
 
         ActionMenuItem {
-            text: qsTr("选择目标分组")
-            Accessible.description: qsTr("为 %1 选择固定位置").arg(window.pinApplicationName)
-            enabled: false
+            objectName: "applicationOpenAction"
+            text: qsTr("打开")
+            actionIcon: "open"
+            enabled: !window.controller.launchBusy
+            onTriggered: { pinMenu.close(); window.controller.launchApplication(window.pinApplicationId); }
         }
 
-        Instantiator {
-            model: window.controller.groups
-            onObjectAdded: (index, object) => pinMenu.insertItem(index + 1, object)
-            onObjectRemoved: (index, object) => pinMenu.removeItem(object)
-
-            delegate: ActionMenuItem {
-                id: pinGroupOption
-
-                required property var modelData
-
-                objectName: "pinToGroup-" + modelData.id
-                text: modelData.name
-                contentItem: Text {
-                    text: pinGroupOption.text
-                    textFormat: Text.PlainText
-                    elide: Text.ElideRight
-                    color: pinGroupOption.palette.windowText
-                    font: pinGroupOption.font
-                    verticalAlignment: Text.AlignVCenter
-                }
-                Accessible.name: text
-                Hint {
-                    id: pinGroupToolTip
-                    delay: 600
-                    font.family: window.font.family
-
-                    width: Math.min(380, implicitWidth)
-                    visible: pinGroupOption.enabled && (pinGroupOption.hovered || pinGroupOption.activeFocus)
-                    text: pinGroupOption.text
-                    contentItem: Text {
-                        text: pinGroupOption.text
-                        textFormat: Text.PlainText
-                        color: pinGroupToolTip.palette.toolTipText
-                        font: pinGroupToolTip.font
-                        wrapMode: Text.Wrap
-                    }
-                }
-                enabled: !window.controller.readOnly && !window.controller.importCommitting && !window.pinApplicationPinned
-                onTriggered: {
-                    // Pinning refreshes groups, which replaces this dynamically inserted menu item.
-                    window.pinCurrentApplication(modelData.id);
-                }
-                Keys.onReturnPressed: window.pinCurrentApplication(modelData.id)
-                Keys.onEnterPressed: window.pinCurrentApplication(modelData.id)
-            }
+        ActionMenuItem {
+            objectName: "applicationPinAction"
+            text: window.pinApplicationPinned ? qsTr("取消固定磁贴") : qsTr("固定为磁贴")
+            actionIcon: window.pinApplicationPinned ? "unpin" : "pin"
+            Accessible.description: window.pinApplicationPinned ? qsTr("取消 %1 的全部固定磁贴").arg(window.pinApplicationName) : qsTr("将 %1 固定到最后一个分组").arg(window.pinApplicationName)
+            enabled: !window.controller.readOnly && !window.controller.importCommitting
+            onTriggered: window.pinCurrentApplication()
+            Keys.onReturnPressed: window.pinCurrentApplication()
+            Keys.onEnterPressed: window.pinCurrentApplication()
         }
     }
 
@@ -2954,15 +3288,35 @@ ApplicationWindow {
     }
 
     onVisibleChanged: {
+        if (visible && layoutWidthReady)
+            scheduleLayoutColumns();
         if (!visible) {
             prepareForDismissal();
-        } else {
+            ++presentationGeneration;
+            presentationStaged = false;
+            revealMotion.stop();
+            dismissMotion.stop();
+            revealProgress = 0;
+        } else if (!dismissalManaged && presentationComponentReady) {
+            if (!presentationStaged)
+                stagePresentation();
+            const generation = presentationGeneration;
             Qt.callLater(function () {
-                if (window.visible)
+                if (window.visible && !window.dismissalManaged && generation === window.presentationGeneration)
                     window.prepareForPresentation();
             });
         }
     }
 
-    Component.onCompleted: prepareForPresentation()
+    Component.onCompleted: {
+        layoutWidthReady = true;
+        observedGridColumns = controller.gridColumns;
+        if (visible)
+            scheduleLayoutColumns();
+        presentationComponentReady = true;
+        if (!presentationStaged)
+            stagePresentation();
+        if (!dismissalManaged && visible)
+            prepareForPresentation();
+    }
 }

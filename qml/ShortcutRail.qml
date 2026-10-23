@@ -11,6 +11,7 @@ Rectangle {
     required property bool darkTheme
     required property var tokens
     property bool keyboardNavigation: false
+    property bool hintsEnabled: true
     property bool busy: false
     readonly property string assetRoot: "qrc:/xdstarter/ui/" + (darkTheme ? "dark" : "light") + "/"
     readonly property var theme: tokens.themes[darkTheme ? "dark" : "light"]
@@ -72,7 +73,7 @@ Rectangle {
         }
 
         Hint {
-            visible: button.enabled && (button.hovered || button.activeFocus)
+            visible: rail.hintsEnabled && button.enabled && (button.hovered || (rail.keyboardNavigation && button.activeFocus))
             text: button.actionName
         }
     }
@@ -81,7 +82,7 @@ Rectangle {
         anchors.fill: parent
         anchors.topMargin: 12
         anchors.bottomMargin: 12
-        spacing: 8
+        spacing: 0
 
         RailButton {
             actionId: "account"

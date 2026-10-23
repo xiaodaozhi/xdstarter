@@ -172,6 +172,100 @@ int main(int argc, char* argv[]) {
     test.expect(snapshot.success, "isolated Start Menu scan succeeds");
     test.expect(snapshot.applications.size() == 3,
                 "duplicate roots deduplicated; all shortcuts retained");
+
+    const auto userRoot = fixture.filePath(QStringLiteral("catalog-user"));
+    const auto commonRoot = fixture.filePath(QStringLiteral("catalog-common"));
+    const auto userFolder = QDir(userRoot).filePath(QStringLiteral("Tools"));
+    const auto commonFolder = QDir(commonRoot).filePath(QStringLiteral("tools"));
+    const auto userNested = QDir(userFolder).filePath(QStringLiteral("Nested"));
+    const auto commonNested = QDir(commonFolder).filePath(QStringLiteral("NESTED"));
+    const auto separateFolder = QDir(commonRoot).filePath(QStringLiteral("Other"));
+    test.expect(QDir().mkpath(userNested) && QDir().mkpath(commonNested) &&
+                    QDir().mkpath(separateFolder),
+                "two owned Programs roots and nested folders created");
+    const auto userLink = QDir(userFolder).filePath(QStringLiteral("Same.lnk"));
+    const auto commonLink = QDir(commonFolder).filePath(QStringLiteral("Same.lnk"));
+    test.expect(
+        createShortcut(userLink, helper, QStringLiteral("user-argument"), userRoot) &&
+            createShortcut(commonLink, helper, QStringLiteral("common-argument"), commonRoot) &&
+            createShortcut(QDir(userNested).filePath(QStringLiteral("User.lnk")), helper, {},
+                           userRoot) &&
+            createShortcut(QDir(commonNested).filePath(QStringLiteral("Common.lnk")), helper, {},
+                           commonRoot),
+        "different arguments and nested complementary children created");
+    const QString localizedName = QStringLiteral("本地化工具");
+    const auto localizeFixture = [&](const QString& directory) {
+        QFile ini(QDir(directory).filePath(QStringLiteral("desktop.ini")));
+        if (!ini.open(QIODevice::WriteOnly))
+            return false;
+        const auto content = QStringLiteral("[.ShellClassInfo]\r\nLocalizedResourceName=") +
+                             localizedName + QStringLiteral("\r\n");
+        if (ini.write(QByteArray("\xff\xfe", 2)) != 2 ||
+            ini.write(reinterpret_cast<const char*>(content.utf16()), content.size() * 2) !=
+                content.size() * 2)
+            return false;
+        ini.close();
+        const auto nativeDirectory = QDir::toNativeSeparators(directory);
+        const auto nativeIni = QDir::toNativeSeparators(ini.fileName());
+        return SetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeDirectory.utf16()),
+                                  FILE_ATTRIBUTE_READONLY) &&
+               SetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeIni.utf16()),
+                                  FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM);
+    };
+    test.expect(localizeFixture(userFolder) && localizeFixture(separateFolder),
+                "localized names configured only inside owned temporary roots");
+    xdstarter::WindowsApplicationPlatform mergedPlatform({userRoot, commonRoot});
+    const auto merged = mergedPlatform.scanApplications();
+    const auto folderId = xdstarter::applicationTargetId(QStringLiteral("folder"), userFolder);
+    const auto nestedId = xdstarter::applicationTargetId(QStringLiteral("folder"), userNested);
+    int rootFolders = 0;
+    int nestedFolders = 0;
+    int sameNamedShortcuts = 0;
+    int nestedChildren = 0;
+    bool localizedFolder = false;
+    bool sameDisplayNameDistinctPath = false;
+    for (const auto& entry : merged.applications) {
+        if (entry.type == QLatin1String("folder") && entry.parentFolderId.isEmpty())
+            ++rootFolders;
+        if (entry.type == QLatin1String("folder") && entry.parentFolderId == folderId)
+            ++nestedFolders;
+        if (entry.type == QLatin1String("shortcut") && entry.parentFolderId == folderId)
+            ++sameNamedShortcuts;
+        if (entry.type == QLatin1String("shortcut") && entry.parentFolderId == nestedId)
+            ++nestedChildren;
+        localizedFolder = localizedFolder || (entry.id == folderId && entry.name == localizedName);
+        sameDisplayNameDistinctPath =
+            sameDisplayNameDistinctPath ||
+            (entry.shortcutPath == separateFolder && entry.name == localizedName);
+    }
+    test.expect(merged.success && merged.applications.size() == 7 && rootFolders == 2 &&
+                    nestedFolders == 1 && nestedChildren == 2,
+                "relative folders merge recursively and both sources retain their children");
+    test.expect(sameNamedShortcuts == 2 &&
+                    xdstarter::applicationTargetId(QStringLiteral("shortcut"), userLink) !=
+                        xdstarter::applicationTargetId(QStringLiteral("shortcut"), commonLink),
+                "same named shortcuts with different parameters retain complete path identities");
+    test.expect(localizedFolder && sameDisplayNameDistinctPath,
+                "real Shell localized folder names display without merging different paths");
+    test.expect(QDir(userNested).removeRecursively(), "owned user nested folder removed");
+    const auto remaining = mergedPlatform.scanApplications();
+    bool commonNestedRetained = false;
+    for (const auto& entry : remaining.applications)
+        if (entry.type == QLatin1String("folder") && entry.parentFolderId == folderId &&
+            entry.name == QLatin1String("NESTED"))
+            commonNestedRetained = true;
+    test.expect(remaining.success && commonNestedRetained,
+                "removing one nested source retains the other source's real folder");
+    for (const auto& localizedDirectory : {userFolder, separateFolder}) {
+        const auto nativeDirectory = QDir::toNativeSeparators(localizedDirectory);
+        const auto nativeIni = QDir::toNativeSeparators(
+            QDir(localizedDirectory).filePath(QStringLiteral("desktop.ini")));
+        test.expect(SetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeDirectory.utf16()),
+                                       FILE_ATTRIBUTE_NORMAL) &&
+                        SetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeIni.utf16()),
+                                           FILE_ATTRIBUTE_NORMAL),
+                    "owned localized fixture attributes restored before temporary cleanup");
+    }
     const auto target = shortcut(linkPath, QStringLiteral("受控启动"));
     test.expect(platform.checkAvailability(target).success, "valid shortcut availability resolves");
     const auto missing = shortcut(missingPath, QStringLiteral("已删除应用"));

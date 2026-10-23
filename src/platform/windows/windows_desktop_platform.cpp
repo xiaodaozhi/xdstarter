@@ -1,5 +1,7 @@
 #include "windows_desktop_platform.h"
 
+#include "platform/desktop_width_snap.h"
+
 #include <QDir>
 #include <QGuiApplication>
 #include <QPointer>
@@ -309,6 +311,39 @@ DesktopActionResult shellOpen(const wchar_t* target) {
     return {true, QStringLiteral("已打开桌面快捷入口。"), {}};
 }
 
+bool applyMenuInputRegion(HWND window, QRect outer, QRect taskbar) {
+    const QRegion desired = desktopMenuInputRegion(outer, taskbar);
+    if (!outer.isValid())
+        return false;
+    HRGN region = CreateRectRgn(0, 0, 0, 0);
+    if (!region)
+        return false;
+    for (const auto& part : desired) {
+        HRGN piece = CreateRectRgn(part.left(), part.top(), part.right() + 1, part.bottom() + 1);
+        if (!piece || CombineRgn(region, region, piece, RGN_OR) == ERROR) {
+            if (piece)
+                DeleteObject(piece);
+            DeleteObject(region);
+            return false;
+        }
+        DeleteObject(piece);
+    }
+    HRGN existing = CreateRectRgn(0, 0, 0, 0);
+    const bool unchanged =
+        existing && GetWindowRgn(window, existing) != ERROR && EqualRgn(existing, region);
+    if (existing)
+        DeleteObject(existing);
+    if (unchanged) {
+        DeleteObject(region);
+        return true;
+    }
+    if (!SetWindowRgn(window, region, IsWindowVisible(window))) {
+        DeleteObject(region);
+        return false;
+    }
+    return true; // SetWindowRgn owns region only after success.
+}
+
 } // namespace
 
 // The native sizing loop must preserve the menu's fixed outer edges, including
@@ -325,9 +360,35 @@ class WindowsMenuResizeFilter final {
             RemoveWindowSubclass(native_, windowProcedure, reinterpret_cast<UINT_PTR>(this));
     }
     bool matches(QWindow* window) const { return installed_ && window_ == window; }
+    bool matchesHandle(HWND window) const { return installed_ && native_ == window; }
     bool isInstalled() const { return installed_; }
+    bool setTaskbarRegion(QRect taskbar) {
+        taskbar_ = taskbar;
+        taskbarRegionKnown_ = true;
+        return refreshInputRegion();
+    }
 
   private:
+    bool refreshInputRegion() {
+        if (!installed_ || !native_ || !taskbarRegionKnown_ || applyingRegion_)
+            return true;
+        PhysicalCoordinates coordinates;
+        RECT outer{};
+        if (!coordinates.ready() || !GetWindowRect(native_, &outer))
+            return false;
+        applyingRegion_ = true;
+        // An emergency/Qt fallback keeps its complete outer HWND inside rcWork
+        // and disables resizing. Do not retain a stale exclusion from a prior
+        // taskbar direction or monitor in that conservative presentation.
+        const QRect taskbar =
+            window_ && window_->property("menuConservativeWorkAreaFallback").toBool() ? QRect{}
+                                                                                      : taskbar_;
+        const bool applied = applyMenuInputRegion(native_, rectangle(outer), taskbar);
+        applyingRegion_ = false;
+        if (!applied)
+            ShowWindow(native_, SW_HIDE); // Do not leave a taskbar-blocking surface visible.
+        return applied;
+    }
     static LRESULT CALLBACK windowProcedure(HWND window, UINT message, WPARAM wparam, LPARAM lparam,
                                             UINT_PTR id, DWORD_PTR data) {
         auto* self = reinterpret_cast<WindowsMenuResizeFilter*>(data);
@@ -341,7 +402,12 @@ class WindowsMenuResizeFilter final {
             if (self->filterMessage(event, &result))
                 return result;
         }
-        return DefSubclassProc(window, message, wparam, lparam);
+        const LRESULT result = DefSubclassProc(window, message, wparam, lparam);
+        if (self && id == reinterpret_cast<UINT_PTR>(self) && message != WM_NCDESTROY &&
+            (message == WM_WINDOWPOSCHANGED || message == WM_DPICHANGED ||
+             message == WM_SHOWWINDOW))
+            self->refreshInputRegion();
+        return result;
     }
     bool filterMessage(const MSG& message, LRESULT* result) {
         if (!window_ || !native_ || message.hwnd != native_)
@@ -429,8 +495,38 @@ class WindowsMenuResizeFilter final {
             const QSize minimum(qMax(1, qRound(window_->minimumWidth() * scale)),
                                 qMax(1, qRound(window_->minimumHeight() * scale)));
             auto& proposed = *reinterpret_cast<RECT*>(message.lParam);
-            const QRect fixed =
-                desktopResizePhysicalRect(initial_, rectangle(proposed), edges, minimum);
+            QRect bounds = window_->property("menuOuterBoundsPhysical").toRect();
+            if (bounds.isValid() && window_->property("screenGapDip").isValid()) {
+                // A display/work-area change while visible must not allow the
+                // next sizing loop to use a larger rectangle from the reveal.
+                // This is a short monitor query, with no Shell/UIA enumeration.
+                DesktopAnchorResult current;
+                setMonitor(current, MonitorFromWindow(message.hwnd, MONITOR_DEFAULTTONEAREST));
+                const int gap = qRound(window_->property("screenGapDip").toDouble() * scale);
+                const int inset = qRound(window_->property("shadowInset").toDouble() * scale);
+                const QRect panel = desktopMenuPanelBounds(current, gap);
+                if (panel.isValid()) {
+                    const QRect currentBounds = panel.adjusted(-inset, -inset, inset, inset);
+                    const QRect overlap = bounds.intersected(currentBounds);
+                    bounds = overlap.isValid() ? overlap : currentBounds;
+                }
+            }
+            QRect fixed =
+                desktopResizePhysicalRect(initial_, rectangle(proposed), edges, minimum, bounds);
+            int maximumWidth = qMax(1, qRound(window_->maximumWidth() * scale));
+            if (bounds.isValid()) {
+                const qint64 room = edges.testFlag(Qt::LeftEdge)
+                                        ? qint64(initial_.right()) - bounds.left() + 1
+                                        : qint64(bounds.right()) - initial_.left() + 1;
+                maximumWidth =
+                    static_cast<int>(std::min<qint64>(maximumWidth, qMax<qint64>(1, room)));
+            }
+            fixed = desktopSnapResizeWidth(initial_, fixed, edges,
+                                           qMin(minimum.width(), maximumWidth), maximumWidth, scale,
+                                           window_->property("resizeWidthBaseDip").toDouble(),
+                                           window_->property("resizeWidthPitchDip").toInt(),
+                                           qRound(window_->property("shadowInset").toDouble()));
+            fixed = desktopResizePhysicalRect(initial_, fixed, edges, minimum, bounds);
             if (fixed.isValid() && fixed.right() < std::numeric_limits<LONG>::max() &&
                 fixed.bottom() < std::numeric_limits<LONG>::max()) {
                 proposed = {fixed.left(), fixed.top(), fixed.right() + 1, fixed.bottom() + 1};
@@ -451,6 +547,9 @@ class WindowsMenuResizeFilter final {
     bool prepared_ = false;
     ULONGLONG preparedAt_ = 0;
     bool installed_ = false;
+    QRect taskbar_;
+    bool taskbarRegionKnown_ = false;
+    bool applyingRegion_ = false;
 };
 
 WindowsDesktopPlatform::WindowsDesktopPlatform() = default;
@@ -827,12 +926,20 @@ DesktopPresentationResult WindowsDesktopPlatform::presentMenuWindow(quintptr nat
         result.errorCode = QStringLiteral("invalid-owned-window");
         return result;
     }
+    // Never raise the root over an owned file/settings dialog during a repeat
+    // activation. Its owner chain is the same exact-process boundary as focus.
+    if (hasOwnedForegroundDialog(nativeHandle)) {
+        result.visible = IsWindowVisible(window) != FALSE;
+        result.minimized = IsIconic(window) != FALSE;
+        result.foreground = true;
+        return result;
+    }
     // Qt's first showNormal can inherit STARTUPINFO's SW_HIDE/SW_SHOWMINIMIZED.
     // The explicit user reveal restores the actual HWND, without moving it or
     // changing its flags, taskbar settings, other windows or global lock policy.
     if (IsIconic(window) || !IsWindowVisible(window))
         ShowWindow(window, SW_RESTORE);
-    if (!SetWindowPos(window, HWND_TOP, 0, 0, 0, 0,
+    if (!SetWindowPos(window, HWND_TOPMOST, 0, 0, 0, 0,
                       SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOOWNERZORDER)) {
         result.errorCode = QStringLiteral("menu-native-show-failed");
     }
@@ -856,9 +963,18 @@ DesktopPresentationResult WindowsDesktopPlatform::presentMenuWindow(quintptr nat
             AttachThreadInput(thread, foregroundThread, FALSE);
         }
     }
+    // A background/hidden request can return success without granting the
+    // topmost band. Reassert it after this user-requested foreground restore,
+    // then measure the policy rather than treating the API BOOL as evidence.
+    const bool topmostRequested =
+        SetWindowPos(window, HWND_TOPMOST, 0, 0, 0, 0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER) != FALSE;
+    const bool topmost = (GetWindowLongPtrW(window, GWL_EXSTYLE) & WS_EX_TOPMOST) != 0;
     result.minimized = IsIconic(window) != FALSE;
     result.foreground = GetForegroundWindow() == window;
-    if (result.errorCode.isEmpty() && (!result.visible || result.minimized))
+    if (!topmostRequested || !topmost)
+        result.errorCode = QStringLiteral("menu-topmost-state-denied");
+    else if (result.errorCode.isEmpty() && (!result.visible || result.minimized))
         result.errorCode = QStringLiteral("menu-native-show-state-invalid");
     else if (result.errorCode.isEmpty() && !result.foreground)
         result.errorCode = QStringLiteral("menu-foreground-denied");
@@ -876,6 +992,24 @@ DesktopAppearanceResult WindowsDesktopPlatform::configureMenuWindow(quintptr nat
                 QStringLiteral("无法配置当前程序的菜单窗口外观。"),
                 QStringLiteral("invalid-owned-window")};
     }
+    const auto extended = GetWindowLongPtrW(window, GWL_EXSTYLE);
+    const auto menuExtended = (extended | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW;
+    if (extended != menuExtended) {
+        if (IsWindowVisible(window))
+            return {false, false, QStringLiteral("菜单窗口样式必须在隐藏阶段配置。"),
+                    QStringLiteral("menu-style-must-be-hidden")};
+        SetLastError(ERROR_SUCCESS);
+        if (!SetWindowLongPtrW(window, GWL_EXSTYLE, menuExtended) && GetLastError())
+            return {false, false, QStringLiteral("无法配置菜单窗口的任务栏行为。"),
+                    QStringLiteral("menu-toolwindow-style-failed")};
+    }
+    if (!SetWindowPos(window, nullptr, 0, 0, 0, 0,
+                      SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOZORDER | SWP_FRAMECHANGED))
+        return {false, false, QStringLiteral("无法应用菜单窗口的任务栏样式。"),
+                QStringLiteral("menu-frame-style-failed")};
+    if (!SetWindowPos(window, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE))
+        return {false, false, QStringLiteral("无法配置菜单窗口置顶行为。"),
+                QStringLiteral("menu-topmost-style-failed")};
     for (auto* candidate : QGuiApplication::allWindows()) {
         if (candidate->handle() && candidate->winId() == nativeHandle) {
             if (!resizeFilter_ || !resizeFilter_->matches(candidate))
@@ -890,6 +1024,10 @@ DesktopAppearanceResult WindowsDesktopPlatform::configureMenuWindow(quintptr nat
     BOOL composition = FALSE;
     const HRESULT compositionResult = DwmIsCompositionEnabled(&composition);
     if (FAILED(compositionResult) || !composition) {
+        if (!(GetWindowLongPtrW(window, GWL_EXSTYLE) & WS_EX_TOPMOST))
+            return {false, false,
+                    QStringLiteral("隐藏阶段的窗口置顶未生效，将在用户唤起后重新请求并复核。"),
+                    QStringLiteral("menu-topmost-state-denied")};
         return {false,
                 false,
                 QStringLiteral("系统合成不可用，菜单继续使用自绘外观。"),
@@ -910,7 +1048,7 @@ DesktopAppearanceResult WindowsDesktopPlatform::configureMenuWindow(quintptr nat
     // The transparent Qt Quick surface owns all visible decoration. Disable
     // the compositor's non-client surface and remove any previous frame
     // extension rather than stacking a second radius/shadow on the QML panel.
-    // No Qt style is changed, including WS_EX_LAYERED for per-pixel alpha.
+    // The taskbar exclusion above preserves WS_EX_LAYERED for per-pixel alpha.
     const DWMNCRENDERINGPOLICY policy = DWMNCRP_DISABLED;
     const HRESULT policyResult =
         DwmSetWindowAttribute(window, DWMWA_NCRENDERING_POLICY, &policy, sizeof(policy));
@@ -936,6 +1074,11 @@ DesktopAppearanceResult WindowsDesktopPlatform::configureMenuWindow(quintptr nat
                                 : FAILED(frameResult) ? frameResult
                                                       : borderResult;
         result.errorCode = nativeErrorCode(QStringLiteral("dwm-menu-appearance"), failure);
+    }
+    if (!(GetWindowLongPtrW(window, GWL_EXSTYLE) & WS_EX_TOPMOST)) {
+        result.success = false;
+        result.message = QStringLiteral("隐藏阶段的窗口置顶未生效，将在用户唤起后重新请求并复核。");
+        result.errorCode = QStringLiteral("menu-topmost-state-denied");
     }
     return result;
 }
@@ -1016,6 +1159,12 @@ bool WindowsDesktopPlatform::hasOwnedForegroundWindow(quintptr menuHandle) {
     return false;
 }
 
+bool WindowsDesktopPlatform::hasOwnedForegroundDialog(quintptr menuHandle) {
+    const HWND foreground = GetForegroundWindow();
+    return foreground && foreground != reinterpret_cast<HWND>(menuHandle) &&
+           hasOwnedForegroundWindow(menuHandle) && GetForegroundWindow() == foreground;
+}
+
 DesktopPlacementResult WindowsDesktopPlatform::placeWindow(quintptr nativeHandle,
                                                            const DesktopAnchorResult& anchor,
                                                            int gapPhysicalPixels, bool activate,
@@ -1029,10 +1178,11 @@ DesktopPlacementResult WindowsDesktopPlatform::placeWindow(quintptr nativeHandle
     }
     const HWND window = reinterpret_cast<HWND>(nativeHandle);
     DWORD process = 0;
-    GetWindowThreadProcessId(window, &process);
+    const DWORD thread = GetWindowThreadProcessId(window, &process);
     RECT current{};
     if (!window || !IsWindow(window) || process != GetCurrentProcessId() ||
-        GetAncestor(window, GA_ROOT) != window || !GetWindowRect(window, &current)) {
+        thread != GetCurrentThreadId() || GetAncestor(window, GA_ROOT) != window ||
+        !GetWindowRect(window, &current)) {
         return {false,
                 {},
                 QStringLiteral("无法定位当前程序的菜单窗口。"),
@@ -1080,6 +1230,24 @@ DesktopPlacementResult WindowsDesktopPlatform::placeWindow(quintptr nativeHandle
             QStringLiteral("菜单窗口定位失败。"),
             nativeErrorCode(QStringLiteral("window-position"), HRESULT_FROM_WIN32(GetLastError()))};
     }
+    QRect taskbarExclusion = anchor.taskbarPhysicalRect;
+    if (!taskbarExclusion.isValid() && anchor.monitorPhysicalRect.isValid() &&
+        anchor.workAreaPhysicalRect.isValid() &&
+        anchor.monitorPhysicalRect.contains(anchor.workAreaPhysicalRect)) {
+        const QRegion reserved =
+            QRegion(anchor.monitorPhysicalRect).subtracted(QRegion(anchor.workAreaPhysicalRect));
+        if (reserved.rectCount() == 1)
+            taskbarExclusion = reserved.boundingRect();
+    }
+    const bool regionApplied =
+        resizeFilter_ && resizeFilter_->matchesHandle(window)
+            ? resizeFilter_->setTaskbarRegion(taskbarExclusion)
+            : applyMenuInputRegion(window, nativePlacement, taskbarExclusion);
+    if (!regionApplied)
+        return {false,
+                {},
+                QStringLiteral("无法排除任务栏输入区域，本次显示已取消。"),
+                QStringLiteral("menu-input-region-failed")};
     if (activate) {
         SetForegroundWindow(window);
     }

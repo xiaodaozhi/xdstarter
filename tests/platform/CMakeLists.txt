@@ -14,13 +14,18 @@ set_tests_properties(platform.applications PROPERTIES
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}" TIMEOUT 30)
 
 add_executable(xdstarter_desktop_platform_tests desktop_platform_tests.cpp)
+add_executable(xdstarter_desktop_width_snap_tests desktop_width_snap_tests.cpp)
+target_link_libraries(xdstarter_desktop_width_snap_tests PRIVATE xdstarter_platform)
+add_test(NAME platform.desktop-width-snap COMMAND xdstarter_desktop_width_snap_tests)
+set_tests_properties(platform.desktop-width-snap PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}" TIMEOUT 15)
 target_link_libraries(xdstarter_desktop_platform_tests PRIVATE xdstarter_platform)
 if(WIN32)
     target_compile_definitions(xdstarter_desktop_platform_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
     target_link_libraries(xdstarter_desktop_platform_tests PRIVATE user32 dwmapi)
     add_executable(xdstarter_native_taskbar_probe native_taskbar_probe.cpp)
     target_compile_definitions(xdstarter_native_taskbar_probe PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
-    target_link_libraries(xdstarter_native_taskbar_probe PRIVATE xdstarter_platform user32)
+    target_link_libraries(xdstarter_native_taskbar_probe PRIVATE xdstarter_platform user32 ole32 oleaut32 uuid)
     add_test(NAME platform.native-menu-resize
         COMMAND xdstarter_native_taskbar_probe --run --resize-filter-test)
     set_tests_properties(platform.native-menu-resize PROPERTIES

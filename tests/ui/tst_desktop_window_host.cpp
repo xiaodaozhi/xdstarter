@@ -29,6 +29,7 @@ struct AnchorState {
     std::atomic_int completed{0};
     bool alternateTrust = false;
     QString monitorName;
+    QRect workArea;
     QSemaphore release;
 };
 
@@ -54,6 +55,8 @@ class AnchorPlatform final : public xdstarter::DesktopPlatform {
         anchor.startButtonPhysicalRect = QRect(24, 1008, 72, 72);
         anchor.monitorPhysicalRect = QRect(0, 0, 1920, 1080);
         anchor.workAreaPhysicalRect = QRect(0, 0, 1920, 1008);
+        if (state_->workArea.isValid())
+            anchor.workAreaPhysicalRect = state_->workArea;
         anchor.dpi = 144;
         anchor.monitorName = state_->monitorName;
         ++state_->completed;
@@ -100,6 +103,7 @@ class PlacementPlatform final : public xdstarter::DesktopPlatform {
                         QThread::currentThread() == QCoreApplication::instance()->thread();
         return ownedForeground;
     }
+    bool hasOwnedForegroundDialog(quintptr) override { return ownedDialog; }
 
     xdstarter::DesktopPresentationResult presentMenuWindow(quintptr nativeHandle) override {
         ++presentations;
@@ -130,7 +134,7 @@ class PlacementPlatform final : public xdstarter::DesktopPlatform {
                         QThread::currentThread() == QCoreApplication::instance()->thread();
         if (afterPlace)
             afterPlace();
-        return {true, QRect(24, 200, 640, 480), {}, {}};
+        return {placementError.isEmpty(), QRect(24, 200, 640, 480), {}, placementError};
     }
 
     int placements = 0;
@@ -154,9 +158,11 @@ class PlacementPlatform final : public xdstarter::DesktopPlatform {
     bool activationRequested = false;
     bool guiThreadOnly = true;
     bool ownedForeground = false;
+    bool ownedDialog = false;
     int foregroundQueries = 0;
     quintptr foregroundHandle = 0;
     xdstarter::DesktopAnchorResult lastAnchor;
+    QString placementError;
 };
 
 class FakeTray final : public xdstarter::DesktopTray {
@@ -253,6 +259,7 @@ class MenuWindow final : public QWindow {
     Q_PROPERTY(qreal shadowInset MEMBER shadowInsetDip)
     Q_PROPERTY(int dismissAnimationDuration MEMBER animationDuration)
   public:
+    MenuWindow() { setFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint); }
     bool blocked() const { return drag || popup; }
     bool dragging() const { return drag; }
     void setDrag(bool value) { drag = value; emit protectionChanged(); }
@@ -264,12 +271,20 @@ class MenuWindow final : public QWindow {
         emit protectionChanged();
     }
     Q_INVOKABLE void prepareForPresentation() { ++presentations; }
+    Q_INVOKABLE void stagePresentation() {
+        ++stages;
+        stagedWhileVisible |= isVisible();
+    }
+    Q_INVOKABLE void restorePresentationFocus() { ++focusRestorations; }
     Q_INVOKABLE void animateDismissal() { ++animations; }
     void requestDismiss() { emit dismissRequested(); }
     bool managed = false;
     bool editMode = true;
     int dismissals = 0;
     int presentations = 0;
+    int stages = 0;
+    int focusRestorations = 0;
+    bool stagedWhileVisible = false;
     int animationDuration = 0;
     int animations = 0;
     bool drag = false;
@@ -286,12 +301,21 @@ class DesktopWindowHostTest : public QObject {
   private slots:
     void init();
     void startsInTrayWithoutShowingMenu();
+    void presentationIsStagedOnceBeforeShowing();
+    void repeatedDismissalFinishesAnimation();
+    void trayFailureCanRetryOrExit();
+    void recoverySurfaceAvoidsTaskbarAndRestoresResizeEdges();
+    void placementFallbackAvoidsTaskbarUntilNextNativePlacement();
+    void oversizedRevealReservesAllMargins();
+    void inputRegionFailureDoesNotRevealUnclippedWindow_data();
+    void inputRegionFailureDoesNotRevealUnclippedWindow();
     void reopeningCancelsPendingDismissAnimation();
     void cleanup();
     void trayRestoresClosedWindow();
     void hiddenWindowRejectsDelayedAnchor();
-    void failedTrayKeepsTaskbarRecovery();
+    void failedTrayKeepsVisibleRecovery();
     void lostTrayRecoversHiddenWindow();
+    void lostTrayRestoresMinimizedToolWindow();
     void shutdownIgnoresPendingWork();
     void restoresApplicationPolicy_data();
     void restoresApplicationPolicy();
@@ -300,7 +324,7 @@ class DesktopWindowHostTest : public QObject {
     void nativeOwnedFocusPollsAndDetectsExternalSwitch();
     void nativeOwnedPollingStopsOnQtFocusAndShutdown();
     void externalFocusWaitsForDragRelease();
-    void externalDismissalWithoutTrayMinimizes();
+    void externalDismissalWithoutTrayKeepsRecoveryVisible();
     void delayedLaunchRecoveryDoesNotMinimizeReopenedWindow();
     void repeatedRevealPlacesHiddenAtStableMargins();
     void pendingRevealCanBeCanceled();
@@ -439,7 +463,9 @@ void DesktopWindowHostTest::reopeningCancelsPendingDismissAnimation() {
     window.requestDismiss();
     QCOMPARE(window.animations, 1);
     QVERIFY(window.isVisible());
+    placement.ownedForeground = true; // Exact native foreground can be the root itself.
     host.showWindow();
+    QCOMPARE(window.focusRestorations, 1);
     QTest::qWait(140);
     QVERIFY(window.isVisible());
     window.requestDismiss();
@@ -451,6 +477,190 @@ void DesktopWindowHostTest::reopeningCancelsPendingDismissAnimation() {
     host.shutdown();
     QTest::qWait(140);
     QVERIFY(window.isVisible()); // Shutdown canceled the outstanding timer.
+}
+
+void DesktopWindowHostTest::presentationIsStagedOnceBeforeShowing() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    window.resize(640, 480);
+    PlacementPlatform placement;
+    FakeTray tray;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    int stagesAtFirstVisibility = 0;
+    connect(&window, &QWindow::visibleChanged, this, [&](bool visible) {
+        if (visible && !stagesAtFirstVisibility)
+            stagesAtFirstVisibility = window.stages;
+    });
+    host.start(trayIcon(), true);
+    QTRY_VERIFY(window.isVisible());
+    QCOMPARE(stagesAtFirstVisibility, 1);
+    QCOMPARE(window.presentations, 1);
+    QVERIFY(!window.stagedWhileVisible);
+    host.showWindow();
+    QCOMPARE(window.stages, 1);
+    QCOMPARE(window.presentations, 1);
+    QCOMPARE(window.focusRestorations, 1);
+    placement.ownedForeground = true;
+    placement.ownedDialog = true;
+    host.showWindow();
+    QCOMPARE(window.focusRestorations, 1);
+    QCOMPARE(window.presentations, 1);
+}
+
+void DesktopWindowHostTest::repeatedDismissalFinishesAnimation() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    window.animationDuration = 80;
+    PlacementPlatform placement;
+    FakeTray tray;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.start(trayIcon(), true);
+    QTRY_VERIFY(window.isVisible());
+    host.dismissWindow();
+    QTest::qWait(50);
+    host.dismissWindow();
+    QCOMPARE(window.animations, 1);
+    QTRY_VERIFY(!window.isVisible());
+    QVERIFY(window.visibility() != QWindow::Minimized);
+    QCOMPARE(window.animations, 1);
+}
+
+void DesktopWindowHostTest::trayFailureCanRetryOrExit() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    PlacementPlatform placement;
+    FakeTray tray;
+    tray.registrationSucceeds = false;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    QSignalSpy exit(&host, &xdstarter::DesktopWindowHost::exitRequested);
+    host.start(trayIcon());
+    QTRY_VERIFY(window.isVisible());
+    QVERIFY(window.property("trayRecoveryUnavailable").toBool());
+    QVERIFY(window.visibility() != QWindow::Minimized);
+    QVERIFY(window.flags().testFlag(Qt::Tool));
+    host.dismissWindow();
+    QCOMPARE(exit.count(), 1);
+    QVERIFY(window.isVisible());
+    tray.registrationSucceeds = true;
+    QVERIFY(QMetaObject::invokeMethod(&host, "retryTrayRegistration"));
+    QCOMPARE(tray.starts, 2);
+    QVERIFY(!window.property("trayRecoveryUnavailable").toBool());
+    host.dismissWindow();
+    QVERIFY(!window.isVisible());
+}
+
+void DesktopWindowHostTest::recoverySurfaceAvoidsTaskbarAndRestoresResizeEdges() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    window.setMinimumSize(QSize(528, 528));
+    window.resize(5000, 4000);
+    PlacementPlatform placement;
+    placement.observedWindow = &window;
+    FakeTray tray;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.start(trayIcon(), true);
+    QTRY_VERIFY(window.isVisible());
+    window.hide();
+    tray.setRegistration(false);
+    QTRY_VERIFY(window.isVisible());
+    QCOMPARE(window.property("allowedResizeEdges").toInt(), 0);
+    QVERIFY(window.screen());
+    const QRect safe = window.screen()->availableGeometry().adjusted(8, 8, -8, -8);
+    QVERIFY(safe.contains(window.geometry()));
+    QVERIFY(window.maximumWidth() <= safe.width());
+    QVERIFY(window.maximumHeight() <= safe.height());
+    QVERIFY(window.minimumWidth() <= window.maximumWidth());
+    QVERIFY(window.minimumHeight() <= window.maximumHeight());
+    const int placementsBeforeRetry = placement.placements;
+    tray.registrationSucceeds = true;
+    QVERIFY(QMetaObject::invokeMethod(&host, "retryTrayRegistration"));
+    QTRY_VERIFY(window.isVisible());
+    QCOMPARE(placement.placements, placementsBeforeRetry + 1);
+    QCOMPARE(window.property("allowedResizeEdges").toInt(),
+             static_cast<int>(Qt::TopEdge | Qt::RightEdge));
+    QVERIFY(!placement.placedWhileVisible);
+}
+
+void DesktopWindowHostTest::placementFallbackAvoidsTaskbarUntilNextNativePlacement() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    window.resize(5000, 4000);
+    PlacementPlatform placement;
+    placement.placementError = QStringLiteral("window-position-fixture-failed");
+    placement.observedWindow = &window;
+    FakeTray tray;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.start(trayIcon(), true);
+    QTRY_VERIFY(window.isVisible());
+    QVERIFY(window.screen());
+    const QRect safe = window.screen()->availableGeometry().adjusted(8, 8, -8, -8);
+    QVERIFY(safe.contains(window.geometry()));
+    QCOMPARE(window.property("allowedResizeEdges").toInt(), 0);
+    QVERIFY(window.property("menuConservativeWorkAreaFallback").toBool());
+    host.dismissWindow();
+    QVERIFY(!window.isVisible());
+    placement.placementError.clear();
+    host.showWindow();
+    QTRY_VERIFY(window.isVisible());
+    QCOMPARE(placement.placements, 2);
+    QCOMPARE(window.property("allowedResizeEdges").toInt(),
+             static_cast<int>(Qt::TopEdge | Qt::RightEdge));
+    QVERIFY(!window.property("menuConservativeWorkAreaFallback").toBool());
+}
+
+void DesktopWindowHostTest::oversizedRevealReservesAllMargins() {
+    auto state = std::make_shared<AnchorState>();
+    state->workArea = QRect(0, 0, 420, 360);
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    window.setMinimumSize(QSize(528, 528));
+    window.resize(5000, 4000);
+    PlacementPlatform placement;
+    placement.observedWindow = &window;
+    FakeTray tray;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.start(trayIcon(), true);
+    QTRY_VERIFY(window.isVisible());
+    QCOMPARE(placement.placements, 1);
+    const int gap = qRound(8 * window.devicePixelRatio());
+    const auto allowed = state->workArea.adjusted(gap, gap, -gap, -gap);
+    QVERIFY(allowed.contains(placement.panels.last()));
+    QVERIFY(window.minimumWidth() <= window.maximumWidth());
+    QVERIFY(window.minimumHeight() <= window.maximumHeight());
+    QVERIFY(window.width() <= window.maximumWidth());
+    QVERIFY(window.height() <= window.maximumHeight());
+    QVERIFY(!placement.placedWhileVisible);
+}
+
+void DesktopWindowHostTest::inputRegionFailureDoesNotRevealUnclippedWindow_data() {
+    QTest::addColumn<bool>("trayAvailable");
+    QTest::newRow("tray-remains-reachable") << true;
+    QTest::newRow("no-tray-exits") << false;
+}
+
+void DesktopWindowHostTest::inputRegionFailureDoesNotRevealUnclippedWindow() {
+    QFETCH(bool, trayAvailable);
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    PlacementPlatform placement;
+    placement.placementError = QStringLiteral("menu-input-region-failed");
+    FakeTray tray;
+    tray.registrationSucceeds = trayAvailable;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    QSignalSpy exit(&host, &xdstarter::DesktopWindowHost::exitRequested);
+    host.start(trayIcon(), true);
+    QTRY_COMPARE(placement.placements, 1);
+    QTest::qWait(100);
+    QVERIFY(!window.isVisible());
+    QCOMPARE(window.stages, 0);
+    QCOMPARE(placement.presentations, 0);
+    QCOMPARE(exit.count(), trayAvailable ? 0 : 1);
 }
 
 void DesktopWindowHostTest::init() {
@@ -525,7 +735,7 @@ void DesktopWindowHostTest::winKeyCaptureFailureAndTrayLoss() {
     tray.setRegistration(false);
     QVERIFY(!capture.isActive());
     QVERIFY(!tray.captureCanEnable);
-    QTRY_COMPARE(window.visibility(), QWindow::Minimized);
+    QTRY_COMPARE(window.visibility(), QWindow::Windowed);
     const auto requests = capture.requests;
     tray.setRegistration(true);
     QCOMPARE(capture.requests, requests);
@@ -643,7 +853,7 @@ void DesktopWindowHostTest::hiddenWindowRejectsDelayedAnchor() {
     QCOMPARE(ready.count(), 1);
 }
 
-void DesktopWindowHostTest::failedTrayKeepsTaskbarRecovery() {
+void DesktopWindowHostTest::failedTrayKeepsVisibleRecovery() {
     auto state = std::make_shared<AnchorState>();
     xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
     QWindow window;
@@ -657,10 +867,10 @@ void DesktopWindowHostTest::failedTrayKeepsTaskbarRecovery() {
     QTRY_VERIFY(window.isVisible());
     window.hide();
     host.keepReachableAfterLaunch();
-    QTRY_COMPARE(window.visibility(), QWindow::Minimized);
+    QTRY_COMPARE(window.visibility(), QWindow::Windowed);
     QVERIFY(window.isVisible());
     QVERIFY(window.property("integrationStatus").toString().contains(QStringLiteral("托盘不可用")));
-    host.toggleWindow();
+    host.showWindow();
     QTRY_COMPARE(window.visibility(), QWindow::Windowed);
     QGuiApplication::setQuitOnLastWindowClosed(false);
 }
@@ -677,12 +887,31 @@ void DesktopWindowHostTest::lostTrayRecoversHiddenWindow() {
     QTRY_VERIFY(window.isVisible());
     window.hide();
     tray.setRegistration(false);
-    QTRY_COMPARE(window.visibility(), QWindow::Minimized);
+    QTRY_COMPARE(window.visibility(), QWindow::Windowed);
     QVERIFY(QGuiApplication::quitOnLastWindowClosed());
     tray.setRegistration(true);
     QVERIFY(!QGuiApplication::quitOnLastWindowClosed());
-    host.toggleWindow();
+    host.showWindow();
     QTRY_COMPARE(window.visibility(), QWindow::Windowed);
+}
+
+void DesktopWindowHostTest::lostTrayRestoresMinimizedToolWindow() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    PlacementPlatform placement;
+    FakeTray tray;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.start(trayIcon(), true);
+    QTRY_VERIFY(window.isVisible());
+    window.showMinimized();
+    QTRY_COMPARE(window.visibility(), QWindow::Minimized);
+    QVERIFY(window.isVisible());
+    tray.setRegistration(false);
+    QTRY_COMPARE(window.visibility(), QWindow::Windowed);
+    QVERIFY(window.isVisible());
+    QVERIFY(window.property("trayRecoveryUnavailable").toBool());
+    QVERIFY(window.stages >= 2);
 }
 
 void DesktopWindowHostTest::shutdownIgnoresPendingWork() {
@@ -895,7 +1124,7 @@ void DesktopWindowHostTest::externalFocusWaitsForDragRelease() {
     QVERIFY(window.editMode);
 }
 
-void DesktopWindowHostTest::externalDismissalWithoutTrayMinimizes() {
+void DesktopWindowHostTest::externalDismissalWithoutTrayKeepsRecoveryVisible() {
     auto state = std::make_shared<AnchorState>();
     xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
     MenuWindow window;
@@ -909,13 +1138,16 @@ void DesktopWindowHostTest::externalDismissalWithoutTrayMinimizes() {
     other.show();
     other.requestActivate();
     QTRY_VERIFY(other.isActive());
-    QTRY_COMPARE(window.visibility(), QWindow::Minimized);
+    QTest::qWait(200);
+    QCOMPARE(window.visibility(), QWindow::Windowed);
     QVERIFY(window.isVisible());
     host.showWindow();
     QTRY_VERIFY(window.isActive());
     QCOMPARE(window.visibility(), QWindow::Windowed);
+    QSignalSpy exit(&host, &xdstarter::DesktopWindowHost::exitRequested);
     window.requestDismiss();
-    QCOMPARE(window.visibility(), QWindow::Minimized);
+    QCOMPARE(exit.count(), 1);
+    QCOMPARE(window.visibility(), QWindow::Windowed);
     QGuiApplication::setQuitOnLastWindowClosed(false);
 }
 
@@ -1128,7 +1360,7 @@ void DesktopWindowHostTest::nativePreparationRejectsLateCloseAndShutdown() {
 void DesktopWindowHostTest::nativePreparationTimeoutKeepsRecovery_data() {
     QTest::addColumn<bool>("trayAvailable");
     QTest::newRow("tray-retry") << true;
-    QTest::newRow("taskbar-retry") << false;
+    QTest::newRow("visible-retry") << false;
 }
 
 void DesktopWindowHostTest::nativePreparationTimeoutKeepsRecovery() {
@@ -1149,12 +1381,13 @@ void DesktopWindowHostTest::nativePreparationTimeoutKeepsRecovery() {
     if (trayAvailable)
         QVERIFY(!window.isVisible());
     else
-        QCOMPARE(window.visibility(), QWindow::Minimized);
+        QCOMPARE(window.visibility(), QWindow::Windowed);
     const int queries = placement.metricQueries;
     QTest::qWait(80);
     QCOMPARE(placement.metricQueries, queries);
     placement.nativeQuerySucceeds = true;
-    host.toggleWindow();
+    window.hide();
+    host.showWindow();
     QTRY_COMPARE(window.visibility(), QWindow::Windowed);
     QCOMPARE(placement.placements, 1);
     QVERIFY(!placement.placedWhileVisible);
