@@ -1,0 +1,531 @@
+{
+  "schemaVersion": 1,
+  "issue": 45,
+  "date": "2026-10-23",
+  "sourceBaseCommit": "f5b8660ce29fc683d858b5a055b82823b0e00c30",
+  "scope": "Final binary: physical Start, four real taskbar edges x two alignments, allowed border resize and reopen; original settings restored.",
+  "method": "User changes real Windows settings and performs physical mouse/keyboard gestures. Agent reads the isolated product HWND and real taskbar geometry; IPC activates the existing instance for measurements. No synthetic Start input or global input injected.",
+  "environment": {
+    "windowsBuild": "26300.9711",
+    "displayVersion": "26H2",
+    "qt": "6.8.2",
+    "compiler": "19.29.30153.0 (v142)",
+    "windowsSdk": "10.0.19041.0",
+    "physicalDisplay": [
+      2400,
+      1600
+    ],
+    "dpr": 1.5
+  },
+  "binariesSha256": {
+    "xdstarter.exe": "2b85e41994b95852437f86d666a2f481a024d11995bf960890935331e6823760",
+    "xdstarter_native_taskbar_probe.exe": "e9fe234aa651b82ef21eb4210f733470691738db70069e4dde1caabf7adc0696",
+    "xdstarter_desktop_platform_tests.exe": "2d17a62f226780119de6b372e13c38546f1f5b6246c8f53232efadae884f6276"
+  },
+  "sourceSha256Lf": {
+    "src/app/desktop_window_host.cpp": "6fc997d0d88e5bca5da5316979069936fee4511a7ded56f691aa85ee2f467812",
+    "src/platform/CMakeLists.txt": "23a42be4a162bcdeeae1ff9fe0767ed08800e4055a301bf30f43c69eb94c5438",
+    "src/platform/desktop_platform.cpp": "d2b9bade0b89c057d397a8da8cf3bb94562306c75bd5d05e426cff9ac82cb5c2",
+    "src/platform/desktop_platform.h": "5d5f6e98cf88d696e4693421be156efa15c0a571eecda41c8ab9d06c2e81a0d3",
+    "src/platform/windows/windows_desktop_platform.cpp": "d7b06efe373758c210eeecee9c8dfd63879fe7ecd1d76478ab3b4aa6ac60b93a",
+    "src/platform/windows/windows_desktop_platform.h": "7283a4e4f21f57d8a9908df6bb9ff1509ea22255499501b1da671e97386120cd",
+    "tests/platform/CMakeLists.txt": "fa36a104d115989e4123ab9386dcc397ab8023a083f850fd3924285e59a904d5",
+    "tests/platform/desktop_platform_tests.cpp": "a586e8afa8f361e1d38aa21d0c063a503f314bfef0a28679bf620311f9581a88",
+    "tests/platform/native_taskbar_probe.cpp": "dc2fbe954f9698023c50af7c279e892d2ac6657e94770dfe7c4790aae76a094a"
+  },
+  "checks": {
+    "ctestSuitesPassed": 17,
+    "ctestSeconds": 94.05,
+    "guiPassed": 63,
+    "hostPassed": 41,
+    "toolingTestsPassed": 13,
+    "qmlLint": "no diagnostics",
+    "dockingCombinations": 240,
+    "resizeEdgeScaleOriginCombinations": 80,
+    "nativeSizingUnitCases": 14
+  },
+  "matrix": [
+    {
+      "position": "top",
+      "alignmentSetting": "left",
+      "testedResizeEdges": [
+        "bottom",
+        "right"
+      ],
+      "physicalMouseResult": "passed",
+      "userReport": "以上均正常",
+      "reopenPositionResult": "passed",
+      "observation": {
+        "actualPanel": [
+          12,
+          84,
+          1470,
+          1403
+        ],
+        "centered": false,
+        "dpr": 1.5,
+        "edge": 1,
+        "expectedPanel": [
+          12,
+          84,
+          1470,
+          1403
+        ],
+        "foreground": true,
+        "kind": "live-product-window",
+        "minimized": false,
+        "monitor": "\\\\.\\DISPLAY1",
+        "positionPassed": true,
+        "taskbarObserved": true,
+        "taskbarRect": [
+          0,
+          0,
+          2400,
+          72
+        ],
+        "workArea": [
+          0,
+          72,
+          2400,
+          1528
+        ]
+      }
+    },
+    {
+      "position": "top",
+      "alignmentSetting": "center",
+      "testedResizeEdges": [
+        "bottom",
+        "left",
+        "right"
+      ],
+      "physicalMouseResult": "passed",
+      "userReport": "都正常",
+      "reopenPositionResult": "passed",
+      "observation": {
+        "actualPanel": [
+          452,
+          84,
+          1496,
+          1257
+        ],
+        "centered": true,
+        "dpr": 1.5,
+        "edge": 1,
+        "expectedPanel": [
+          452,
+          84,
+          1496,
+          1257
+        ],
+        "foreground": true,
+        "kind": "live-product-window",
+        "minimized": false,
+        "monitor": "\\\\.\\DISPLAY1",
+        "positionPassed": true,
+        "taskbarObserved": true,
+        "taskbarRect": [
+          0,
+          0,
+          2400,
+          72
+        ],
+        "workArea": [
+          0,
+          72,
+          2400,
+          1528
+        ]
+      }
+    },
+    {
+      "position": "left",
+      "alignmentSetting": "left",
+      "testedResizeEdges": [
+        "bottom",
+        "right"
+      ],
+      "physicalMouseResult": "passed",
+      "userReport": "都正常；已在左侧靠前",
+      "reopenPositionResult": "passed",
+      "observation": {
+        "actualPanel": [
+          84,
+          12,
+          1458,
+          1240
+        ],
+        "centered": false,
+        "dpr": 1.5,
+        "edge": 2,
+        "expectedPanel": [
+          84,
+          12,
+          1458,
+          1240
+        ],
+        "foreground": true,
+        "kind": "live-product-window",
+        "minimized": false,
+        "monitor": "\\\\.\\DISPLAY1",
+        "positionPassed": true,
+        "taskbarObserved": true,
+        "taskbarRect": [
+          0,
+          0,
+          72,
+          1600
+        ],
+        "workArea": [
+          72,
+          0,
+          2328,
+          1600
+        ]
+      }
+    },
+    {
+      "position": "left",
+      "alignmentSetting": "center",
+      "testedResizeEdges": [
+        "top",
+        "bottom",
+        "right"
+      ],
+      "physicalMouseResult": "passed",
+      "userReport": "都正常",
+      "reopenPositionResult": "passed",
+      "observation": {
+        "actualPanel": [
+          84,
+          179,
+          1457,
+          1242
+        ],
+        "centered": true,
+        "dpr": 1.5,
+        "edge": 2,
+        "expectedPanel": [
+          84,
+          179,
+          1457,
+          1242
+        ],
+        "foreground": true,
+        "kind": "live-product-window",
+        "minimized": false,
+        "monitor": "\\\\.\\DISPLAY1",
+        "positionPassed": true,
+        "taskbarObserved": true,
+        "taskbarRect": [
+          0,
+          0,
+          72,
+          1600
+        ],
+        "workArea": [
+          72,
+          0,
+          2328,
+          1600
+        ]
+      }
+    },
+    {
+      "position": "right",
+      "alignmentSetting": "left",
+      "testedResizeEdges": [
+        "bottom",
+        "left"
+      ],
+      "physicalMouseResult": "passed",
+      "userReport": "都正常",
+      "reopenPositionResult": "passed",
+      "observation": {
+        "actualPanel": [
+          772,
+          12,
+          1544,
+          1298
+        ],
+        "centered": false,
+        "dpr": 1.5,
+        "edge": 3,
+        "expectedPanel": [
+          772,
+          12,
+          1544,
+          1298
+        ],
+        "foreground": true,
+        "kind": "live-product-window",
+        "minimized": false,
+        "monitor": "\\\\.\\DISPLAY1",
+        "positionPassed": true,
+        "taskbarObserved": true,
+        "taskbarRect": [
+          2328,
+          0,
+          72,
+          1600
+        ],
+        "workArea": [
+          0,
+          0,
+          2328,
+          1600
+        ]
+      }
+    },
+    {
+      "position": "right",
+      "alignmentSetting": "center",
+      "testedResizeEdges": [
+        "top",
+        "bottom",
+        "left"
+      ],
+      "physicalMouseResult": "passed",
+      "userReport": "都正常",
+      "reopenPositionResult": "passed",
+      "observation": {
+        "actualPanel": [
+          738,
+          122,
+          1578,
+          1355
+        ],
+        "centered": true,
+        "dpr": 1.5,
+        "edge": 3,
+        "expectedPanel": [
+          738,
+          122,
+          1578,
+          1355
+        ],
+        "foreground": true,
+        "kind": "live-product-window",
+        "minimized": false,
+        "monitor": "\\\\.\\DISPLAY1",
+        "positionPassed": true,
+        "taskbarObserved": true,
+        "taskbarRect": [
+          2328,
+          0,
+          72,
+          1600
+        ],
+        "workArea": [
+          0,
+          0,
+          2328,
+          1600
+        ]
+      }
+    },
+    {
+      "position": "bottom",
+      "alignmentSetting": "center",
+      "testedResizeEdges": [
+        "top",
+        "left",
+        "right"
+      ],
+      "physicalMouseResult": "passed",
+      "userReport": "都正常",
+      "reopenPositionResult": "passed",
+      "observation": {
+        "actualPanel": [
+          395,
+          130,
+          1610,
+          1386
+        ],
+        "centered": true,
+        "dpr": 1.5,
+        "edge": 0,
+        "expectedPanel": [
+          395,
+          130,
+          1610,
+          1386
+        ],
+        "foreground": true,
+        "kind": "live-product-window",
+        "minimized": false,
+        "monitor": "\\\\.\\DISPLAY1",
+        "positionPassed": true,
+        "taskbarObserved": true,
+        "taskbarRect": [
+          0,
+          1528,
+          2400,
+          72
+        ],
+        "workArea": [
+          0,
+          0,
+          2400,
+          1528
+        ]
+      }
+    },
+    {
+      "position": "bottom",
+      "alignmentSetting": "left",
+      "testedResizeEdges": [
+        "top",
+        "right"
+      ],
+      "physicalMouseResult": "passed",
+      "userReport": "都正常",
+      "reopenPositionResult": "passed",
+      "observation": {
+        "actualPanel": [
+          12,
+          130,
+          1610,
+          1386
+        ],
+        "centered": false,
+        "dpr": 1.5,
+        "edge": 0,
+        "expectedPanel": [
+          12,
+          130,
+          1610,
+          1386
+        ],
+        "foreground": true,
+        "kind": "live-product-window",
+        "minimized": false,
+        "monitor": "\\\\.\\DISPLAY1",
+        "positionPassed": true,
+        "taskbarObserved": true,
+        "taskbarRect": [
+          0,
+          1528,
+          2400,
+          72
+        ],
+        "workArea": [
+          0,
+          0,
+          2400,
+          1528
+        ]
+      }
+    }
+  ],
+  "topLeftResizeWatch": {
+    "distinctPanelRects": [
+      [
+        12,
+        84,
+        1470,
+        1020
+      ],
+      [
+        12,
+        84,
+        1470,
+        1300
+      ],
+      [
+        12,
+        84,
+        1470,
+        1353
+      ],
+      [
+        12,
+        84,
+        1470,
+        1402
+      ],
+      [
+        12,
+        84,
+        1470,
+        1403
+      ]
+    ],
+    "fixedVisibleTopPhysical": 84,
+    "method": "Read-only polling during physical border drag; unchanged y=84 throughout visible samples."
+  },
+  "restoration": {
+    "original": {
+      "position": "bottom",
+      "alignment": "left"
+    },
+    "restored": {
+      "position": "bottom",
+      "alignment": "left"
+    },
+    "taskbarAl": 0,
+    "registryKind": "DWord",
+    "userConfirmed": true
+  },
+  "nativeRecovery": {
+    "rightClickStartNativeMenu": {
+      "result": "passed",
+      "userReport": "都正常"
+    },
+    "winXNativeMenu": {
+      "result": "passed",
+      "userReport": "都正常"
+    },
+    "pauseThenNativeStart": {
+      "result": "passed",
+      "userReport": "都正常"
+    },
+    "resumeThenXDStarter": {
+      "result": "passed",
+      "userReport": "都正常"
+    },
+    "normalExitThenNativeStart": {
+      "result": "passed",
+      "userReport": "都正常"
+    },
+    "productExitCode": 0,
+    "exitEvidence": "Launch parent waited for the product process; reported XDStarter process exit: 0. No force termination of final accepted instance.",
+    "finalTaskbarSetting": {
+      "position": "bottom",
+      "alignment": "left",
+      "TaskbarAl": 0,
+      "kind": "DWord"
+    }
+  },
+  "failedAttempts": [
+    {
+      "productSha256": "d0b94b8050af180c6df48bc89827749cfbfd794a3fed795bb589fb3269cb0fc3",
+      "result": "failed",
+      "reason": "Top-left physical bottom-edge resize moved visible top y=84 to108; reopen could use bottom when taskbar metadata vanished."
+    },
+    {
+      "result": "failed",
+      "reason": "Application-wide Qt native event filter did not receive WM_SIZING; eight native fixture cases failed before switching to the owned-window subclass."
+    },
+    {
+      "result": "failed",
+      "reason": "Initial subclass fixed WM_SIZING only; system WINDOWPOS normalization still moved non-dragged shadow edges. Final version captures SC_SIZE origin and constrains the sizing loop normalization phases."
+    }
+  ],
+  "discardedMeasurements": [
+    {
+      "phase": "left-top-final",
+      "reason": "User report and first observation disagreed: sample still showed top/center with no observed taskbar. Excluded; only later confirmed real left/left sample is counted."
+    },
+    {
+      "phase": "bottom-left-first-sample",
+      "reason": "First restore observation still showed TaskbarAl=1. Excluded; restoration requires later TaskbarAl=0 plus real bottom taskbar and user confirmation."
+    }
+  ],
+  "limitations": [
+    "Physical matrix is this Windows build and DPR1.5 primary display only.",
+    "Real Windows display-scale changes, dynamic mixed DPI, monitor hotplug/main-display changes, auto-hide, secondary-taskbar recovery and another stable Windows build remain in Issue #33.",
+    "Historical 36 hidden HWND samples and earlier binary results retain their original version identity; not rerun or relabeled as this physical matrix.",
+    "Read-only post-reopen measurements prove current bounds and native state; physical drag and Start-click results are separately user-confirmed."
+  ]
+}

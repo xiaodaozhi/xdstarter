@@ -21,6 +21,11 @@ if(WIN32)
     add_executable(xdstarter_native_taskbar_probe native_taskbar_probe.cpp)
     target_compile_definitions(xdstarter_native_taskbar_probe PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
     target_link_libraries(xdstarter_native_taskbar_probe PRIVATE xdstarter_platform user32)
+    add_test(NAME platform.native-menu-resize
+        COMMAND xdstarter_native_taskbar_probe --run --resize-filter-test)
+    set_tests_properties(platform.native-menu-resize PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}" TIMEOUT 15
+        ENVIRONMENT "QT_QPA_PLATFORM=windows")
 endif()
 add_test(NAME platform.desktop COMMAND xdstarter_desktop_platform_tests)
 set_tests_properties(platform.desktop PROPERTIES

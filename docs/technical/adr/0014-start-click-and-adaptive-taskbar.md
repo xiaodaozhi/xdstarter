@@ -31,6 +31,18 @@ UIA、WinEvent 和原生查询不是一个原子事务，微软也不保证提�
 
 前台请求首次被拒绝时，参照 Qt Windows 的显式激活路径，先以 50ms 有界 WM_NULL 检查当前前台窗口仍响应且身份未变，再临时 AttachThreadInput、提升本窗口并设置焦点，随后立即解除。失败不循环重试、不连接安全桌面，也不注入 Alt／Win 键。测试分别检查窗口可见与真正前台，二者不能互相替代。
 
+## 真机缩放与隐藏任务栏修正
+
+后续顶部靠左验收发现两项失败：底边调整高度时，可见上沿由物理 y=84 变成108；另一次重开查询只有顶部预留工作区、没有可见任务栏，原逻辑退回底部。旧程序的失败与底部居中通过记录保留，不由新程序覆盖。
+
+布局查询可以读取同一显示器上暂时隐藏的真实 Explorer 任务栏几何，优先选择可见任务栏；这类元数据不构成点击许可，Start 的可见性与点资格规则保持原样。任务栏几何缺失时，只在工作区相对屏幕恰好预留单一边缘时推导方向；没有预留或有多个预留边时不猜测。输入服务不使用此回退。
+
+原生 sizing 把完整 HWND（包含24 DIP透明阴影）限制到工作区，导致可见面板的非拖动边偏移。保留 Qt 系统 resize，在 Windows 平台层为本进程 GUI 线程的菜单 HWND 安装可移除的 `SetWindowSubclass` 处理器：在 Qt 派发的 `SC_SIZE` 阶段记录归一化前的外框，`WM_SIZING` 固定未拖动的边并保留最小尺寸，拖动期间的 `WM_WINDOWPOSCHANGING` 保留最近确认的 sizing 矩形，避免进入循环前和松手前的系统归一化再次移动阴影。未进入循环的准备状态最多保留两秒；退出拖动立即清除，窗口销毁或平台对象析构时移除。其他 HWND 和未处于拖动循环的消息照常传递，不处理 Explorer 窗口。
+
+通用矩形约束不含 Win32，覆盖五档缩放、负坐标、四边／四角的80组组合，另验最小尺寸及整数边界。原生回归只向测试自有隐藏 HWND 发送 sizing 单元消息，覆盖八个边／角、三个准备／归一化阶段和三个非活动／其他窗口／移除后的透传场景，共14项；夹具拦截 sizing 命令，不进入系统模态输入循环。Qt6.8.2 的应用级 nativeEventFilter 会跳过 `WM_SIZING`，因此不能用该入口替代本窗口处理器；初版八项原生用例失败也保留为实际失败。
+
+依据：[Qt6.8.2 消息分派源码](https://github.com/qt/qtbase/blob/v6.8.2/src/plugins/platforms/windows/qwindowscontext.cpp)、[Qt 系统 resize 入口](https://github.com/qt/qtbase/blob/v6.8.2/src/plugins/platforms/windows/qwindowswindow.cpp)、[WM_SIZING](https://learn.microsoft.com/en-us/windows/win32/winmsg/wm-sizing)、[WM_WINDOWPOSCHANGING](https://learn.microsoft.com/en-us/windows/win32/winmsg/wm-windowposchanging)、[SetWindowSubclass](https://learn.microsoft.com/en-us/windows/win32/api/commctrl/nf-commctrl-setwindowsubclass)。
+
 ## 验证与依据
 
 常规测试使用纯状态机、参数化几何、host fixture 和 QML MouseArea 的可观察行为，不安装全局 Hook。`xdstarter_native_taskbar_probe --run` 显式测量测试进程自己的隐藏 HWND，在实际显示器 DPR 下比较 GetWindowRect 与预期面板边界；合成停靠数据与实际 Explorer 任务栏样本分别标记，不能互相替代。`--show-state` 另外检查显式显示恢复。真实鼠标、系统任务栏设置和边框拖动必须单独记录；首次显示失败的用户反馈保留为失败，不改标为通过。

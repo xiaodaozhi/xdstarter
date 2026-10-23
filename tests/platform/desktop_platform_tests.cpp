@@ -404,6 +404,78 @@ void testDockingMatrix(TestContext& test) {
     std::cout << "Taskbar matrix: " << cases << " parameter combinations\n";
 }
 
+void testResizeAndMissingTaskbar(TestContext& test) {
+    using xdstarter::desktopResizePhysicalRect;
+    xdstarter::DesktopAnchorResult anchor;
+    anchor.monitorPhysicalRect = QRect(-1600, -900, 1600, 900);
+    const auto monitor = anchor.monitorPhysicalRect;
+    const std::array<QRect, 4> areas{monitor.adjusted(0, 0, 0, -72), monitor.adjusted(0, 72, 0, 0),
+                                     monitor.adjusted(72, 0, 0, 0), monitor.adjusted(0, 0, -72, 0)};
+    for (int edge = 0; edge < 4; ++edge) {
+        anchor.workAreaPhysicalRect = areas[edge];
+        test.expect(xdstarter::desktopTaskbarEdge(anchor) ==
+                        static_cast<xdstarter::TaskbarEdge>(edge),
+                    "missing taskbar retains the unique reserved edge");
+    }
+    anchor.workAreaPhysicalRect = monitor;
+    test.expect(xdstarter::desktopTaskbarEdge(anchor) == xdstarter::TaskbarEdge::Bottom,
+                "a full work area does not invent a taskbar direction");
+    anchor.workAreaPhysicalRect = monitor.adjusted(72, 72, 0, 0);
+    test.expect(xdstarter::desktopTaskbarEdge(anchor) == xdstarter::TaskbarEdge::Bottom,
+                "multiple reserved edges remain an ambiguous fallback");
+
+    const std::array<Qt::Edges, 8> edges{Qt::TopEdge,
+                                         Qt::BottomEdge,
+                                         Qt::LeftEdge,
+                                         Qt::RightEdge,
+                                         Qt::TopEdge | Qt::LeftEdge,
+                                         Qt::TopEdge | Qt::RightEdge,
+                                         Qt::BottomEdge | Qt::LeftEdge,
+                                         Qt::BottomEdge | Qt::RightEdge};
+    int cases = 0;
+    for (qreal scale : {1.0, 1.25, 1.5, 1.75, 2.0}) {
+        for (int offset : {0, -2400}) {
+            const QRect initial(offset - qRound(16 * scale), qRound(32 * scale),
+                                qRound(1028 * scale), qRound(728 * scale));
+            const QSize minimum(qRound(528 * scale), qRound(528 * scale));
+            const QRect proposed = initial.adjusted(24, 24, 120, 120);
+            for (auto edge : edges) {
+                const QRect actual = desktopResizePhysicalRect(initial, proposed, edge, minimum);
+                test.expect(edge.testFlag(Qt::LeftEdge) || actual.left() == initial.left(),
+                            "non-dragged left edge never snaps inside the work area");
+                test.expect(edge.testFlag(Qt::RightEdge) || actual.right() == initial.right(),
+                            "non-dragged right edge remains fixed");
+                test.expect(edge.testFlag(Qt::TopEdge) || actual.top() == initial.top(),
+                            "non-dragged top edge preserves transparent shadow space");
+                test.expect(edge.testFlag(Qt::BottomEdge) || actual.bottom() == initial.bottom(),
+                            "non-dragged bottom edge remains fixed");
+                const QRect tiny(initial.center(), QSize(1, 1));
+                const QRect constrained = desktopResizePhysicalRect(initial, tiny, edge, minimum);
+                test.expect(constrained.width() >= minimum.width() &&
+                                constrained.height() >= minimum.height(),
+                            "minimum dimensions remain valid after fixing the opposite edges");
+                ++cases;
+            }
+        }
+    }
+    const QRect origin(0, 0, 1000, 1000);
+    const QRect oversized(QPoint(std::numeric_limits<int>::min() + 1, 0), QPoint(1000, 1000));
+    test.expect(desktopResizePhysicalRect(origin, oversized, Qt::LeftEdge, QSize(1, 1)) == origin,
+                "a representable endpoint must not overflow the resulting QSize span");
+    test.expect(desktopResizePhysicalRect(origin, origin, {}, QSize(1, 1)) == origin,
+                "no sizing edge never moves the window");
+    test.expect(desktopResizePhysicalRect(origin, origin, Qt::LeftEdge | Qt::RightEdge,
+                                          QSize(1, 1)) == origin,
+                "contradictory edges do not resize");
+    test.expect(!desktopResizePhysicalRect({}, origin, Qt::TopEdge, QSize(1, 1)).isValid(),
+                "invalid initial bounds are rejected");
+    const QRect extreme(std::numeric_limits<int>::min() + 100, 0, 100, 100);
+    test.expect(desktopResizePhysicalRect(extreme, extreme, Qt::LeftEdge,
+                                          QSize(std::numeric_limits<int>::max(), 100)) == extreme,
+                "minimum size arithmetic cannot overflow coordinates");
+    std::cout << "Sizing matrix: " << cases << " edge/scale/origin combinations\n";
+}
+
 int main(int argc, char* argv[]) {
     QCoreApplication application(argc, argv);
     auto platform = xdstarter::createDesktopPlatform();
@@ -465,10 +537,14 @@ int main(int argc, char* argv[]) {
                                       : platform->queryStartButtonAnchor();
         const QJsonObject value{
             {QStringLiteral("trusted"), anchor.trusted},
-            {QStringLiteral("query"), probeMenu ? QStringLiteral("menu-work-area")
-                                                : QStringLiteral("start-button-uia")},
+            {QStringLiteral("query"),
+             probeMenu ? QStringLiteral("menu-work-area") : QStringLiteral("start-button-uia")},
             {QStringLiteral("monitorName"), anchor.monitorName},
             {QStringLiteral("startButtonPhysicalRect"), jsonRect(anchor.startButtonPhysicalRect)},
+            {QStringLiteral("taskbarPhysicalRect"), jsonRect(anchor.taskbarPhysicalRect)},
+            {QStringLiteral("taskbarEdge"),
+             static_cast<int>(xdstarter::desktopTaskbarEdge(anchor))},
+            {QStringLiteral("centered"), anchor.centeredStart},
             {QStringLiteral("monitorPhysicalRect"), jsonRect(anchor.monitorPhysicalRect)},
             {QStringLiteral("workAreaPhysicalRect"), jsonRect(anchor.workAreaPhysicalRect)},
             {QStringLiteral("dpi"), static_cast<int>(anchor.dpi)},
@@ -480,6 +556,7 @@ int main(int argc, char* argv[]) {
 
     TestContext test;
     testDockingMatrix(test);
+    testResizeAndMissingTaskbar(test);
     testStartButtonHitClassification(test);
     for (const auto& action : {QStringLiteral("documents"), QStringLiteral("downloads"),
                                QStringLiteral("settings"), QStringLiteral("account")}) {

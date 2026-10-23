@@ -6,7 +6,7 @@
 python3 -m unittest discover -s tests/tooling -v
 ```
 
-`core/` 为无 Qt 的 C++20 几何行为测试。`core-debug` 与 `core-release` 验证相同可观察行为，测试不使用会在 Release 中消失的 assert。Windows Qt 应用开启 `BUILD_TESTING` 时共注册十六套 CTest：
+`core/` 为无 Qt 的 C++20 几何行为测试。`core-debug` 与 `core-release` 验证相同可观察行为，测试不使用会在 Release 中消失的 assert。Windows Qt 应用开启 `BUILD_TESTING` 时共注册十七套 CTest：
 
 | 目录/入口 | CTest | 范围 |
 | --- | --- | --- |
@@ -22,6 +22,7 @@ python3 -m unittest discover -s tests/tooling -v
 | `services/application_catalog_tests.cpp` | `services.application_catalog` | worker 调用、目录刷新、图标更新/缓存预算、启动复核与失效目标保留 |
 | `platform/` | `platform.applications` | Windows 隔离快捷方式、原生图标、失效目标及受控 helper 实际启动与参数/工作目录 |
 | `platform/desktop_platform_tests.cpp` | `platform.desktop` | 桌面动作白名单、可信/失败面板矩形一致、工作区夹限/极值/阴影留白转换、原生装饰抑制与窗口所有权边界及托盘旧会话事件失效；只读 UIA probe 显式执行 |
+| `platform/native_taskbar_probe.cpp` | `platform.native-menu-resize`（仅 Windows） | 自有隐藏 HWND 的14项原生 sizing 消息回归，不发送全局输入 |
 | `services/desktop_shell_service_tests.cpp` | `services.desktop_shell` | 注入平台上的后台动作、成功/失败、重复请求拦截、查询合并/失效与析构等待 |
 | 产品 `--smoke-test` | `app.qml_smoke` | 从资源加载 QML/token 后退出，不读写用户布局 |
 | `ui/` | `ui.prototype` | 真实 Qt Quick 窗口的交互、编辑、保存恢复、只读与像素截图 |
@@ -30,7 +31,7 @@ python3 -m unittest discover -s tests/tooling -v
 产品与 GUI 测试共用 `xdstarter_add_ui` 编译的 QML、controller 与视觉资源；Qt6::Test 只进入测试目标。GUI 测试使用独立临时配置，覆盖鼠标组内/跨组拖拽、冲突与 Esc 取消、三档尺寸菜单、Ctrl+方向键移动、重建窗口恢复布局/主题、失败重试和未来版本只读，另检查两主题下尺寸菜单高亮/按下文字与勾选的对比度，并保留原有名称、导航、主题、最小窗口与磁贴像素几何回归。无边框窗口与共享圆角 token、可键盘收起按钮、`Popup.Item` 内部菜单、呈现清理契约和外部释放取消拖拽预览继续回归；本轮改为透明外窗、自绘边框/阴影与侧栏背景圆角裁切，正文尺寸及共享磁贴几何不变。清理不得改变已提交布局或退出编辑模式。
 
 ```powershell
-# 使用toolchain.json正式工具和默认项目Qt缓存，包含构建、lint与十六套CTest。
+# 使用toolchain.json正式工具和默认项目Qt缓存，包含构建、lint与十七套CTest。
 ./scripts/build-windows.ps1 -InstallTools -Python python -Preset app-release -Fresh
 $env:XDSTARTER_QT_ROOT = "$PWD/build/Qt/6.8.2/msvc2022_64"
 ./scripts/verify-windows-ui.ps1 -QtPrefix $env:XDSTARTER_QT_ROOT
@@ -73,6 +74,6 @@ Issue #41 的 `interactionRefinements` 与 `catalogAlphabetAndFolderOverlay` 覆
 
 Issue #41 的历史正式本机结果为 15/15 CTest、GUI 57/57、host 38/38，字体字形与目录刷新后的视觉尺寸均有回归；详见[历史证据](../docs/technical/validation/issue-41/menu-experience.json)。
 
-Issue #45 当前正式结果为 16/16 CTest、GUI 63/63、host 41/41。任务栏参数测试覆盖四边、双轴居中、五档缩放、负坐标和三种尺寸，共240组合。`xdstarter_native_taskbar_probe --run` 仅移动测试自己的隐藏 HWND；`--run --launch-show-states` 验证隐藏／最小化子进程的实际可见、最小化与前台状态；`--run --observe-product PID` 只读观察指定测试产品窗口。后两者与隐藏矩阵不能混为完整物理输入验收。
+Issue #45 后续真机修复的正式结果为 17/17 CTest（94.05秒）、GUI 63/63、host 41/41。任务栏参数测试覆盖四边、双轴居中、五档缩放、负坐标和三种尺寸，共240组合；新增80组边／角缩放组合及最小尺寸、溢出与任务栏缺失回退。Windows 常规 CTest 的 `platform.native-menu-resize` 显式调用 `--run --resize-filter-test`，覆盖14项本窗口消息处理，夹具不进入系统模态输入循环。`xdstarter_native_taskbar_probe --run` 仅移动测试自己的隐藏 HWND；`--run --launch-show-states` 验证隐藏／最小化子进程的实际可见、最小化与前台状态；`--run --observe-product PID` 只读观察指定测试产品窗口。后两者与隐藏矩阵不能混为完整物理输入验收。
 
 `scripts/verify-taskbar-integration.ps1` 默认只读，输出原生几何和开始按钮识别 JSON；显式 `-AlignmentMatrix` 才短暂修改 TaskbarAl，并在 finally 中恢复、复核原值和类型。它不重启 Explorer、不改 StuckRects 二进制、不猜测任务栏方向设置。真实系统四边切换、边框拖动与其他 Windows 构建的状态见[测试策略](../docs/technical/testing.md)，未运行的组合继续由 GitHub Issue 跟踪。

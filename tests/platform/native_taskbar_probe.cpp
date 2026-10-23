@@ -17,9 +17,17 @@
 
 #include <windows.h>
 
+#include <commctrl.h>
+
 #include <iostream>
 
 namespace {
+LRESULT CALLBACK blockFixtureSizingCommand(HWND window, UINT message, WPARAM wparam, LPARAM lparam,
+                                           UINT_PTR, DWORD_PTR) {
+    if (message == WM_SYSCOMMAND && (wparam & 0xfff0) == SC_SIZE)
+        return 0; // Unit fixture: do not enter an OS modal input loop.
+    return DefSubclassProc(window, message, wparam, lparam);
+}
 QRect rect(const RECT& value) {
     return {value.left, value.top, value.right - value.left, value.bottom - value.top};
 }
@@ -38,7 +46,8 @@ BOOL CALLBACK findTaskbar(HWND window, LPARAM parameter) {
     monitor.cbSize = sizeof(monitor);
     const auto handle = MonitorFromWindow(window, MONITOR_DEFAULTTONULL);
     RECT bounds{};
-    if (IsWindowVisible(window) && GetClassNameW(window, name, 64) &&
+    if ((!anchor.taskbarPhysicalRect.isValid() || IsWindowVisible(window)) &&
+        GetClassNameW(window, name, 64) &&
         (wcscmp(name, L"Shell_TrayWnd") == 0 || wcscmp(name, L"Shell_SecondaryTrayWnd") == 0) &&
         GetMonitorInfoW(handle, reinterpret_cast<MONITORINFO*>(&monitor)) &&
         QString::fromWCharArray(monitor.szDevice) == anchor.monitorName &&
@@ -102,6 +111,7 @@ BOOL CALLBACK observeProduct(HWND window, LPARAM parameter) {
             {QStringLiteral("kind"), "live-product-window"},
             {QStringLiteral("monitor"), anchor.monitorName},
             {QStringLiteral("taskbarRect"), jsonRect(anchor.taskbarPhysicalRect)},
+            {QStringLiteral("taskbarObserved"), anchor.taskbarPhysicalRect.isValid()},
             {QStringLiteral("workArea"), jsonRect(anchor.workAreaPhysicalRect)},
             {QStringLiteral("dpr"), dpr},
             {QStringLiteral("centered"), anchor.centeredStart},
@@ -121,6 +131,101 @@ int main(int argc, char** argv) {
     if (!app.arguments().contains(QStringLiteral("--run"))) {
         std::cerr << "Explicit --run required; this probe moves only its own hidden test window.\n";
         return 2;
+    }
+    if (app.arguments().contains(QStringLiteral("--resize-filter-test"))) {
+        QWindow menu;
+        menu.setFlags(Qt::Window | Qt::FramelessWindowHint);
+        menu.setMinimumSize(QSize(528, 528));
+        menu.resize(1028, 728);
+        const HWND native = reinterpret_cast<HWND>(menu.winId());
+        settle();
+        const auto previous =
+            SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+        SetWindowPos(native, nullptr, -24, 48, 1542, 1092, SWP_NOACTIVATE | SWP_NOZORDER);
+        RECT origin{};
+        GetWindowRect(native, &origin);
+        int failures = 0;
+        SetWindowSubclass(native, blockFixtureSizingCommand, 1, 0);
+        {
+            auto platform = xdstarter::createDesktopPlatform();
+            const auto appearance = platform->configureMenuWindow(menu.winId());
+            std::cerr << "Native fixture window=" << IsWindow(native)
+                      << " configure=" << appearance.errorCode.toStdString() << '\n';
+            for (UINT edge : {WMSZ_LEFT, WMSZ_RIGHT, WMSZ_TOP, WMSZ_BOTTOM, WMSZ_TOPLEFT,
+                              WMSZ_TOPRIGHT, WMSZ_BOTTOMLEFT, WMSZ_BOTTOMRIGHT}) {
+                SendMessageW(native, WM_ENTERSIZEMOVE, 0, 0);
+                RECT proposed{origin.left + 24, origin.top + 24, origin.right + 100,
+                              origin.bottom + 100};
+                SendMessageW(native, WM_SIZING, edge, reinterpret_cast<LPARAM>(&proposed));
+                const bool left =
+                    edge == WMSZ_LEFT || edge == WMSZ_TOPLEFT || edge == WMSZ_BOTTOMLEFT;
+                const bool right =
+                    edge == WMSZ_RIGHT || edge == WMSZ_TOPRIGHT || edge == WMSZ_BOTTOMRIGHT;
+                const bool top = edge == WMSZ_TOP || edge == WMSZ_TOPLEFT || edge == WMSZ_TOPRIGHT;
+                const bool bottom =
+                    edge == WMSZ_BOTTOM || edge == WMSZ_BOTTOMLEFT || edge == WMSZ_BOTTOMRIGHT;
+                if ((!left && proposed.left != origin.left) ||
+                    (!right && proposed.right != origin.right) ||
+                    (!top && proposed.top != origin.top) ||
+                    (!bottom && proposed.bottom != origin.bottom))
+                    ++failures;
+                SendMessageW(native, WM_EXITSIZEMOVE, 0, 0);
+            }
+            SendMessageW(native, WM_SYSCOMMAND, SC_SIZE | WMSZ_BOTTOM, 0);
+            SetWindowPos(native, nullptr, origin.left + 24, origin.top + 24,
+                         origin.right - origin.left, origin.bottom - origin.top,
+                         SWP_NOACTIVATE | SWP_NOZORDER);
+            RECT beforeEnter{};
+            GetWindowRect(native, &beforeEnter);
+            if (rect(beforeEnter) != rect(origin))
+                ++failures;
+            SendMessageW(native, WM_ENTERSIZEMOVE, 0, 0);
+            RECT early{origin.left + 24, origin.top + 24, origin.right, origin.bottom + 100};
+            SendMessageW(native, WM_SIZING, WMSZ_BOTTOM, reinterpret_cast<LPARAM>(&early));
+            if (early.top != origin.top || early.left != origin.left || early.right != origin.right)
+                ++failures;
+            SetWindowPos(native, nullptr, origin.left + 24, origin.top + 24,
+                         origin.right - origin.left, origin.bottom - origin.top,
+                         SWP_NOACTIVATE | SWP_NOZORDER);
+            RECT afterSizing{};
+            GetWindowRect(native, &afterSizing);
+            if (rect(afterSizing) != rect(early))
+                ++failures;
+            SendMessageW(native, WM_EXITSIZEMOVE, 0, 0);
+            RECT outside{0, 0, 800, 800};
+            SendMessageW(native, WM_SIZING, WMSZ_BOTTOM, reinterpret_cast<LPARAM>(&outside));
+            if (outside.left != 0 || outside.top != 0 || outside.right != 800 ||
+                outside.bottom != 800)
+                ++failures;
+            QWindow unrelated;
+            const HWND other = reinterpret_cast<HWND>(unrelated.winId());
+            SendMessageW(other, WM_ENTERSIZEMOVE, 0, 0);
+            SendMessageW(other, WM_SIZING, WMSZ_BOTTOM, reinterpret_cast<LPARAM>(&outside));
+            SendMessageW(other, WM_EXITSIZEMOVE, 0, 0);
+            if (outside.left != 0 || outside.top != 0 || outside.right != 800 ||
+                outside.bottom != 800)
+                ++failures;
+        }
+        RECT released{0, 0, 800, 800};
+        SendMessageW(native, WM_ENTERSIZEMOVE, 0, 0);
+        SendMessageW(native, WM_SIZING, WMSZ_BOTTOM, reinterpret_cast<LPARAM>(&released));
+        SendMessageW(native, WM_EXITSIZEMOVE, 0, 0);
+        if (released.left != 0 || released.top != 0 || released.right != 800 ||
+            released.bottom != 800)
+            ++failures;
+        if (previous)
+            SetThreadDpiAwarenessContext(previous);
+        RemoveWindowSubclass(native, blockFixtureSizingCommand, 1);
+        std::cout << QJsonDocument(QJsonObject{{QStringLiteral("failures"), failures},
+                                               {QStringLiteral("ownWindowSizingCases"), 8},
+                                               {QStringLiteral("inactiveAndUnrelatedCases"), 3},
+                                               {QStringLiteral("sizingPhaseCases"), 3},
+                                               {QStringLiteral("scope"),
+                                                "WM_SIZING unit messages target only fixture-owned "
+                                                "HWNDs; no global input."}})
+                         .toJson()
+                         .constData();
+        return failures ? 1 : 0;
     }
     if (app.arguments().contains(QStringLiteral("--launch-show-states"))) {
         QJsonArray launches;
