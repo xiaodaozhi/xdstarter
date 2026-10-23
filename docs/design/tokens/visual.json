@@ -89,7 +89,16 @@
   "motion": {
     "enterMs": 180,
     "exitMs": 120,
-    "moveMs": 200
+    "moveMs": 200,
+    "tilePress": {
+      "pressMs": 90,
+      "releaseMs": 180,
+      "maximumTiltDegrees": 6,
+      "maximumEdgeDepthDip": 7,
+      "perspectiveDistanceDip": 600,
+      "centerDepthDip": 2,
+      "pressedScale": 0.985
+    }
   },
   "fontFamily": "Microsoft YaHei UI",
   "interactionSurface": {

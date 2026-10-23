@@ -18,6 +18,14 @@ Button {
     property int iconRevision: 0
     property var iconVersions: ({})
     readonly property bool pointerHovered: tileHover.hovered
+    property bool pointerPressActive: false
+    property bool pressComponentReady: false
+    property point pressPoint: Qt.point(0, 0)
+    property real pressProgress: 0
+    readonly property bool pressAnimating: pressMotion.running
+    readonly property var pressTokens: tokens.motion.tilePress
+    readonly property matrix4x4 pressMatrix: projectedPressMatrix()
+    readonly property bool visualPressed: down || pointerPressActive
     HoverHandler {
         id: tileHover
     }
@@ -27,8 +35,8 @@ Button {
     readonly property string paletteIdentity: tile.targetId || tile.id || ""
     readonly property int tokenPaletteIndex: paletteIndex(paletteIdentity)
     readonly property color baseColor: tokens.tilePalette[tokenPaletteIndex]
-    readonly property color fillTopColor: down ? Qt.darker(baseColor, 1.10) : Qt.lighter(baseColor, pointerHovered ? 1.16 : 1.05)
-    readonly property color fillBottomColor: down ? Qt.darker(baseColor, 1.16) : (pointerHovered ? Qt.lighter(baseColor, 1.06) : Qt.darker(baseColor, 1.04))
+    readonly property color fillTopColor: visualPressed ? Qt.darker(baseColor, 1.10) : Qt.lighter(baseColor, pointerHovered ? 1.16 : 1.05)
+    readonly property color fillBottomColor: visualPressed ? Qt.darker(baseColor, 1.16) : (pointerHovered ? Qt.lighter(baseColor, 1.06) : Qt.darker(baseColor, 1.04))
     readonly property int iconSizeDip: tile.small ? 28 : 36
 
     signal selected(string name)
@@ -48,13 +56,15 @@ Button {
     width: tile.width
     height: tile.height
     padding: 0
+    horizontalPadding: 0
     opacity: dragging ? 0.35 : 1
-    scale: down ? 0.97 : 1
-    Behavior on scale {
-        NumberAnimation {
-            duration: 110
-            easing.type: Easing.OutCubic
-        }
+    // Input geometry stays on the untransformed Button. Only its visual layers
+    // receive the projective press matrix, independently of pin/reflow motion.
+    NumberAnimation {
+        id: pressMotion
+        target: tileButton
+        property: "pressProgress"
+        easing.type: Easing.OutCubic
     }
     Behavior on opacity {
         NumberAnimation {
@@ -120,6 +130,7 @@ Button {
         easing.type: Easing.OutCubic
     }
     Component.onCompleted: {
+        pressComponentReady = true;
         if (motion.hasPrevious === false)
             pinAppearMotion.start();
     }
@@ -144,12 +155,82 @@ Button {
             selected(tile.name);
     }
 
+    function beginPointerPress(x: real, y: real): void {
+        pressMotion.stop();
+        pressPoint = Qt.point(Math.max(-1, Math.min(1, 2 * x / Math.max(1, width) - 1)), Math.max(-1, Math.min(1, 2 * y / Math.max(1, height) - 1)));
+        pointerPressActive = true;
+        pressMotion.from = pressProgress;
+        pressMotion.to = 1;
+        pressMotion.duration = pressTokens.pressMs;
+        pressMotion.start();
+    }
+
+    function cancelPointerPress(immediate: bool): void {
+        editPointer.leftClickPending = false;
+        pointerPressActive = false;
+        pressMotion.stop();
+        if (immediate) {
+            pressProgress = 0;
+            return;
+        }
+        if (pressProgress === 0)
+            return;
+        pressMotion.from = pressProgress;
+        pressMotion.to = 0;
+        pressMotion.duration = pressTokens.releaseMs;
+        pressMotion.start();
+    }
+
+    function projectedPressMatrix(): matrix4x4 {
+        let matrix = Qt.matrix4x4();
+        if (pressProgress <= 0)
+            return matrix;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const maximumAngle = pressTokens.maximumTiltDegrees * Math.PI / 180;
+        const angleX = -pressPoint.y * Math.min(maximumAngle, Math.atan(pressTokens.maximumEdgeDepthDip / Math.max(1, centerY))) * pressProgress;
+        const angleY = pressPoint.x * Math.min(maximumAngle, Math.atan(pressTokens.maximumEdgeDepthDip / Math.max(1, centerX))) * pressProgress;
+        const visualScale = 1 - (1 - pressTokens.pressedScale) * pressProgress;
+        // Keep the far edge behind the resting plane. The pressed side recedes
+        // further, while a centered press has only a small uniform depression.
+        const edgeDepth = Math.abs(Math.sin(angleY)) * centerX + Math.abs(Math.cos(angleY) * Math.sin(angleX)) * centerY;
+        const depth = pressTokens.centerDepthDip * pressProgress + edgeDepth * visualScale;
+        const distance = pressTokens.perspectiveDistanceDip;
+        matrix.translate(Qt.vector3d(centerX, centerY, 0));
+        matrix = matrix.times(Qt.matrix4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -1 / distance, 1));
+        matrix.translate(Qt.vector3d(0, 0, -depth));
+        matrix.rotate(angleY * 180 / Math.PI, Qt.vector3d(0, 1, 0));
+        matrix.rotate(angleX * 180 / Math.PI, Qt.vector3d(1, 0, 0));
+        matrix.scale(visualScale, visualScale, 1);
+        matrix.translate(Qt.vector3d(-centerX, -centerY, 0));
+        return matrix;
+    }
+
     function requestContextMenu(): void {
         const position = tileButton.mapToItem(null, width / 2, height / 2);
         contextRequested(tile.id, tile.size, position.x, position.y);
     }
 
     onClicked: activate()
+    onDraggingChanged: {
+        if (dragging)
+            cancelPointerPress(false);
+    }
+    onEnabledChanged: {
+        if (tileButton.pressComponentReady && !tileButton.enabled)
+            cancelPointerPress(false);
+    }
+    onVisibleChanged: {
+        if (tileButton.pressComponentReady && !tileButton.visible)
+            cancelPointerPress(true);
+    }
+    Connections {
+        target: tileButton.Window.window
+        function onVisibleChanged(): void {
+            if (tileButton.pressComponentReady && tileButton.Window.window && !tileButton.Window.window.visible)
+                tileButton.cancelPointerPress(true);
+        }
+    }
     onActiveFocusChanged: {
         if (activeFocus)
             focused(tileButton);
@@ -201,7 +282,7 @@ Button {
         objectName: "tileToolTip"
         width: Math.min(380, implicitWidth)
         parent: tileButton
-        visible: tileButton.hintsEnabled && !tileButton.dragging && (tileButton.pointerHovered || (tileButton.keyboardNavigation && tileButton.activeFocus))
+        visible: tileButton.hintsEnabled && !tileButton.pointerPressActive && !tileButton.dragging && (tileButton.pointerHovered || (tileButton.keyboardNavigation && tileButton.activeFocus))
         text: tileButton.tile.name + "\n" + tileButton.tile.dimensions + (tileButton.targetAvailable ? "" : "\n" + (tileButton.tile.unavailableReason || qsTr("应用不可用；可右键取消固定。")))
         timeout: -1
         contentItem: Text {
@@ -214,6 +295,10 @@ Button {
     }
 
     background: Rectangle {
+        objectName: "tilePressBackground"
+        transform: Matrix4x4 {
+            matrix: tileButton.pressMatrix
+        }
         radius: tileButton.tokens.cornerRadiusDip.tile
         gradient: Gradient {
             GradientStop {
@@ -230,6 +315,10 @@ Button {
     }
 
     contentItem: Item {
+        objectName: "tilePressContent"
+        transform: Matrix4x4 {
+            matrix: tileButton.pressMatrix
+        }
         Text {
             font.family: tileButton.font.family
             objectName: "tileSymbol"
@@ -244,7 +333,8 @@ Button {
             elide: Text.ElideRight
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
-            clip: true
+            // Eliding already bounds the symbol. A nested clip under the
+            // projective matrix drops glyphs on the Direct3D render path.
             visible: appIcon.status !== Image.Ready
             color: "#FFFFFF"
             font.pixelSize: tileButton.tile.small ? 22 : 26
@@ -311,24 +401,35 @@ Button {
 
         property point pressPosition: Qt.point(0, 0)
         property bool suppressClick: false
+        property bool leftClickPending: false
+        property bool dragEligible: false
 
+        objectName: "tileEditPointer"
         anchors.fill: parent
-        acceptedButtons: Qt.RightButton | (tileButton.editMode && !tileButton.readOnly ? Qt.LeftButton : Qt.NoButton)
-        preventStealing: tileButton.editMode
+        acceptedButtons: Qt.RightButton | Qt.LeftButton
+        preventStealing: tileButton.editMode && !tileButton.readOnly
         cursorShape: tileButton.dragging ? Qt.ClosedHandCursor : (tileButton.editMode && !tileButton.readOnly ? Qt.OpenHandCursor : Qt.ArrowCursor)
         onPressed: mouse => {
             tileButton.forceActiveFocus(Qt.MouseFocusReason);
             pressPosition = Qt.point(mouse.x, mouse.y);
             suppressClick = false;
+            dragEligible = mouse.button === Qt.LeftButton && tileButton.editMode && !tileButton.readOnly;
+            if (mouse.button === Qt.LeftButton) {
+                leftClickPending = true;
+                tileButton.beginPointerPress(mouse.x, mouse.y);
+            } else {
+                tileButton.cancelPointerPress(false);
+            }
         }
         onPositionChanged: mouse => {
-            if (!(pressedButtons & Qt.LeftButton))
+            if (!(pressedButtons & Qt.LeftButton) || !dragEligible || !tileButton.editMode || tileButton.readOnly)
                 return;
             const position = tileButton.mapToItem(null, mouse.x, mouse.y);
             const dx = mouse.x - pressPosition.x;
             const dy = mouse.y - pressPosition.y;
             if (!suppressClick && dx * dx + dy * dy >= editPointer.drag.threshold * editPointer.drag.threshold) {
                 suppressClick = true;
+                tileButton.cancelPointerPress(false);
                 tileButton.dragStarted(tileButton.tile.id, position.x, position.y, pressPosition.x, pressPosition.y, tileButton.width, tileButton.height);
             } else if (tileButton.dragging) {
                 tileButton.dragMoved(position.x, position.y);
@@ -337,11 +438,13 @@ Button {
         onReleased: mouse => {
             if (mouse.button !== Qt.LeftButton)
                 return;
+            const activatePending = leftClickPending;
+            tileButton.cancelPointerPress(false);
             if (tileButton.dragging) {
                 const position = tileButton.mapToItem(null, mouse.x, mouse.y);
                 tileButton.dragMoved(position.x, position.y);
                 tileButton.dragFinished();
-            } else if (!suppressClick) {
+            } else if (activatePending && !suppressClick && mouse.x >= 0 && mouse.x < width && mouse.y >= 0 && mouse.y < height) {
                 tileButton.activate();
             }
         }
@@ -352,6 +455,7 @@ Button {
             }
         }
         onCanceled: {
+            tileButton.cancelPointerPress(!tileButton.visible);
             if (tileButton.dragging)
                 tileButton.dragCanceled();
         }
