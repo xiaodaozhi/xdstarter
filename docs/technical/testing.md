@@ -6,7 +6,13 @@
 
 GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查看 PNG，核对字体、应用图标、长名称、间隙及辅助功能信息的表达。
 
-## 当前：常驻单例、默认编辑与目录交互（Issue #41）
+## 当前：分类选择内容居中（Issue #43）
+
+2026-10-23，正式 Qt 6.8.2／MSVC 19.29.30153.0 v142／SDK 10.0.19041.0 Release、QML lint（无诊断）及 **15/15 CTest，90.81 秒**通过；GUI **61/61**、host **38/38**。新增四个数据用例对深浅主题、正常四列／最小高度六列的 #、A–Z、地球图标做 **112 次实际像素边界检查**，覆盖可用／禁用分类，允许的中心偏差为 1 DIP。未使用 computer use。
+
+运行时按可见字形边界居中并统一按钮内边距；交互设计稿以按钮中心作为文字锚点，修正固定左偏移对窄字母的影响。正常／最小高度的[深色](../design/validation/issue-43/dark-normal.png)、[浅色](../design/validation/issue-43/light-normal.png)、[深色六列](../design/validation/issue-43/dark-short.png)、[浅色六列](../design/validation/issue-43/light-short.png)均为内存样例的离屏截图；[摘要](validation/issue-43/category-centering.json)记录源码／程序散列与检查范围。本轮只验证分类视觉和既有自动回归，不扩大 Windows 原生交互／系统兼容矩阵。
+
+## 历史：常驻单例、默认编辑与目录交互（Issue #41）
 
 2026-10-23，使用正式 Qt **6.8.2**／MSVC **19.29.30153.0 v142**／SDK **10.0.19041.0** 完成 Release、QML lint（无诊断）、**15/15 CTest，87.95 秒**；GUI **57/57**、host **38/38**、会话 IPC **6/6**、分类浏览 **11/11**，均无失败或跳过。工具单元测试 **13/13** 通过。最终本地日志为 `build/issue41-final5-build.log`；SDK 既有 C4702 警告保留。结构化[无私人路径摘要](validation/issue-41/menu-experience.json)包含最终程序 SHA-256、LF 源码散列、范围及边界，不引用旧程序作为本轮通过证据。
 

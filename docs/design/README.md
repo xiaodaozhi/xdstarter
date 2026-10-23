@@ -127,3 +127,5 @@
 交互状态图由 `source/build_interaction_states.py` 直接读取运行时 tokens、共享字体和矢量图标导出，覆盖深浅菜单默认／hover／pressed／Tab 焦点、禁用项、反馈、提示、分类和文件夹。重建：`python3 docs/design/source/build_interaction_states.py`。这些是设计稿，运行时抓帧与自动断言单独记录。
 
 字体采用系统安装的 Microsoft YaHei UI，QML 控件与普通 Text 共享实际解析后的应用字体。Windows 离屏字体扫描遗漏 TTC 字体集合时，工具注册系统已有的微软雅黑常规／粗体集合；不拷贝或分发字体。自动检查验证实际 QFontInfo／QRawFont 的字体族和中英文字形，避免缺失别名静默回退到 Agency FB。Qt SVG 稿使用明确的单一字体族。
+
+分类选择按钮中的字母、# 和地球图标均居中；运行时按字形实际边界排布，SVG 采用按钮中心的文字锚点，不再以相同左偏移排放宽度不同的字母。分类选择与列表中的分类入口共用图形组件。

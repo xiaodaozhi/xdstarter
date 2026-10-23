@@ -328,6 +328,8 @@ class PrototypeWindowTest : public QObject {
     void prototypeWindowLoads();
     void interactionRefinements();
     void catalogAlphabetAndFolderOverlay();
+    void categoryGlyphsAreCentered_data();
+    void categoryGlyphsAreCentered();
     void themeSwitchRetainsGeometry();
     void keyboardAndMouseSelection();
     void smallTilesExposeNames();
@@ -502,6 +504,87 @@ void PrototypeWindowTest::interactionRefinements() {
         QVERIFY(window_->grabWindow().save(
             QDir(destination).filePath(QStringLiteral("more-light.png"))));
     }
+}
+
+void PrototypeWindowTest::categoryGlyphsAreCentered_data() {
+    QTest::addColumn<bool>("dark");
+    QTest::addColumn<bool>("shortWindow");
+    QTest::newRow("dark-normal") << true << false;
+    QTest::newRow("light-normal") << false << false;
+    QTest::newRow("dark-short") << true << true;
+    QTest::newRow("light-short") << false << true;
+}
+
+void PrototypeWindowTest::categoryGlyphsAreCentered() {
+    QFETCH(bool, dark);
+    QFETCH(bool, shortWindow);
+    const auto state = std::make_shared<CatalogTestState>();
+    state->applications.append(
+        catalogTarget(QStringLiteral("1 Tool"), QStringLiteral("C:/Fixture/1.lnk")));
+    state->applications.append(
+        catalogTarget(QStringLiteral("★ Tool"), QStringLiteral("C:/Fixture/Other.lnk")));
+    destroyWindow();
+    createWindow({}, true, state);
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 4);
+    controller_->setDarkTheme(dark);
+    if (shortWindow)
+        window_->resize(window_->width(), window_->minimumHeight());
+    click(item(QStringLiteral("sectionButton-A")));
+    QTRY_VERIFY(window_->property("alphabetOpen").toBool());
+    QTest::mouseMove(window_, QPoint(1, 1));
+    QTest::qWait(220);
+    const auto frame = window_->grabWindow();
+    QVERIFY(!frame.isNull());
+    const auto destination = qEnvironmentVariable("XDSTARTER_CATEGORY_CAPTURE_DIR");
+    if (!destination.isEmpty()) {
+        QVERIFY(QDir().mkpath(destination));
+        QVERIFY(frame.save(
+            QDir(destination)
+                .filePath(QString::fromLatin1(QTest::currentDataTag()) + QStringLiteral(".png"))));
+    }
+    const auto theme = visualTokens_.value(QStringLiteral("themes"))
+                           .toMap()
+                           .value(dark ? QStringLiteral("dark") : QStringLiteral("light"))
+                           .toMap();
+    const QColor surface(theme.value(QStringLiteral("surface")).toString());
+    const qreal scaleX = qreal(frame.width()) / window_->width();
+    const qreal scaleY = qreal(frame.height()) / window_->height();
+    const auto categories =
+        QStringLiteral("#ABCDEFGHIJKLMNOPQRSTUVWXYZ").split(QString{}, Qt::SkipEmptyParts) +
+        QStringList{QStringLiteral("🌐")};
+    int enabledCount = 0;
+    int disabledCount = 0;
+    for (const auto& category : categories) {
+        auto* button = item(QStringLiteral("alphabet-") + category);
+        QVERIFY(button && button->isVisible());
+        button->isEnabled() ? ++enabledCount : ++disabledCount;
+        const auto bounds = button->mapRectToScene(button->boundingRect());
+        // Ignore the rounded background; measure actual visible glyph pixels,
+        // including disabled items, rather than the font's line-box geometry.
+        const QRect interior(
+            qCeil((bounds.left() + 4) * scaleX), qCeil((bounds.top() + 4) * scaleY),
+            qFloor((bounds.width() - 8) * scaleX), qFloor((bounds.height() - 8) * scaleY));
+        QRect ink;
+        for (int y = interior.top(); y <= interior.bottom(); ++y) {
+            for (int x = interior.left(); x <= interior.right(); ++x) {
+                const auto pixel = frame.pixelColor(x, y);
+                if (std::max({std::abs(pixel.red() - surface.red()),
+                              std::abs(pixel.green() - surface.green()),
+                              std::abs(pixel.blue() - surface.blue())}) > 12)
+                    ink = ink.united(QRect(x, y, 1, 1));
+            }
+        }
+        QVERIFY2(!ink.isEmpty(), qPrintable(category));
+        const QPointF inkCenter((ink.left() + ink.right() + 1) / (2 * scaleX),
+                                (ink.top() + ink.bottom() + 1) / (2 * scaleY));
+        const auto delta = inkCenter - bounds.center();
+        QVERIFY2(std::abs(delta.x()) <= 1.0 && std::abs(delta.y()) <= 1.0,
+                 qPrintable(QStringLiteral("%1 glyph offset: (%2, %3) DIP")
+                                .arg(category)
+                                .arg(delta.x())
+                                .arg(delta.y())));
+    }
+    QVERIFY(enabledCount > 0 && disabledCount > 0);
 }
 
 void PrototypeWindowTest::catalogAlphabetAndFolderOverlay() {
