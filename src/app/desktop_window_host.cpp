@@ -301,21 +301,25 @@ void DesktopWindowHost::finishRevealPreparation() {
     publishStatus();
     if (!isCurrentReveal(request))
         return;
-    qInfo().noquote() << "Desktop placement:"
-                      << QJsonDocument(QJsonObject{
-                             {QStringLiteral("trustedAnchor"), anchor.trusted},
-                             {QStringLiteral("startButton"), rectangleJson(anchor.startButtonPhysicalRect)},
-                             {QStringLiteral("workArea"), rectangleJson(anchor.workAreaPhysicalRect)},
-                             {QStringLiteral("placedWindow"), rectangleJson(result.physicalRect)},
-                             {QStringLiteral("dpi"), static_cast<int>(anchor.dpi)},
-                             {QStringLiteral("renderDpr"), scale},
-                             {QStringLiteral("gapPhysical"), gap},
-                             {QStringLiteral("shadowInsetPhysical"), inset},
-                             {QStringLiteral("placedBeforeReveal"), true},
-                             {QStringLiteral("preparationMs"), revealDeadline_.elapsed()},
-                             {QStringLiteral("success"), result.success},
-                             {QStringLiteral("message"), anchorStatus_}})
-                             .toJson(QJsonDocument::Compact);
+    qInfo().noquote()
+        << "Desktop placement:"
+        << QJsonDocument(
+               QJsonObject{
+                   {QStringLiteral("trustedAnchor"), anchor.trusted},
+                   {QStringLiteral("startButton"), rectangleJson(anchor.startButtonPhysicalRect)},
+                   {QStringLiteral("taskbar"), rectangleJson(anchor.taskbarPhysicalRect)},
+                   {QStringLiteral("taskbarEdge"), static_cast<int>(desktopTaskbarEdge(anchor))},
+                   {QStringLiteral("workArea"), rectangleJson(anchor.workAreaPhysicalRect)},
+                   {QStringLiteral("placedWindow"), rectangleJson(result.physicalRect)},
+                   {QStringLiteral("dpi"), static_cast<int>(anchor.dpi)},
+                   {QStringLiteral("renderDpr"), scale},
+                   {QStringLiteral("gapPhysical"), gap},
+                   {QStringLiteral("shadowInsetPhysical"), inset},
+                   {QStringLiteral("placedBeforeReveal"), true},
+                   {QStringLiteral("preparationMs"), revealDeadline_.elapsed()},
+                   {QStringLiteral("success"), result.success},
+                   {QStringLiteral("message"), anchorStatus_}})
+               .toJson(QJsonDocument::Compact);
     cancelRevealPreparation();
     pendingReveal_ = false;
     window_->showNormal();

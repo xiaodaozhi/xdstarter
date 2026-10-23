@@ -39,5 +39,5 @@ target_link_libraries(xdstarter_platform PUBLIC Qt6::Core Qt6::Gui)
 if(WIN32)
     target_compile_definitions(xdstarter_platform PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
     target_link_libraries(xdstarter_platform PRIVATE shell32 ole32 oleaut32 user32 gdi32 propsys uuid
-        uiautomationcore dwmapi)
+        uiautomationcore dwmapi comctl32)
 endif()

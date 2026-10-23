@@ -2,10 +2,12 @@
 
 #include <QDir>
 #include <QGuiApplication>
+#include <QPointer>
 #include <QScreen>
 #include <QSettings>
 #include <QThread>
 #include <QVector>
+#include <QWindow>
 #include <QtGui/qscreen_platform.h>
 
 #include <algorithm>
@@ -14,6 +16,7 @@
 
 #include <windows.h>
 
+#include <commctrl.h>
 #include <dwmapi.h>
 #include <shellapi.h>
 #include <shlobj.h>
@@ -131,18 +134,23 @@ bool isExplorerWindow(HWND window) {
                             Qt::CaseInsensitive) == 0;
 }
 
+struct TaskbarQuery {
+    QVector<HWND> windows;
+    bool visibleOnly = true;
+};
+
 BOOL CALLBACK collectTaskbars(HWND window, LPARAM parameter) {
     try {
-        auto* taskbars = reinterpret_cast<QVector<HWND>*>(parameter);
-        if (taskbars->size() >= 32) {
+        auto& query = *reinterpret_cast<TaskbarQuery*>(parameter);
+        if (query.windows.size() >= 32) {
             return FALSE;
         }
         wchar_t className[128]{};
         if (GetClassNameW(window, className, static_cast<int>(std::size(className))) > 0 &&
             (wcscmp(className, L"Shell_TrayWnd") == 0 ||
              wcscmp(className, L"Shell_SecondaryTrayWnd") == 0) &&
-            IsWindowVisible(window) && isExplorerWindow(window)) {
-            taskbars->append(window);
+            (!query.visibleOnly || IsWindowVisible(window)) && isExplorerWindow(window)) {
+            query.windows.append(window);
         }
     } catch (...) {
         return FALSE;
@@ -303,6 +311,151 @@ DesktopActionResult shellOpen(const wchar_t* target) {
 
 } // namespace
 
+// The native sizing loop must preserve the menu's fixed outer edges, including
+// transparent shadow space which Windows would otherwise snap inside rcWork.
+class WindowsMenuResizeFilter final {
+  public:
+    explicit WindowsMenuResizeFilter(QWindow* window)
+        : window_(window), native_(reinterpret_cast<HWND>(window->winId())) {
+        installed_ = SetWindowSubclass(native_, windowProcedure, reinterpret_cast<UINT_PTR>(this),
+                                       reinterpret_cast<DWORD_PTR>(this)) != FALSE;
+    }
+    ~WindowsMenuResizeFilter() {
+        if (installed_ && native_)
+            RemoveWindowSubclass(native_, windowProcedure, reinterpret_cast<UINT_PTR>(this));
+    }
+    bool matches(QWindow* window) const { return installed_ && window_ == window; }
+    bool isInstalled() const { return installed_; }
+
+  private:
+    static LRESULT CALLBACK windowProcedure(HWND window, UINT message, WPARAM wparam, LPARAM lparam,
+                                            UINT_PTR id, DWORD_PTR data) {
+        auto* self = reinterpret_cast<WindowsMenuResizeFilter*>(data);
+        if (self && id == reinterpret_cast<UINT_PTR>(self)) {
+            MSG event{};
+            event.hwnd = window;
+            event.message = message;
+            event.wParam = wparam;
+            event.lParam = lparam;
+            LRESULT result = 0;
+            if (self->filterMessage(event, &result))
+                return result;
+        }
+        return DefSubclassProc(window, message, wparam, lparam);
+    }
+    bool filterMessage(const MSG& message, LRESULT* result) {
+        if (!window_ || !native_ || message.hwnd != native_)
+            return false;
+        if (message.message == WM_EXITSIZEMOVE || message.message == WM_NCDESTROY) {
+            sizing_ = false;
+            prepared_ = false;
+            initial_ = {};
+            lastSized_ = {};
+            if (message.message == WM_NCDESTROY) {
+                RemoveWindowSubclass(native_, windowProcedure, reinterpret_cast<UINT_PTR>(this));
+                installed_ = false;
+                native_ = nullptr;
+                window_.clear();
+            }
+            return false;
+        }
+        if (prepared_ && !sizing_ && GetTickCount64() - preparedAt_ > 2000)
+            prepared_ = false;
+        const bool sizingCommand = message.message == WM_SYSCOMMAND &&
+                                   (message.wParam & 0xfff0) == SC_SIZE &&
+                                   (message.wParam & 0xf) >= 1 && (message.wParam & 0xf) <= 8;
+        if (!sizingCommand && message.message != WM_ENTERSIZEMOVE && message.message != WM_SIZING &&
+            message.message != WM_WINDOWPOSCHANGING)
+            return false;
+        PhysicalCoordinates coordinates;
+        if (!coordinates.ready())
+            return false;
+        if (sizingCommand || (message.message == WM_ENTERSIZEMOVE && !prepared_)) {
+            RECT bounds{};
+            const bool read = GetWindowRect(message.hwnd, &bounds) != FALSE;
+            initial_ = read ? rectangle(bounds) : QRect{};
+            lastSized_ = initial_;
+            prepared_ = sizingCommand && read;
+            preparedAt_ = GetTickCount64();
+            sizing_ = !sizingCommand && read;
+        } else if (message.message == WM_ENTERSIZEMOVE) {
+            sizing_ = initial_.isValid();
+        } else if (message.message == WM_WINDOWPOSCHANGING && (prepared_ || sizing_) &&
+                   lastSized_.isValid() && message.lParam) {
+            auto& position = *reinterpret_cast<WINDOWPOS*>(message.lParam);
+            if (!(position.flags & SWP_NOMOVE) || !(position.flags & SWP_NOSIZE)) {
+                // SC_SIZE may clamp shadow space before WM_ENTERSIZEMOVE, or
+                // normalize it after WM_SIZING. Preserve the last sizing rect
+                // throughout this one native loop, including those phases.
+                position.x = lastSized_.x();
+                position.y = lastSized_.y();
+                position.cx = lastSized_.width();
+                position.cy = lastSized_.height();
+                position.flags &= ~(SWP_NOMOVE | SWP_NOSIZE);
+                *result = 0;
+                return true;
+            }
+        } else if (message.message == WM_SIZING && sizing_ && message.lParam) {
+            Qt::Edges edges;
+            switch (message.wParam) {
+            case WMSZ_LEFT:
+                edges = Qt::LeftEdge;
+                break;
+            case WMSZ_RIGHT:
+                edges = Qt::RightEdge;
+                break;
+            case WMSZ_TOP:
+                edges = Qt::TopEdge;
+                break;
+            case WMSZ_BOTTOM:
+                edges = Qt::BottomEdge;
+                break;
+            case WMSZ_TOPLEFT:
+                edges = Qt::TopEdge | Qt::LeftEdge;
+                break;
+            case WMSZ_TOPRIGHT:
+                edges = Qt::TopEdge | Qt::RightEdge;
+                break;
+            case WMSZ_BOTTOMLEFT:
+                edges = Qt::BottomEdge | Qt::LeftEdge;
+                break;
+            case WMSZ_BOTTOMRIGHT:
+                edges = Qt::BottomEdge | Qt::RightEdge;
+                break;
+            default:
+                return false;
+            }
+            const qreal scale = GetDpiForWindow(message.hwnd) / 96.0;
+            const QSize minimum(qMax(1, qRound(window_->minimumWidth() * scale)),
+                                qMax(1, qRound(window_->minimumHeight() * scale)));
+            auto& proposed = *reinterpret_cast<RECT*>(message.lParam);
+            const QRect fixed =
+                desktopResizePhysicalRect(initial_, rectangle(proposed), edges, minimum);
+            if (fixed.isValid() && fixed.right() < std::numeric_limits<LONG>::max() &&
+                fixed.bottom() < std::numeric_limits<LONG>::max()) {
+                proposed = {fixed.left(), fixed.top(), fixed.right() + 1, fixed.bottom() + 1};
+                lastSized_ = fixed;
+                *result = TRUE;
+                return true;
+            }
+        }
+        return false;
+    }
+
+  private:
+    QPointer<QWindow> window_;
+    HWND native_ = nullptr;
+    QRect initial_;
+    QRect lastSized_;
+    bool sizing_ = false;
+    bool prepared_ = false;
+    ULONGLONG preparedAt_ = 0;
+    bool installed_ = false;
+};
+
+WindowsDesktopPlatform::WindowsDesktopPlatform() = default;
+WindowsDesktopPlatform::~WindowsDesktopPlatform() = default;
+
 StartButtonCaptureTarget WindowsDesktopPlatform::queryStartButtonCaptureTarget() {
     StartButtonCaptureTarget result;
     PhysicalCoordinates coordinates;
@@ -430,9 +583,12 @@ DesktopAnchorResult WindowsDesktopPlatform::queryMenuAnchor() {
         result.errorCode = QStringLiteral("invalid-work-area");
         return result;
     }
-    QVector<HWND> taskbars;
+    TaskbarQuery taskbars;
+    taskbars.visibleOnly = false; // Placement metadata is never input permission.
     EnumWindows(collectTaskbars, reinterpret_cast<LPARAM>(&taskbars));
-    for (HWND taskbar : taskbars) {
+    std::stable_partition(taskbars.windows.begin(), taskbars.windows.end(),
+                          [](HWND window) { return IsWindowVisible(window) != FALSE; });
+    for (HWND taskbar : taskbars.windows) {
         if (MonitorFromWindow(taskbar, MONITOR_DEFAULTTONULL) == preferredMonitor) {
             result.dpi = GetDpiForWindow(taskbar);
             RECT bounds{};
@@ -468,11 +624,11 @@ DesktopAnchorResult WindowsDesktopPlatform::queryStartButtonAnchor() {
     result.message = QStringLiteral("未可信识别开始按钮，使用目标屏幕工作区回退位置。");
     result.errorCode = QStringLiteral("start-button-not-identified");
 
-    QVector<HWND> taskbars;
+    TaskbarQuery taskbars;
     EnumWindows(collectTaskbars, reinterpret_cast<LPARAM>(&taskbars));
     // Read scale independently of UIA/COM success. An unavailable StartButton
     // must not change an 8-DIP margin from, for example, 12 pixels back to 8.
-    for (HWND taskbar : taskbars) {
+    for (HWND taskbar : taskbars.windows) {
         if (MonitorFromWindow(taskbar, MONITOR_DEFAULTTONULL) == preferredMonitor) {
             const UINT taskbarDpi = GetDpiForWindow(taskbar);
             if (taskbarDpi > 0) {
@@ -502,7 +658,7 @@ DesktopAnchorResult WindowsDesktopPlatform::queryStartButtonAnchor() {
     // Select a real taskbar on the pointer's monitor. A secondary monitor
     // without a visible taskbar gets its own work area. StartButton trust is
     // diagnostic only; placement always uses equal work-area margins.
-    for (HWND taskbar : taskbars) {
+    for (HWND taskbar : taskbars.windows) {
         if (MonitorFromWindow(taskbar, MONITOR_DEFAULTTONULL) != preferredMonitor) {
             continue;
         }
@@ -566,10 +722,10 @@ DesktopStartButtonHitResult WindowsDesktopPlatform::queryStartButtonHitTarget() 
         result.errorCode = QStringLiteral("invalid-monitor-area");
         return finish();
     }
-    QVector<HWND> taskbars;
+    TaskbarQuery taskbars;
     EnumWindows(collectTaskbars, reinterpret_cast<LPARAM>(&taskbars));
     HWND taskbar = nullptr;
-    for (HWND candidate : taskbars) {
+    for (HWND candidate : taskbars.windows) {
         if (MonitorFromWindow(candidate, MONITOR_DEFAULTTONULL) == monitor) {
             if (taskbar) {
                 result.errorCode = QStringLiteral("ambiguous-monitor-taskbar");
@@ -720,6 +876,17 @@ DesktopAppearanceResult WindowsDesktopPlatform::configureMenuWindow(quintptr nat
                 QStringLiteral("无法配置当前程序的菜单窗口外观。"),
                 QStringLiteral("invalid-owned-window")};
     }
+    for (auto* candidate : QGuiApplication::allWindows()) {
+        if (candidate->handle() && candidate->winId() == nativeHandle) {
+            if (!resizeFilter_ || !resizeFilter_->matches(candidate))
+                resizeFilter_ = std::make_unique<WindowsMenuResizeFilter>(candidate);
+            if (!resizeFilter_->isInstalled())
+                return {false, false, QStringLiteral("菜单原生缩放约束安装失败。"),
+                        QStringLiteral("menu-resize-subclass-failed")};
+            break;
+        }
+    }
+
     BOOL composition = FALSE;
     const HRESULT compositionResult = DwmIsCompositionEnabled(&composition);
     if (FAILED(compositionResult) || !composition) {

@@ -4,9 +4,12 @@
 #include "platform/start_button_capture_state.h"
 
 namespace xdstarter {
+class WindowsMenuResizeFilter;
 
 class WindowsDesktopPlatform final : public DesktopPlatform {
   public:
+    WindowsDesktopPlatform();
+    ~WindowsDesktopPlatform() override;
     [[nodiscard]] DesktopActionResult openDesktopAction(const QString& actionId) override;
     [[nodiscard]] DesktopAnchorResult queryStartButtonAnchor() override;
     [[nodiscard]] DesktopStartButtonHitResult queryStartButtonHitTarget() override;
@@ -24,6 +27,9 @@ class WindowsDesktopPlatform final : public DesktopPlatform {
                                                      int gapPhysicalPixels = 8,
                                                      bool activate = true,
                                                      int shadowInsetPhysicalPixels = 0) override;
+
+  private:
+    std::unique_ptr<WindowsMenuResizeFilter> resizeFilter_;
 };
 
 } // namespace xdstarter

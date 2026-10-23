@@ -52,6 +52,10 @@ Qt 官方 6.8 Windows 支持配置列出 MSVC 2022；本项目按所有者要求
 
 应用、文档及原创资产的许可仍由 [#3](https://github.com/xiaodaozhi/xdstarter/issues/3) 决定；本表不替代[发行许可审查](../governance/licensing.md)，也不为项目添加授权。拼音采用上述有完整通知的派生数据表，未引入其他拼音运行库、应用图标集合或字体包。
 
+## Windows 菜单原生缩放
+
+顶部任务栏真机修复使用 Windows 自带 `comctl32` 的公开 `SetWindowSubclass`／`RemoveWindowSubclass`／`DefSubclassProc`，只处理同线程、本进程的 Qt 菜单 HWND。它是系统 API 链接依赖，不分发额外 DLL、SDK 或第三方库，不更改 Qt 版本与布局格式。实现、资源释放和原生回归边界见 [ADR-0014](adr/0014-start-click-and-adaptive-taskbar.md)。
+
 ## 同会话实例通信
 
 Issue #41 使用同版 Qt6 Network 的 QLocalServer／QLocalSocket 进行本机 activate 握手，不建立 TCP 监听，不引入外部网络服务。部署依赖增加 Qt6Network 动态库，版本仍严格为 Qt6.8.2，许可沿用同版 Qt Network 模块材料；开发 SDK 可用不代表干净机器部署已经验证。

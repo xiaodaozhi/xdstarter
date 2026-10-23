@@ -35,6 +35,10 @@ struct DesktopAnchorResult {
 enum class TaskbarEdge { Bottom, Top, Left, Right };
 [[nodiscard]] TaskbarEdge desktopTaskbarEdge(const DesktopAnchorResult& anchor);
 [[nodiscard]] Qt::Edges desktopResizeEdges(const DesktopAnchorResult& anchor);
+// Keep the non-dragged outer edges fixed, including transparent shadow space.
+// Native sizing may otherwise snap that space inside the monitor work area.
+[[nodiscard]] QRect desktopResizePhysicalRect(QRect initial, QRect proposed, Qt::Edges edges,
+                                              QSize minimumOuterSize);
 // Excludes a revealed auto-hide taskbar even if Windows' rcWork still covers
 // the whole monitor. Already reserved appbar areas are not subtracted twice.
 [[nodiscard]] QRect desktopMenuWorkArea(const DesktopAnchorResult& anchor);

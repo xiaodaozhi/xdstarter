@@ -128,8 +128,29 @@ QString startButtonHitClassificationName(DesktopStartButtonHitClassification val
 TaskbarEdge desktopTaskbarEdge(const DesktopAnchorResult& anchor) {
     const auto bar = anchor.taskbarPhysicalRect;
     const auto screen = anchor.monitorPhysicalRect;
-    if (!bar.isValid() || !screen.isValid())
+    if (!screen.isValid())
         return TaskbarEdge::Bottom;
+    if (!bar.isValid()) {
+        // An auto-hide taskbar can be absent during the query. Only infer an
+        // edge when the reserved work area identifies one unambiguous strip.
+        const QRect area = anchor.workAreaPhysicalRect;
+        if (area.isValid() && screen.contains(area)) {
+            const std::array<qint64, 4> reserved{
+                qint64(screen.bottom()) - area.bottom(), qint64(area.top()) - screen.top(),
+                qint64(area.left()) - screen.left(), qint64(screen.right()) - area.right()};
+            int found = -1;
+            for (int index = 0; index < 4; ++index) {
+                if (reserved[index] > 0) {
+                    if (found >= 0)
+                        return TaskbarEdge::Bottom;
+                    found = index;
+                }
+            }
+            if (found >= 0)
+                return static_cast<TaskbarEdge>(found);
+        }
+        return TaskbarEdge::Bottom;
+    }
     if (bar.width() >= bar.height())
         return std::abs(qint64(bar.center().y()) - screen.top()) <
                        std::abs(qint64(bar.center().y()) - screen.bottom())
@@ -152,6 +173,39 @@ Qt::Edges desktopResizeEdges(const DesktopAnchorResult& anchor) {
     default:
         return Qt::TopEdge | Qt::RightEdge | (anchor.centeredStart ? Qt::LeftEdge : Qt::Edges{});
     }
+}
+
+QRect desktopResizePhysicalRect(QRect initial, QRect proposed, Qt::Edges edges,
+                                QSize minimumOuterSize) {
+    if (!initial.isValid() || !proposed.isValid() || minimumOuterSize.isEmpty())
+        return {};
+    const bool left = edges.testFlag(Qt::LeftEdge), right = edges.testFlag(Qt::RightEdge);
+    const bool top = edges.testFlag(Qt::TopEdge), bottom = edges.testFlag(Qt::BottomEdge);
+    if ((!left && !right && !top && !bottom) || (left && right) || (top && bottom))
+        return initial;
+    qint64 x1 = left ? proposed.left() : initial.left();
+    qint64 x2 = right ? proposed.right() : initial.right();
+    qint64 y1 = top ? proposed.top() : initial.top();
+    qint64 y2 = bottom ? proposed.bottom() : initial.bottom();
+    if ((left || right) && x2 - x1 + 1 < minimumOuterSize.width()) {
+        if (left)
+            x1 = x2 - minimumOuterSize.width() + 1;
+        else
+            x2 = x1 + minimumOuterSize.width() - 1;
+    }
+    if ((top || bottom) && y2 - y1 + 1 < minimumOuterSize.height()) {
+        if (top)
+            y1 = y2 - minimumOuterSize.height() + 1;
+        else
+            y2 = y1 + minimumOuterSize.height() - 1;
+    }
+    if (x1 < std::numeric_limits<int>::min() || y1 < std::numeric_limits<int>::min() ||
+        x2 > std::numeric_limits<int>::max() || y2 > std::numeric_limits<int>::max() ||
+        x2 - x1 + 1 > std::numeric_limits<int>::max() ||
+        y2 - y1 + 1 > std::numeric_limits<int>::max())
+        return initial;
+    return {QPoint(static_cast<int>(x1), static_cast<int>(y1)),
+            QPoint(static_cast<int>(x2), static_cast<int>(y2))};
 }
 
 QRect desktopMenuWorkArea(const DesktopAnchorResult& anchor) {
