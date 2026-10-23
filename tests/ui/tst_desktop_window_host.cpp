@@ -101,6 +101,13 @@ class PlacementPlatform final : public xdstarter::DesktopPlatform {
         return ownedForeground;
     }
 
+    xdstarter::DesktopPresentationResult presentMenuWindow(quintptr nativeHandle) override {
+        ++presentations;
+        presentedHandle = nativeHandle;
+        presentedWhileVisible = !observedWindow || observedWindow->isVisible();
+        return {};
+    }
+
     xdstarter::DesktopPlacementResult placeWindow(
         quintptr nativeHandle, const xdstarter::DesktopAnchorResult& anchor,
         int gapPhysicalPixels, bool activate, int shadowInsetPhysicalPixels) override {
@@ -127,6 +134,9 @@ class PlacementPlatform final : public xdstarter::DesktopPlatform {
     }
 
     int placements = 0;
+    int presentations = 0;
+    quintptr presentedHandle = 0;
+    bool presentedWhileVisible = false;
     int screenMappings = 0;
     QString nativeScreenIdentity;
     int metricQueries = 0;
@@ -311,10 +321,93 @@ class DesktopWindowHostTest : public QObject {
     void winKeyCaptureFailureAndTrayLoss();
     void unsupportedWinKeyCaptureStaysDisabled();
     void trayFailureDuringEnableDoesNotInstallCapture();
+    void startButtonCaptureStartsInTrayAndCanPause();
+    void startButtonCaptureStopsOnTrayLossAndShutdown();
+    void startButtonCaptureRejectsUnavailableAndLateSignals();
 
   private:
     bool originalQuitOnClose_ = false;
 };
+
+void DesktopWindowHostTest::startButtonCaptureStartsInTrayAndCanPause() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    PlacementPlatform placement;
+    placement.observedWindow = &window;
+    FakeTray tray;
+    FakeWinKeyCapture capture;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.attachStartButtonCapture(capture);
+    QCOMPARE(capture.requests, 0);
+    host.start(trayIcon());
+    QCOMPARE(capture.requests, 1);
+    QVERIFY(capture.active);
+    QVERIFY(!window.isVisible());
+    capture.toggle();
+    QTRY_VERIFY(window.isVisible());
+    QCOMPARE(placement.placements, 1);
+    QCOMPARE(placement.presentations, 1);
+    QCOMPARE(placement.presentedHandle, static_cast<quintptr>(window.winId()));
+    QVERIFY(placement.presentedWhileVisible);
+    host.toggleStartButtonCapture();
+    QVERIFY(!capture.active);
+    capture.toggle();
+    QVERIFY(window.isVisible());
+    host.toggleStartButtonCapture();
+    QVERIFY(capture.active);
+    capture.toggle();
+    QTRY_VERIFY(!window.isVisible());
+    host.shutdown();
+    QVERIFY(!capture.active);
+}
+
+void DesktopWindowHostTest::startButtonCaptureStopsOnTrayLossAndShutdown() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    PlacementPlatform placement;
+    FakeTray tray;
+    FakeWinKeyCapture capture;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.attachStartButtonCapture(capture);
+    host.start(trayIcon());
+    QVERIFY(capture.active);
+    tray.available = false;
+    emit tray.registrationChanged(false, QStringLiteral("fixture failure"));
+    QVERIFY(!capture.active);
+    tray.available = true;
+    emit tray.registrationChanged(true, {});
+    QVERIFY(!capture.active); // recovery never silently reinstalls capture
+    host.toggleStartButtonCapture();
+    QVERIFY(capture.active);
+    host.shutdown();
+    QVERIFY(!capture.active);
+    const int requests = capture.requests;
+    host.toggleStartButtonCapture();
+    QCOMPARE(capture.requests, requests);
+}
+
+void DesktopWindowHostTest::startButtonCaptureRejectsUnavailableAndLateSignals() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    PlacementPlatform placement;
+    FakeTray tray;
+    tray.registrationSucceeds = false;
+    FakeWinKeyCapture capture;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.attachStartButtonCapture(capture);
+    host.start(trayIcon());
+    QCOMPARE(capture.requests, 0);
+    emit capture.statusChanged(true, {}, {});
+    QVERIFY(!capture.active);
+    QTRY_VERIFY(window.isVisible());
+    const int queries = state->queries;
+    capture.toggle();
+    QTest::qWait(50);
+    QCOMPARE(state->queries.load(), queries);
+}
 
 void DesktopWindowHostTest::startsInTrayWithoutShowingMenu() {
     auto state = std::make_shared<AnchorState>();

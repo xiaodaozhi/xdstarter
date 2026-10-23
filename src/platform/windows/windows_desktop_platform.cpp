@@ -158,7 +158,8 @@ struct StartButtonDetails {
 };
 
 bool findStartButton(IUIAutomation* automation, HWND taskbar, QRect& button, QString& error,
-                     StartButtonDetails* details = nullptr) {
+                     StartButtonDetails* details = nullptr,
+                     IUIAutomationElement** identified = nullptr) {
     ComPtr<IUIAutomationElement> root;
     HRESULT result = automation->ElementFromHandle(taskbar, root.put());
     if (FAILED(result)) {
@@ -235,6 +236,10 @@ bool findStartButton(IUIAutomation* automation, HWND taskbar, QRect& button, QSt
         return false;
     }
     button = candidate;
+    if (identified) {
+        *identified = element.get();
+        (*identified)->AddRef();
+    }
     if (details) {
         UIA_HWND nativeWindow = nullptr;
         const HRESULT nativeResult = element->get_CurrentNativeWindowHandle(&nativeWindow);
@@ -297,6 +302,87 @@ DesktopActionResult shellOpen(const wchar_t* target) {
 }
 
 } // namespace
+
+StartButtonCaptureTarget WindowsDesktopPlatform::queryStartButtonCaptureTarget() {
+    StartButtonCaptureTarget result;
+    PhysicalCoordinates coordinates;
+    POINT point{};
+    if (!coordinates.ready() || !GetPhysicalCursorPos(&point))
+        return result;
+    result.observedAt = GetTickCount64();
+    result.qualifiedPoint = {point.x, point.y};
+    const HWND hit = WindowFromPoint(point);
+    const HWND taskbar = GetAncestor(hit, GA_ROOT);
+    const auto before = observeWindow(taskbar);
+    if (!before.visible || !before.physicalRect.contains(result.qualifiedPoint) ||
+        (before.className != QStringLiteral("Shell_TrayWnd") &&
+         before.className != QStringLiteral("Shell_SecondaryTrayWnd")) ||
+        !isExplorerWindow(taskbar))
+        return result;
+    ComApartment apartment(COINIT_MULTITHREADED);
+    ComPtr<IUIAutomation> automation;
+    if (!apartment.ready() ||
+        FAILED(CoCreateInstance(CLSID_CUIAutomation8, nullptr, CLSCTX_INPROC_SERVER,
+                                IID_PPV_ARGS(automation.put()))))
+        return result;
+    ComPtr<IUIAutomation2> bounded;
+    if (FAILED(automation->QueryInterface(IID_PPV_ARGS(bounded.put()))) ||
+        FAILED(bounded->put_ConnectionTimeout(100)) || FAILED(bounded->put_TransactionTimeout(100)))
+        return result;
+    QRect button;
+    QString error;
+    ComPtr<IUIAutomationElement> expected;
+    if (!findStartButton(automation.get(), taskbar, button, error, nullptr, expected.put()) ||
+        !button.contains(result.qualifiedPoint))
+        return result;
+    ComPtr<IUIAutomationElement> atPoint;
+    if (FAILED(automation->ElementFromPoint(point, atPoint.put())))
+        return result;
+    BOOL same = FALSE;
+    // A provider may expose a text child at the point. Normalize to the known
+    // button using at most eight raw parents, never by localized display name.
+    ComPtr<IUIAutomationTreeWalker> walker;
+    if (FAILED(automation->get_RawViewWalker(walker.put())))
+        return result;
+    IUIAutomationElement* current = atPoint.get();
+    current->AddRef();
+    for (int depth = 0; current && depth < 8; ++depth) {
+        const HRESULT compared = automation->CompareElements(expected.get(), current, &same);
+        IUIAutomationElement* parent = nullptr;
+        if (SUCCEEDED(compared) && !same)
+            walker->GetParentElement(current, &parent);
+        current->Release();
+        current = parent;
+        if (FAILED(compared) || same)
+            break;
+    }
+    if (current)
+        current->Release();
+    RECT finalButton{};
+    BOOL offscreen = TRUE;
+    POINT afterPoint{};
+    if (!same || FAILED(expected->get_CurrentBoundingRectangle(&finalButton)) ||
+        rectangle(finalButton) != button || FAILED(expected->get_CurrentIsOffscreen(&offscreen)) ||
+        offscreen || !sameWindowObservation(before, observeWindow(taskbar)) ||
+        !GetPhysicalCursorPos(&afterPoint) || point.x != afterPoint.x || point.y != afterPoint.y ||
+        WindowFromPoint(point) != hit || GetTickCount64() - result.observedAt > 200)
+        return result;
+    result.taskbar = before.handle;
+    result.hitWindow = reinterpret_cast<quintptr>(hit);
+    result.processId = before.processId;
+    result.taskbarRect = before.physicalRect;
+    result.buttonRect = button;
+    const HMONITOR monitor = MonitorFromWindow(taskbar, MONITOR_DEFAULTTONULL);
+    MONITORINFO info{};
+    info.cbSize = sizeof(info);
+    if (!monitor || !GetMonitorInfoW(monitor, &info))
+        return {};
+    result.monitor = reinterpret_cast<quintptr>(monitor);
+    result.monitorRect = rectangle(info.rcMonitor);
+    result.dpi = GetDpiForWindow(taskbar);
+    result.identified = true;
+    return result;
+}
 
 DesktopActionResult WindowsDesktopPlatform::openDesktopAction(const QString& actionId) {
     if (!isSupportedDesktopAction(actionId)) {
@@ -572,6 +658,55 @@ DesktopStartButtonHitResult WindowsDesktopPlatform::queryStartButtonHitTarget() 
         secondMonitor.monitorPhysicalRect == result.anchor.monitorPhysicalRect &&
         secondMonitor.workAreaPhysicalRect == result.anchor.workAreaPhysicalRect;
     return finish();
+}
+
+DesktopPresentationResult WindowsDesktopPlatform::presentMenuWindow(quintptr nativeHandle) {
+    DesktopPresentationResult result;
+    result.supported = true;
+    const HWND window = reinterpret_cast<HWND>(nativeHandle);
+    DWORD process = 0;
+    const DWORD thread = GetWindowThreadProcessId(window, &process);
+    if (!window || !IsWindow(window) || process != GetCurrentProcessId() ||
+        thread != GetCurrentThreadId() || GetAncestor(window, GA_ROOT) != window) {
+        result.errorCode = QStringLiteral("invalid-owned-window");
+        return result;
+    }
+    // Qt's first showNormal can inherit STARTUPINFO's SW_HIDE/SW_SHOWMINIMIZED.
+    // The explicit user reveal restores the actual HWND, without moving it or
+    // changing its flags, taskbar settings, other windows or global lock policy.
+    if (IsIconic(window) || !IsWindowVisible(window))
+        ShowWindow(window, SW_RESTORE);
+    if (!SetWindowPos(window, HWND_TOP, 0, 0, 0, 0,
+                      SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOOWNERZORDER)) {
+        result.errorCode = QStringLiteral("menu-native-show-failed");
+    }
+    SetForegroundWindow(window);
+    result.visible = IsWindowVisible(window) != FALSE;
+    if (GetForegroundWindow() != window) {
+        const HWND foreground = GetForegroundWindow();
+        const DWORD foregroundThread = GetWindowThreadProcessId(foreground, nullptr);
+        DWORD_PTR response = 0;
+        // Follow Qt's explicit activation approach for this user-requested
+        // reveal. No global focus-policy changes or synthesized Alt/Win keys.
+        if (foreground && foregroundThread && foregroundThread != thread &&
+            SendMessageTimeoutW(foreground, WM_NULL, 0, 0, SMTO_BLOCK | SMTO_ABORTIFHUNG, 50,
+                                &response) &&
+            GetForegroundWindow() == foreground &&
+            AttachThreadInput(thread, foregroundThread, TRUE)) {
+            BringWindowToTop(window);
+            SetActiveWindow(window);
+            SetFocus(window);
+            SetForegroundWindow(window);
+            AttachThreadInput(thread, foregroundThread, FALSE);
+        }
+    }
+    result.minimized = IsIconic(window) != FALSE;
+    result.foreground = GetForegroundWindow() == window;
+    if (result.errorCode.isEmpty() && (!result.visible || result.minimized))
+        result.errorCode = QStringLiteral("menu-native-show-state-invalid");
+    else if (result.errorCode.isEmpty() && !result.foreground)
+        result.errorCode = QStringLiteral("menu-foreground-denied");
+    return result;
 }
 
 DesktopAppearanceResult WindowsDesktopPlatform::configureMenuWindow(quintptr nativeHandle) {

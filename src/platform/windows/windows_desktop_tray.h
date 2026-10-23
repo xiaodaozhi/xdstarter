@@ -14,6 +14,7 @@ class WindowsDesktopTray final : public DesktopTray {
     [[nodiscard]] bool isAvailable() const override;
     void showContextMenu() override;
     void setWinKeyCaptureState(bool active, bool canEnable, const QString& status) override;
+    void setStartButtonCaptureState(bool active, bool canEnable, const QString& status) override;
 
   private:
     class Impl;

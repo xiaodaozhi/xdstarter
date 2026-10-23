@@ -35,6 +35,9 @@ struct DesktopAnchorResult {
 enum class TaskbarEdge { Bottom, Top, Left, Right };
 [[nodiscard]] TaskbarEdge desktopTaskbarEdge(const DesktopAnchorResult& anchor);
 [[nodiscard]] Qt::Edges desktopResizeEdges(const DesktopAnchorResult& anchor);
+// Excludes a revealed auto-hide taskbar even if Windows' rcWork still covers
+// the whole monitor. Already reserved appbar areas are not subtracted twice.
+[[nodiscard]] QRect desktopMenuWorkArea(const DesktopAnchorResult& anchor);
 
 // These handles are diagnostic integer values, not persistent identities or
 // permission to consume input. No native types cross the platform boundary.
@@ -115,6 +118,14 @@ struct DesktopWindowMetricsResult {
     QSize physicalSize;
 };
 
+struct DesktopPresentationResult {
+    bool supported = false;
+    bool visible = false;
+    bool minimized = false;
+    bool foreground = false;
+    QString errorCode;
+};
+
 [[nodiscard]] bool isSupportedDesktopAction(const QString& actionId);
 [[nodiscard]] QRect desktopPopupPhysicalRect(const QSize& windowPhysicalSize,
                                              const DesktopAnchorResult& anchor,
@@ -149,6 +160,9 @@ class DesktopPlatform {
     // only when the current foreground is this process's menu or its owned
     // window. Unsupported adapters return false; no activation or caching.
     [[nodiscard]] virtual bool hasOwnedForegroundWindow(quintptr menuHandle);
+    // User-requested reveal only, after Qt has made its surface visible. Restore
+    // this thread's own HWND even when a launcher supplied SW_HIDE/minimized.
+    [[nodiscard]] virtual DesktopPresentationResult presentMenuWindow(quintptr nativeHandle);
     // A short native GUI operation, with no Shell/COM/IO. Only a top-level window
     // owned by this process may be placed. The window's real physical size is
     // read after Qt has selected its screen, avoiding logical/native mixing.

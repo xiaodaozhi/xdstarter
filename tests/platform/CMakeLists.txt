@@ -18,6 +18,9 @@ target_link_libraries(xdstarter_desktop_platform_tests PRIVATE xdstarter_platfor
 if(WIN32)
     target_compile_definitions(xdstarter_desktop_platform_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
     target_link_libraries(xdstarter_desktop_platform_tests PRIVATE user32 dwmapi)
+    add_executable(xdstarter_native_taskbar_probe native_taskbar_probe.cpp)
+    target_compile_definitions(xdstarter_native_taskbar_probe PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+    target_link_libraries(xdstarter_native_taskbar_probe PRIVATE xdstarter_platform user32)
 endif()
 add_test(NAME platform.desktop COMMAND xdstarter_desktop_platform_tests)
 set_tests_properties(platform.desktop PROPERTIES
@@ -27,4 +30,10 @@ add_executable(xdstarter_win_key_capture_tests win_key_capture_tests.cpp)
 target_link_libraries(xdstarter_win_key_capture_tests PRIVATE xdstarter_platform)
 add_test(NAME platform.win-key-capture COMMAND xdstarter_win_key_capture_tests)
 set_tests_properties(platform.win-key-capture PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}" TIMEOUT 15)
+
+add_executable(xdstarter_start_button_capture_tests start_button_capture_tests.cpp)
+target_link_libraries(xdstarter_start_button_capture_tests PRIVATE xdstarter_platform)
+add_test(NAME platform.start-button-capture COMMAND xdstarter_start_button_capture_tests)
+set_tests_properties(platform.start-button-capture PROPERTIES
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}" TIMEOUT 15)

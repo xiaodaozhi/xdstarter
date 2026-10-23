@@ -327,6 +327,7 @@ class PrototypeWindowTest : public QObject {
     void cleanup();
     void prototypeWindowLoads();
     void interactionRefinements();
+    void adaptiveResizeHandles();
     void catalogAlphabetAndFolderOverlay();
     void categoryGlyphsAreCentered_data();
     void categoryGlyphsAreCentered();
@@ -361,6 +362,7 @@ class PrototypeWindowTest : public QObject {
     void desktopShortcutActions();
     void auxiliaryMenusRespectEscape();
     void winKeyCaptureControlRequiresExplicitIntent();
+    void startButtonCaptureControl();
     void framelessWindowDismissalIntent();
     void customChromePixels();
     void shadowMarginDismissal();
@@ -503,6 +505,42 @@ void PrototypeWindowTest::interactionRefinements() {
         QTest::qWait(100);
         QVERIFY(window_->grabWindow().save(
             QDir(destination).filePath(QStringLiteral("more-light.png"))));
+    }
+}
+
+void PrototypeWindowTest::adaptiveResizeHandles() {
+    const auto monitor = QRect(0, 0, 1920, 1080);
+    for (const QRect bar : {QRect(0, 1040, 1920, 40), QRect(0, 0, 1920, 40), QRect(0, 0, 48, 1080),
+                            QRect(1872, 0, 48, 1080)}) {
+        for (const bool centered : {false, true}) {
+            xdstarter::DesktopAnchorResult anchor;
+            anchor.monitorPhysicalRect = monitor;
+            anchor.taskbarPhysicalRect = bar;
+            anchor.centeredStart = centered;
+            const auto edges = xdstarter::desktopResizeEdges(anchor);
+            window_->setProperty("allowedResizeEdges", static_cast<int>(edges));
+            for (const auto edge : {Qt::TopEdge, Qt::BottomEdge, Qt::LeftEdge, Qt::RightEdge}) {
+                auto* handle = item(QStringLiteral("resizeEdge-%1").arg(static_cast<int>(edge)));
+                QVERIFY(handle);
+                QCOMPARE(handle->property("enabled").toBool(), edges.testFlag(edge));
+                if (edges.testFlag(edge)) {
+                    const QRectF bounds = handle->mapRectToScene(handle->boundingRect());
+                    QVERIFY(bounds.width() > 0 && bounds.height() > 0);
+                    const qreal inset = window_->property("shadowInset").toReal();
+                    if (edge == Qt::LeftEdge)
+                        QCOMPARE(bounds.left(), inset);
+                    if (edge == Qt::TopEdge)
+                        QCOMPARE(bounds.top(), inset);
+                }
+            }
+            openMoreMenu();
+            for (const auto edge : {Qt::TopEdge, Qt::BottomEdge, Qt::LeftEdge, Qt::RightEdge})
+                QVERIFY(!item(QStringLiteral("resizeEdge-%1").arg(static_cast<int>(edge)))
+                             ->property("enabled")
+                             .toBool());
+            QTest::keyClick(window_, Qt::Key_Escape);
+            settleMenus();
+        }
     }
 }
 
@@ -2424,6 +2462,45 @@ void PrototypeWindowTest::auxiliaryMenusRespectEscape() {
     QTRY_COMPARE(exiting.count(), 1);
     // The host owns process shutdown. Tests observe intent without quitting the runner.
     QVERIFY(window_->isVisible());
+}
+
+void PrototypeWindowTest::startButtonCaptureControl() {
+    auto* menu = window_->findChild<QObject*>(QStringLiteral("powerMenu"));
+    QVERIFY(menu);
+    QSignalSpy requested(window_, SIGNAL(startButtonCaptureToggleRequested()));
+    QVERIFY(requested.isValid());
+    click(item(QStringLiteral("shortcut-power")));
+    QTRY_VERIFY(menu->property("opened").toBool());
+    auto* capture = item(QStringLiteral("startButtonCaptureItem"));
+    QVERIFY(capture);
+    QVERIFY(!capture->isEnabled());
+    QCOMPARE(requested.count(), 0);
+    window_->setProperty("startButtonCaptureAvailable", true);
+    QTRY_VERIFY(capture->isEnabled());
+    capture->forceActiveFocus(Qt::TabFocusReason);
+    QTest::keyClick(window_, Qt::Key_Return);
+    QTRY_COMPARE(requested.count(), 1);
+    QTRY_VERIFY(!menu->property("visible").toBool());
+    QVERIFY(!window_->property("startButtonCaptureActive").toBool());
+    window_->setProperty("startButtonCaptureActive", true);
+    click(item(QStringLiteral("shortcut-power")));
+    QTRY_VERIFY(menu->property("opened").toBool());
+    QVERIFY(capture->property("text").toString().contains(QStringLiteral("暂停")));
+    const auto directory = qEnvironmentVariable("XDSTARTER_START_CAPTURE_VALIDATION_DIR");
+    if (!directory.isEmpty()) {
+        QVERIFY(QDir().mkpath(directory));
+        for (const bool dark : {true, false}) {
+            controller_->setDarkTheme(dark);
+            QTest::qWait(220);
+            const auto file =
+                dark ? QStringLiteral("power-dark.png") : QStringLiteral("power-light.png");
+            QVERIFY(window_->grabWindow().save(QDir(directory).filePath(file)));
+        }
+    }
+    capture->forceActiveFocus(Qt::TabFocusReason);
+    QTest::keyClick(window_, Qt::Key_Enter);
+    QTRY_COMPARE(requested.count(), 2);
+    QTRY_VERIFY(!menu->property("visible").toBool());
 }
 
 void PrototypeWindowTest::winKeyCaptureControlRequiresExplicitIntent() {

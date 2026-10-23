@@ -146,17 +146,55 @@ Qt::Edges desktopResizeEdges(const DesktopAnchorResult& anchor) {
     case TaskbarEdge::Top:
         return Qt::BottomEdge | Qt::RightEdge | (anchor.centeredStart ? Qt::LeftEdge : Qt::Edges{});
     case TaskbarEdge::Left:
-        return Qt::BottomEdge | Qt::RightEdge;
+        return Qt::BottomEdge | Qt::RightEdge | (anchor.centeredStart ? Qt::TopEdge : Qt::Edges{});
     case TaskbarEdge::Right:
-        return Qt::BottomEdge | Qt::LeftEdge;
+        return Qt::BottomEdge | Qt::LeftEdge | (anchor.centeredStart ? Qt::TopEdge : Qt::Edges{});
     default:
         return Qt::TopEdge | Qt::RightEdge | (anchor.centeredStart ? Qt::LeftEdge : Qt::Edges{});
     }
 }
 
+QRect desktopMenuWorkArea(const DesktopAnchorResult& anchor) {
+    QRect area = anchor.workAreaPhysicalRect;
+    const QRect overlap = area.intersected(anchor.taskbarPhysicalRect);
+    if (!area.isValid() || !overlap.isValid())
+        return area;
+    switch (desktopTaskbarEdge(anchor)) {
+    case TaskbarEdge::Bottom:
+        if (overlap.bottom() == area.bottom()) {
+            if (overlap.top() <= area.top())
+                return {};
+            area.setBottom(overlap.top() - 1);
+        }
+        break;
+    case TaskbarEdge::Top:
+        if (overlap.top() == area.top()) {
+            if (overlap.bottom() >= area.bottom())
+                return {};
+            area.setTop(overlap.bottom() + 1);
+        }
+        break;
+    case TaskbarEdge::Left:
+        if (overlap.left() == area.left()) {
+            if (overlap.right() >= area.right())
+                return {};
+            area.setLeft(overlap.right() + 1);
+        }
+        break;
+    case TaskbarEdge::Right:
+        if (overlap.right() == area.right()) {
+            if (overlap.left() <= area.left())
+                return {};
+            area.setRight(overlap.left() - 1);
+        }
+        break;
+    }
+    return area;
+}
+
 QRect desktopPopupPhysicalRect(const QSize& windowPhysicalSize, const DesktopAnchorResult& anchor,
                                int gapPhysicalPixels) {
-    const QRect area = anchor.workAreaPhysicalRect;
+    const QRect area = desktopMenuWorkArea(anchor);
     if (!area.isValid() || windowPhysicalSize.width() <= 0 || windowPhysicalSize.height() <= 0) {
         return {};
     }
@@ -194,6 +232,8 @@ QRect desktopPopupPhysicalRect(const QSize& windowPhysicalSize, const DesktopAnc
     if (anchor.centeredStart && (desktopTaskbarEdge(anchor) == TaskbarEdge::Top ||
                                  desktopTaskbarEdge(anchor) == TaskbarEdge::Bottom))
         x = left + (areaWidth - width) / 2;
+    else if (anchor.centeredStart)
+        y = top + (areaHeight - height) / 2;
     x = std::clamp(x, left, right - width + 1);
     y = std::clamp(y, top, bottom - height + 1);
     // The endpoint constructor avoids x + width - 1 overflowing at INT_MAX.
@@ -215,6 +255,8 @@ DesktopWindowMetricsResult DesktopPlatform::queryWindowMetrics(quintptr) {
 bool DesktopPlatform::hasOwnedForegroundWindow(quintptr) {
     return false;
 }
+
+DesktopPresentationResult DesktopPlatform::presentMenuWindow(quintptr) { return {}; }
 
 QScreen *DesktopPlatform::screenForAnchor(const DesktopAnchorResult &anchor) {
     const auto *application = qobject_cast<QGuiApplication *>(QCoreApplication::instance());

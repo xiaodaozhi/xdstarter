@@ -6,11 +6,15 @@
 python3 -m unittest discover -s tests/tooling -v
 ```
 
-`core/` 为无 Qt 的 C++20 几何行为测试。`core-debug` 与 `core-release` 验证相同可观察行为，测试不使用会在 Release 中消失的 assert。Windows Qt 应用开启 `BUILD_TESTING` 时共注册十五套 CTest：
+`core/` 为无 Qt 的 C++20 几何行为测试。`core-debug` 与 `core-release` 验证相同可观察行为，测试不使用会在 Release 中消失的 assert。Windows Qt 应用开启 `BUILD_TESTING` 时共注册十六套 CTest：
 
 | 目录/入口 | CTest | 范围 |
 | --- | --- | --- |
 | `core/` | `core.tile_grid` | 网格几何、边界、非法尺寸与溢出 |
+| `platform/win_key_capture_tests.cpp` | `platform.win-key-capture` | 独按／组合键、派发失败、暂停和事件代次 |
+| `platform/start_button_capture_tests.cpp` | `platform.start-button-capture` | 点资格与过期、显示器／DPI／代次变化、完整 down/up、拖出／长按／双击、暂停与合成输入透传 |
+| `services/layout_import_tests.cpp` | `services.layout_import` | 严格预览、取消、替换事务、修订与失败恢复 |
+| `services/search_service_tests.cpp` | `services.search` | 离线名称／拼音／别名匹配与索引代次 |
 | `services/prototype_service_tests.cpp` | `services.prototype` | 稳定标识、邻接、预览不变性、移动／跨组／三档尺寸及确定性挤开、满格源位复用／空间不足原子拒绝、180 轮不变量与恢复、固定/取消固定及非法操作拒绝 |
 | `services/layout_store_tests.cpp` | `services.layout_store` | 严格 schema、原子保存、备份/损坏恢复、未来版本和失败路径 |
 | `services/session_instance_tests.cpp` | `services.session_instance` | 独立进程 activate 握手、重复启动、会话隔离和主实例释放恢复；本机命名管道需要正常桌面权限 |
@@ -26,7 +30,7 @@ python3 -m unittest discover -s tests/tooling -v
 产品与 GUI 测试共用 `xdstarter_add_ui` 编译的 QML、controller 与视觉资源；Qt6::Test 只进入测试目标。GUI 测试使用独立临时配置，覆盖鼠标组内/跨组拖拽、冲突与 Esc 取消、三档尺寸菜单、Ctrl+方向键移动、重建窗口恢复布局/主题、失败重试和未来版本只读，另检查两主题下尺寸菜单高亮/按下文字与勾选的对比度，并保留原有名称、导航、主题、最小窗口与磁贴像素几何回归。无边框窗口与共享圆角 token、可键盘收起按钮、`Popup.Item` 内部菜单、呈现清理契约和外部释放取消拖拽预览继续回归；本轮改为透明外窗、自绘边框/阴影与侧栏背景圆角裁切，正文尺寸及共享磁贴几何不变。清理不得改变已提交布局或退出编辑模式。
 
 ```powershell
-# 使用toolchain.json正式工具和默认项目Qt缓存，包含构建、lint与十五套CTest。
+# 使用toolchain.json正式工具和默认项目Qt缓存，包含构建、lint与十六套CTest。
 ./scripts/build-windows.ps1 -InstallTools -Python python -Preset app-release -Fresh
 $env:XDSTARTER_QT_ROOT = "$PWD/build/Qt/6.8.2/msvc2022_64"
 ./scripts/verify-windows-ui.ps1 -QtPrefix $env:XDSTARTER_QT_ROOT
@@ -67,4 +71,8 @@ Windows 产品唤起调用 `queryMenuAnchor()`，仅后台读取显示器、工�
 
 Issue #41 的 `interactionRefinements` 与 `catalogAlphabetAndFolderOverlay` 覆盖默认编辑、中文字体、圆形清除、Tab／点击焦点门控、600 ms tooltip、移除旧入口、hover 图钉、分类全视口覆盖和文件夹导航不启动应用。`XDSTARTER_INTERACTION_CAPTURE_DIR` 可把深浅更多菜单抓帧保存到调用者指定的本地目录；它不读取真实目录或注册托盘。
 
-Issue #41 当前正式本机结果：15/15 CTest、GUI 57/57、host 38/38，字体字形与目录刷新后的视觉尺寸均有回归；详见[本轮证据](../docs/technical/validation/issue-41/menu-experience.json)与[测试策略](../docs/technical/testing.md)。模拟任务栏与 offscreen 测试不代替完整 Windows 兼容矩阵。
+Issue #41 的历史正式本机结果为 15/15 CTest、GUI 57/57、host 38/38，字体字形与目录刷新后的视觉尺寸均有回归；详见[历史证据](../docs/technical/validation/issue-41/menu-experience.json)。
+
+Issue #45 当前正式结果为 16/16 CTest、GUI 63/63、host 41/41。任务栏参数测试覆盖四边、双轴居中、五档缩放、负坐标和三种尺寸，共240组合。`xdstarter_native_taskbar_probe --run` 仅移动测试自己的隐藏 HWND；`--run --launch-show-states` 验证隐藏／最小化子进程的实际可见、最小化与前台状态；`--run --observe-product PID` 只读观察指定测试产品窗口。后两者与隐藏矩阵不能混为完整物理输入验收。
+
+`scripts/verify-taskbar-integration.ps1` 默认只读，输出原生几何和开始按钮识别 JSON；显式 `-AlignmentMatrix` 才短暂修改 TaskbarAl，并在 finally 中恢复、复核原值和类型。它不重启 Explorer、不改 StuckRects 二进制、不猜测任务栏方向设置。真实系统四边切换、边框拖动与其他 Windows 构建的状态见[测试策略](../docs/technical/testing.md)，未运行的组合继续由 GitHub Issue 跟踪。

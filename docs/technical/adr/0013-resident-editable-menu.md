@@ -18,7 +18,9 @@
 
 窗口按实际任务栏边缘与工作区定位，水平居中偏好从 Explorer 的只读 TaskbarAl 值获得，缺少值时回退左对齐；该注册表偏好并非公开稳定 API，未知取值不作为点击命中依据。QML 用 Qt startSystemResize，按停靠方向暴露远离任务栏的边缘，通用布局和 QML 不包含 Win32。
 
-## 开始按钮排查结论
+## 历史：Issue #41 的开始按钮排查结论
+
+后续点击能力由 [ADR-0014](0014-start-click-and-adaptive-taskbar.md) 定义，以下保留只读排查时的原始范围。
 
 当前产品从未实现开始按钮点击接管：ADR-0009 明确只读研究，现有输入模块只接管用户显式开启的独按 Win 键。2026-10-23 本机 Windows 10.0.26300／Qt6.8.2 只读探针得到 `uiaIdentified=true`、`nativeHandleRead=true`、`classification=no-native-window`，不是独立原生窗口候选。沙箱探针曾返回 `visible-explorer-taskbar-unavailable`，正常权限复测后才取得上述真实结果，两者不混用。
 
