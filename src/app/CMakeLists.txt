@@ -4,9 +4,11 @@ function(xdstarter_add_ui target import_root)
         "${PROJECT_SOURCE_DIR}/src/app/application_icon_provider.cpp"
         "${PROJECT_SOURCE_DIR}/src/app/desktop_window_host.h"
         "${PROJECT_SOURCE_DIR}/src/app/desktop_window_host.cpp"
+        "${PROJECT_SOURCE_DIR}/src/app/interface_font.h"
+        "${PROJECT_SOURCE_DIR}/src/app/interface_font.cpp"
     )
     set(qml_files)
-    foreach(component IN ITEMS Main TileButton TileGroup ShortcutRail MenuChrome LayoutImportDialog)
+    foreach(component IN ITEMS Main TileButton TileGroup ShortcutRail MenuChrome LayoutImportDialog Hint)
         set(qml_file "${PROJECT_SOURCE_DIR}/qml/${component}.qml")
         set_source_files_properties("${qml_file}" PROPERTIES QT_RESOURCE_ALIAS "${component}.qml")
         list(APPEND qml_files "${qml_file}")
@@ -31,7 +33,7 @@ function(xdstarter_add_ui target import_root)
     )
     set(interface_assets)
     foreach(theme IN ITEMS dark light)
-        foreach(glyph IN ITEMS documents downloads settings power avatar search chevron-down more add close pin unpin apps)
+        foreach(glyph IN ITEMS documents downloads settings power avatar search chevron-down more add close pin unpin apps refresh globe)
             set(asset "${PROJECT_SOURCE_DIR}/docs/design/assets/ui/${theme}/${glyph}.svg")
             set_source_files_properties("${asset}" PROPERTIES QT_RESOURCE_ALIAS "ui/${theme}/${glyph}.svg")
             list(APPEND interface_assets "${asset}")

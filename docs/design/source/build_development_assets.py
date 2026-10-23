@@ -30,6 +30,12 @@ def sha256(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def source_sha256(path):
+    # Match .gitattributes and committed Git blobs even after a Windows editor
+    # writes CRLF. Binary asset digests continue to cover the exact bytes.
+    return hashlib.sha256(path.read_bytes().replace(b'\r\n', b'\n')).hexdigest()
+
+
 def svg_document(body, width, height):
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
@@ -80,7 +86,7 @@ def overview_svg(grid):
         body += f'<rect x="32" y="{y}" width="1536" height="156" rx="14" fill="{card}"/>'
         body += text(52, y + 32, f'{variant.upper()} / 24 DIP', 17, label)
         for index, name in enumerate(GLYPHS):
-            x = 58 + index * 126
+            x = 52 + index * (1496 / len(GLYPHS))
             body += (
                 f'<g transform="translate({x + 29} {y + 51}) scale(2)" fill="none" '
                 f'stroke="{THEME_COLORS[variant]}" stroke-width="1.75" stroke-linecap="round" '
@@ -234,9 +240,9 @@ def build(svg_only=False):
             '磁贴底图为参考/位图降级素材；QML 应优先按共享 token 原生绘制，保持动态主题与缩放。',
         ],
         'generatorSources': [
-            {'path': (Path('docs/design/source') / name).as_posix(), 'sha256': sha256(DESIGN / 'source' / name)}
+            {'path': (Path('docs/design/source') / name).as_posix(), 'sha256': source_sha256(DESIGN / 'source' / name)}
             for name in sources
-        ] + [{'path': 'docs/design/tokens/tile-grid.json', 'sha256': sha256(DESIGN / 'tokens/tile-grid.json')}],
+        ] + [{'path': 'docs/design/tokens/tile-grid.json', 'sha256': source_sha256(DESIGN / 'tokens/tile-grid.json')}],
         'assets': entries,
     }
     (OUT / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8', newline='\n')

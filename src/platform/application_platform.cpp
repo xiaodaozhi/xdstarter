@@ -24,7 +24,7 @@ bool safeText(const QString& text, int maximumLength) {
 }
 
 QString canonicalIdentity(const QString& type, const QString& identity) {
-    return type == QStringLiteral("shortcut")
+    return (type == QStringLiteral("shortcut") || type == QStringLiteral("folder"))
                ? QDir::cleanPath(QString(identity).replace(QLatin1Char('\\'), QLatin1Char('/')))
                      .toCaseFolded()
                : identity.toCaseFolded();
@@ -66,12 +66,23 @@ bool isValidApplicationTarget(const LaunchTarget& target) {
     return false;
 }
 
+bool isValidCatalogEntry(const LaunchTarget& target) {
+    if (target.type != QLatin1String("folder"))
+        return isValidApplicationTarget(target);
+    auto shortcut = target;
+    shortcut.type = QStringLiteral("shortcut");
+    shortcut.shortcutPath += QStringLiteral("/.folder.lnk");
+    shortcut.id = applicationTargetId(shortcut.type, shortcut.shortcutPath);
+    return isValidApplicationTarget(shortcut) &&
+           target.id == applicationTargetId(target.type, target.shortcutPath);
+}
+
 QVector<LaunchTarget> normalizedApplications(const QVector<LaunchTarget>& applications) {
     QVector<LaunchTarget> result;
     result.reserve(applications.size());
     QSet<QString> seen;
     for (LaunchTarget target : applications) {
-        if (!isValidApplicationTarget(target) || seen.contains(target.id)) {
+        if (!isValidCatalogEntry(target) || seen.contains(target.id)) {
             continue;
         }
         target.iconKey = target.id;

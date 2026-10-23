@@ -398,10 +398,10 @@ QJsonArray geometrySignature(Fixture& fixture) {
 
 QJsonObject keyBounds(Fixture& fixture) {
     QJsonObject result;
-    for (const auto* name : {"menuPanel", "shortcutRail", "searchToolbar", "searchField",
-                             "editLayoutButton", "moreMenuButton", "closeMenuButton", "catalogPanel",
-                             "applicationList", "groupsFlickable", "searchPanel", "feedbackPanel",
-                             "groupNameField", "groupRenameAction", "themeButton"}) {
+    for (const auto* name :
+         {"menuPanel", "shortcutRail", "searchToolbar", "searchField", "moreMenuButton",
+          "closeMenuButton", "catalogPanel", "applicationList", "groupsFlickable", "searchPanel",
+          "feedbackPanel", "groupNameField", "groupRenameAction", "themeButton"}) {
         if (auto* item = fixture.item(QLatin1String(name))) {
             result.insert(QLatin1String(name), QJsonObject{
                 {QStringLiteral("visible"), item->isVisible()},
@@ -425,7 +425,7 @@ bool defaultGeometryPassed(Fixture& fixture) {
     if (std::abs(searchBounds.top() - panelBounds.top() - 24) > 0.1 ||
         std::abs(searchBounds.left() - panelBounds.left() - 64 - 24) > 0.1)
         return false;
-    for (const auto* name : {"editLayoutButton", "moreMenuButton", "closeMenuButton"}) {
+    for (const auto* name : {"moreMenuButton", "closeMenuButton"}) {
         auto* action = fixture.item(QLatin1String(name));
         if (!action || !action->isVisible() || action->size() != QSizeF(36, 36) ||
             std::abs(action->mapToScene(action->boundingRect().center()).y() -
@@ -602,11 +602,11 @@ int runVisualAcceptanceProbe() {
                          theme + QStringLiteral(" clearing search timed out.")))
                 return false;
 
-            const bool edited = fixture.activate(QStringLiteral("editLayoutButton")) &&
-                                fixture.controller->editMode();
+            const bool edited = fixture.controller->editMode();
             capture(fixture, theme, QStringLiteral("edit"), [&] { return edited &&
-                visibleItem(fixture, QStringLiteral("newGroupButton")) &&
                 visibleItem(fixture, QStringLiteral("groupActions-work")); });
+            QMetaObject::invokeMethod(fixture.window, "openMoreMenu");
+            waitUntil([&] { return fixture.popupOpened(QStringLiteral("moreMenu")); });
             const bool openedDialog = fixture.activate(QStringLiteral("newGroupButton")) &&
                 waitUntil([&] { return fixture.popupOpened(QStringLiteral("groupNameDialog")); });
             capture(fixture, theme, QStringLiteral("group-name-dialog"), [&] { return openedDialog &&
@@ -619,12 +619,12 @@ int runVisualAcceptanceProbe() {
                 QTest::keyClick(fixture.window, Qt::Key_F10, Qt::ShiftModifier);
             }
             const bool openedGroup = waitUntil([&] { return fixture.popupOpened(QStringLiteral("groupMenu")); });
-            capture(fixture, theme, QStringLiteral("group-menu"), [&] { return openedGroup &&
-                visibleHint(fixture, QStringLiteral("groupRenameAction")) &&
-                visibleHint(fixture, QStringLiteral("groupMoveDownAction")) &&
-                visibleHint(fixture, QStringLiteral("groupDeleteHint")); });
+            capture(fixture, theme, QStringLiteral("group-menu"), [&] {
+                return openedGroup && visibleHint(fixture, QStringLiteral("groupRenameAction")) &&
+                       visibleHint(fixture, QStringLiteral("groupMoveDownAction")) &&
+                       visibleItem(fixture, QStringLiteral("groupDeleteAction"));
+            });
             fixture.closePopups();
-            fixture.controller->setEditMode(false);
 
             fixture.state->firstUnavailable = true;
             fixture.controller->refreshApplications();

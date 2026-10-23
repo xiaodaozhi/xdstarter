@@ -76,11 +76,11 @@
   "generatorSources": [
     {
       "path": "docs/design/source/build_development_assets.py",
-      "sha256": "d4fed7e5eac93fab61309fbfe6e09d8544c069737da2b9f27e0383dae8f7caf4"
+      "sha256": "184eadf02348cb8d2c43a1e5182e86ff426d3819df6682db010a97efc89de4c1"
     },
     {
       "path": "docs/design/source/ui_symbols.py",
-      "sha256": "accb8f45770aa486a638ecfdf6a5e11408e5bb68d7554e42df606f771a52704c"
+      "sha256": "45cedc316d559797f9cb9344a0bfd5e8128ae7d5d5106fff1d8f5ecb8f1779ee"
     },
     {
       "path": "docs/design/source/render_svg.py",
@@ -88,11 +88,11 @@
     },
     {
       "path": "docs/design/source/renderer/main.cpp",
-      "sha256": "0299787d82fbf16ec884b25e3e3fc2a8ab85f76c35b42ff90588e78316163d17"
+      "sha256": "4abecc8d3802a1e0f7edd39b8e91cb6dcd4785617ceb57bda0748e1ec7f1e202"
     },
     {
       "path": "docs/design/source/renderer/CMakeLists.txt",
-      "sha256": "1ac64a85aad8d9a0a81fbe7bbcd96382fc4897e03ec5f25066c27e7bf897b16e"
+      "sha256": "375fdd8698414e693d681c479f5db41e1156822c66fde655e414101a329847f6"
     },
     {
       "path": "docs/design/tokens/tile-grid.json",
@@ -1526,6 +1526,244 @@
       "variant": "dark",
       "source": "docs/design/assets/ui/dark/apps.svg",
       "sha256": "c952164aa1516872bfe547da24d6efca6fe9e814225f5c70f8059ebdd27c9e0f",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/dark/refresh.svg",
+      "format": "svg",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        24,
+        24
+      ],
+      "scale": null,
+      "variant": "dark",
+      "source": "docs/design/source/ui_symbols.py:glyph_svg",
+      "sha256": "8849310a2a282f3dc0642214ea6b8f532caa5db5b9174b0ebc367d1832a53941",
+      "purpose": "界面操作图标"
+    },
+    {
+      "path": "ui/dark/refresh-24.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        24,
+        24
+      ],
+      "scale": 1,
+      "variant": "dark",
+      "source": "docs/design/assets/ui/dark/refresh.svg",
+      "sha256": "7f735841d68012b08d17a5086bc4d15c1b11dcbd0dc35ea91b1d147d020f4af9",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/dark/refresh-30.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        30,
+        30
+      ],
+      "scale": 1.25,
+      "variant": "dark",
+      "source": "docs/design/assets/ui/dark/refresh.svg",
+      "sha256": "4485dd510a9f1c84c0ce266d04ae9239a8158141f047f2a2725471a51844f4e2",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/dark/refresh-36.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        36,
+        36
+      ],
+      "scale": 1.5,
+      "variant": "dark",
+      "source": "docs/design/assets/ui/dark/refresh.svg",
+      "sha256": "63886a3e057862c2e31252930851baf4e8cb72765aff81ec535176c9b7af67b8",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/dark/refresh-42.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        42,
+        42
+      ],
+      "scale": 1.75,
+      "variant": "dark",
+      "source": "docs/design/assets/ui/dark/refresh.svg",
+      "sha256": "3b5309d6af573d41fc1e1fd2598f7aa560ca64c77ebaf949519093c9628c3ec3",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/dark/refresh-48.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        48,
+        48
+      ],
+      "scale": 2,
+      "variant": "dark",
+      "source": "docs/design/assets/ui/dark/refresh.svg",
+      "sha256": "429967d79432ec9b3b59c74ec543fb36586ea9abe8932d5be350bfb2842f5237",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/dark/refresh-72.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        72,
+        72
+      ],
+      "scale": 3,
+      "variant": "dark",
+      "source": "docs/design/assets/ui/dark/refresh.svg",
+      "sha256": "fa66cfafdb2a1e907d666c3034ff81db81fdd157b45a1042c5c82e461ddaa918",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/dark/globe.svg",
+      "format": "svg",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        24,
+        24
+      ],
+      "scale": null,
+      "variant": "dark",
+      "source": "docs/design/source/ui_symbols.py:glyph_svg",
+      "sha256": "715c9af4e0199348d9a19752b93ade220af57af89c1b07f5cc06a8d99b99f391",
+      "purpose": "界面操作图标"
+    },
+    {
+      "path": "ui/dark/globe-24.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        24,
+        24
+      ],
+      "scale": 1,
+      "variant": "dark",
+      "source": "docs/design/assets/ui/dark/globe.svg",
+      "sha256": "525d18969a94ad262781410a986aa1f3667f30d70621f5cbee3bd81c5961053b",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/dark/globe-30.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        30,
+        30
+      ],
+      "scale": 1.25,
+      "variant": "dark",
+      "source": "docs/design/assets/ui/dark/globe.svg",
+      "sha256": "1d43fc26430b85c1a18deb3b84a4672861c70cd690d621ff5ce8f6ef1d56c0f4",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/dark/globe-36.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        36,
+        36
+      ],
+      "scale": 1.5,
+      "variant": "dark",
+      "source": "docs/design/assets/ui/dark/globe.svg",
+      "sha256": "456ec029197adedb7a3f4abb3742fd891b179aea6b60e9af529e444a5fdeff00",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/dark/globe-42.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        42,
+        42
+      ],
+      "scale": 1.75,
+      "variant": "dark",
+      "source": "docs/design/assets/ui/dark/globe.svg",
+      "sha256": "806489c0850e692b1d533d00d368abe63eb904df247a10fa3d10a7dc21c1480d",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/dark/globe-48.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        48,
+        48
+      ],
+      "scale": 2,
+      "variant": "dark",
+      "source": "docs/design/assets/ui/dark/globe.svg",
+      "sha256": "d3e1eeed4718680d125e4b1faf2ebb3049c4e54f4832e2e088b8d82efb1e0031",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/dark/globe-72.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        72,
+        72
+      ],
+      "scale": 3,
+      "variant": "dark",
+      "source": "docs/design/assets/ui/dark/globe.svg",
+      "sha256": "3b27add772cfe945e71370f6fd73eec50afebd6f1ab3ec8b445ff36d60b73a22",
       "purpose": "24 DIP 操作图标的对应像素导出"
     },
     {
@@ -3127,6 +3365,244 @@
       "purpose": "24 DIP 操作图标的对应像素导出"
     },
     {
+      "path": "ui/light/refresh.svg",
+      "format": "svg",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        24,
+        24
+      ],
+      "scale": null,
+      "variant": "light",
+      "source": "docs/design/source/ui_symbols.py:glyph_svg",
+      "sha256": "ad43549e3ca065a03cc5221c35c0f1cb7f414ebafaf915bf751ad45569d9a226",
+      "purpose": "界面操作图标"
+    },
+    {
+      "path": "ui/light/refresh-24.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        24,
+        24
+      ],
+      "scale": 1,
+      "variant": "light",
+      "source": "docs/design/assets/ui/light/refresh.svg",
+      "sha256": "0d794734c32081e66228df6b1a2d3eaf7575ecaf1027670a93c4d3c1e3f639fb",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/light/refresh-30.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        30,
+        30
+      ],
+      "scale": 1.25,
+      "variant": "light",
+      "source": "docs/design/assets/ui/light/refresh.svg",
+      "sha256": "67cc9442dbf4c1a345f8ed9389bfd7972e9c454b825464372f5806b739955167",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/light/refresh-36.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        36,
+        36
+      ],
+      "scale": 1.5,
+      "variant": "light",
+      "source": "docs/design/assets/ui/light/refresh.svg",
+      "sha256": "1aadd0e1011476a3f2c2458db83d522e98e461b2803609a2d50c7ff65b4e7304",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/light/refresh-42.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        42,
+        42
+      ],
+      "scale": 1.75,
+      "variant": "light",
+      "source": "docs/design/assets/ui/light/refresh.svg",
+      "sha256": "a8deb8e741a204e9a251149569f348a584037835a3fe149c911e7883f378d889",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/light/refresh-48.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        48,
+        48
+      ],
+      "scale": 2,
+      "variant": "light",
+      "source": "docs/design/assets/ui/light/refresh.svg",
+      "sha256": "1a0a35f149ab609313105beab054a8a9ee05e7b512cd22ebc417f6ca69e314a0",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/light/refresh-72.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        72,
+        72
+      ],
+      "scale": 3,
+      "variant": "light",
+      "source": "docs/design/assets/ui/light/refresh.svg",
+      "sha256": "437502b7f96e1f65f7cf9d6cf51ccf1aa89a9cd550219e82f630934b93613cb1",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/light/globe.svg",
+      "format": "svg",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        24,
+        24
+      ],
+      "scale": null,
+      "variant": "light",
+      "source": "docs/design/source/ui_symbols.py:glyph_svg",
+      "sha256": "b022b16171fcf2c75f28d5c2fa6fbd66f99fe39dfea4eecf0354574c3a3ee040",
+      "purpose": "界面操作图标"
+    },
+    {
+      "path": "ui/light/globe-24.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        24,
+        24
+      ],
+      "scale": 1,
+      "variant": "light",
+      "source": "docs/design/assets/ui/light/globe.svg",
+      "sha256": "eeb58dd13ebbc9632d0982df8db62aaefc3b1685e36e7cbb715d7da008e09d46",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/light/globe-30.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        30,
+        30
+      ],
+      "scale": 1.25,
+      "variant": "light",
+      "source": "docs/design/assets/ui/light/globe.svg",
+      "sha256": "27a429febed0ac509fb03617dfdb98233638edbdbde6471122e385aec1665522",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/light/globe-36.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        36,
+        36
+      ],
+      "scale": 1.5,
+      "variant": "light",
+      "source": "docs/design/assets/ui/light/globe.svg",
+      "sha256": "f4a740b524bb06ccd193578ba7b10ef1684209fc6e6f9c2b9d0b16cc922d2f98",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/light/globe-42.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        42,
+        42
+      ],
+      "scale": 1.75,
+      "variant": "light",
+      "source": "docs/design/assets/ui/light/globe.svg",
+      "sha256": "9a404be5c1125a8c04b2a023b21d853a804234ad5004ba7fd503aedb2e98e084",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/light/globe-48.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        48,
+        48
+      ],
+      "scale": 2,
+      "variant": "light",
+      "source": "docs/design/assets/ui/light/globe.svg",
+      "sha256": "e5c2c00109ced680fa72d9477085fa7e650cbb773fc437c1ac2c2ee18b7a4e97",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
+      "path": "ui/light/globe-72.png",
+      "format": "png",
+      "dip": [
+        24,
+        24
+      ],
+      "pixels": [
+        72,
+        72
+      ],
+      "scale": 3,
+      "variant": "light",
+      "source": "docs/design/assets/ui/light/globe.svg",
+      "sha256": "0a01a8e7bc139954b254c4c8f94cb7f2f66c584098a84ab8424e7dba60472fc1",
+      "purpose": "24 DIP 操作图标的对应像素导出"
+    },
+    {
       "path": "ui/light/avatar.svg",
       "format": "svg",
       "dip": [
@@ -4425,7 +4901,7 @@
       "scale": null,
       "variant": "overview",
       "source": "docs/design/source/build_development_assets.py:overview_svg",
-      "sha256": "137f8aee6a4f7cb89dc47a46a75c59ec7317770e7bfa5cdd5242fc9f64b7b9ea",
+      "sha256": "af9cf1f48bb7ea41c194cd3aaf1c4a3150c3e6b56fa02a7b2d44bf0f22f776dd",
       "purpose": "开发素材总览；大尺寸图标在总览中缩小显示"
     },
     {
@@ -4439,7 +4915,7 @@
       "scale": null,
       "variant": "overview",
       "source": "docs/design/assets/asset-overview.svg",
-      "sha256": "92ec66ac8a852cc1315e50a66be2c97e70149cd44150d39e65ed295def430b03",
+      "sha256": "3790e99358fb863066226691b653b6c22bd16352ae4333fcec4958d14eb7a1cd",
       "purpose": "开发素材总览预览；不用于界面切图"
     }
   ]

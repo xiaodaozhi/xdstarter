@@ -94,8 +94,8 @@ CMake 的 `xdstarter_add_ui` 为产品与 GUI 测试编译同一组 QML、contro
 
 当前数据流如下；开始按钮接管仍为后续目标：
 
-1. 启动：读取偏好与布局 → 预创建菜单窗口 → 后台加载应用目录与图标 → 更新模型。
-2. 菜单唤起：托盘事件或显式启用后的有效 Win 独按通知 → DesktopWindowHost 清理暂态、保持隐藏并标记待显示 → DesktopShellService 快速读取显示器/工作区/任务栏 DPI → 当前有效结果抑制原生装饰、隐藏迁移并等待 DPR／尺寸稳定 → 最终定位、显示与请求焦点；取消或过期结果不重开窗口，外部焦点持续离开后可恢复地收起。
+1. 启动：取得会话单例锁／通知已有实例 → 读取偏好与布局 → 预创建隐藏菜单窗口并注册托盘 → 后台加载应用目录与图标 → 更新模型；托盘失败保留窗口恢复入口。
+2. 菜单唤起：二次启动 IPC、托盘事件或显式启用后的有效 Win 独按通知 → DesktopWindowHost 清理暂态、保持隐藏并标记待显示 → DesktopShellService 快速读取显示器/工作区/任务栏 DPI → 当前有效结果抑制原生装饰、隐藏迁移并等待 DPR／尺寸稳定 → 最终定位、显示与请求焦点；取消或过期结果不重开窗口，外部焦点持续离开后可恢复地收起。
 3. 搜索：目录与固定目标值快照／已提交查询 → SearchService 独立 worker 构建或查询 SearchIndex → 复核目录修订与查询代次 → controller 映射缓存状态 → QML 稳定排序结果列表。
 4. 编辑与固定：磁贴/分组的指针与键盘操作或选择应用 → controller 复核可写状态与编辑条件 → PrototypeService 校验 → 提交内存布局 → 更新模型 → 后台合并保存；显示名称覆盖只改磁贴元数据，不改启动目标。
 5. 启动目标：UI 发出 targetId → ApplicationCatalog worker 复核可用性 → ApplicationPlatform 启动 → 成功收起、失败保留菜单。
@@ -131,3 +131,7 @@ GUI 线程更新布局 QVariantList 和应用 QAbstractListModel，并管理窗�
 [#29](https://github.com/xiaodaozhi/xdstarter/issues/29) 继续复用产品与 GUI 测试的相同 QML、controller 和视觉资源。完整布局读取 visual.json 的 layout、font、themes 与 tilePalette；tile-grid.json 仍是磁贴实体几何来源。浏览仅裁去未使用的组尾放置行，编辑恢复完整区域，服务快照和持久化 schema 不变。
 
 controller 将操作、保存、桌面动作与目录扫描的结构化成功／失败结果映射为只读 operationError、persistenceError、desktopActionError、catalogError，并随原状态 NOTIFY 一起更新。目录部分警告也保留可见提示。QML 使用这些标志保留重要反馈，将普通成功反馈放入有界计时的覆盖层，避免常驻状态栏挤占正文；不基于本地化字符串猜测严重程度。更多菜单仍为 Popup.Item，沿用内部焦点和取消规则。独立视觉 probe 仅使用内存布局、匿名目录与图标，不调用真实 Shell、托盘或输入接管，其抓帧不能代替真实产品验收。
+
+## 单例与默认编辑更新（Issue #41）
+
+应用启动的 SessionInstance 在 QML／目录服务之前取得用户会话锁和本机 activate 通道；二次进程退出前请求原 host 唤起，首次成功注册托盘后保持隐藏。Windows 会话身份与前台授权仍封装在 PlatformIntegration，服务只使用 Qt Network IPC。ApplicationListModel 保存目录层级元数据，ApplicationBrowserModel 按当前文件夹过滤及分类排序；搜索独立读取全部合法应用。布局 planPlacement 先生成不变量满足的完整副本，再一次提交；过渡几何独立于 schema3 数据。行为、恢复和任务栏策略见 [ADR-0013](adr/0013-resident-editable-menu.md)。

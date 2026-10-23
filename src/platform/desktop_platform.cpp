@@ -125,6 +125,35 @@ QString startButtonHitClassificationName(DesktopStartButtonHitClassification val
     return QStringLiteral("unsupported");
 }
 
+TaskbarEdge desktopTaskbarEdge(const DesktopAnchorResult& anchor) {
+    const auto bar = anchor.taskbarPhysicalRect;
+    const auto screen = anchor.monitorPhysicalRect;
+    if (!bar.isValid() || !screen.isValid())
+        return TaskbarEdge::Bottom;
+    if (bar.width() >= bar.height())
+        return std::abs(qint64(bar.center().y()) - screen.top()) <
+                       std::abs(qint64(bar.center().y()) - screen.bottom())
+                   ? TaskbarEdge::Top
+                   : TaskbarEdge::Bottom;
+    return std::abs(qint64(bar.center().x()) - screen.left()) <
+                   std::abs(qint64(bar.center().x()) - screen.right())
+               ? TaskbarEdge::Left
+               : TaskbarEdge::Right;
+}
+
+Qt::Edges desktopResizeEdges(const DesktopAnchorResult& anchor) {
+    switch (desktopTaskbarEdge(anchor)) {
+    case TaskbarEdge::Top:
+        return Qt::BottomEdge | Qt::RightEdge | (anchor.centeredStart ? Qt::LeftEdge : Qt::Edges{});
+    case TaskbarEdge::Left:
+        return Qt::BottomEdge | Qt::RightEdge;
+    case TaskbarEdge::Right:
+        return Qt::BottomEdge | Qt::LeftEdge;
+    default:
+        return Qt::TopEdge | Qt::RightEdge | (anchor.centeredStart ? Qt::LeftEdge : Qt::Edges{});
+    }
+}
+
 QRect desktopPopupPhysicalRect(const QSize& windowPhysicalSize, const DesktopAnchorResult& anchor,
                                int gapPhysicalPixels) {
     const QRect area = anchor.workAreaPhysicalRect;
@@ -148,8 +177,23 @@ QRect desktopPopupPhysicalRect(const QSize& windowPhysicalSize, const DesktopAnc
     const qint64 height = std::min<qint64>(windowPhysicalSize.height(), areaHeight);
     qint64 x = left + gap;
     qint64 y = bottom - height + 1 - gap;
-    // UI Automation may transiently fail while Explorer is animating. The
-    // button's trust state must never change placement on the same work area.
+    switch (desktopTaskbarEdge(anchor)) {
+    case TaskbarEdge::Top:
+        y = top + gap;
+        break;
+    case TaskbarEdge::Left:
+        y = top + gap;
+        break;
+    case TaskbarEdge::Right:
+        x = right - width + 1 - gap;
+        y = top + gap;
+        break;
+    default:
+        break;
+    }
+    if (anchor.centeredStart && (desktopTaskbarEdge(anchor) == TaskbarEdge::Top ||
+                                 desktopTaskbarEdge(anchor) == TaskbarEdge::Bottom))
+        x = left + (areaWidth - width) / 2;
     x = std::clamp(x, left, right - width + 1);
     y = std::clamp(y, top, bottom - height + 1);
     // The endpoint constructor avoids x + width - 1 overflowing at INT_MAX.

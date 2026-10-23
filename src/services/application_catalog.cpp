@@ -1,4 +1,7 @@
 #include "application_catalog.h"
+#include "pinyin_data.h"
+
+#include <algorithm>
 
 #include <QMutexLocker>
 #include <QPointer>
@@ -11,7 +14,8 @@ namespace xdstarter {
 namespace {
 bool sameTarget(const LaunchTarget& a, const LaunchTarget& b) {
     return a.id == b.id && a.type == b.type && a.name == b.name &&
-           a.shortcutPath == b.shortcutPath && a.aumid == b.aumid && a.iconKey == b.iconKey;
+           a.shortcutPath == b.shortcutPath && a.aumid == b.aumid && a.iconKey == b.iconKey &&
+           a.parentFolderId == b.parentFolderId;
 }
 } // namespace
 
@@ -47,6 +51,10 @@ QVariant ApplicationListModel::data(const QModelIndex& index, int role) const {
         return {};
     const auto& entry = applications_[index.row()];
     switch (role) {
+    case Section:
+        return applicationSection(entry.name);
+    case ParentFolderId:
+        return entry.parentFolderId;
     case AppId:
         return entry.id;
     case DisplayName:
@@ -66,8 +74,9 @@ QVariant ApplicationListModel::data(const QModelIndex& index, int role) const {
     }
 }
 QHash<int, QByteArray> ApplicationListModel::roleNames() const {
-    return {{AppId, "appId"},           {DisplayName, "displayName"}, {Kind, "kind"},
-            {IconSource, "iconSource"}, {Available, "available"},     {Pinned, "pinned"}};
+    return {{AppId, "appId"},           {DisplayName, "displayName"},      {Kind, "kind"},
+            {IconSource, "iconSource"}, {Available, "available"},          {Pinned, "pinned"},
+            {Section, "sectionKey"},    {ParentFolderId, "parentFolderId"}};
 }
 void ApplicationListModel::replace(QVector<LaunchTarget> applications) {
     beginResetModel();
@@ -106,9 +115,124 @@ void ApplicationListModel::setAvailability(const QString& id, bool available) {
     }
 }
 
+QString applicationSection(const QString& name) {
+    const auto trimmed = name.trimmed();
+    if (trimmed.isEmpty())
+        return QStringLiteral("🌐");
+    const auto scalars = trimmed.toUcs4();
+    const char32_t first = scalars.first();
+    if (QChar::isDigit(first))
+        return QStringLiteral("#");
+    const auto normalized = trimmed.normalized(QString::NormalizationForm_D).toUpper();
+    const auto character = normalized.front();
+    if (character >= QLatin1Char('A') && character <= QLatin1Char('Z'))
+        return QString(character);
+    const auto readings = pinyinReadings(first);
+    if (!readings.isEmpty())
+        return readings.first().first(1).toUpper();
+    return QStringLiteral("🌐");
+}
+
+ApplicationBrowserModel::ApplicationBrowserModel(QObject* parent) : QSortFilterProxyModel(parent) {
+    setDynamicSortFilter(true);
+    connect(this, &QAbstractItemModel::modelReset, this, &ApplicationBrowserModel::sectionsChanged);
+    connect(this, &QAbstractItemModel::rowsInserted, this,
+            &ApplicationBrowserModel::sectionsChanged);
+    connect(this, &QAbstractItemModel::rowsRemoved, this,
+            &ApplicationBrowserModel::sectionsChanged);
+}
+bool ApplicationBrowserModel::filterAcceptsRow(int row, const QModelIndex& parent) const {
+    return sourceModel()
+               ->index(row, 0, parent)
+               .data(ApplicationListModel::ParentFolderId)
+               .toString() == (folders_.isEmpty() ? QString{} : folders_.last());
+}
+bool ApplicationBrowserModel::lessThan(const QModelIndex& left, const QModelIndex& right) const {
+    const QString a = left.data(ApplicationListModel::Section).toString();
+    const QString b = right.data(ApplicationListModel::Section).toString();
+    if (a != b)
+        return a == QLatin1String("#") ||
+               (b != QLatin1String("#") && (b == QStringLiteral("🌐") || a < b));
+    const int order =
+        QString::localeAwareCompare(left.data(ApplicationListModel::DisplayName).toString(),
+                                    right.data(ApplicationListModel::DisplayName).toString());
+    return order ? order < 0
+                 : left.data(ApplicationListModel::AppId).toString() <
+                       right.data(ApplicationListModel::AppId).toString();
+}
+QString ApplicationBrowserModel::folderName() const { return name_; }
+bool ApplicationBrowserModel::inFolder() const { return !folders_.isEmpty(); }
+QStringList ApplicationBrowserModel::sections() const {
+    QStringList result;
+    for (int row = 0; row < rowCount(); ++row) {
+        const auto section = index(row, 0).data(ApplicationListModel::Section).toString();
+        if (!result.contains(section))
+            result.append(section);
+    }
+    return result;
+}
+int ApplicationBrowserModel::sectionIndex(const QString& section) const {
+    for (int row = 0; row < rowCount(); ++row) {
+        if (index(row, 0).data(ApplicationListModel::Section).toString() == section)
+            return row;
+    }
+    return -1;
+}
+bool ApplicationBrowserModel::openFolder(const QString& id) {
+    if (folders_.size() >= 12)
+        return false;
+    for (int row = 0; row < rowCount(); ++row) {
+        const auto entry = index(row, 0);
+        if (entry.data(ApplicationListModel::AppId).toString() != id ||
+            entry.data(ApplicationListModel::Kind).toString() != QLatin1String("folder"))
+            continue;
+        name_ = entry.data(ApplicationListModel::DisplayName).toString();
+        folders_.append(id);
+        invalidateFilter();
+        emit folderChanged();
+        emit sectionsChanged();
+        return true;
+    }
+    return false;
+}
+void ApplicationBrowserModel::reconcile() {
+    if (!folders_.isEmpty()) {
+        bool found = false;
+        for (int row = 0; row < sourceModel()->rowCount(); ++row) {
+            const auto entry = sourceModel()->index(row, 0);
+            if (entry.data(ApplicationListModel::AppId).toString() == folders_.last() &&
+                entry.data(ApplicationListModel::Kind).toString() == QLatin1String("folder")) {
+                name_ = entry.data(ApplicationListModel::DisplayName).toString();
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            folders_.clear();
+            name_.clear();
+        }
+    }
+    invalidateFilter();
+    emit folderChanged();
+    emit sectionsChanged();
+}
+void ApplicationBrowserModel::back() {
+    if (!folders_.isEmpty())
+        folders_.removeLast();
+    name_.clear();
+    reconcile();
+}
+void ApplicationBrowserModel::resetFolder() {
+    folders_.clear();
+    name_.clear();
+    reconcile();
+}
+
 ApplicationCatalog::ApplicationCatalog(std::unique_ptr<ApplicationPlatform> platform,
                                        QObject* parent)
-    : QObject(parent), platform_(std::move(platform)), model_(this) {
+    : QObject(parent), platform_(std::move(platform)), model_(this), browser_(this) {
+    browser_.setSourceModel(&model_);
+    browser_.sort(0);
     worker_ = new QObject;
     worker_->moveToThread(&thread_);
     connect(&thread_, &QThread::finished, worker_, &QObject::deleteLater);
@@ -118,8 +242,15 @@ ApplicationCatalog::~ApplicationCatalog() {
     thread_.quit();
     thread_.wait();
 }
-QAbstractItemModel* ApplicationCatalog::applicationsModel() { return &model_; }
-QVector<LaunchTarget> ApplicationCatalog::catalogApplications() const { return model_.entries(); }
+QAbstractItemModel* ApplicationCatalog::applicationsModel() { return &browser_; }
+QVector<LaunchTarget> ApplicationCatalog::catalogApplications() const {
+    auto entries = model_.entries();
+    entries.erase(
+        std::remove_if(entries.begin(), entries.end(),
+                       [](const auto& entry) { return entry.type == QLatin1String("folder"); }),
+        entries.end());
+    return entries;
+}
 bool ApplicationCatalog::busy() const { return busy_; }
 bool ApplicationCatalog::launchBusy() const { return launchBusy_; }
 QString ApplicationCatalog::status() const { return status_; }
@@ -182,6 +313,7 @@ void ApplicationCatalog::refreshApplications() {
                         }
                         self.pruneTargets();
                         self.model_.replace(entries);
+                        self.browser_.reconcile();
                         self.status_ = QStringLiteral("已读取 %1 个应用。").arg(entries.size());
                     } else {
                         self.status_ = QStringLiteral("应用目录读取失败，保留已有列表。");

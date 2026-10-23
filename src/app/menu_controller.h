@@ -34,6 +34,7 @@ class MenuController : public QObject {
 
     Q_PROPERTY(QVariantList tiles READ tiles NOTIFY groupsChanged)
     Q_PROPERTY(QVariantList groups READ groups NOTIFY groupsChanged)
+    Q_PROPERTY(QVariantMap tileTransitions READ tileTransitions NOTIFY groupsChanged)
     Q_PROPERTY(QVariantMap visualTokens READ visualTokens CONSTANT)
     Q_PROPERTY(QString platformName READ platformName CONSTANT)
     Q_PROPERTY(QString platformStatus READ platformStatus CONSTANT)
@@ -43,6 +44,7 @@ class MenuController : public QObject {
     Q_PROPERTY(int gridPitch READ gridPitch CONSTANT)
     Q_PROPERTY(int gridColumns READ gridColumns CONSTANT)
     Q_PROPERTY(bool editMode READ editMode WRITE setEditMode NOTIFY editModeChanged)
+    Q_PROPERTY(bool keyboardNavigation READ keyboardNavigation NOTIFY keyboardNavigationChanged)
     Q_PROPERTY(bool darkTheme READ darkTheme WRITE setDarkTheme NOTIFY darkThemeChanged)
     Q_PROPERTY(bool readOnly READ readOnly NOTIFY readOnlyChanged)
     Q_PROPERTY(bool saving READ saving NOTIFY savingChanged)
@@ -84,6 +86,7 @@ class MenuController : public QObject {
 
     [[nodiscard]] QVariantList tiles() const;
     [[nodiscard]] QVariantList groups() const;
+    [[nodiscard]] QVariantMap tileTransitions() const { return tileTransitions_; }
     [[nodiscard]] QVariantMap visualTokens() const;
     [[nodiscard]] QString platformName() const;
     [[nodiscard]] QString platformStatus() const;
@@ -94,6 +97,7 @@ class MenuController : public QObject {
     [[nodiscard]] int gridPitch() const;
     [[nodiscard]] int gridColumns() const;
     [[nodiscard]] bool editMode() const;
+    [[nodiscard]] bool keyboardNavigation() const { return keyboardNavigation_; }
     void setEditMode(bool enabled);
     [[nodiscard]] bool darkTheme() const;
     void setDarkTheme(bool enabled);
@@ -154,6 +158,7 @@ class MenuController : public QObject {
     Q_INVOKABLE void requestExit();
 
   signals:
+    void keyboardNavigationChanged();
     void groupsChanged();
     void editModeChanged();
     void darkThemeChanged();
@@ -178,6 +183,9 @@ class MenuController : public QObject {
     void desktopActionFailed(const QString& message);
     void exitRequested();
 
+  protected:
+    bool eventFilter(QObject* watched, QEvent* event) override;
+
   private:
     void refreshGroups();
     void setOperationMessage(QString message, bool error = false);
@@ -201,13 +209,15 @@ class MenuController : public QObject {
     PrototypeService& prototypeService_;
     QVariantList tiles_;
     QVariantList groups_;
+    QVariantMap tileTransitions_;
     QVariantMap visualTokens_;
     QString platformName_;
     QString platformStatus_;
     bool simulatedPlatform_;
     int previewWidth_ = 0;
     int previewHeight_ = 0;
-    bool editMode_ = false;
+    bool editMode_ = true;
+    bool keyboardNavigation_ = false;
     bool darkTheme_ = true;
     bool readOnly_ = false;
     bool saving_ = false;

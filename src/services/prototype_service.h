@@ -70,6 +70,9 @@ class PrototypeService final {
     bool sampleMode_ = true;
     [[nodiscard]] QVector<PreviewGroup> makeDefaultGroups() const;
     void updateGroupGeometry(PreviewGroup& group) const;
+    [[nodiscard]] LayoutResult planPlacement(const QString& tileId, const QString& groupId,
+                                             int column, int row, TileSize size,
+                                             QVector<PreviewGroup>& planned) const;
     [[nodiscard]] LayoutResult updateTileDisplayName(const QString& tileId,
                                                     const QString& displayName, bool reset);
 };

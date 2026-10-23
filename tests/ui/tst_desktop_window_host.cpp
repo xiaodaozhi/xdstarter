@@ -241,6 +241,7 @@ class MenuWindow final : public QWindow {
     Q_PROPERTY(bool dragActive READ dragging NOTIFY protectionChanged)
     Q_PROPERTY(bool dismissalManaged MEMBER managed)
     Q_PROPERTY(qreal shadowInset MEMBER shadowInsetDip)
+    Q_PROPERTY(int dismissAnimationDuration MEMBER animationDuration)
   public:
     bool blocked() const { return drag || popup; }
     bool dragging() const { return drag; }
@@ -253,11 +254,14 @@ class MenuWindow final : public QWindow {
         emit protectionChanged();
     }
     Q_INVOKABLE void prepareForPresentation() { ++presentations; }
+    Q_INVOKABLE void animateDismissal() { ++animations; }
     void requestDismiss() { emit dismissRequested(); }
     bool managed = false;
     bool editMode = true;
     int dismissals = 0;
     int presentations = 0;
+    int animationDuration = 0;
+    int animations = 0;
     bool drag = false;
     bool popup = false;
     qreal shadowInsetDip = 24;
@@ -271,6 +275,8 @@ class DesktopWindowHostTest : public QObject {
 
   private slots:
     void init();
+    void startsInTrayWithoutShowingMenu();
+    void reopeningCancelsPendingDismissAnimation();
     void cleanup();
     void trayRestoresClosedWindow();
     void hiddenWindowRejectsDelayedAnchor();
@@ -310,6 +316,50 @@ class DesktopWindowHostTest : public QObject {
     bool originalQuitOnClose_ = false;
 };
 
+void DesktopWindowHostTest::startsInTrayWithoutShowingMenu() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    QWindow window;
+    window.resize(640, 480);
+    PlacementPlatform placement;
+    FakeTray tray;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.start(trayIcon());
+    QVERIFY(!window.isVisible());
+    QTest::qWait(100);
+    QVERIFY(!window.isVisible());
+    host.showWindow();
+    QTRY_VERIFY(window.isVisible());
+}
+
+void DesktopWindowHostTest::reopeningCancelsPendingDismissAnimation() {
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    window.resize(640, 480);
+    window.animationDuration = 80;
+    PlacementPlatform placement;
+    FakeTray tray;
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.start(trayIcon(), true);
+    QTRY_VERIFY(window.isVisible());
+    window.requestDismiss();
+    QCOMPARE(window.animations, 1);
+    QVERIFY(window.isVisible());
+    host.showWindow();
+    QTest::qWait(140);
+    QVERIFY(window.isVisible());
+    window.requestDismiss();
+    QCOMPARE(window.animations, 2);
+    QTRY_VERIFY(!window.isVisible());
+    host.showWindow();
+    QTRY_VERIFY(window.isVisible());
+    window.requestDismiss();
+    host.shutdown();
+    QTest::qWait(140);
+    QVERIFY(window.isVisible()); // Shutdown canceled the outstanding timer.
+}
+
 void DesktopWindowHostTest::init() {
     originalQuitOnClose_ = QGuiApplication::quitOnLastWindowClosed();
     QGuiApplication::setQuitOnLastWindowClosed(false);
@@ -329,7 +379,7 @@ void DesktopWindowHostTest::winKeyCaptureRequiresOptInAndStops() {
     FakeWinKeyCapture capture;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
     host.attachWinKeyCapture(capture);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.isVisible());
     QCOMPARE(capture.requests, 0);
     QVERIFY(!capture.isActive());
@@ -369,7 +419,7 @@ void DesktopWindowHostTest::winKeyCaptureFailureAndTrayLoss() {
     capture.fails = true;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
     host.attachWinKeyCapture(capture);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.isVisible());
     host.toggleWinKeyCapture();
     QVERIFY(!capture.isActive());
@@ -407,7 +457,7 @@ void DesktopWindowHostTest::unsupportedWinKeyCaptureStaysDisabled() {
     capture.supported = false;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
     host.attachWinKeyCapture(capture);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.isVisible());
     QVERIFY(!tray.captureCanEnable);
     tray.requestWinKeyToggle();
@@ -425,7 +475,7 @@ void DesktopWindowHostTest::trayFailureDuringEnableDoesNotInstallCapture() {
     FakeWinKeyCapture capture;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
     host.attachWinKeyCapture(capture);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.isVisible());
     tray.failNextStateUpdate = true;
     host.toggleWinKeyCapture();
@@ -446,7 +496,7 @@ void DesktopWindowHostTest::trayRestoresClosedWindow() {
     FakeTray tray;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
 
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QCOMPARE(tray.starts, 1);
     QVERIFY(tray.receivedIcon);
     QVERIFY(!QGuiApplication::quitOnLastWindowClosed());
@@ -482,7 +532,7 @@ void DesktopWindowHostTest::hiddenWindowRejectsDelayedAnchor() {
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
     QSignalSpy ready(&shell, &xdstarter::DesktopShellService::startButtonAnchorReady);
 
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_COMPARE(state->queries.load(), 1);
     host.dismissWindow();
     QVERIFY(!window.isVisible());
@@ -509,7 +559,7 @@ void DesktopWindowHostTest::failedTrayKeepsTaskbarRecovery() {
     tray.registrationSucceeds = false;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
 
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QVERIFY(QGuiApplication::quitOnLastWindowClosed());
     QTRY_VERIFY(window.isVisible());
     window.hide();
@@ -530,7 +580,7 @@ void DesktopWindowHostTest::lostTrayRecoversHiddenWindow() {
     FakeTray tray;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
 
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.isVisible());
     window.hide();
     tray.setRegistration(false);
@@ -552,7 +602,7 @@ void DesktopWindowHostTest::shutdownIgnoresPendingWork() {
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
     QSignalSpy exit(&host, &xdstarter::DesktopWindowHost::exitRequested);
 
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_COMPARE(state->queries.load(), 1);
     tray.requestQuit();
     QCOMPARE(exit.count(), 1);
@@ -589,7 +639,7 @@ void DesktopWindowHostTest::restoresApplicationPolicy() {
     FakeTray tray;
     {
         xdstarter::DesktopWindowHost host(window, shell, placement, tray);
-        host.start(trayIcon());
+        host.start(trayIcon(), true);
         QVERIFY(!QGuiApplication::quitOnLastWindowClosed());
     }
     QCOMPARE(tray.stops, 1);
@@ -606,7 +656,7 @@ void DesktopWindowHostTest::externalFocusDismissesAndRestores() {
     PlacementPlatform placement;
     FakeTray tray;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.isActive());
     QVERIFY(window.managed);
     window.setPopup(true);
@@ -639,7 +689,7 @@ void DesktopWindowHostTest::transientFocusAndQuickReturnStayOpen() {
     PlacementPlatform placement;
     FakeTray tray;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.isActive());
     QWindow child;
     child.setTransientParent(&window);
@@ -669,7 +719,7 @@ void DesktopWindowHostTest::nativeOwnedFocusPollsAndDetectsExternalSwitch() {
     PlacementPlatform placement;
     FakeTray tray;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.isActive());
     window.setPopup(true);
     placement.ownedForeground = true;
@@ -700,7 +750,7 @@ void DesktopWindowHostTest::nativeOwnedPollingStopsOnQtFocusAndShutdown() {
     PlacementPlatform placement;
     FakeTray tray;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.isActive());
     placement.ownedForeground = true;
     QWindow untracked;
@@ -734,7 +784,7 @@ void DesktopWindowHostTest::externalFocusWaitsForDragRelease() {
     PlacementPlatform placement;
     FakeTray tray;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.isActive());
     window.setDrag(true);
     QTest::mousePress(&window, Qt::LeftButton, Qt::NoModifier, QPoint(40, 40));
@@ -760,7 +810,7 @@ void DesktopWindowHostTest::externalDismissalWithoutTrayMinimizes() {
     FakeTray tray;
     tray.registrationSucceeds = false;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.isActive());
     QWindow other;
     other.show();
@@ -784,7 +834,7 @@ void DesktopWindowHostTest::delayedLaunchRecoveryDoesNotMinimizeReopenedWindow()
     FakeTray tray;
     tray.registrationSucceeds = false;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.isActive());
     window.hide();
     host.keepReachableAfterLaunch();
@@ -804,7 +854,7 @@ void DesktopWindowHostTest::repeatedRevealPlacesHiddenAtStableMargins() {
     placement.observedWindow = &window;
     FakeTray tray;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     for (int round = 0; round < 12; ++round) {
         QTRY_VERIFY(window.isVisible());
         QTRY_COMPARE(placement.placements, round + 1);
@@ -830,7 +880,7 @@ void DesktopWindowHostTest::pendingRevealCanBeCanceled() {
     PlacementPlatform placement;
     FakeTray tray;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_COMPARE(state->queries.load(), 1);
     QVERIFY(!window.isVisible());
     tray.toggle();
@@ -852,7 +902,7 @@ void DesktopWindowHostTest::visibleReactivationDoesNotMoveAgain() {
     PlacementPlatform placement;
     FakeTray tray;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.isActive());
     QCOMPARE(placement.placements, 1);
     host.showWindow();
@@ -908,7 +958,7 @@ void DesktopWindowHostTest::nativePreparationCanBeCanceledAndRestarted() {
     placement.physicalSizeOverride = QSize(1, 1);
     FakeTray tray;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(placement.metricQueries >= 2);
     QCOMPARE(placement.placements, 0);
     QVERIFY(!window.isVisible());
@@ -936,7 +986,7 @@ void DesktopWindowHostTest::newRevealWaitsForItsOwnAnchor() {
     placement.nativeQuerySucceeds = false;
     FakeTray tray;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(placement.metricQueries > 0);
     state->delay = true;
     host.showWindow();
@@ -963,7 +1013,7 @@ void DesktopWindowHostTest::nativePreparationRejectsLateCloseAndShutdown() {
     placement.nativeQuerySucceeds = false;
     FakeTray tray;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(placement.metricQueries > 0);
     window.close();
     placement.nativeQuerySucceeds = true;
@@ -1000,7 +1050,7 @@ void DesktopWindowHostTest::nativePreparationTimeoutKeepsRecovery() {
     FakeTray tray;
     tray.registrationSucceeds = trayAvailable;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.property("integrationStatus").toString().contains(QStringLiteral("本次显示已取消")));
     QCOMPARE(placement.placements, 0);
     if (trayAvailable)
@@ -1040,7 +1090,7 @@ void DesktopWindowHostTest::nativePreparationRejectsReentrantCancellation() {
         placement.afterPlace = cancel;
     else
         placement.afterPlace = [&] { tray.nextStateUpdate = cancel; };
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.dismissals > 0);
     QTest::qWait(80);
     QVERIFY(!window.isVisible());
@@ -1058,7 +1108,7 @@ void DesktopWindowHostTest::nativeScreenIdentityIsResolvedByPlatform() {
     placement.nativeScreenIdentity = state->monitorName;
     FakeTray tray;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.isVisible());
     QCOMPARE(placement.screenMappings, 1);
     QCOMPARE(placement.placements, 1);
@@ -1073,7 +1123,7 @@ void DesktopWindowHostTest::missingNativeScreenDoesNotUsePreviousScreen() {
     PlacementPlatform placement;
     FakeTray tray;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.property("integrationStatus").toString().contains(QStringLiteral("本次显示已取消")));
     QCOMPARE(placement.screenMappings, 1);
     QCOMPARE(placement.placements, 0);
@@ -1094,7 +1144,7 @@ void DesktopWindowHostTest::hiddenMigrationPreservesLogicalWindowSize() {
     placement.afterConfigure = [&] { window.resize(500, 400); };
     FakeTray tray;
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.isVisible());
     QCOMPARE(window.size(), initialSize);
     QCOMPARE(placement.placements, 1);
@@ -1127,7 +1177,7 @@ void DesktopWindowHostTest::canceledMigrationRetainsIntendedWindowSize() {
         window.resize(500, 400);
         host.dismissWindow();
     };
-    host.start(trayIcon());
+    host.start(trayIcon(), true);
     QTRY_VERIFY(window.dismissals > 0);
     QVERIFY(!window.isVisible());
     QCOMPARE(window.size(), QSize(500, 400));

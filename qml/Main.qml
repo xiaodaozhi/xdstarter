@@ -32,6 +32,61 @@ ApplicationWindow {
     property string winKeyCaptureStatus: qsTr("Win 键唤起未启用；开始按钮保持原生行为。")
     readonly property bool compactLayout: panelWidth - shortcutRail.width - 2 * tokens.layout.contentMargin < tokens.layout.catalogWidth + tokens.layout.contentSpacing + 552
     property bool showApplications: false
+    readonly property var applicationBrowser: controller.applications
+    property bool alphabetOpen: false
+    onAlphabetOpenChanged: {
+        if (alphabetOpen) {
+            Qt.callLater(function () {
+                for (let index = 0; index < alphabetRepeater.count; ++index) {
+                    const button = alphabetRepeater.itemAt(index);
+                    if (button && button.enabled) {
+                        button.forceActiveFocus(Qt.TabFocusReason);
+                        break;
+                    }
+                }
+            });
+        }
+    }
+    property string pendingCatalogFolder: ""
+
+    function navigateCatalogFolder(id: string): void {
+        if (folderTransition.running)
+            return;
+        pendingCatalogFolder = id;
+        alphabetOpen = false;
+        folderFadeOut.restart();
+        folderTransition.start();
+    }
+
+    Timer {
+        id: folderTransition
+        interval: 100
+        onTriggered: {
+            if (window.pendingCatalogFolder === "..")
+                window.applicationBrowser.back();
+            else
+                window.applicationBrowser.openFolder(window.pendingCatalogFolder);
+            applicationsList.positionViewAtBeginning();
+            applicationsList.currentIndex = -1;
+            folderFadeIn.restart();
+        }
+    }
+    NumberAnimation {
+        id: folderFadeOut
+        target: applicationsList
+        property: "opacity"
+        to: 0
+        duration: 100
+    }
+    NumberAnimation {
+        id: folderFadeIn
+        target: applicationsList
+        property: "opacity"
+        to: 1
+        duration: 170
+        easing.type: Easing.OutCubic
+    }
+
     property bool browseStateSaved: false
     property real savedApplicationsY: 0
     property int savedApplicationIndex: -1
@@ -45,6 +100,8 @@ ApplicationWindow {
     property string pinApplicationName: ""
     property bool pinApplicationPinned: false
     property string focusedTileId: ""
+    property string dismissedTileId: ""
+    property bool dismissalFocusSaved: false
     property string focusedGroupId: ""
     property bool groupFocusPending: false
     property string managedGroupId: ""
@@ -74,11 +131,34 @@ ApplicationWindow {
     property real previewHeight: 0
     property string resizeTileId: ""
     property string resizeTileSize: ""
+    readonly property int dismissAnimationDuration: 120
+    property real revealProgress: 1
+    NumberAnimation {
+        id: revealMotion
+        target: window
+        property: "revealProgress"
+        from: 0
+        to: 1
+        duration: 180
+        easing.type: Easing.OutCubic
+    }
+    NumberAnimation {
+        id: dismissMotion
+        target: window
+        property: "revealProgress"
+        to: 0
+        duration: 120
+        easing.type: Easing.InCubic
+    }
+    function animateDismissal(): void {
+        revealMotion.stop();
+        dismissMotion.restart();
+    }
     property bool dismissalManaged: false
     property bool presentationSuspended: false
     readonly property bool internalPopupVisible: resizeMenu.visible || pinMenu.visible || powerMenu.visible || aboutPopup.visible || groupMenu.visible || groupNameDialog.visible || moreMenu.visible || tileNameDialog.visible || layoutFileDialog.visible || layoutImportDialog.visible
     readonly property bool dismissalBlocked: dragActive || internalPopupVisible
-    readonly property bool contextShortcutsEnabled: visible && !presentationSuspended && !internalPopupVisible && !dragActive && !controller.searchActive && !searchField.inputMethodComposing
+    readonly property bool contextShortcutsEnabled: visible && !presentationSuspended && !internalPopupVisible && !dragActive && !controller.searchActive && !searchField.inputMethodComposing && !alphabetOpen && !folderTransition.running
     readonly property TileButton tileContextTarget: activeFocusItem as TileButton
 
     signal dismissRequested
@@ -95,6 +175,10 @@ ApplicationWindow {
     color: "transparent"
 
     background: MenuChrome {
+        opacity: window.revealProgress
+        transform: Translate {
+            y: (1 - window.revealProgress) * 10
+        }
         radius: window.tokens.cornerRadiusDip.menu
         color: window.theme.opaqueFallback
         railColor: Qt.darker(window.theme.opaqueFallback, window.darkTheme ? 1.12 : 1.035)
@@ -109,11 +193,36 @@ ApplicationWindow {
     palette.text: theme.foreground
     palette.button: theme.surface
     palette.buttonText: theme.foreground
+    palette.toolTipBase: theme.surface
+    palette.toolTipText: theme.foreground
+    palette.mid: theme.controlBorder
     palette.highlight: tokens.brand.blue
     palette.highlightedText: tokens.themes.dark.foreground
 
-    font.family: "Segoe UI Variable"
     font.pixelSize: 14
+
+    component CategoryGlyph: Item {
+        id: categoryGlyph
+        required property string label
+        Text {
+            anchors.fill: parent
+            text: categoryGlyph.label === "🌐" ? "" : categoryGlyph.label
+            font.family: window.font.family
+            font.pixelSize: 22
+            color: window.theme.secondary
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+        Image {
+            anchors.centerIn: parent
+            width: 32
+            height: 32
+            visible: categoryGlyph.label === "🌐"
+            source: "qrc:/xdstarter/ui/" + (window.darkTheme ? "dark" : "light") + "/globe.svg"
+            sourceSize.width: 64
+            sourceSize.height: 64
+        }
+    }
 
     component ActionButton: Button {
         id: actionButton
@@ -135,13 +244,15 @@ ApplicationWindow {
         background: Rectangle {
             radius: 6
             color: actionButton.down ? window.theme.pressed : actionButton.hovered ? window.theme.hover : window.theme.surface
-            border.width: actionButton.activeFocus ? 2 : 1
-            border.color: actionButton.activeFocus ? window.tokens.brand.blue : window.theme.controlBorder
+            border.width: (actionButton.activeFocus && window.controller.keyboardNavigation) ? 2 : 1
+            border.color: (actionButton.activeFocus && window.controller.keyboardNavigation) ? window.tokens.brand.blue : window.theme.controlBorder
         }
     }
 
     component IconButton: ToolButton {
         id: iconButton
+        property real cornerRadius: 8
+        property string hintText: Accessible.name
 
         implicitWidth: window.tokens.layout.controlSize
         implicitHeight: window.tokens.layout.controlSize
@@ -150,32 +261,89 @@ ApplicationWindow {
         icon.color: window.theme.foreground
         focusPolicy: Qt.StrongFocus
         opacity: enabled ? 1 : 0.45
+        Hint {
+            visible: iconButton.enabled && (iconButton.hovered || iconButton.activeFocus) && text.length > 0
+            text: iconButton.hintText
+        }
         background: Rectangle {
-            radius: 6
+            radius: iconButton.cornerRadius
             color: iconButton.down ? window.theme.pressed : iconButton.checked ? Qt.alpha(window.tokens.brand.blue, 0.14) : iconButton.hovered ? window.theme.hover : "transparent"
-            border.width: iconButton.activeFocus || iconButton.checked ? 1 : 0
+            border.width: (iconButton.activeFocus && window.controller.keyboardNavigation) || iconButton.checked ? 1 : 0
             border.color: window.tokens.brand.blue
         }
     }
 
     component ActionMenu: Menu {
         padding: 6
-        background: Rectangle {
-            radius: 8
-            color: window.theme.surface
-            border.width: 1
-            border.color: window.theme.controlBorder
+        font.family: window.font.family
+        enter: Transition {
+            ParallelAnimation {
+                NumberAnimation {
+                    property: "opacity"
+                    from: 0
+                    to: 1
+                    duration: 140
+                    easing.type: Easing.OutCubic
+                }
+                NumberAnimation {
+                    property: "scale"
+                    from: 0.96
+                    to: 1
+                    duration: 180
+                    easing.type: Easing.OutCubic
+                }
+            }
+        }
+        exit: Transition {
+            ParallelAnimation {
+                NumberAnimation {
+                    property: "opacity"
+                    to: 0
+                    duration: 100
+                }
+                NumberAnimation {
+                    property: "scale"
+                    to: 0.97
+                    duration: 100
+                }
+            }
+        }
+        background: Item {
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -4
+                anchors.topMargin: 1
+                anchors.bottomMargin: -7
+                radius: 14
+                color: "#14000000"
+            }
+            Rectangle {
+                anchors.fill: parent
+                radius: 10
+                color: window.theme.surface
+                border.width: 1
+                border.color: window.theme.controlBorder
+            }
         }
     }
 
     component ActionMenuItem: MenuItem {
         id: menuAction
+        font.family: window.font.family
+        scale: down ? 0.985 : 1
+        Behavior on scale {
+            NumberAnimation {
+                duration: 90
+                easing.type: Easing.OutCubic
+            }
+        }
 
         implicitHeight: 36
         leftPadding: 12
         rightPadding: 12
         opacity: enabled ? 1 : 0.45
         indicator: Text {
+            font.family: window.font.family
             x: 12
             anchors.verticalCenter: parent.verticalCenter
             visible: menuAction.checkable && menuAction.checked
@@ -194,8 +362,13 @@ ApplicationWindow {
         }
         background: Rectangle {
             radius: 5
-            color: menuAction.down ? window.theme.pressed : menuAction.highlighted || menuAction.hovered ? window.theme.hover : "transparent"
-            border.width: menuAction.activeFocus ? 1 : 0
+            color: !menuAction.enabled ? "transparent" : menuAction.down ? window.theme.pressed : menuAction.highlighted || menuAction.hovered ? window.theme.hover : "transparent"
+            Behavior on color {
+                ColorAnimation {
+                    duration: 90
+                }
+            }
+            border.width: (menuAction.activeFocus && window.controller.keyboardNavigation) ? 1 : 0
             border.color: window.tokens.brand.blue
         }
     }
@@ -219,7 +392,7 @@ ApplicationWindow {
     }
 
     function activateTile(tileId: string): void {
-        if (!controller.launchBusy && !controller.editMode && controller.launchTile(tileId))
+        if (!controller.launchBusy && controller.launchTile(tileId))
             selectionStatus = qsTr("正在启动应用…");
     }
 
@@ -245,15 +418,70 @@ ApplicationWindow {
         pinMenu.open();
     }
 
+    function findTileItem(id: string): TileButton {
+        const find = function (item) {
+            if (item.objectName === "tile-" + id)
+                return item;
+            for (let index = 0; index < item.children.length; ++index) {
+                const match = find(item.children[index]);
+                if (match)
+                    return match;
+            }
+            return null;
+        };
+        return find(contentItem) as TileButton;
+    }
+    Rectangle {
+        id: removalGhost
+        objectName: "removalGhost"
+        z: 800
+        radius: window.tokens.cornerRadiusDip.tile
+        visible: removalMotion.running
+        Label {
+            id: removalGhostLabel
+            anchors.centerIn: parent
+            color: "white"
+        }
+    }
+    ParallelAnimation {
+        id: removalMotion
+        NumberAnimation {
+            target: removalGhost
+            property: "opacity"
+            from: 1
+            to: 0
+            duration: 140
+        }
+        NumberAnimation {
+            target: removalGhost
+            property: "scale"
+            from: 1
+            to: 0.85
+            duration: 140
+            easing.type: Easing.InCubic
+        }
+    }
+
     function unpinCurrentTile(): void {
         resizeMenu.close();
         const tileId = resizeTileId;
+        const item = findTileItem(tileId);
+        if (item) {
+            const location = item.mapToItem(contentItem, 0, 0);
+            removalGhost.x = location.x;
+            removalGhost.y = location.y;
+            removalGhost.width = item.width;
+            removalGhost.height = item.height;
+            removalGhost.color = item.baseColor;
+            removalGhostLabel.text = item.tile.small ? item.tile.symbol : item.tile.name;
+        }
         focusedTileId = "";
         if (!controller.unpinTile(tileId)) {
             focusedTileId = tileId;
         } else {
+            removalMotion.restart();
             Qt.callLater(function () {
-                editLayoutButton.forceActiveFocus(Qt.OtherFocusReason);
+                moreMenuButton.forceActiveFocus(Qt.OtherFocusReason);
             });
         }
     }
@@ -302,7 +530,7 @@ ApplicationWindow {
     }
 
     function restoreGroupFocus(): void {
-        if (!visible || presentationSuspended || internalPopupVisible || dragActive || controller.searchActive || searchField.activeFocus || !controller.editMode)
+        if (!visible || presentationSuspended || internalPopupVisible || dragActive || controller.searchActive || (searchField.activeFocus && !groupFocusPending) || !controller.editMode)
             return;
         let focusItem = activeFocusItem;
         let groupHasFocus = false;
@@ -314,11 +542,11 @@ ApplicationWindow {
             focusItem = focusItem.parent;
         }
         const focusWasLost = !activeFocusItem || activeFocusItem === contentItem || !activeFocusItem.visible;
-        const returningFromCreate = groupFocusPending && activeFocusItem === newGroupButton;
+        const returningFromCreate = groupFocusPending && (activeFocusItem === newGroupButton || activeFocusItem === moreMenuButton);
         // Replacing a focused Repeater delegate leaves its ScrollView focus scope active.
         // Only our pending operation can return from these non-interactive containers.
         const returningFromLayout = groupFocusPending && (activeFocusItem === groupsScroll || activeFocusItem === groupsFlickable || activeFocusItem === groupsColumn);
-        if (!focusWasLost && !groupHasFocus && !returningFromCreate && !returningFromLayout) {
+        if (!groupFocusPending && !focusWasLost && !groupHasFocus && !returningFromCreate && !returningFromLayout) {
             groupFocusPending = false;
             return;
         }
@@ -395,6 +623,7 @@ ApplicationWindow {
         const group = controller.groups.find(candidate => candidate.id === groupId);
         groupNameField.text = group ? group.name : "";
         groupMenu.close();
+        moreMenu.close();
         groupNameDialog.open();
     }
 
@@ -564,6 +793,7 @@ ApplicationWindow {
     }
 
     function closeInternalPopups(): void {
+        reopenMoreTimer.stop();
         resizeMenu.close();
         pinMenu.close();
         powerMenu.close();
@@ -577,7 +807,19 @@ ApplicationWindow {
         controller.cancelLayoutImport();
     }
 
+    Timer {
+        id: reopenMoreTimer
+        interval: 130
+        onTriggered: {
+            if (window.visible && !window.presentationSuspended)
+                window.openMoreMenu();
+        }
+    }
     function openMoreMenu(): void {
+        if (moreMenu.visible && !moreMenu.opened) {
+            reopenMoreTimer.restart();
+            return;
+        }
         if (dragActive)
             return;
         const position = moreMenuButton.mapToItem(contentItem, moreMenuButton.width, moreMenuButton.height + 6);
@@ -616,6 +858,15 @@ ApplicationWindow {
     }
 
     function prepareForDismissal(): void {
+        if (!presentationSuspended) {
+            dismissedTileId = dragActive ? draggedTileId : focusedTileId;
+            dismissalFocusSaved = true;
+        }
+        alphabetOpen = false;
+        folderTransition.stop();
+        folderFadeOut.stop();
+        folderFadeIn.stop();
+        applicationsList.opacity = 1;
         presentationSuspended = true;
         closeInternalPopups();
         cancelDrag();
@@ -626,11 +877,15 @@ ApplicationWindow {
     }
 
     function prepareForPresentation(): void {
+        dismissMotion.stop();
+        revealMotion.restart();
         presentationSuspended = true;
         closeInternalPopups();
         cancelDrag();
         presentationSuspended = false;
         searchField.forceActiveFocus(Qt.OtherFocusReason);
+        if (dismissalFocusSaved)
+            focusedTileId = dismissedTileId;
     }
 
     function requestDismissal(): void {
@@ -762,12 +1017,14 @@ ApplicationWindow {
     }
 
     function handleEscape(): void {
-        if (dragActive)
+        if (alphabetOpen)
+            alphabetOpen = false;
+        else if (applicationBrowser && applicationBrowser.inFolder && !controller.searchActive)
+            navigateCatalogFolder("..");
+        else if (dragActive)
             cancelDrag();
         else if (controller.searchActive || searchField.text.length > 0)
             clearSearch();
-        else if (controller.editMode)
-            controller.editMode = false;
         else
             requestDismissal();
     }
@@ -787,6 +1044,8 @@ ApplicationWindow {
         target: window.controller
 
         function onLayoutImportSucceeded(): void {
+            window.dismissalFocusSaved = false;
+            window.dismissedTileId = "";
             layoutImportDialog.close();
             window.showApplications = false;
             window.browseStateSaved = false;
@@ -955,10 +1214,38 @@ ApplicationWindow {
         }
     }
 
+    property int allowedResizeEdges: Qt.TopEdge | Qt.RightEdge
+    Repeater {
+        model: [Qt.TopEdge, Qt.BottomEdge, Qt.LeftEdge, Qt.RightEdge]
+        delegate: MouseArea {
+            required property int modelData
+            objectName: "resizeEdge-" + modelData
+            z: 950
+            enabled: (window.allowedResizeEdges & modelData) !== 0 && !window.dragActive && !window.internalPopupVisible
+            visible: enabled
+            readonly property bool horizontal: modelData === Qt.TopEdge || modelData === Qt.BottomEdge
+            x: modelData === Qt.RightEdge ? window.width - window.shadowInset - 4 : window.shadowInset
+            y: modelData === Qt.BottomEdge ? window.height - window.shadowInset - 4 : window.shadowInset
+            width: horizontal ? window.panelWidth : 6
+            height: horizontal ? 6 : window.panelHeight
+            cursorShape: horizontal ? Qt.SizeVerCursor : Qt.SizeHorCursor
+            acceptedButtons: Qt.LeftButton
+            onPressed: mouse => {
+                mouse.accepted = window.startSystemResize(modelData);
+            }
+        }
+    }
+
     RowLayout {
         id: menuPanel
 
         objectName: "menuPanel"
+        opacity: window.revealProgress
+        // qmllint disable Quick.layout-positioning
+        transform: Translate {
+            y: (1 - window.revealProgress) * 10
+        }
+        // qmllint enable Quick.layout-positioning
         anchors.fill: parent
         anchors.margins: window.shadowInset
         spacing: 0
@@ -970,6 +1257,7 @@ ApplicationWindow {
             Layout.fillHeight: true
             darkTheme: window.darkTheme
             tokens: window.tokens
+            keyboardNavigation: window.controller.keyboardNavigation
             busy: window.controller.desktopActionBusy
             onActionRequested: actionId => window.requestShortcutAction(actionId)
         }
@@ -1028,8 +1316,8 @@ ApplicationWindow {
                         background: Rectangle {
                             radius: window.tokens.layout.searchHeight / 2
                             color: window.theme.searchBackground
-                            border.width: searchField.activeFocus ? 2 : 1
-                            border.color: searchField.activeFocus ? window.tokens.brand.blue : window.theme.controlBorder
+                            border.width: (searchField.activeFocus && window.controller.keyboardNavigation) ? 2 : 1
+                            border.color: (searchField.activeFocus && window.controller.keyboardNavigation) ? window.tokens.brand.blue : window.theme.controlBorder
                         }
 
                         Image {
@@ -1048,6 +1336,7 @@ ApplicationWindow {
                             id: clearSearchButton
 
                             objectName: "clearSearchButton"
+                            cornerRadius: width / 2
                             anchors.right: parent.right
                             anchors.rightMargin: 3
                             anchors.verticalCenter: parent.verticalCenter
@@ -1056,33 +1345,10 @@ ApplicationWindow {
                             visible: searchField.text.length > 0 || searchField.inputMethodComposing
                             icon.source: "qrc:/xdstarter/ui/" + (window.darkTheme ? "dark" : "light") + "/close.svg"
                             Accessible.name: qsTr("清空搜索")
-                            ToolTip.visible: hovered || activeFocus
-                            ToolTip.text: Accessible.name
                             onClicked: window.clearSearch()
                             Keys.onReturnPressed: window.clearSearch()
                             Keys.onEnterPressed: window.clearSearch()
                         }
-                    }
-
-                    IconButton {
-                        id: editLayoutButton
-
-                        objectName: "editLayoutButton"
-                        Layout.preferredWidth: window.tokens.layout.controlSize
-                        Layout.preferredHeight: window.tokens.layout.controlSize
-                        text: window.controller.editMode ? qsTr("完成编辑") : qsTr("编辑布局")
-                        display: AbstractButton.IconOnly
-                        icon.source: "qrc:/xdstarter/ui/" + (window.darkTheme ? "dark" : "light") + "/apps.svg"
-                        checkable: true
-                        checked: window.controller.editMode
-                        enabled: !window.controller.readOnly && !window.controller.importCommitting && !window.controller.searchActive
-                        Accessible.name: text
-                        Accessible.description: qsTr("启用磁贴拖拽和 Ctrl 加方向键移动。Esc 退出编辑。")
-                        ToolTip.visible: hovered || activeFocus
-                        ToolTip.text: text
-                        onClicked: window.controller.editMode = !window.controller.editMode
-                        Keys.onReturnPressed: window.controller.editMode = !window.controller.editMode
-                        Keys.onEnterPressed: window.controller.editMode = !window.controller.editMode
                     }
 
                     IconButton {
@@ -1093,8 +1359,6 @@ ApplicationWindow {
                         Layout.preferredHeight: window.tokens.layout.controlSize
                         icon.source: "qrc:/xdstarter/ui/" + (window.darkTheme ? "dark" : "light") + "/more.svg"
                         Accessible.name: qsTr("更多选项")
-                        ToolTip.visible: hovered || activeFocus
-                        ToolTip.text: Accessible.name
                         onClicked: window.openMoreMenu()
                         Keys.onReturnPressed: window.openMoreMenu()
                         Keys.onEnterPressed: window.openMoreMenu()
@@ -1107,8 +1371,6 @@ ApplicationWindow {
                         icon.source: "qrc:/xdstarter/ui/" + (window.darkTheme ? "dark" : "light") + "/close.svg"
                         Accessible.name: qsTr("收起菜单")
                         Accessible.description: qsTr("关闭当前菜单。")
-                        ToolTip.visible: hovered || activeFocus
-                        ToolTip.text: Accessible.name
                         onClicked: window.requestDismissal()
                         Keys.onReturnPressed: window.requestDismissal()
                         Keys.onEnterPressed: window.requestDismissal()
@@ -1118,32 +1380,8 @@ ApplicationWindow {
                 RowLayout {
                     objectName: "browseContextToolbar"
                     Layout.fillWidth: true
-                    visible: !window.controller.searchActive && (window.controller.editMode || window.compactLayout)
+                    visible: !window.controller.searchActive && window.compactLayout
                     spacing: 12
-
-                    Label {
-                        Layout.fillWidth: true
-                        text: window.controller.editMode ? qsTr("拖拽移动 · 右键调整尺寸") : qsTr("已固定")
-                        textFormat: Text.PlainText
-                        font.pixelSize: 12
-                        color: window.theme.secondary
-                        elide: Text.ElideRight
-                    }
-
-                    ActionButton {
-                        id: newGroupButton
-
-                        objectName: "newGroupButton"
-                        text: qsTr("新建分组")
-                        visible: window.controller.editMode
-                        enabled: !window.controller.readOnly && !window.controller.importCommitting && window.controller.groups.length < window.controller.maximumGroups
-                        Accessible.description: qsTr("最多保留 %1 个分组。").arg(window.controller.maximumGroups)
-                        ToolTip.visible: hovered || activeFocus
-                        ToolTip.text: enabled ? qsTr("新建一个空分组") : Accessible.description
-                        onClicked: window.openGroupNameDialog("")
-                        Keys.onReturnPressed: window.openGroupNameDialog("")
-                        Keys.onEnterPressed: window.openGroupNameDialog("")
-                    }
 
                     ActionButton {
                         objectName: "catalogViewButton"
@@ -1199,12 +1437,9 @@ ApplicationWindow {
                                 objectName: "refreshApplicationsButton"
                                 implicitWidth: 28
                                 implicitHeight: 28
-                                text: "↻"
-                                font.pixelSize: 20
+                                icon.source: "qrc:/xdstarter/ui/" + (window.darkTheme ? "dark" : "light") + "/refresh.svg"
                                 enabled: !window.controller.catalogBusy
                                 Accessible.name: window.controller.catalogBusy ? qsTr("正在刷新应用目录") : qsTr("刷新应用目录")
-                                ToolTip.visible: hovered || activeFocus
-                                ToolTip.text: Accessible.name
                                 onClicked: window.controller.refreshApplications()
                                 Keys.onReturnPressed: window.controller.refreshApplications()
                                 Keys.onEnterPressed: window.controller.refreshApplications()
@@ -1222,214 +1457,346 @@ ApplicationWindow {
                             Accessible.name: text
                         }
 
-                        ListView {
-                            id: applicationsList
-
-                            objectName: "applicationList"
+                        Item {
+                            id: catalogViewport
+                            objectName: "catalogViewport"
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             clip: true
-                            spacing: 0
-                            model: window.controller.applications
-                            boundsBehavior: Flickable.StopAtBounds
-                            section.property: "displayName"
-                            section.criteria: ViewSection.FirstCharacter
-                            section.delegate: Item {
-                                id: catalogSection
+                            ListView {
+                                id: applicationsList
 
-                                required property string section
-
-                                objectName: "catalogSection-" + section
-                                width: applicationsList.width
-                                height: window.tokens.layout.catalogSectionHeight
-
-                                Label {
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 6
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: catalogSection.section.toUpperCase()
-                                    textFormat: Text.PlainText
-                                    color: window.theme.secondary
-                                    font.pixelSize: window.tokens.font.section
-                                    font.bold: true
-                                }
-                            }
-                            ScrollBar.vertical: ScrollBar {
-                                policy: ScrollBar.AsNeeded
-                                focusPolicy: Qt.NoFocus
-                            }
-
-                            delegate: FocusScope {
-                                id: appRow
-
-                                required property string appId
-                                required property string displayName
-                                required property string kind
-                                required property string iconSource
-                                required property bool available
-                                required property bool pinned
-                                required property int index
-                                readonly property string displayType: kind === "packaged" ? qsTr("打包应用") : qsTr("开始菜单快捷方式")
-
-                                objectName: "appRow-" + appId
-                                width: applicationsList.width
-                                height: window.tokens.layout.catalogRowHeight
-
-                                function focusApplication(): void {
-                                    appButton.forceActiveFocus(Qt.TabFocusReason);
-                                }
-
-                                ItemDelegate {
-                                    id: appButton
-
-                                    function requestContextMenu(): void {
-                                        window.openPinMenu(appRow.appId, appRow.displayName, appRow.pinned, appButton);
-                                    }
-
-                                    objectName: "applicationLaunch-" + appRow.appId
-                                    focus: true
-                                    anchors.left: parent.left
-                                    anchors.right: pinButton.left
-                                    anchors.top: parent.top
-                                    anchors.bottom: parent.bottom
-                                    anchors.rightMargin: 4
-                                    enabled: appRow.available !== false
-                                    padding: 6
-                                    Accessible.name: appRow.displayName
-                                    Accessible.description: qsTr("%1。按 Enter 启动，Shift 加 F10 固定到分组。").arg(appRow.displayType)
-                                    onClicked: window.activateApplication(appRow.appId)
-                                    Keys.onReturnPressed: window.activateApplication(appRow.appId)
-                                    Keys.onEnterPressed: window.activateApplication(appRow.appId)
-                                    Keys.onPressed: event => {
-                                        if (event.key === Qt.Key_Menu) {
-                                            requestContextMenu();
-                                            event.accepted = true;
-                                        } else if (event.key === Qt.Key_Up || event.key === Qt.Key_Down) {
-                                            window.focusApplicationAt(appRow.index + (event.key === Qt.Key_Up ? -1 : 1));
-                                            event.accepted = true;
+                                objectName: "applicationList"
+                                anchors.fill: parent
+                                enabled: !window.alphabetOpen && !folderTransition.running
+                                header: Item {
+                                    width: applicationsList.width
+                                    height: window.applicationBrowser && window.applicationBrowser.inFolder ? 44 : 0
+                                    visible: height > 0
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        IconButton {
+                                            objectName: "folderBackButton"
+                                            text: "‹"
+                                            font.pixelSize: 24
+                                            Accessible.name: qsTr("返回上一级")
+                                            onClicked: window.navigateCatalogFolder("..")
                                         }
-                                    }
-                                    onActiveFocusChanged: {
-                                        if (activeFocus) {
-                                            // Catalogue focus must survive background tile availability updates.
-                                            window.focusedTileId = "";
-                                            applicationsList.currentIndex = appRow.index;
-                                            applicationsList.positionViewAtIndex(appRow.index, ListView.Contain);
-                                        }
-                                    }
-
-                                    Shortcut {
-                                        objectName: "applicationContextShortcut-" + appRow.appId
-                                        sequence: "Shift+F10"
-                                        context: Qt.WindowShortcut
-                                        autoRepeat: false
-                                        enabled: window.contextShortcutsEnabled && appButton.activeFocus && appButton.visible && appButton.enabled
-                                        onActivated: appButton.requestContextMenu()
-                                    }
-
-                                    ToolTip {
-                                        id: applicationToolTip
-
-                                        visible: appButton.hovered || appButton.activeFocus
-                                        text: appRow.displayName + " · " + appRow.displayType
-                                        timeout: -1
-                                        contentItem: Text {
-                                            text: applicationToolTip.text
-                                            textFormat: Text.PlainText
-                                            font: applicationToolTip.font
-                                            color: applicationToolTip.palette.toolTipText
-                                            wrapMode: Text.Wrap
-                                        }
-                                    }
-
-                                    background: Rectangle {
-                                        color: appButton.down ? window.theme.pressed : appButton.hovered ? window.theme.hover : "transparent"
-                                        radius: 6
-                                        border.width: appButton.activeFocus ? 2 : 0
-                                        border.color: window.tokens.brand.blue
-                                    }
-
-                                    contentItem: RowLayout {
-                                        spacing: 8
-
-                                        Item {
-                                            Layout.preferredWidth: 32
-                                            Layout.preferredHeight: 32
-
-                                            Image {
-                                                id: catalogIcon
-
-                                                objectName: "applicationIcon"
-                                                anchors.fill: parent
-                                                source: appRow.iconSource || ""
-                                                sourceSize.width: 64
-                                                sourceSize.height: 64
-                                                asynchronous: true
-                                                cache: true
-                                                fillMode: Image.PreserveAspectFit
-                                            }
-
-                                            Label {
-                                                anchors.centerIn: parent
-                                                visible: catalogIcon.status !== Image.Ready
-                                                text: appRow.displayName.slice(0, 1)
-                                                textFormat: Text.PlainText
-                                                font.pixelSize: 22
-                                                font.bold: true
-                                                color: window.theme.foreground
-                                            }
-                                        }
-
                                         Label {
                                             Layout.fillWidth: true
-                                            text: appRow.displayName
-                                            textFormat: Text.PlainText
-                                            font.pixelSize: window.tokens.font.body
+                                            text: window.applicationBrowser ? window.applicationBrowser.folderName : ""
                                             color: window.theme.foreground
                                             elide: Text.ElideRight
                                         }
                                     }
+                                }
+                                clip: true
+                                spacing: 0
+                                model: window.controller.applications
+                                boundsBehavior: Flickable.StopAtBounds
+                                section.property: "sectionKey"
+                                section.criteria: ViewSection.FullString
+                                section.delegate: Item {
+                                    id: catalogSection
 
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        acceptedButtons: Qt.RightButton
-                                        onClicked: {
-                                            appButton.forceActiveFocus(Qt.MouseFocusReason);
-                                            appButton.requestContextMenu();
+                                    required property string section
+
+                                    objectName: "catalogSection-" + section
+                                    width: applicationsList.width
+                                    height: window.tokens.layout.catalogSectionHeight
+
+                                    Button {
+                                        id: sectionButton
+                                        objectName: "sectionButton-" + catalogSection.section
+                                        x: 6
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 32
+                                        height: 32
+                                        text: catalogSection.section
+                                        font.pixelSize: 22
+                                        Accessible.name: qsTr("选择应用分类 %1").arg(text)
+                                        contentItem: CategoryGlyph {
+                                            label: sectionButton.text
                                         }
+                                        background: Rectangle {
+                                            radius: 6
+                                            color: sectionButton.hovered ? window.theme.hover : "transparent"
+                                        }
+                                        onClicked: window.alphabetOpen = true
                                     }
                                 }
 
-                                IconButton {
-                                    id: pinButton
+                                ScrollBar.vertical: ScrollBar {
+                                    policy: ScrollBar.AsNeeded
+                                    focusPolicy: Qt.NoFocus
+                                }
 
-                                    objectName: "pinButton-" + appRow.appId
-                                    anchors.right: parent.right
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    width: 28
-                                    height: 32
-                                    icon.width: 16
-                                    icon.height: 16
-                                    icon.source: "qrc:/xdstarter/ui/" + (window.darkTheme ? "dark" : "light") + "/pin.svg"
-                                    enabled: !window.controller.readOnly && !window.controller.importCommitting && !appRow.pinned
-                                    Accessible.name: appRow.pinned ? qsTr("已固定 %1").arg(appRow.displayName) : qsTr("固定 %1").arg(appRow.displayName)
-                                    ToolTip.visible: hovered || activeFocus
-                                    ToolTip.text: Accessible.name
-                                    onClicked: window.openPinMenu(appRow.appId, appRow.displayName, appRow.pinned, pinButton)
-                                    Keys.onReturnPressed: window.openPinMenu(appRow.appId, appRow.displayName, appRow.pinned, pinButton)
-                                    Keys.onEnterPressed: window.openPinMenu(appRow.appId, appRow.displayName, appRow.pinned, pinButton)
+                                delegate: FocusScope {
+                                    id: appRow
+
+                                    required property string appId
+                                    required property string displayName
+                                    required property string kind
+                                    required property string iconSource
+                                    required property bool available
+                                    required property bool pinned
+                                    required property int index
+                                    HoverHandler {
+                                        id: rowHover
+                                    }
+                                    readonly property string displayType: kind === "packaged" ? qsTr("打包应用") : qsTr("开始菜单快捷方式")
+
+                                    objectName: "appRow-" + appId
+                                    width: applicationsList.width
+                                    height: window.tokens.layout.catalogRowHeight
+
+                                    function focusApplication(): void {
+                                        appButton.forceActiveFocus(Qt.TabFocusReason);
+                                    }
+
+                                    ItemDelegate {
+                                        id: appButton
+
+                                        function requestContextMenu(): void {
+                                            if (appRow.kind !== "folder")
+                                                window.openPinMenu(appRow.appId, appRow.displayName, appRow.pinned, appButton);
+                                        }
+
+                                        objectName: "applicationLaunch-" + appRow.appId
+                                        focus: true
+                                        anchors.left: parent.left
+                                        anchors.right: pinButton.left
+                                        anchors.top: parent.top
+                                        anchors.bottom: parent.bottom
+                                        anchors.rightMargin: 4
+                                        enabled: appRow.available !== false
+                                        padding: 6
+                                        Accessible.name: appRow.displayName
+                                        Accessible.description: qsTr("%1。按 Enter 启动，Shift 加 F10 固定到分组。").arg(appRow.displayType)
+                                        onClicked: appRow.kind === "folder" ? window.navigateCatalogFolder(appRow.appId) : window.activateApplication(appRow.appId)
+                                        Keys.onReturnPressed: appRow.kind === "folder" ? window.navigateCatalogFolder(appRow.appId) : window.activateApplication(appRow.appId)
+                                        Keys.onEnterPressed: appRow.kind === "folder" ? window.navigateCatalogFolder(appRow.appId) : window.activateApplication(appRow.appId)
+                                        Keys.onPressed: event => {
+                                            if (event.key === Qt.Key_Menu) {
+                                                requestContextMenu();
+                                                event.accepted = true;
+                                            } else if (event.key === Qt.Key_Up || event.key === Qt.Key_Down) {
+                                                window.focusApplicationAt(appRow.index + (event.key === Qt.Key_Up ? -1 : 1));
+                                                event.accepted = true;
+                                            }
+                                        }
+                                        onActiveFocusChanged: {
+                                            if (activeFocus) {
+                                                // Catalogue focus must survive background tile availability updates.
+                                                window.focusedTileId = "";
+                                                applicationsList.currentIndex = appRow.index;
+                                                applicationsList.positionViewAtIndex(appRow.index, ListView.Contain);
+                                            }
+                                        }
+
+                                        Shortcut {
+                                            objectName: "applicationContextShortcut-" + appRow.appId
+                                            sequence: "Shift+F10"
+                                            context: Qt.WindowShortcut
+                                            autoRepeat: false
+                                            enabled: window.contextShortcutsEnabled && appRow.kind !== "folder" && appButton.activeFocus && appButton.visible && appButton.enabled
+                                            onActivated: appButton.requestContextMenu()
+                                        }
+
+                                        Hint {
+                                            id: applicationToolTip
+                                            delay: 600
+                                            font.family: window.font.family
+
+                                            visible: appButton.hovered || appButton.activeFocus
+                                            text: appRow.displayName + " · " + appRow.displayType
+                                            timeout: -1
+                                            contentItem: Text {
+                                                text: applicationToolTip.text
+                                                textFormat: Text.PlainText
+                                                font: applicationToolTip.font
+                                                color: applicationToolTip.palette.toolTipText
+                                                wrapMode: Text.Wrap
+                                            }
+                                        }
+
+                                        background: Rectangle {
+                                            color: appButton.down ? window.theme.pressed : appButton.hovered ? window.theme.hover : "transparent"
+                                            radius: 6
+                                            border.width: (appButton.activeFocus && window.controller.keyboardNavigation) ? 2 : 0
+                                            border.color: window.tokens.brand.blue
+                                        }
+
+                                        contentItem: RowLayout {
+                                            spacing: 8
+
+                                            Item {
+                                                Layout.preferredWidth: 32
+                                                Layout.preferredHeight: 32
+
+                                                Image {
+                                                    id: catalogIcon
+
+                                                    objectName: "applicationIcon"
+                                                    anchors.fill: parent
+                                                    source: appRow.iconSource || ""
+                                                    sourceSize.width: 64
+                                                    sourceSize.height: 64
+                                                    asynchronous: true
+                                                    cache: true
+                                                    fillMode: Image.PreserveAspectFit
+                                                }
+
+                                                Label {
+                                                    anchors.centerIn: parent
+                                                    visible: catalogIcon.status !== Image.Ready
+                                                    text: appRow.displayName.slice(0, 1)
+                                                    textFormat: Text.PlainText
+                                                    font.pixelSize: 22
+                                                    font.bold: true
+                                                    color: window.theme.foreground
+                                                }
+                                            }
+
+                                            Label {
+                                                Layout.fillWidth: true
+                                                text: appRow.displayName
+                                                textFormat: Text.PlainText
+                                                font.pixelSize: window.tokens.font.body
+                                                color: window.theme.foreground
+                                                elide: Text.ElideRight
+                                            }
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            acceptedButtons: Qt.RightButton
+                                            onClicked: {
+                                                appButton.forceActiveFocus(Qt.MouseFocusReason);
+                                                appButton.requestContextMenu();
+                                            }
+                                        }
+                                    }
+
+                                    IconButton {
+                                        id: pinButton
+
+                                        objectName: "pinButton-" + appRow.appId
+                                        opacity: rowHover.hovered && appRow.kind !== "folder" ? 1 : 0
+                                        focusPolicy: Qt.NoFocus
+                                        Behavior on opacity {
+                                            NumberAnimation {
+                                                duration: 100
+                                            }
+                                        }
+                                        anchors.right: parent.right
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 28
+                                        height: 32
+                                        icon.width: 16
+                                        icon.height: 16
+                                        icon.source: "qrc:/xdstarter/ui/" + (window.darkTheme ? "dark" : "light") + "/pin.svg"
+                                        enabled: appRow.kind !== "folder" && !window.controller.readOnly && !window.controller.importCommitting && !appRow.pinned
+                                        Accessible.name: appRow.pinned ? qsTr("已固定 %1").arg(appRow.displayName) : qsTr("固定 %1").arg(appRow.displayName)
+                                        onClicked: window.openPinMenu(appRow.appId, appRow.displayName, appRow.pinned, pinButton)
+                                        Keys.onReturnPressed: window.openPinMenu(appRow.appId, appRow.displayName, appRow.pinned, pinButton)
+                                        Keys.onEnterPressed: window.openPinMenu(appRow.appId, appRow.displayName, appRow.pinned, pinButton)
+                                    }
+                                }
+
+                                Label {
+                                    objectName: "emptyCatalogHint"
+                                    anchors.fill: parent
+                                    anchors.margins: 12
+                                    visible: applicationsList.count === 0
+                                    text: window.controller.catalogBusy ? qsTr("正在读取应用目录…") : qsTr("暂未找到可用应用。可刷新目录后重试。")
+                                    textFormat: Text.PlainText
+                                    color: window.theme.secondary
+                                    wrapMode: Text.WordWrap
                                 }
                             }
-
-                            Label {
-                                objectName: "emptyCatalogHint"
+                            Rectangle {
+                                objectName: "folderOverlay"
                                 anchors.fill: parent
-                                anchors.margins: 12
-                                visible: applicationsList.count === 0
-                                text: window.controller.catalogBusy ? qsTr("正在读取应用目录…") : qsTr("暂未找到可用应用。可刷新目录后重试。")
-                                textFormat: Text.PlainText
-                                color: window.theme.secondary
-                                wrapMode: Text.WordWrap
+                                z: -1
+                                visible: window.applicationBrowser && window.applicationBrowser.inFolder
+                                color: window.theme.opaqueFallback
+                            }
+                            FocusScope {
+                                id: alphabetSelector
+                                objectName: "alphabetSelector"
+                                anchors.fill: parent
+                                z: 5
+                                visible: opacity > 0
+                                enabled: window.alphabetOpen
+                                opacity: window.alphabetOpen ? 1 : 0
+                                scale: window.alphabetOpen ? 1 : 0.97
+                                Behavior on opacity {
+                                    NumberAnimation {
+                                        duration: 130
+                                    }
+                                }
+                                Behavior on scale {
+                                    NumberAnimation {
+                                        duration: 170
+                                        easing.type: Easing.OutCubic
+                                    }
+                                }
+                                Rectangle {
+                                    anchors.fill: parent
+                                    color: window.theme.opaqueFallback
+                                    radius: 8
+                                }
+                                MouseArea {
+                                    anchors.fill: parent
+                                }
+                                ColumnLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 6
+                                    spacing: 12
+                                    Label {
+                                        text: qsTr("跳转到分类")
+                                        color: window.theme.secondary
+                                        font.pixelSize: 12
+                                    }
+                                    GridLayout {
+                                        Layout.fillWidth: true
+                                        columns: catalogViewport.height < 380 ? 6 : 4
+                                        rowSpacing: 6
+                                        columnSpacing: 6
+                                        Repeater {
+                                            id: alphabetRepeater
+                                            model: ["#", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "🌐"]
+                                            delegate: Button {
+                                                id: alphabetButton
+                                                required property string modelData
+                                                objectName: "alphabet-" + modelData
+                                                Layout.fillWidth: true
+                                                Layout.preferredHeight: 42
+                                                text: modelData
+                                                font.pixelSize: 20
+                                                enabled: window.alphabetOpen && window.applicationBrowser && window.applicationBrowser.sections.indexOf(modelData) >= 0
+                                                contentItem: CategoryGlyph {
+                                                    label: alphabetButton.text
+                                                    opacity: alphabetButton.enabled ? 1 : 0.25
+                                                }
+                                                background: Rectangle {
+                                                    radius: 7
+                                                    color: alphabetButton.down ? window.theme.pressed : alphabetButton.hovered ? window.theme.hover : window.theme.surface
+                                                }
+                                                onClicked: {
+                                                    const index = window.applicationBrowser.sectionIndex(modelData);
+                                                    applicationsList.positionViewAtIndex(index, ListView.Beginning);
+                                                    applicationsList.currentIndex = index;
+                                                    window.alphabetOpen = false;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Item {
+                                        Layout.fillHeight: true
+                                    }
+                                }
                             }
                         }
                     }
@@ -1492,6 +1859,8 @@ ApplicationWindow {
                                     delegate: TileGroup {
                                         required property var modelData
 
+                                        keyboardNavigation: window.controller.keyboardNavigation
+                                        tileTransitions: window.controller.tileTransitions
                                         group: modelData
                                         tokens: window.tokens
                                         darkTheme: window.darkTheme
@@ -1504,13 +1873,19 @@ ApplicationWindow {
                                         draggedTileId: window.draggedTileId
                                         onActionsRequested: (groupId, source) => window.openGroupMenu(groupId, source)
                                         onActionsFocused: groupId => {
+                                            if (window.presentationSuspended || !window.visible || (window.groupFocusPending && groupId !== window.focusedGroupId))
+                                                return;
                                             window.focusedGroupId = groupId;
                                             Qt.callLater(window.restoreGroupFocus);
                                         }
                                         onSelected: name => window.selectPreview(name)
                                         onActivated: tileId => window.activateTile(tileId)
                                         onFocused: item => {
+                                            if (window.presentationSuspended || !window.visible)
+                                                return;
                                             const button = item as TileButton;
+                                            if (button && window.dragActive && button.tile.id !== window.draggedTileId)
+                                                return;
                                             if (button)
                                                 window.focusedTileId = button.tile.id;
                                             window.focusedGroupId = "";
@@ -1599,8 +1974,10 @@ ApplicationWindow {
                                 }
                             }
 
-                            ToolTip {
+                            Hint {
                                 id: searchResultToolTip
+                                delay: 600
+                                font.family: window.font.family
 
                                 objectName: "searchResultToolTip"
                                 visible: searchRow.hovered || searchRow.activeFocus
@@ -1618,7 +1995,7 @@ ApplicationWindow {
                             background: Rectangle {
                                 radius: 6
                                 color: searchRow.down ? window.theme.pressed : searchRow.hovered || searchRow.index === searchResultsList.currentIndex ? window.theme.hover : "transparent"
-                                border.width: searchRow.activeFocus ? 2 : 0
+                                border.width: (searchRow.activeFocus && window.controller.keyboardNavigation) ? 2 : 0
                                 border.color: window.tokens.brand.blue
                             }
 
@@ -1703,13 +2080,29 @@ ApplicationWindow {
         anchors.rightMargin: window.shadowInset + window.tokens.layout.contentMargin
         anchors.bottomMargin: window.shadowInset + window.tokens.layout.contentMargin
         z: 900
-        padding: 12
-        visible: window.showSelectionFeedback || window.showDesktopFeedback || window.showOperationFeedback || window.showPersistenceFeedback
+        padding: 16
+        readonly property bool feedbackShown: window.showSelectionFeedback || window.showDesktopFeedback || window.showOperationFeedback || window.showPersistenceFeedback
+        opacity: feedbackShown ? 1 : 0
+        visible: opacity > 0
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 150
+                easing.type: Easing.OutCubic
+            }
+        }
         background: Rectangle {
-            radius: 8
+            radius: 12
             color: window.theme.surface
             border.width: 1
-            border.color: window.theme.controlBorder
+            border.color: window.theme.menuBorder
+            Rectangle {
+                x: 1
+                y: 12
+                width: 3
+                height: Math.max(0, parent.height - 24)
+                radius: 1.5
+                color: window.controller.operationError || window.controller.persistenceError ? window.theme.errorForeground : window.tokens.brand.blue
+            }
         }
 
         contentItem: ColumnLayout {
@@ -1776,9 +2169,21 @@ ApplicationWindow {
         parent: window.contentItem
         popupType: Popup.Item
         title: qsTr("更多选项")
+        ActionMenuItem {
+            id: newGroupButton
+            objectName: "newGroupButton"
+            text: qsTr("新建分组…")
+            enabled: !window.controller.readOnly && !window.controller.importCommitting && window.controller.groups.length < window.controller.maximumGroups
+            onTriggered: window.openGroupNameDialog("")
+            Keys.onReturnPressed: window.openGroupNameDialog("")
+            Keys.onEnterPressed: window.openGroupNameDialog("")
+        }
+        ActionSeparator {}
         width: 240
         onClosed: Qt.callLater(function () {
-            if (window.visible && !window.presentationSuspended && !window.internalPopupVisible)
+            if (window.groupFocusPending)
+                window.restoreGroupFocus();
+            else if (window.visible && !window.presentationSuspended && !window.internalPopupVisible)
                 moreMenuButton.forceActiveFocus(Qt.OtherFocusReason);
         })
 
@@ -1814,15 +2219,6 @@ ApplicationWindow {
             Keys.onEnterPressed: window.openLayoutImport()
         }
 
-        ActionMenuItem {
-            objectName: "restoreLayoutBackupButton"
-            text: qsTr("恢复上一份布局…")
-            enabled: window.controller.layoutImportSupported && !window.controller.readOnly && !window.controller.importCommitting && !window.controller.importBusy && !window.dragActive
-            onTriggered: window.restoreLayoutBackup()
-            Keys.onReturnPressed: window.restoreLayoutBackup()
-            Keys.onEnterPressed: window.restoreLayoutBackup()
-        }
-
         ActionSeparator {}
 
         ActionMenuItem {
@@ -1838,7 +2234,7 @@ ApplicationWindow {
         id: layoutFileDialog
 
         objectName: "layoutFileDialog"
-        title: qsTr("选择 JSON 布局文件")
+        title: qsTr("选择布局文件")
         parentWindow: window
         modality: Qt.WindowModal
         fileMode: FileDialogs.FileDialog.OpenFile
@@ -1989,6 +2385,7 @@ ApplicationWindow {
             id: groupDeleteHint
 
             objectName: "groupDeleteHint"
+            visible: false
             width: groupMenu.width - groupMenu.leftPadding - groupMenu.rightPadding
             leftPadding: 12
             rightPadding: 12
@@ -2053,10 +2450,18 @@ ApplicationWindow {
         }
 
         background: Rectangle {
-            radius: 8
+            radius: 12
             color: window.theme.surface
             border.width: 1
-            border.color: window.theme.controlBorder
+            border.color: window.theme.menuBorder
+            Rectangle {
+                x: 1
+                y: 12
+                width: 3
+                height: Math.max(0, parent.height - 24)
+                radius: 1.5
+                color: window.controller.operationError || window.controller.persistenceError ? window.theme.errorForeground : window.tokens.brand.blue
+            }
         }
 
         contentItem: ColumnLayout {
@@ -2085,8 +2490,8 @@ ApplicationWindow {
                 background: Rectangle {
                     radius: 6
                     color: window.theme.searchBackground
-                    border.width: groupNameField.activeFocus ? 2 : 1
-                    border.color: groupNameField.activeFocus ? window.tokens.brand.blue : window.theme.controlBorder
+                    border.width: (groupNameField.activeFocus && window.controller.keyboardNavigation) ? 2 : 1
+                    border.color: (groupNameField.activeFocus && window.controller.keyboardNavigation) ? window.tokens.brand.blue : window.theme.controlBorder
                 }
                 Keys.priority: Keys.BeforeItem
                 Keys.onPressed: event => {
@@ -2191,10 +2596,18 @@ ApplicationWindow {
         }
 
         background: Rectangle {
-            radius: 8
+            radius: 12
             color: window.theme.surface
             border.width: 1
-            border.color: window.theme.controlBorder
+            border.color: window.theme.menuBorder
+            Rectangle {
+                x: 1
+                y: 12
+                width: 3
+                height: Math.max(0, parent.height - 24)
+                radius: 1.5
+                color: window.controller.operationError || window.controller.persistenceError ? window.theme.errorForeground : window.tokens.brand.blue
+            }
         }
 
         contentItem: ColumnLayout {
@@ -2223,8 +2636,8 @@ ApplicationWindow {
                 background: Rectangle {
                     radius: 6
                     color: window.theme.searchBackground
-                    border.width: tileNameField.activeFocus ? 2 : 1
-                    border.color: tileNameField.activeFocus ? window.tokens.brand.blue : window.theme.controlBorder
+                    border.width: (tileNameField.activeFocus && window.controller.keyboardNavigation) ? 2 : 1
+                    border.color: (tileNameField.activeFocus && window.controller.keyboardNavigation) ? window.tokens.brand.blue : window.theme.controlBorder
                 }
                 Keys.priority: Keys.BeforeItem
                 Keys.onPressed: event => {
@@ -2441,11 +2854,13 @@ ApplicationWindow {
                     verticalAlignment: Text.AlignVCenter
                 }
                 Accessible.name: text
-                ToolTip {
+                Hint {
                     id: pinGroupToolTip
+                    delay: 600
+                    font.family: window.font.family
 
                     width: Math.min(380, implicitWidth)
-                    visible: pinGroupOption.hovered || pinGroupOption.activeFocus
+                    visible: pinGroupOption.enabled && (pinGroupOption.hovered || pinGroupOption.activeFocus)
                     text: pinGroupOption.text
                     contentItem: Text {
                         text: pinGroupOption.text
@@ -2470,6 +2885,24 @@ ApplicationWindow {
         objectName: "dragPlacementPreview"
         z: 1000
         visible: window.dragActive
+        scale: window.dragActive ? 1.025 : 1
+        Behavior on x {
+            NumberAnimation {
+                duration: 75
+                easing.type: Easing.OutCubic
+            }
+        }
+        Behavior on y {
+            NumberAnimation {
+                duration: 75
+                easing.type: Easing.OutCubic
+            }
+        }
+        Behavior on color {
+            ColorAnimation {
+                duration: 100
+            }
+        }
         x: window.previewX
         y: window.previewY
         width: window.previewWidth

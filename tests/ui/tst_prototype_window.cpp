@@ -2,6 +2,7 @@
 #include "visual_acceptance_probe.h"
 
 #include "app/application_icon_provider.h"
+#include "app/interface_font.h"
 #include "app/menu_controller.h"
 #include "core/tile_grid.h"
 #include "platform/application_platform.h"
@@ -16,14 +17,15 @@
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
+#include <QFontInfo>
 #include <QGuiApplication>
 #include <QImage>
 #include <QInputMethodEvent>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QMap>
 #include <QLockFile>
+#include <QMap>
 #include <QMutex>
 #include <QMutexLocker>
 #include <QQmlApplicationEngine>
@@ -33,8 +35,9 @@
 #include <QQuickItem>
 #include <QQuickStyle>
 #include <QQuickWindow>
-#include <QScreen>
+#include <QRawFont>
 #include <QSGRendererInterface>
+#include <QScreen>
 #include <QSysInfo>
 #include <QTemporaryDir>
 #include <QThread>
@@ -323,6 +326,8 @@ class PrototypeWindowTest : public QObject {
     void init();
     void cleanup();
     void prototypeWindowLoads();
+    void interactionRefinements();
+    void catalogAlphabetAndFolderOverlay();
     void themeSwitchRetainsGeometry();
     void keyboardAndMouseSelection();
     void smallTilesExposeNames();
@@ -382,6 +387,7 @@ class PrototypeWindowTest : public QObject {
     QMap<QString, QRectF> tileGeometries() const;
     void click(QQuickItem* item);
     void openMoreMenu();
+    void settleMenus();
     void createWindow(const QString& path = {}, bool sampleMode = true,
                       std::shared_ptr<CatalogTestState> catalogState = {},
                       std::shared_ptr<DesktopTestState> desktopState = {});
@@ -411,6 +417,165 @@ class PrototypeWindowTest : public QObject {
     QStringList warnings_;
     QVariantMap visualTokens_;
 };
+
+void PrototypeWindowTest::interactionRefinements() {
+    QVERIFY(controller_->editMode());
+    QVERIFY(!item(QStringLiteral("editLayoutButton")));
+    QVERIFY(!item(QStringLiteral("browseContextToolbar"))->isVisible());
+    auto* field = item(QStringLiteral("searchField"));
+    auto* tile = item(QStringLiteral("tile-work-standard-1"));
+    QVERIFY(field && tile);
+    const auto tileFont =
+        visualItem(tile, QStringLiteral("tileLabel"))->property("font").value<QFont>();
+    QCOMPARE(field->property("font").value<QFont>().family(), tileFont.family());
+    QCOMPARE(item(QStringLiteral("groupTitle-work"))->property("font").value<QFont>().family(),
+             tileFont.family());
+    QCOMPARE(QFontInfo(tileFont).family(), QGuiApplication::font().family());
+    const auto rawFont = QRawFont::fromFont(tileFont);
+    QVERIFY(rawFont.familyName() != QStringLiteral("Agency FB"));
+    QVERIFY(rawFont.supportsCharacter('A'));
+#ifdef Q_OS_WIN
+    const auto installedYaHei =
+        QDir(qEnvironmentVariable("WINDIR")).filePath(QStringLiteral("Fonts/msyh.ttc"));
+    if (QFileInfo::exists(installedYaHei)) {
+        QVERIFY(rawFont.familyName().contains(QStringLiteral("YaHei")));
+        QVERIFY(rawFont.supportsCharacter(0x4e2du));
+    }
+#endif
+    click(field);
+    QVERIFY(!controller_->keyboardNavigation());
+    QTest::keyClick(window_, Qt::Key_Tab);
+    QVERIFY(controller_->keyboardNavigation());
+    click(field);
+    QVERIFY(!controller_->keyboardNavigation());
+    QVERIFY(field->setProperty("text", QStringLiteral("工具")));
+    auto* clear = item(QStringLiteral("clearSearchButton"));
+    QVERIFY(clear && clear->isVisible());
+    auto* clearBackground = clear->property("background").value<QQuickItem*>();
+    QVERIFY(clearBackground);
+    QCOMPARE(clearBackground->property("radius").toReal(), clear->width() / 2);
+    click(clear);
+    QTRY_VERIFY(!controller_->searchActive());
+    auto* tip = tile->findChild<QObject*>(QStringLiteral("tileToolTip"));
+    QVERIFY(tip);
+    QCOMPARE(tip->property("delay").toInt(), 600);
+    QCOMPARE(QFontInfo(tip->property("font").value<QFont>()).family(),
+             QGuiApplication::font().family());
+    QTest::mouseMove(window_,
+                     tile->mapToScene(QPointF(tile->width() / 2, tile->height() / 2)).toPoint());
+    QTest::qWait(150);
+    QVERIFY(!tip->property("visible").toBool());
+    QTRY_VERIFY_WITH_TIMEOUT(tip->property("visible").toBool(), 1500);
+    QTest::mouseMove(window_, QPoint(1, 1));
+    QTRY_VERIFY(!tip->property("visible").toBool());
+    openMoreMenu();
+    QVERIFY(!item(QStringLiteral("restoreLayoutBackupButton")));
+    QTest::keyClick(window_, Qt::Key_Tab);
+    QVERIFY(controller_->keyboardNavigation());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QVERIFY(!controller_->keyboardNavigation());
+    openMoreMenu();
+    QVERIFY(item(QStringLiteral("newGroupButton"))->isEnabled());
+    auto* picker = window_->findChild<QObject*>(QStringLiteral("layoutFileDialog"));
+    QVERIFY(picker);
+    QVERIFY(!picker->property("title").toString().contains(QStringLiteral("JSON")));
+    QTest::keyClick(window_, Qt::Key_Escape);
+    settleMenus();
+    QVERIFY(window_->setProperty("allowedResizeEdges", int(Qt::BottomEdge | Qt::LeftEdge)));
+    for (const auto edge : {Qt::TopEdge, Qt::BottomEdge, Qt::LeftEdge, Qt::RightEdge}) {
+        auto* handle = item(QStringLiteral("resizeEdge-%1").arg(int(edge)));
+        QVERIFY(handle);
+        // MouseArea overrides enabled; QQuickItem::isEnabled() reads the base property.
+        QCOMPARE(handle->property("enabled").toBool(),
+                 edge == Qt::BottomEdge || edge == Qt::LeftEdge);
+    }
+    QVERIFY(window_->setProperty("allowedResizeEdges", int(Qt::TopEdge | Qt::RightEdge)));
+    openMoreMenu();
+    const auto destination = qEnvironmentVariable("XDSTARTER_INTERACTION_CAPTURE_DIR");
+    if (!destination.isEmpty()) {
+        QVERIFY(QDir().mkpath(destination));
+        QTest::qWait(220);
+        QVERIFY(window_->grabWindow().save(
+            QDir(destination).filePath(QStringLiteral("more-dark.png"))));
+        controller_->setDarkTheme(false);
+        QTest::qWait(100);
+        QVERIFY(window_->grabWindow().save(
+            QDir(destination).filePath(QStringLiteral("more-light.png"))));
+    }
+}
+
+void PrototypeWindowTest::catalogAlphabetAndFolderOverlay() {
+    const auto capture = [this](const QString& name) {
+        const auto destination = qEnvironmentVariable("XDSTARTER_INTERACTION_CAPTURE_DIR");
+        if (destination.isEmpty())
+            return;
+        QVERIFY(QDir().mkpath(destination));
+        QTest::qWait(220);
+        QVERIFY(window_->grabWindow().save(QDir(destination).filePath(name)));
+    };
+    const auto state = std::make_shared<CatalogTestState>();
+    xdstarter::LaunchTarget folder;
+    folder.type = QStringLiteral("folder");
+    folder.name = QStringLiteral("工具");
+    folder.shortcutPath = QStringLiteral("C:/Fixture/Tools");
+    folder.id = xdstarter::applicationTargetId(folder.type, folder.shortcutPath);
+    folder.iconKey = folder.id;
+    auto child =
+        catalogTarget(QStringLiteral("画图"), QStringLiteral("C:/Fixture/Tools/Paint.lnk"));
+    child.parentFolderId = folder.id;
+    state->applications.append(folder);
+    state->applications.append(child);
+    destroyWindow();
+    createWindow({}, true, state);
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 3);
+    auto* settledTile = item(QStringLiteral("tile-work-standard-1"));
+    QVERIFY(settledTile);
+    QTRY_COMPARE(settledTile->mapRectToScene(settledTile->boundingRect()).size(),
+                 settledTile->size());
+    auto* first = item(QStringLiteral("applicationLaunch-") + state->applications.first().id);
+    auto* pin = item(QStringLiteral("pinButton-") + state->applications.first().id);
+    QVERIFY(first && pin);
+    QTest::mouseMove(window_, QPoint(1, 1));
+    QTRY_COMPARE(pin->opacity(), qreal(0));
+    QTest::mouseMove(window_, first->mapToScene(QPointF(12, 12)).toPoint());
+    QTRY_COMPARE(pin->opacity(), qreal(1));
+    auto* section = item(QStringLiteral("sectionButton-A"));
+    QVERIFY(section);
+    QCOMPARE(section->size(), QSizeF(32, 32));
+    click(section);
+    auto* alphabet = item(QStringLiteral("alphabetSelector"));
+    auto* viewport = item(QStringLiteral("catalogViewport"));
+    QVERIFY(alphabet && viewport);
+    QTRY_VERIFY(alphabet->isVisible());
+    QCOMPARE(alphabet->size(), viewport->size());
+    QVERIFY(item(QStringLiteral("alphabet-G"))->isEnabled());
+    QVERIFY(!item(QStringLiteral("alphabet-Z"))->isEnabled());
+    capture(QStringLiteral("alphabet-dark.png"));
+    const auto initialSize = window_->size();
+    window_->resize(window_->width(), window_->minimumHeight());
+    auto* lastCategory = item(QStringLiteral("alphabet-🌐"));
+    QVERIFY(lastCategory);
+    QTRY_VERIFY(viewport->mapRectToScene(viewport->boundingRect())
+                    .contains(lastCategory->mapRectToScene(lastCategory->boundingRect())));
+    window_->resize(initialSize);
+    click(item(QStringLiteral("alphabet-G")));
+    QTRY_VERIFY(!window_->property("alphabetOpen").toBool());
+    auto* folderButton = item(QStringLiteral("applicationLaunch-") + folder.id);
+    QVERIFY(folderButton);
+    click(folderButton);
+    QTRY_VERIFY(catalog_->applicationsModel()->property("inFolder").toBool());
+    QCOMPARE(catalog_->applicationsModel()->rowCount(), 1);
+    auto* overlay = item(QStringLiteral("folderOverlay"));
+    QVERIFY(overlay && overlay->isVisible());
+    QCOMPARE(overlay->size(), viewport->size());
+    QCOMPARE(state->launches.load(), 0);
+    capture(QStringLiteral("folder-dark.png"));
+    QTRY_VERIFY(item(QStringLiteral("folderBackButton"))->isVisible());
+    click(item(QStringLiteral("folderBackButton")));
+    QTRY_VERIFY(!catalog_->applicationsModel()->property("inFolder").toBool());
+    QCOMPARE(catalog_->applicationsModel()->rowCount(), 3);
+    QCOMPARE(state->launches.load(), 0);
+}
 
 void PrototypeWindowTest::init() {
     warnings_.clear();
@@ -461,6 +626,7 @@ void PrototypeWindowTest::createWindow(const QString& path, bool sampleMode,
     if (sampleMode) {
         QTRY_VERIFY(item(QStringLiteral("tile-work-standard-1")));
     }
+    QTest::qWait(220); // Settle the bounded initial presentation before interaction.
     QVERIFY2(warnings_.isEmpty(), qPrintable(warnings_.join(u'\n')));
 }
 
@@ -518,11 +684,21 @@ QVariantMap PrototypeWindowTest::tileData(const QString& id) const {
     return {};
 }
 
+void PrototypeWindowTest::settleMenus() {
+    for (const auto* name :
+         {"moreMenu", "tileSizeMenu", "pinApplicationMenu", "groupMenu", "powerMenu"}) {
+        auto* menu = window_->findChild<QObject*>(QLatin1String(name));
+        if (menu)
+            QTRY_VERIFY(menu->property("visible").toBool() == menu->property("opened").toBool());
+    }
+}
+
 void PrototypeWindowTest::click(QQuickItem* target) {
+    settleMenus();
     QVERIFY(target);
     const auto name = target->objectName();
     if (name == QLatin1String("themeButton") || name == QLatin1String("saveLayoutButton") ||
-        name == QLatin1String("aboutButton")) {
+        name == QLatin1String("aboutButton") || name == QLatin1String("newGroupButton")) {
         openMoreMenu();
         QTRY_VERIFY(target->isVisible());
     }
@@ -533,9 +709,10 @@ void PrototypeWindowTest::click(QQuickItem* target) {
 }
 
 void PrototypeWindowTest::openMoreMenu() {
+    settleMenus();
     auto* menu = window_->findChild<QObject*>(QStringLiteral("moreMenu"));
     QVERIFY(menu);
-    if (!menu->property("visible").toBool()) {
+    if (!menu->property("opened").toBool()) {
         QVERIFY(QMetaObject::invokeMethod(window_, "openMoreMenu"));
     }
     QTRY_VERIFY(menu->property("opened").toBool());
@@ -704,8 +881,14 @@ QPoint PrototypeWindowTest::gridPosition(const QString& groupId, const QPointF& 
 }
 
 void PrototypeWindowTest::beginMouseDrag(const QString& tileId) {
+    settleMenus();
     auto* tile = item(QStringLiteral("tile-") + tileId);
     QVERIFY(tile);
+    const auto target = tileData(tileId);
+    QTRY_COMPARE(tile->x(), target.value(QStringLiteral("x")).toReal());
+    QTRY_COMPARE(tile->y(), target.value(QStringLiteral("y")).toReal());
+    QTRY_COMPARE(tile->width(), target.value(QStringLiteral("width")).toReal());
+    QTRY_COMPARE(tile->height(), target.value(QStringLiteral("height")).toReal());
     tile->forceActiveFocus(Qt::TabFocusReason);
     QTRY_VERIFY(viewportScene().adjusted(-1, -1, 1, 1).contains(
         tile->mapRectToScene(tile->boundingRect())));
@@ -713,6 +896,7 @@ void PrototypeWindowTest::beginMouseDrag(const QString& tileId) {
     QTest::mousePress(window_, Qt::LeftButton, Qt::NoModifier, start);
     QTest::mouseMove(window_, start + QPoint(24, 0), 20);
     QTRY_VERIFY(window_->property("dragActive").toBool());
+    QCOMPARE(window_->property("draggedTileId").toString(), tileId);
 }
 
 void PrototypeWindowTest::moveMouseToGrid(const QString& groupId, const QPointF& position) {
@@ -734,7 +918,7 @@ void PrototypeWindowTest::moveMouseToGrid(const QString& groupId, const QPointF&
 }
 
 void PrototypeWindowTest::mouseDragWithinGroup() {
-    click(item(QStringLiteral("editLayoutButton")));
+    controller_->setEditMode(true);
     QVERIFY(controller_->editMode());
     QSignalSpy changed(controller_.get(), &xdstarter::MenuController::groupsChanged);
     beginMouseDrag(QStringLiteral("work-standard-1"));
@@ -760,7 +944,7 @@ void PrototypeWindowTest::mouseDragAcrossGroups() {
     // The compact browsing chrome can leave the second group inside the default
     // viewport. Keep this case an actual edge-scroll scenario on every font kit.
     window_->resize(window_->width(), window_->minimumHeight());
-    QTRY_COMPARE(item(QStringLiteral("grid-work"))->height(), 216.0);
+    QTRY_COMPARE(item(QStringLiteral("grid-work"))->height(), 104.0);
     QTRY_VERIFY(!viewportScene().adjusted(0, 48, 0, -48).contains(
         gridPosition(QStringLiteral("daily"), QPointF(52, 164))));
     QSignalSpy changed(controller_.get(), &xdstarter::MenuController::groupsChanged);
@@ -781,36 +965,26 @@ void PrototypeWindowTest::mouseDragAcrossGroups() {
 }
 
 void PrototypeWindowTest::mouseDragConflictAndEscape() {
-    controller_->setEditMode(true);
-    const auto before = controller_->groups();
-    const auto selection = item(QStringLiteral("selectionStatus"))->property("text").toString();
+    const auto before = service_->snapshot();
     QSignalSpy changed(controller_.get(), &xdstarter::MenuController::groupsChanged);
     beginMouseDrag(QStringLiteral("work-standard-1"));
     moveMouseToGrid(QStringLiteral("work"), QPointF(164, 52));
-    QVERIFY(!window_->property("dragValid").toBool());
+    QVERIFY(window_->property("dragValid").toBool());
+    QCOMPARE(service_->snapshot(), before);
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!window_->property("dragActive").toBool());
     QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier,
                         gridPosition(QStringLiteral("work"), QPointF(164, 52)));
-    QTRY_VERIFY(!window_->property("dragActive").toBool());
-    QCOMPARE(controller_->groups(), before);
+    QCOMPARE(service_->snapshot(), before);
     QCOMPARE(changed.count(), 0);
-    QVERIFY(item(QStringLiteral("selectionStatus"))->property("text").toString() != selection);
-
     beginMouseDrag(QStringLiteral("work-standard-1"));
-    moveMouseToGrid(QStringLiteral("work"), QPointF(52, 164));
-    QVERIFY(window_->property("dragValid").toBool());
-    QTest::keyClick(window_, Qt::Key_Escape);
-    QTRY_VERIFY(!window_->property("dragActive").toBool());
-    QVERIFY(window_->isVisible());
-    QVERIFY(controller_->editMode());
+    moveMouseToGrid(QStringLiteral("work"), QPointF(164, 52));
     QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier,
-                        gridPosition(QStringLiteral("work"), QPointF(52, 164)));
-    QCOMPARE(controller_->groups(), before);
-    QCOMPARE(changed.count(), 0);
-    QVERIFY(item(QStringLiteral("selectionStatus"))->property("text").toString().contains(
-        QStringLiteral("取消")));
-    QTest::keyClick(window_, Qt::Key_Escape);
-    QTRY_VERIFY(!controller_->editMode());
-    QVERIFY(window_->isVisible());
+                        gridPosition(QStringLiteral("work"), QPointF(164, 52)));
+    QTRY_COMPARE(changed.count(), 1);
+    QVERIFY(xdstarter::LayoutStore::validate(service_->snapshot()).success);
+    QVERIFY(service_->snapshot() != before);
+    QVERIFY(controller_->editMode());
     QTest::keyClick(window_, Qt::Key_Escape);
     QTRY_VERIFY(!window_->isVisible());
 }
@@ -820,6 +994,7 @@ QObject* PrototypeWindowTest::sizeMenu() const {
 }
 
 void PrototypeWindowTest::openSizeMenu(const QString& tileId, bool keyboard) {
+    settleMenus();
     auto* tile = item(QStringLiteral("tile-") + tileId);
     QVERIFY(tile);
     tile->forceActiveFocus(Qt::TabFocusReason);
@@ -864,13 +1039,13 @@ void PrototypeWindowTest::sizeMenuAndKeyboardEditing() {
     QTRY_COMPARE(tileData(id).value(QStringLiteral("size")).toString(), QStringLiteral("standard"));
     openSizeMenu(id, true);
     chooseSize(QStringLiteral("sizeWideItem"));
-    QCOMPARE(tileData(id).value(QStringLiteral("size")).toString(), QStringLiteral("standard"));
-    QVERIFY(!controller_->operationMessage().isEmpty());
+    QCOMPARE(tileData(id).value(QStringLiteral("size")).toString(), QStringLiteral("wide"));
+    QVERIFY(xdstarter::LayoutStore::validate(service_->snapshot()).success);
 
     controller_->setEditMode(true);
     QTRY_VERIFY(item(QStringLiteral("tile-") + id)->hasActiveFocus());
     QTest::keyClick(window_, Qt::Key_Right, Qt::ControlModifier);
-    QCOMPARE(tileData(id).value(QStringLiteral("column")).toInt(), 0);
+    QCOMPARE(tileData(id).value(QStringLiteral("column")).toInt(), 1);
     QVERIFY(!controller_->operationMessage().isEmpty());
     QVERIFY(item(QStringLiteral("tile-") + id)->hasActiveFocus());
     // Two single-cell moves reach the complete empty row while retaining the stable tile focus.
@@ -884,7 +1059,7 @@ void PrototypeWindowTest::sizeMenuAndKeyboardEditing() {
     openSizeMenu(id, true);
     chooseSize(QStringLiteral("sizeWideItem"), true);
     QTRY_COMPARE(tileData(id).value(QStringLiteral("size")).toString(), QStringLiteral("wide"));
-    QCOMPARE(item(QStringLiteral("tile-") + id)->size(), QSizeF(216, 104));
+    QTRY_COMPARE(item(QStringLiteral("tile-") + id)->size(), QSizeF(216, 104));
     openSizeMenu(id, true);
     chooseSize(QStringLiteral("sizeSmallItem"));
     QTRY_COMPARE(tileData(id).value(QStringLiteral("size")).toString(), QStringLiteral("small"));
@@ -1044,7 +1219,7 @@ void PrototypeWindowTest::futureConfigurationIsReadOnly() {
     QVERIFY(controller_->readOnly());
     QVERIFY(controller_->persistenceError());
     QTRY_VERIFY(item(QStringLiteral("persistenceStatus"))->isVisible());
-    QVERIFY(!item(QStringLiteral("editLayoutButton"))->isEnabled());
+    QVERIFY(!item(QStringLiteral("editLayoutButton")));
     QVERIFY(!item(QStringLiteral("newGroupButton"))->isVisible());
     QVERIFY(!item(QStringLiteral("newGroupButton"))->isEnabled());
     QVERIFY(controller_->createGroup(QStringLiteral("不可写")).isEmpty());
@@ -1134,11 +1309,22 @@ void PrototypeWindowTest::applicationDirectoryAndPinning() {
         if (image.isNull()) {
             return false;
         }
+        const auto capture = qEnvironmentVariable("XDSTARTER_INTERACTION_CAPTURE_DIR");
+        if (!capture.isEmpty()) {
+            QDir().mkpath(capture);
+            image.save(QDir(capture).filePath(QStringLiteral("catalog-icon.png")));
+        }
         const auto center = icon->mapToScene(icon->boundingRect().center());
         const auto pixel = QPoint(qRound(center.x() * image.width() / window_->width()),
                                    qRound(center.y() * image.height() / window_->height()));
-        return image.rect().contains(pixel) &&
-               image.pixelColor(pixel) == QColor(QStringLiteral("#36D6CB"));
+        if (!image.rect().contains(pixel))
+            return false;
+        const auto actual = image.pixelColor(pixel);
+        const QColor expected(QStringLiteral("#36D6CB"));
+        // Software opacity composition may round an RGB channel by one unit.
+        return std::abs(actual.red() - expected.red()) <= 1 &&
+               std::abs(actual.green() - expected.green()) <= 1 &&
+               std::abs(actual.blue() - expected.blue()) <= 1;
     };
     QTRY_VERIFY_WITH_TIMEOUT(iconShowsLoadedPixels(), 5000);
 
@@ -1158,7 +1344,7 @@ void PrototypeWindowTest::applicationDirectoryAndPinning() {
     QTRY_VERIFY(item(QStringLiteral("pinButton-") + applicationId)->isEnabled());
     QCOMPARE(catalog_->applicationsModel()->rowCount(), 2);
     QCOMPARE(state->launches.load(), 0);
-    QTRY_VERIFY(item(QStringLiteral("editLayoutButton"))->hasActiveFocus());
+    QTRY_VERIFY(item(QStringLiteral("moreMenuButton"))->hasActiveFocus());
 
     // Compact browsing changes panes without changing or shrinking the tile grid.
     const int shadow = qRound(window_->property("shadowInset").toReal());
@@ -1219,12 +1405,8 @@ void PrototypeWindowTest::applicationLaunchLifecycle() {
     window_->show();
     QVERIFY(QTest::qWaitForWindowExposed(window_));
     window_->requestActivate();
-    controller_->setEditMode(true);
-    click(item(QStringLiteral("tile-") + tileId));
-    QTest::qWait(50);
-    QCOMPARE(state->launches.load(), 2);
-    QVERIFY(window_->isVisible());
-    controller_->setEditMode(false);
+    // Default editability does not consume an ordinary tile click as a preview.
+    QVERIFY(controller_->editMode());
     click(item(QStringLiteral("tile-") + tileId));
     QTRY_COMPARE(succeeded.count(), 2);
     QTRY_VERIFY(!window_->isVisible());
@@ -1285,9 +1467,7 @@ void PrototypeWindowTest::searchFocusCompositionAndEscape() {
     QVERIFY(controller_->editMode());
     QCOMPARE(dismissRequested.count(), 0);
     QTest::keyClick(window_, Qt::Key_Escape);
-    QTRY_VERIFY(!controller_->editMode());
-    QCOMPARE(dismissRequested.count(), 0);
-    QTest::keyClick(window_, Qt::Key_Escape);
+    QVERIFY(controller_->editMode());
     QTRY_COMPARE(dismissRequested.count(), 1);
     QCOMPARE(state->launches.load(), 0);
 }
@@ -1585,6 +1765,7 @@ void PrototypeWindowTest::searchRefreshAliasesAndRestart() {
 }
 
 void PrototypeWindowTest::openGroupMenu(const QString& groupId) {
+    settleMenus();
     const auto buttonName = QStringLiteral("groupActions-") + groupId;
     QTRY_VERIFY(item(buttonName));
     QVERIFY(item(buttonName)->isVisible());
@@ -1624,8 +1805,9 @@ void PrototypeWindowTest::submitGroupName(const QString& name) {
 void PrototypeWindowTest::groupManagementLifecycle() {
     const auto geometry = tileGeometries();
     QVERIFY(!item(QStringLiteral("newGroupButton"))->isVisible());
-    click(item(QStringLiteral("editLayoutButton")));
+    controller_->setEditMode(true);
     QVERIFY(controller_->editMode());
+    openMoreMenu();
     auto* create = item(QStringLiteral("newGroupButton"));
     QVERIFY(create && create->isVisible() && create->isEnabled());
     create->forceActiveFocus(Qt::TabFocusReason);
@@ -1636,7 +1818,14 @@ void PrototypeWindowTest::groupManagementLifecycle() {
     QCOMPARE(controller_->groups().last().toMap().value(QStringLiteral("name")).toString(),
              QStringLiteral("我的工具 Tools"));
     QCOMPARE(tileGeometries(), geometry);
-    QTRY_VERIFY(item(QStringLiteral("groupActions-") + groupId)->hasActiveFocus());
+    QTRY_VERIFY2(
+        item(QStringLiteral("groupActions-") + groupId)->hasActiveFocus(),
+        qPrintable(QStringLiteral("focus=%1 pending=%2 popup=%3 group=%4")
+                       .arg(window_->activeFocusItem() ? window_->activeFocusItem()->objectName()
+                                                       : QStringLiteral("none"))
+                       .arg(window_->property("groupFocusPending").toBool())
+                       .arg(window_->property("internalPopupVisible").toBool())
+                       .arg(window_->property("focusedGroupId").toString())));
 
     openGroupMenu(groupId);
     QVERIFY(!item(QStringLiteral("groupMoveDownAction"))->isEnabled());
@@ -1818,7 +2007,7 @@ void PrototypeWindowTest::groupCatalogMoveAndRestart() {
         QJsonArray frames;
         for (const bool dark : {true, false}) {
             controller_->setDarkTheme(dark);
-            item(QStringLiteral("editLayoutButton"))->forceActiveFocus(Qt::TabFocusReason);
+            item(QStringLiteral("moreMenuButton"))->forceActiveFocus(Qt::TabFocusReason);
             QTest::mouseMove(window_, QPoint(1, 1));
             window_->requestUpdate();
             QTest::qWait(80);
@@ -1852,7 +2041,7 @@ void PrototypeWindowTest::groupCatalogMoveAndRestart() {
     QTRY_COMPARE(controller_->groups(), beforeRestart);
     QCOMPARE(controller_->darkTheme(), savedTheme);
     QVERIFY(controller_->searchQuery().isEmpty());
-    QVERIFY(!controller_->editMode());
+    QVERIFY(controller_->editMode());
     QCOMPARE(tileData(tileId), savedTile);
     QCOMPARE(state->launches.load(), 0);
     destroyWindow();
@@ -2290,9 +2479,9 @@ void PrototypeWindowTest::customChromePixels() {
     QCOMPARE(window_->minimumSize(), QSize(qRound(480 + 2 * shadow), qRound(480 + 2 * shadow)));
     QCOMPARE(rail->property("color").value<QColor>().alpha(), 0);
     const auto panelScene = panel->mapRectToScene(panel->boundingRect());
-    for (const auto* name : {"shortcut-account", "shortcut-documents", "shortcut-downloads",
-                             "shortcut-settings", "shortcut-power", "editLayoutButton",
-                             "moreMenuButton", "closeMenuButton"}) {
+    for (const auto* name :
+         {"shortcut-account", "shortcut-documents", "shortcut-downloads", "shortcut-settings",
+          "shortcut-power", "moreMenuButton", "closeMenuButton"}) {
         auto* control = item(QLatin1String(name));
         QVERIFY(control);
         const auto bounds = control->mapRectToScene(control->boundingRect());
@@ -2854,7 +3043,7 @@ void PrototypeWindowTest::highFidelityLayoutAndActions() {
     QCOMPARE(firstGrid->mapToScene(QPointF{}) - panelOrigin, QPointF(352, 128));
     const auto initialGeometry = tileGeometries();
     const auto initialGroups = controller_->groups();
-    for (const auto* name : {"editLayoutButton", "moreMenuButton", "closeMenuButton"}) {
+    for (const auto* name : {"moreMenuButton", "closeMenuButton"}) {
         auto* button = item(QLatin1String(name));
         QVERIFY(button && button->isVisible());
         QCOMPARE(button->size(), QSizeF(36, 36));
@@ -2895,7 +3084,7 @@ void PrototypeWindowTest::highFidelityLayoutAndActions() {
         QCOMPARE(first->property("baseColor").value<QColor>(), identityColor);
     }
     controller_->setEditMode(true);
-    QTRY_COMPARE(firstGrid->height(), qreal(216));
+    QTRY_COMPARE(firstGrid->height(), qreal(104));
     QCOMPARE(tileGeometries(), initialGeometry);
     controller_->setEditMode(false);
     QTRY_COMPARE(firstGrid->height(), qreal(104));
@@ -2929,7 +3118,8 @@ void PrototypeWindowTest::feedbackFailuresRemainVisible() {
     QTRY_VERIFY(!item(QStringLiteral("catalogStatus"))->isVisible());
 
     const auto before = controller_->groups();
-    QVERIFY(!controller_->moveTile(QStringLiteral("work-standard-1"), QStringLiteral("work"), 2, 0));
+    QVERIFY(
+        !controller_->moveTile(QStringLiteral("work-standard-1"), QStringLiteral("work"), -1, 0));
     QVERIFY(controller_->operationError());
     QCOMPARE(controller_->groups(), before);
     auto* operationTimer = window_->findChild<QObject*>(QStringLiteral("operationFeedbackTimer"));
@@ -3088,7 +3278,7 @@ void PrototypeWindowTest::tileDisplayNameEditingAndRestart() {
     QCOMPARE(tileData(tileId).value(QStringLiteral("name")).toString(), name);
     QCOMPARE(service_->targetForTile(tileId), targetBefore);
     QVERIFY(controller_->searchQuery().isEmpty());
-    QVERIFY(!controller_->editMode());
+    QVERIFY(controller_->editMode());
     // Wait for the fresh restart's deferred presentation and scene update before
     // opening a menu; the presentation callback intentionally clears old popups.
     QSignalSpy presented(window_, &QQuickWindow::frameSwapped);
@@ -3447,7 +3637,7 @@ void PrototypeWindowTest::layoutImportFilePickerOwnership() {
         else
             QVERIFY(QMetaObject::invokeMethod(window_, "prepareForDismissal"));
         QTRY_VERIFY(!picker->property("visible").toBool());
-        QVERIFY(!window_->property("internalPopupVisible").toBool());
+        QTRY_VERIFY(!window_->property("internalPopupVisible").toBool());
         QVERIFY(!window_->property("dismissalBlocked").toBool());
         QVERIFY(window_->isVisible());
     }
@@ -3476,7 +3666,8 @@ void PrototypeWindowTest::layoutImportDialogThemeAndKeyboard() {
         auto* confirm = item(QStringLiteral("layoutImportConfirmButton"));
         QVERIFY(cancel && confirm);
         QCOMPARE(confirm->height(), 36.0);
-        confirm->forceActiveFocus(Qt::TabFocusReason);
+        cancel->forceActiveFocus(Qt::TabFocusReason);
+        QTest::keyClick(window_, Qt::Key_Tab);
         QTRY_VERIFY(confirm->hasActiveFocus());
         const auto background = confirm->property("background").value<QQuickItem*>();
         QVERIFY(background);
@@ -3498,7 +3689,7 @@ void PrototypeWindowTest::layoutImportDialogThemeAndKeyboard() {
         QVERIFY(QMetaObject::invokeMethod(window_, "prepareForDismissal"));
         QVERIFY(!dialog->property("visible").toBool());
         QVERIFY(controller_->importPreview().isEmpty());
-        QVERIFY(!window_->property("internalPopupVisible").toBool());
+        QTRY_VERIFY(!window_->property("internalPopupVisible").toBool());
         QVERIFY(QMetaObject::invokeMethod(window_, "prepareForPresentation"));
         QVERIFY(controller_->stageLayoutImport(QUrl::fromLocalFile(source)));
         QTRY_VERIFY(!controller_->importBusy());
@@ -3774,6 +3965,7 @@ void PrototypeWindowTest::tileNameMouseContextFromSearchRestoresFocus() {
 
 int main(int argc, char* argv[]) {
     QGuiApplication application(argc, argv);
+    xdstarter::configureInterfaceFont();
     QGuiApplication::setQuitOnLastWindowClosed(false);
     QQuickStyle::setStyle(QStringLiteral("Basic"));
     QQuickWindow::setDefaultAlphaBuffer(true);

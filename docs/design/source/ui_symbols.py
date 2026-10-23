@@ -7,7 +7,7 @@ from html import escape
 
 GLYPHS = (
     'documents', 'downloads', 'settings', 'power', 'search',
-    'chevron-down', 'more', 'add', 'close', 'pin', 'unpin', 'apps',
+    'chevron-down', 'more', 'add', 'close', 'pin', 'unpin', 'apps', 'refresh', 'globe',
 )
 STROKE_WIDTH = 1.75
 THEME_COLORS = {'dark': '#DCE6F4', 'light': '#33465F'}
@@ -27,6 +27,8 @@ _PATHS = {
         '<circle cx="12" cy="12.7" r="3.25"/>'
     ),
     'power': '<path d="M12 2.75v8.5M7 5.75a8 8 0 1 0 10 0"/>',
+    'globe': '<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18M5 6.5h14M5 17.5h14"/>',
+    'refresh': '<path d="M19.5 9A8 8 0 1 0 20 14M19.5 3.5V9H14"/>',
     'search': '<circle cx="10.5" cy="10.5" r="6.25"/><path d="m15 15 5 5"/>',
     'chevron-down': '<path d="m6.5 9.25 5.5 5.5 5.5-5.5"/>',
     'more': '<circle cx="5" cy="12" r=".8"/><circle cx="12" cy="12" r=".8"/><circle cx="19" cy="12" r=".8"/>',

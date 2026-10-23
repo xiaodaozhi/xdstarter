@@ -13,6 +13,8 @@ class PlatformIntegration {
     [[nodiscard]] virtual QString displayName() const = 0;
     [[nodiscard]] virtual QString statusDescription() const = 0;
     [[nodiscard]] virtual bool isSimulated() const = 0;
+    [[nodiscard]] virtual QString sessionKey() const { return QStringLiteral("desktop"); }
+    virtual void allowForegroundActivation(qint64) const {}
 };
 
 [[nodiscard]] std::unique_ptr<PlatformIntegration> createPlatformIntegration();

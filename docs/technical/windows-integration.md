@@ -8,6 +8,12 @@
 
 当前使用 `Qt.Window | Qt.FramelessWindowHint` 的 Qt Quick 菜单窗口，透明外窗容纳自绘阴影与圆角，正文面板仍为主题实色，外部焦点收起由 host 管理，不使用 `Qt.Popup` 的原生自动关闭与输入抓取。每次启动默认没有键盘/鼠标 Hook；只有用户显式启用单独 Win 键唤起后才安装。系统开始按钮保持原生行为，普通托盘显示和快捷栏动作不启用接管。
 
+## 本轮常驻、对齐与开始按钮核查（Issue #41）
+
+正常首次启动隐藏菜单，仅注册托盘；失败才显示恢复窗口。同用户／会话单例通过 Qt 本机 IPC 通知原 host 唤起，二次启动不并行读写布局。当前原生开始按钮没有点击接管实现；本机 Windows 10.0.26300 的正常权限只读探针确认 UIA 元素没有独立 HWND，不能将可见矩形作为吞点击依据。根因、原始／沙箱证据区分和后续边界见 [ADR-0013](adr/0013-resident-editable-menu.md)。
+
+`queryMenuAnchor` 在原有无 UIA 路径中增加实际任务栏矩形和只读对齐偏好，纯函数推导四边停靠、水平居中和相应 resize 边缘；保留混合 DPI 隐藏迁移门槛。底部左对齐仍左／底 8 DIP；顶部改为左／顶，左侧改为邻接工作区左上，右侧镜像，水平居中改为工作区中心。未知／缺少偏好回退左对齐。QML 使用公开 Qt 系统 resize，领域模型不依赖 Win32，系统显示设置未被修改。本轮策略自动测试不替代各任务栏布局的物理拖动验收。
+
 ## 唤起与焦点
 
 当前入口是产品窗口、原生托盘，以及用户主动启用的单独 Win 键。`DesktopWindowHost` 统一处理显示/隐藏、最小化恢复、退出、原生装饰抑制和定位：托盘可用时设置 `quitOnLastWindowClosed(false)`，窗口关闭或收起后保持常驻；托盘不可用时系统关闭窗口仍按默认策略退出，但主动收起和外部焦点收起采用最小化，以免进程隐藏后不可恢复。托盘文字菜单提供“显示/隐藏 XDStarter”、Win 键唤起启用/暂停/恢复和“退出 XDStarter”，并显示实际状态与开始按钮未接管说明。
@@ -66,7 +72,7 @@ QML 去除系统标题栏并设置 `Qt.NoDropShadowWindowHint`，透明顶层窗
 
 `DesktopPlatform.configureMenuWindow` 允许 Qt alpha 表面，设置 `DWMWA_WINDOW_CORNER_PREFERENCE = DWMWCP_DONOTROUND`、禁用非客户区渲染、清空扩展 frame，并请求 `DWMWA_COLOR_NONE` 原生边框颜色；不添加系统标题栏、可调整边框、region 或原生 resize 命中区。`DesktopAppearanceResult.nativeDecorationsDisabled` 报告抑制请求结果，失败返回结构化原因。自绘边框、圆角与阴影只由 Qt Quick 产生，实际是否只有一层外观仍须用当前程序的真机截图和操作验收，API 返回不能替代视觉证据。
 
-背景 Mica/Acrylic、模糊材料与显示动画仍待后续研究；外窗为阴影透明不等于启用背景材料。[ADR-0007](adr/0007-custom-menu-chrome.md) 替代 [ADR-0006](adr/0006-menu-popup.md) 的原生外观与旧位置选择，保留原焦点、拖拽和恢复规则。
+背景 Mica/Acrylic、模糊材料仍待后续研究；显示／收起动画见 ADR-0013；外窗为阴影透明不等于启用背景材料。[ADR-0007](adr/0007-custom-menu-chrome.md) 替代 [ADR-0006](adr/0006-menu-popup.md) 的原生外观与旧位置选择，保留原焦点、拖拽和恢复规则。
 
 位置以目标显示器工作区和任务栏为依据，每次唤起重新查询，不持久化屏幕像素坐标。跨屏定位仍需覆盖 Qt 的 DPI 尺寸变化、任务栏自动隐藏及分辨率变化，单屏结果不能替代混合 DPI 验证。
 

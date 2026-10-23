@@ -52,8 +52,8 @@ Dialog {
             objectName: button.objectName + "Background"
             radius: 6
             color: button.down ? dialog.theme.pressed : button.hovered ? dialog.theme.hover : dialog.theme.surface
-            border.width: button.activeFocus ? 2 : 1
-            border.color: button.activeFocus ? dialog.tokens.brand.blue : dialog.theme.controlBorder
+            border.width: (button.activeFocus && dialog.controller.keyboardNavigation) ? 2 : 1
+            border.color: (button.activeFocus && dialog.controller.keyboardNavigation) ? dialog.tokens.brand.blue : dialog.theme.controlBorder
         }
         Keys.onReturnPressed: clicked()
         Keys.onEnterPressed: clicked()
@@ -114,8 +114,10 @@ Dialog {
             HoverHandler {
                 id: fileNameHover
             }
-            ToolTip {
+            Hint {
                 id: sourceToolTip
+                delay: 600
+                font.family: dialog.font.family
 
                 visible: fileNameHover.hovered
                 text: dialog.preview.source || ""

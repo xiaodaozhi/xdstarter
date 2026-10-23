@@ -1,5 +1,7 @@
 #include "windows_platform_integration.h"
 
+#include <windows.h>
+
 namespace xdstarter {
 
 QString WindowsPlatformIntegration::displayName() const {
@@ -11,5 +13,16 @@ QString WindowsPlatformIntegration::statusDescription() const {
 }
 
 bool WindowsPlatformIntegration::isSimulated() const { return false; }
+
+QString WindowsPlatformIntegration::sessionKey() const {
+    DWORD session = 0;
+    return ProcessIdToSessionId(GetCurrentProcessId(), &session) ? QString::number(session)
+                                                                 : QStringLiteral("unavailable");
+}
+
+void WindowsPlatformIntegration::allowForegroundActivation(qint64 processId) const {
+    if (processId > 0 && processId < static_cast<qint64>(MAXDWORD))
+        AllowSetForegroundWindow(static_cast<DWORD>(processId));
+}
 
 } // namespace xdstarter

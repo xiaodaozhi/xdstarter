@@ -436,13 +436,15 @@ int main() {
                 "cross-group preview accepts an unoccupied logical drop point");
     test.expect(service.snapshot() == initialSnapshot,
                 "valid placement preview and cancellation never mutate the layout");
-    test.expect(!service.moveTile(QStringLiteral("work-standard-1"), QStringLiteral("daily"), 0, 0)
+    test.expect(service.moveTile(QStringLiteral("work-standard-1"), QStringLiteral("daily"), 0, 0)
                         .success &&
-                    service.snapshot() == initialSnapshot,
-                "overlapping drop rejects atomically without removing the source");
-    test.expect(!service.resizeTile(QStringLiteral("work-standard-1"), TileSize::Wide).success &&
-                    service.snapshot() == initialSnapshot,
-                "resize preserves the top-left anchor and rejects occupied adjacent cells");
+                    LayoutStore::validate(service.snapshot()).success,
+                "occupied cross-group drop displaces existing tiles without overlap");
+    test.expect(service.restoreSnapshot(initialSnapshot).success &&
+                    service.resizeTile(QStringLiteral("work-standard-1"), TileSize::Wide).success &&
+                    LayoutStore::validate(service.snapshot()).success,
+                "non-final resize grows and displaces adjacent tiles atomically");
+    test.expect(service.restoreSnapshot(initialSnapshot).success, "restore before boundary checks");
     test.expect(!service.checkPlacement(QStringLiteral("work-standard-1"), QStringLiteral("work"),
                                         -1, 2, TileSize::Small)
                         .success &&
@@ -596,6 +598,46 @@ int main() {
                         1 &&
                     LayoutStore::validate(applications.snapshot()).success,
                 "unpin retains target metadata when another restored tile still references it");
+
+    PrototypeService packed(grid);
+    for (int iteration = 0; iteration < 180; ++iteration) {
+        const auto before = packed.snapshot();
+        const auto allGroups = packed.previewGroups();
+        const auto& from = allGroups[iteration % allGroups.size()];
+        if (from.tiles.isEmpty())
+            continue;
+        const auto& tile = from.tiles[(iteration / 3) % from.tiles.size()];
+        const auto& destination = allGroups[(iteration / 7) % allGroups.size()];
+        const int column = (iteration * 7) % 12 - 1;
+        const int row = (iteration * 3) % 67 - 1;
+        const auto preview = packed.checkPlacement(tile.id, destination.id, column, row, tile.size);
+        test.expect(packed.snapshot() == before, "reflow preview is nonmutating");
+        const auto result = packed.moveTile(tile.id, destination.id, column, row);
+        test.expect(result.success == preview.success, "reflow preview and commit agree");
+        if (!result.success)
+            test.expect(packed.snapshot() == before,
+                        "failed reflow keeps the complete source snapshot");
+        test.expect(LayoutStore::validate(packed.snapshot()).success,
+                    "reflow preserves IDs, bounds, references and no overlap");
+        const auto resize = packed.resizeTile(tile.id, static_cast<TileSize>(iteration % 3));
+        test.expect(LayoutStore::validate(packed.snapshot()).success,
+                    "all resize variants preserve a valid layout");
+        (void)resize;
+        PrototypeService restart(grid);
+        test.expect(restart.restoreSnapshot(packed.snapshot()).success &&
+                        restart.snapshot() == packed.snapshot(),
+                    "displaced layouts round trip exactly");
+    }
+    test.expect(applications.restoreSnapshot(fullSnapshot).success,
+                "restore a completely full fixture");
+    const auto fullBefore = applications.snapshot();
+    test.expect(!applications.resizeTile(QStringLiteral("full-2-0"), TileSize::Wide).success &&
+                    applications.snapshot() == fullBefore,
+                "insufficient total space rolls back every displacement");
+    test.expect(applications.moveTile(QStringLiteral("full-0-0"), QStringLiteral("default"), 8, 62)
+                        .success &&
+                    LayoutStore::validate(applications.snapshot()).success,
+                "a full-grid move can reuse the vacated source cells without dropping a tile");
 
     if (test.failures == 0) {
         std::cout << "All prototype service checks passed.\n";

@@ -84,6 +84,16 @@ DesktopWindowHost::DesktopWindowHost(QWindow &window, DesktopShellService &shell
     revealTimer_.setSingleShot(true);
     revealTimer_.setInterval(16);
     connect(&revealTimer_, &QTimer::timeout, this, &DesktopWindowHost::checkRevealPreparation);
+    dismissTimer_.setSingleShot(true);
+    connect(&dismissTimer_, &QTimer::timeout, this, [this] {
+        if (!dismissPending_ || stopping_ || !window_)
+            return;
+        dismissPending_ = false;
+        if (recoveryAvailable_)
+            window_->hide();
+        else
+            window_->showMinimized();
+    });
     connect(qGuiApp, &QGuiApplication::focusWindowChanged, this,
             &DesktopWindowHost::scheduleFocusCheck);
     connect(qGuiApp, &QGuiApplication::applicationStateChanged, this,
@@ -154,6 +164,7 @@ void DesktopWindowHost::beginRevealPreparation(const DesktopAnchorResult &anchor
     cancelRevealPreparation();
     preparationRequest_ = request;
     revealAnchor_ = anchor;
+    window_->setProperty("allowedResizeEdges", static_cast<int>(desktopResizeEdges(anchor)));
     targetScreen_ = anchor.monitorName.isEmpty() ? window_->screen()
                                                : placement_.screenForAnchor(anchor);
     if (targetScreen_)
@@ -298,13 +309,14 @@ DesktopWindowHost::~DesktopWindowHost() {
     QGuiApplication::setQuitOnLastWindowClosed(previousQuitOnClose_);
 }
 
-void DesktopWindowHost::start(const QImage &icon) {
+void DesktopWindowHost::start(const QImage& icon, bool showInitially) {
     if (stopping_ || started_)
         return;
     const auto result = tray_.start(icon);
     updateRecovery(result.success && tray_.isAvailable(), result.message);
     started_ = true;
-    showWindow();
+    if (showInitially || !recoveryAvailable_)
+        showWindow();
 }
 
 void DesktopWindowHost::attachWinKeyCapture(WinKeyCapture &capture) {
@@ -367,6 +379,8 @@ void DesktopWindowHost::toggleWinKeyCapture() {
 void DesktopWindowHost::showWindow() {
     if (stopping_ || !window_)
         return;
+    dismissPending_ = false;
+    dismissTimer_.stop();
     rememberVisibleWindowSize();
     if (intendedWindowSize_.isEmpty() && !window_->size().isEmpty())
         intendedWindowSize_ = window_->size();
@@ -406,7 +420,10 @@ void DesktopWindowHost::toggleWindowFrom(const QString &source) {
                              {QStringLiteral("visible"), window_->isVisible()},
                              {QStringLiteral("pendingReveal"), pendingReveal_}})
                              .toJson(QJsonDocument::Compact);
-    if (pendingReveal_ || (window_->isVisible() && window_->visibility() != QWindow::Minimized))
+    if (dismissPending_)
+        showWindow();
+    else if (pendingReveal_ ||
+             (window_->isVisible() && window_->visibility() != QWindow::Minimized))
         dismiss(source);
     else
         showWindow();
@@ -507,10 +524,17 @@ void DesktopWindowHost::dismiss(const QString &reason) {
     placementRequest_ = 0;
     shell_.invalidateStartButtonAnchor();
     prepareWindow("prepareForDismissal");
-    if (recoveryAvailable_)
+    const int duration = window_->property("dismissAnimationDuration").toInt();
+    if (window_->isVisible() && duration > 0 && duration <= 300 &&
+        window_->metaObject()->indexOfMethod("animateDismissal()") >= 0) {
+        dismissPending_ = true;
+        prepareWindow("animateDismissal");
+        dismissTimer_.start(duration);
+    } else if (recoveryAvailable_) {
         window_->hide();
-    else
+    } else {
         window_->showMinimized();
+    }
     qInfo().noquote() << "Menu dismissal:"
                       << QJsonDocument(QJsonObject{{QStringLiteral("reason"), reason},
                                                    {QStringLiteral("trayRecovery"), recoveryAvailable_}})
@@ -544,6 +568,8 @@ void DesktopWindowHost::shutdown() {
     if (stopping_)
         return;
     stopping_ = true;
+    dismissTimer_.stop();
+    dismissPending_ = false;
     focusTimer_.stop();
     cancelRevealPreparation();
     focusArmed_ = false;

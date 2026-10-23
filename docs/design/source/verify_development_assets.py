@@ -104,7 +104,7 @@ def verify():
     require(manifest['avatarPixels'] == list(AVATAR_SIZES), 'Avatar size coverage mismatch')
     require(manifest['icoFrames'] == list(ICO_SIZES), 'ICO frame coverage mismatch')
     for source in manifest['generatorSources']:
-        content = (REPOSITORY / source['path']).read_bytes()
+        content = (REPOSITORY / source['path']).read_bytes().replace(b'\r\n', b'\n')
         require(hashlib.sha256(content).hexdigest() == source['sha256'], f'Stale generator source: {source["path"]}')
     assets = manifest['assets']
     paths = [asset['path'] for asset in assets]
