@@ -403,9 +403,22 @@ void DesktopWindowHost::attachStartButtonCapture(WinKeyCapture& capture) {
     connect(&capture, &WinKeyCapture::toggleRequested, this, [this] {
         if (!stopping_ && startButtonRequested_ && startButtonActive_ && startButtonCapture_ &&
             startButtonCapture_->isActive()) {
+            if (startButtonTogglePending_)
+                recordCaptureHostObservation(QStringLiteral("superseded-by-next-toggle"));
             startButtonTogglePending_ = true;
+            startButtonToggleContext_ = startButtonCapture_->deliveringToggleContext();
+            startButtonToggleAction_ = pendingReveal_ ? QStringLiteral("cancel-reveal")
+                                       : window_ && window_->isVisible() && !dismissPending_
+                                           ? QStringLiteral("hide")
+                                           : QStringLiteral("show");
             recordCaptureHostObservation(QStringLiteral("host-toggle-received"));
             toggleWindowFrom(QStringLiteral("start-button"));
+        } else if (startButtonCapture_) {
+            StartButtonHostObservation observation;
+            observation.context = startButtonCapture_->deliveringToggleContext();
+            observation.event = QStringLiteral("host-toggle-rejected");
+            observation.errorCode = QStringLiteral("host-disabled-or-stopping");
+            recordStartButtonHostObservation(*startButtonCapture_, observation);
         }
     });
     connect(&capture, &WinKeyCapture::statusChanged, this,
@@ -562,6 +575,8 @@ void DesktopWindowHost::recordCaptureHostObservation(const QString& event,
     if (!startButtonTogglePending_ || !startButtonCapture_ || !window_)
         return;
     StartButtonHostObservation observation;
+    observation.context = startButtonToggleContext_;
+    observation.requestedAction = startButtonToggleAction_;
     observation.event = event;
     observation.visible = window_->isVisible();
     observation.minimized = window_->visibility() == QWindow::Minimized;

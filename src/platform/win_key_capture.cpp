@@ -3,6 +3,7 @@
 #include "win_key_capture.h"
 
 #include <QMetaObject>
+#include <QPointer>
 
 #include <utility>
 
@@ -34,11 +35,22 @@ bool WinKeyCapture::isCurrentEventSession(quint64 generation) const {
 }
 
 void WinKeyCapture::queueToggleRequested(quint64 generation) {
+    queueToggleRequested(CaptureToggleContext{generation});
+}
+
+void WinKeyCapture::queueToggleRequested(CaptureToggleContext context) {
     QMetaObject::invokeMethod(
         this,
-        [this, generation] {
-            if (isCurrentEventSession(generation) && isActive()) {
+        [this, context] {
+            const bool delivered = isCurrentEventSession(context.sessionGeneration) && isActive();
+            QPointer<WinKeyCapture> guard(this);
+            recordToggleDelivery(context, delivered);
+            if (guard && delivered) {
+                const auto previous = deliveryContext_;
+                deliveryContext_ = context;
                 emit toggleRequested();
+                if (guard)
+                    deliveryContext_ = previous;
             }
         },
         Qt::QueuedConnection);

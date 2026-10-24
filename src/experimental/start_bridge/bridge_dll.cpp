@@ -94,11 +94,21 @@ bool currentBinding(HWND& window, std::uint64_t& generation) {
     }
     return false;
 }
-void bindWindow(HWND window, std::uint64_t generation) {
+void bindWindow(SharedSession* shared, HWND window, std::uint64_t generation) {
+    HWND previous = nullptr;
+    std::uint64_t previousGeneration = 0;
+    if (currentBinding(previous, previousGeneration) && previous == window &&
+        previousGeneration == generation)
+        return;
+    InterlockedIncrement64(&shared->bindingRevision);
+    InterlockedExchange(&shared->ready, 0);
     runtime.bindingRevision.fetch_add(1, std::memory_order_acq_rel);
     runtime.target.store(reinterpret_cast<std::uint64_t>(window), std::memory_order_relaxed);
     runtime.generation.store(generation, std::memory_order_relaxed);
     runtime.bindingRevision.fetch_add(1, std::memory_order_release);
+    InterlockedExchange64(&shared->boundWindow, reinterpret_cast<LONG64>(window));
+    InterlockedExchange64(&shared->boundGeneration, generation);
+    InterlockedIncrement64(&shared->bindingRevision);
 }
 bool gate(SharedSession* shared, HWND window, std::uint64_t generation) {
     if (!shared || !readShared(&shared->ready))
@@ -129,6 +139,11 @@ void releaseGesture(SharedSession* shared) {
         ReleaseCapture();
 }
 void discardDestroyedGesture(SharedSession* shared) {
+    HWND bound = nullptr;
+    std::uint64_t boundGeneration = 0;
+    if (!currentBinding(bound, boundGeneration) ||
+        !validFixtureWindow(bound, shared->configuration.fixture, boundGeneration))
+        InterlockedExchange(&shared->ready, 0);
     if (gesture.owned &&
         !validFixtureWindow(gesture.window, shared->configuration.fixture, gesture.generation)) {
         releaseGesture(shared);
@@ -424,8 +439,8 @@ DWORD WINAPI worker(void* moduleParameter) {
                         const auto window = reinterpret_cast<HWND>(control.window);
                         const bool validBinding =
                             validFixtureWindow(window, config.fixture, control.windowGeneration);
-                        if (validBinding)
-                            bindWindow(window, control.windowGeneration);
+                        bindWindow(shared, validBinding ? window : nullptr,
+                                   validBinding ? control.windowGeneration : 0);
                         const bool enabled = control.flags & enabledFlag;
                         InterlockedExchange(&shared->ready,
                                             validBinding && enabled &&

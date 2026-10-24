@@ -1,6 +1,7 @@
 #pragma once
 
 #include "platform/desktop_platform.h"
+#include "platform/win_key_capture.h"
 
 #include <QElapsedTimer>
 #include <QImage>
@@ -99,6 +100,8 @@ class DesktopWindowHost final : public QObject {
     bool startButtonRequested_ = false;
     bool startButtonActive_ = false;
     bool startButtonTogglePending_ = false;
+    CaptureToggleContext startButtonToggleContext_;
+    QString startButtonToggleAction_;
     QString startButtonStatus_;
     QString trayStatus_;
     QString anchorStatus_;

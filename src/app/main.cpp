@@ -18,6 +18,7 @@
 #include <QColor>
 #include <QCommandLineOption>
 #include <QCommandLineParser>
+#include <QCryptographicHash>
 #include <QDebug>
 #include <QDir>
 #include <QFile>
@@ -34,9 +35,11 @@
 #include <QSaveFile>
 #include <QStandardPaths>
 #include <QTimer>
+#include <QUuid>
 #include <QWindow>
 
 #include <cstdlib>
+#include <functional>
 #include <optional>
 
 namespace {
@@ -126,14 +129,30 @@ int main(int argc, char *argv[]) {
         QStringLiteral("path"));
     parser.addOption(captureModeOption);
     parser.addOption(captureDiagnosticsOption);
+    const QCommandLineOption captureDurationOption(
+        QStringLiteral("start-capture-duration"),
+        QStringLiteral("诊断实验限时1至900秒，到期正常退出；须同时指定诊断文件。"),
+        QStringLiteral("seconds"));
+    parser.addOption(captureDurationOption);
     parser.process(application);
+    bool durationValid = true;
+    const int captureDuration = parser.isSet(captureDurationOption)
+                                    ? parser.value(captureDurationOption).toInt(&durationValid)
+                                    : 0;
+    if (parser.isSet(captureDurationOption) &&
+        (!durationValid || captureDuration < 1 || captureDuration > 900 ||
+         !parser.isSet(captureDiagnosticsOption))) {
+        qCritical() << "Capture duration requires diagnostics and a duration of 1..900 seconds";
+        return EXIT_FAILURE;
+    }
     const QString captureMode = parser.value(captureModeOption);
     if (captureMode != QLatin1String("point") && captureMode != QLatin1String("area-cache")) {
         qCritical() << "Unknown start capture mode:" << captureMode;
         return EXIT_FAILURE;
     }
     if (parser.isSet(smokeTestOption) &&
-        (parser.isSet(captureModeOption) || parser.isSet(captureDiagnosticsOption))) {
+        (parser.isSet(captureModeOption) || parser.isSet(captureDiagnosticsOption) ||
+         parser.isSet(captureDurationOption))) {
         qCritical() << "Start capture experiments cannot run in smoke mode";
         return EXIT_FAILURE;
     }
@@ -226,6 +245,7 @@ int main(int argc, char *argv[]) {
     std::unique_ptr<xdstarter::WinKeyCapture> startButtonCapture;
     std::unique_ptr<xdstarter::DesktopWindowHost> desktopHost;
     QTimer captureDiagnosticsTimer;
+    std::function<void()> finalCaptureDiagnostics;
     if (desktopShell) {
         placement = xdstarter::createDesktopPlatform();
         tray = xdstarter::createDesktopTray();
@@ -237,12 +257,22 @@ int main(int argc, char *argv[]) {
         if (parser.isSet(captureDiagnosticsOption)) {
             const QString diagnosticsPath =
                 QFileInfo(parser.value(captureDiagnosticsOption)).absoluteFilePath();
-            const auto writeDiagnostics = [&, diagnosticsPath] {
+            const auto runId = QUuid::createUuid().toString(QUuid::WithoutBraces);
+            QFile executable(QCoreApplication::applicationFilePath());
+            QCryptographicHash hash(QCryptographicHash::Sha256);
+            const auto executableHash =
+                executable.open(QIODevice::ReadOnly) && hash.addData(&executable)
+                    ? QString::fromLatin1(hash.result().toHex())
+                    : QString();
+            const auto writeDiagnostics = [&, diagnosticsPath, runId, executableHash] {
                 auto snapshot =
                     xdstarter::startButtonCaptureDiagnosticSnapshot(*startButtonCapture);
                 snapshot.insert(QStringLiteral("applicationVersion"),
                                 QGuiApplication::applicationVersion());
                 snapshot.insert(QStringLiteral("mode"), captureMode);
+                snapshot.insert(QStringLiteral("runId"), runId);
+                snapshot.insert(QStringLiteral("processId"), QCoreApplication::applicationPid());
+                snapshot.insert(QStringLiteral("executableSha256"), executableHash);
                 const auto bytes = QJsonDocument(snapshot).toJson(QJsonDocument::Indented);
                 QSaveFile output(diagnosticsPath);
                 output.setDirectWriteFallback(false);
@@ -252,12 +282,13 @@ int main(int argc, char *argv[]) {
                     captureDiagnosticsTimer.stop();
                 }
             };
-            captureDiagnosticsTimer.setInterval(2000);
+            captureDiagnosticsTimer.setInterval(250);
             QObject::connect(&captureDiagnosticsTimer, &QTimer::timeout, &application,
                              writeDiagnostics);
-            QObject::connect(&application, &QCoreApplication::aboutToQuit, &application,
-                             writeDiagnostics);
+            finalCaptureDiagnostics = writeDiagnostics;
             captureDiagnosticsTimer.start();
+            if (captureDuration)
+                QTimer::singleShot(captureDuration * 1000, &application, &QCoreApplication::quit);
         }
         desktopHost = std::make_unique<xdstarter::DesktopWindowHost>(*window, *desktopShell,
                                                                      *placement, *tray);
@@ -273,6 +304,9 @@ int main(int argc, char *argv[]) {
                          &xdstarter::DesktopWindowHost::keepReachableAfterLaunch);
         QObject::connect(&application, &QCoreApplication::aboutToQuit, desktopHost.get(),
                          &xdstarter::DesktopWindowHost::shutdown);
+        if (finalCaptureDiagnostics)
+            QObject::connect(&application, &QCoreApplication::aboutToQuit, &application,
+                             [&] { finalCaptureDiagnostics(); });
         desktopHost->start(QImage(QStringLiteral(":/xdstarter/app/xdstarter-app-icon-32.png")));
         QObject::connect(instance.get(), &xdstarter::SessionInstance::activationRequested,
                          desktopHost.get(), &xdstarter::DesktopWindowHost::showWindow);

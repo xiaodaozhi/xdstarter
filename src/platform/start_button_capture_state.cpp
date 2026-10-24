@@ -94,6 +94,19 @@ StartButtonCaptureState::qualificationFailure(const StartButtonCaptureTarget& ta
     return Reason::None;
 }
 
+StartButtonGestureIdentity StartButtonGestureTracker::observe(StartMouseEvent event,
+                                                              quint64 session, quint64 now,
+                                                              bool injected, bool ownsPress) {
+    if (injected)
+        return {};
+    if (event == StartMouseEvent::LeftDown && (!ownsPress || !current_.id))
+        current_ = {session, ++next_, now};
+    const auto identity = current_;
+    if (event == StartMouseEvent::LeftUp)
+        current_ = {};
+    return identity;
+}
+
 void StartButtonCaptureState::cancel(StartButtonCaptureReason reason) {
     if (!canceled_)
         cancelReason_ = reason;

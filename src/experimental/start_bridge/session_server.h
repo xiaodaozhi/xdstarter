@@ -13,6 +13,9 @@ namespace xdstarter::bridge_poc {
 
 struct SessionObservation {
     bool ready = false;
+    bool bindingVerified = false;
+    std::uint64_t boundWindow = 0;
+    std::uint64_t boundGeneration = 0;
     bool ownsPress = false;
     bool connected = false;
     WorkerState worker = WorkerState::NotStarted;

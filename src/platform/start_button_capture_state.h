@@ -79,6 +79,25 @@ struct StartButtonCaptureTarget {
 };
 
 enum class StartMouseEvent { Move, LeftDown, LeftUp, OtherButton, Cancel };
+
+struct StartButtonGestureIdentity {
+    quint64 sessionGeneration = 0;
+    quint64 id = 0;
+    quint64 pressedAt = 0;
+};
+
+// Correlates observed physical halves, including releases drained after pause.
+// IDs describe observations, never infer an intended click on Start.
+class StartButtonGestureTracker final {
+  public:
+    [[nodiscard]] StartButtonGestureIdentity observe(StartMouseEvent event, quint64 session,
+                                                     quint64 now, bool injected, bool ownsPress);
+
+  private:
+    quint64 next_ = 0;
+    StartButtonGestureIdentity current_;
+};
+
 struct StartMouseDecision {
     bool consume = false;
     bool toggle = false;

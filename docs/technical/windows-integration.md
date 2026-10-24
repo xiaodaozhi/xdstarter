@@ -4,7 +4,7 @@
 
 ## 实现边界
 
-独立普通用户桌面程序，保留 Explorer，不向其注入代码，不替换系统文件。使用 `QGuiApplication` 和 Qt Quick，托盘已直接封装 `Shell_NotifyIcon`，没有引入 Widgets。应用目录和桌面快捷动作分别通过可替换平台接口执行。
+独立普通用户桌面程序，保留 Explorer，产品不向其注入代码，不替换系统文件。使用 `QGuiApplication` 和 Qt Quick，托盘已直接封装 `Shell_NotifyIcon`，没有引入 Widgets。应用目录和桌面快捷动作分别通过可替换平台接口执行。用户授权的独立Explorer路由研究探针默认不构建，只观察指定任务栏线程消息且全部放行，期限/身份/卸载边界见[ADR-0016](adr/0016-start-capture-experiments.md)，不代表产品已采用进程内接管。
 
 当前 [Issue #48](https://github.com/xiaodaozhi/xdstarter/issues/48) 使用 `Qt.Tool | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint | Qt.WindowStaysOnTopHint` 的 Qt Quick 菜单窗口，透明外窗容纳自绘阴影与圆角，正文面板仍为主题实色。Windows 层在隐藏阶段配置 TOOLWINDOW、清除 APPWINDOW 并请求 topmost，目标是排除普通任务栏窗口按钮；实际原生状态与 Shell 行为以当前候选验证为准。外部焦点收起由 host 管理，不使用 `Qt.Popup` 的原生自动关闭与输入抓取。托盘注册成功后自动启用开始按钮点击服务的消息／查询线程和 Hook；它只消费已取得点资格的完整左键。Win 键 Hook 继续由用户显式启用，两个服务可独立暂停。快捷栏动作不启用接管。
 

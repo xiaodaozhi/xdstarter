@@ -260,6 +260,9 @@ class RecordingStartButtonCapture final : public xdstarter::StartButtonCapture {
         observations.append(observation);
     }
     void toggle() { emit toggleRequested(); }
+    void queueGesture(quint64 id) {
+        queueToggleRequested(xdstarter::CaptureToggleContext{generation, id, 100, 150});
+    }
     void queueFailure(quint64 observedGeneration) {
         queueStatusChanged(observedGeneration, false, QStringLiteral("Delayed query failure"),
                            QStringLiteral("fixture-delayed-query-failure"));
@@ -1560,17 +1563,22 @@ void DesktopWindowHostTest::startButtonDiagnosticsDistinguishNativeForegroundAnd
     xdstarter::DesktopWindowHost host(window, shell, placement, tray);
     host.attachStartButtonCapture(capture);
     host.start(trayIcon());
-    capture.toggle();
+    capture.queueGesture(701);
     QTRY_VERIFY(window.isVisible());
     QTRY_COMPARE(capture.observations.last().event, QStringLiteral("presentation-result"));
     QVERIFY(capture.observations.last().nativeMeasured);
     QVERIFY(!capture.observations.last().foreground);
     QCOMPARE(capture.observations.last().errorCode, QStringLiteral("menu-foreground-denied"));
-    capture.toggle();
-    QVERIFY(!window.isVisible());
+    QCOMPARE(capture.observations.last().context.gestureId, quint64(701));
+    QCOMPARE(capture.observations.last().context.releasedAt, quint64(150));
+    QCOMPARE(capture.observations.last().requestedAction, QStringLiteral("show"));
+    capture.queueGesture(702);
+    QTRY_VERIFY(!window.isVisible());
     QCOMPARE(capture.observations.last().event, QStringLiteral("hidden"));
     QVERIFY(!capture.observations.last().visible);
     QVERIFY(!capture.observations.last().nativeMeasured);
+    QCOMPARE(capture.observations.last().context.gestureId, quint64(702));
+    QCOMPARE(capture.observations.last().requestedAction, QStringLiteral("hide"));
     placement.presentationResult = {true, true, false, true, {}};
     capture.toggle();
     QTRY_VERIFY(window.isVisible());

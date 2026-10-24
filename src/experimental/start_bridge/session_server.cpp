@@ -289,7 +289,26 @@ SessionObservation SessionServer::observe() const {
     observation.pointerToggles = pointerToggles_;
     observation.rejectedFrames = rejectedFrames_;
     if (shared_) {
-        observation.ready = readShared(&shared_->ready) != 0;
+        for (int attempt = 0; attempt < 2; ++attempt) {
+            const auto revision = readShared(&shared_->bindingRevision);
+            if (revision & 1)
+                continue;
+            const auto window = readShared(&shared_->boundWindow);
+            const auto generation = readShared(&shared_->boundGeneration);
+            const bool publishedReady = readShared(&shared_->ready) != 0;
+            const auto heartbeat = ULONGLONG(readShared(&shared_->lastHeartbeat));
+            const auto now = GetTickCount64();
+            const bool valid = validFixtureWindow(reinterpret_cast<HWND>(window),
+                                                  configuration_.fixture, generation);
+            if (revision != readShared(&shared_->bindingRevision))
+                continue;
+            observation.boundWindow = window;
+            observation.boundGeneration = generation;
+            observation.bindingVerified = valid;
+            observation.ready = publishedReady && valid && now >= heartbeat &&
+                                now - heartbeat <= heartbeatLifetimeMs;
+            break;
+        }
         observation.ownsPress = readShared(&shared_->owned) != 0;
         observation.worker = static_cast<WorkerState>(readShared(&shared_->workerState));
         observation.reason = static_cast<Reason>(readShared(&shared_->reason));
