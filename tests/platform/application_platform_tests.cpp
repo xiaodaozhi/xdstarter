@@ -107,6 +107,71 @@ QJsonObject nativeOsDiagnostics() {
             {QStringLiteral("userUiLanguage"), int(GetUserDefaultUILanguage())}};
 }
 
+QJsonArray localizationControlDiagnostics(const QString& root, const QString& helper,
+                                          const QString& unicodeModule) {
+    // Failure-only controls stay outside catalog roots and never alter trust policy.
+    const auto asciiModule = QDir(root).filePath(QStringLiteral("localization-control.exe"));
+    QFile::copy(helper, asciiModule);
+    wchar_t systemDirectory[32768]{};
+    GetSystemDirectoryW(systemDirectory, 32768);
+    const auto systemModule =
+        QDir(QString::fromWCharArray(systemDirectory)).filePath(QStringLiteral("shell32.dll"));
+    const QStringList references{
+        QStringLiteral("本地化工具"),
+        QStringLiteral("@%1,-5301").arg(QDir::toNativeSeparators(unicodeModule)),
+        QStringLiteral("@%1,-5301").arg(QDir::toNativeSeparators(asciiModule)),
+        QStringLiteral("@%1,-21799").arg(QDir::toNativeSeparators(systemModule))};
+    QJsonArray result;
+    const auto initialized = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    for (int index = 0; index < references.size(); ++index) {
+        const auto folder =
+            QDir(root).filePath(QStringLiteral("localization-control-%1").arg(index));
+        const auto native = QDir::toNativeSeparators(folder);
+        const auto iniPath = QDir(folder).filePath(QStringLiteral("desktop.ini"));
+        const auto nativeIni = QDir::toNativeSeparators(iniPath);
+        const bool created = QDir().mkpath(folder) &&
+                             PathMakeSystemFolderW(reinterpret_cast<LPCWSTR>(native.utf16()));
+        QFile ini(iniPath);
+        const auto content = QStringLiteral("[.ShellClassInfo]\r\nLocalizedResourceName=") +
+                             references[index] + QStringLiteral("\r\n");
+        const bool written = created && ini.open(QIODevice::WriteOnly) &&
+                             ini.write(QByteArray("\xff\xfe", 2)) == 2 &&
+                             ini.write(reinterpret_cast<const char*>(content.utf16()),
+                                       content.size() * 2) == content.size() * 2;
+        ini.close();
+        const bool attributes =
+            written && SetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeIni.utf16()),
+                                          FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM);
+        SHChangeNotify(SHCNE_UPDATEITEM, SHCNF_PATHW | SHCNF_FLUSH,
+                       reinterpret_cast<LPCWSTR>(native.utf16()), nullptr);
+        wchar_t resolved[256]{}, module[32768]{};
+        int resourceId = 0;
+        const auto indirect = SHLoadIndirectString(
+            reinterpret_cast<LPCWSTR>(references[index].utf16()), resolved, 256, nullptr);
+        const auto localized = SHGetLocalizedName(reinterpret_cast<LPCWSTR>(native.utf16()), module,
+                                                  32768, &resourceId);
+        SHFILEINFOW info{};
+        const auto display = SHGetFileInfoW(reinterpret_cast<LPCWSTR>(native.utf16()), 0, &info,
+                                            sizeof(info), SHGFI_DISPLAYNAME);
+        result.append(QJsonObject{
+            {QStringLiteral("case"), index},
+            {QStringLiteral("reference"), references[index]},
+            {QStringLiteral("configured"), attributes},
+            {QStringLiteral("indirectResultHex"), QString::number(quint32(indirect), 16)},
+            {QStringLiteral("indirectName"), QString::fromWCharArray(resolved)},
+            {QStringLiteral("localizedResultHex"), QString::number(quint32(localized), 16)},
+            {QStringLiteral("localizedModule"), QString::fromWCharArray(module)},
+            {QStringLiteral("localizedResourceId"), resourceId},
+            {QStringLiteral("displayAvailable"), display != 0},
+            {QStringLiteral("displayName"), QString::fromWCharArray(info.szDisplayName)}});
+        SetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeIni.utf16()), FILE_ATTRIBUTE_NORMAL);
+        SetFileAttributesW(reinterpret_cast<LPCWSTR>(native.utf16()), FILE_ATTRIBUTE_NORMAL);
+    }
+    if (SUCCEEDED(initialized))
+        CoUninitialize();
+    return result;
+}
+
 struct ShortcutOptions {
     bool runAs = false;
     int showCommand = SW_SHOWNORMAL;
@@ -704,6 +769,8 @@ int main(int argc, char* argv[]) {
             {QStringLiteral("nativeFolders"), nativeFolders},
             {QStringLiteral("localizationSetup"), localizationSetup},
             {QStringLiteral("sourceTrustDiagnostics"), sources},
+            {QStringLiteral("isolatedControls"),
+             localizationControlDiagnostics(fixture.path(), helper, resourceModule)},
             {QStringLiteral("nativeOs"), nativeOsDiagnostics()},
             {QStringLiteral("diagnosticComResultHex"),
              QString::number(static_cast<quint32>(diagnosticCom), 16)},

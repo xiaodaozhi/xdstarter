@@ -13,7 +13,9 @@ struct StartButtonCaptureOptions {
 };
 
 struct StartButtonHostObservation {
+    CaptureToggleContext context;
     QString event;
+    QString requestedAction;
     bool visible = false;
     bool minimized = false;
     bool foreground = false;
@@ -26,7 +28,13 @@ class StartButtonCapture : public WinKeyCapture {
     using WinKeyCapture::WinKeyCapture;
     [[nodiscard]] virtual QJsonObject diagnosticSnapshot() const = 0;
     virtual void recordHostObservation(const StartButtonHostObservation& observation) = 0;
+
+  protected:
+    void recordToggleDelivery(const CaptureToggleContext& context, bool delivered) override;
 };
+
+[[nodiscard]] QJsonObject
+startButtonHostObservationJson(const StartButtonHostObservation& observation, quint64 observedAt);
 
 // Uses the same generation-checked event channel as keyboard capture, with an
 // independent enable/pause lifecycle. Construction does not install hooks.

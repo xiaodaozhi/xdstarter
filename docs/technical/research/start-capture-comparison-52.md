@@ -13,7 +13,7 @@
 ./build/app-release/bin/xdstarter.exe --start-capture-mode area-cache --start-capture-diagnostics ./build/area-capture.json
 ```
 
-两条命令分两轮执行，中间正常退出。默认不创建诊断文件；显式选择后每两秒原子覆盖同一文件并在退出时补写，不无限追加日志。文件父目录须已经存在。比较时保留程序 SHA-256、模式、Windows 构建、显示器/DPI、任务栏方向/对齐和每个场景的人工观察。
+两条命令分两轮执行，中间正常退出。默认不创建诊断文件；显式选择后每250 ms原子覆盖同一文件并在退出时补写，不无限追加日志。可加`--start-capture-duration 120`限定实验时长并正常退出。文件父目录须已经存在。比较时保留程序 SHA-256、模式、Windows 构建、显示器/DPI、任务栏方向/对齐和每个场景的人工观察。相同场景使用同一EXE，仅切换模式；显式布局文件用于隔离验收，不覆盖用户布局。
 
 诊断中的 `hookInstalled` 是安装记录，`hookLiveness=unknown` 保留系统静默移除无法直接判断的事实。`inputObservedThisSession` 说明本会话见过回调，不能证明现在或未来健康。`qualificationLeaseAvailable`、`eligibleAtCurrentCursor`、`downDecisions`、`upCanceled`、`epochSources`、订阅 HRESULT 和 `lastQuery` 用于区分资格缺口与失败。
 
@@ -50,6 +50,53 @@ ctest --test-dir build/app-release -R '^experimental\.start-bridge' --output-on-
 本机原生指针投递探针为两次尝试、零次成功，返回 `ERROR_INVALID_MESSAGE`（1002），Hook 观察到零份 `WM_POINTER`。这属于系统拒绝投递，不能写成成功消费。B 本轮对真实 `WM_POINTER` 全部放行；指针/兼容消息的状态回归通过独立命名的仿真帧进入同一规范化逻辑，测试会话显式开启 `enableEmulatedFrames`，普通控制器默认关闭。即便仿真通过，也没有获得真实触控支持。
 
 该实验没有现代 Explorer InputSite 适配器，目标白名单会拒绝 Explorer。它也没有证明真实任务栏输入都经过 `GetMessage`。自有消息投递通过，只能证明队列桥接与 IPC 机制，不构成 Explorer 接管、硬件触控或 Win 键路由通过。
+
+## 逐试次收集与报告
+
+产品schema 2导出同一进程runId、EXE散列，以及以session/gestureId关联的输入、派发、Qt交付和host历史。仅观察到的普通全局点击也会有ID，不能因此算作Start点击。旧会话丢弃、被后续切换替代和未测量前台都保留为独立状态。环容量有限，收集器记录缺口；源runId/散列变化或超过2秒未更新时停止，不将缺口当作通过。
+
+在对应Windows Python环境，程序启动且首份诊断生成后运行：
+
+```powershell
+python3 scripts/start_capture_acceptance.py collect --snapshot ./build/point-capture.json --output ./build/point-events.ndjson --executable ./build/app-release/bin/xdstarter.exe --mode point --seconds 120
+python3 scripts/start_capture_acceptance.py clock
+python3 scripts/start_capture_acceptance.py report --events ./build/point-events.ndjson --trials ./build/point-trials.json --output ./build/point-report.json
+```
+
+收集文件只新建、不覆盖，最长900秒且最多16 MiB。源失效/身份变化或达到文件上限会以2结束并保留原因；正常到期/人工停止为0。历史存在缺口时保留独立结果，但不输出显示延迟分位数。`clock`输出与原生记录同域的GetTickCount64；在每次真实操作前后记录`startAt`与`endAt`，独立观察原生菜单与XDStarter的结果。试次时间区间为左闭右开，不得重叠；一试次多次点击会标记关联不唯一。标注格式示例如下，仅为结构示例，不能当作物理通过证据：
+
+```json
+{
+  "schemaVersion": 1,
+  "runId": "copy-from-the-run-header",
+  "mode": "point",
+  "executableSha256": "copy-from-the-run-header",
+  "inputSource": "physical-mouse",
+  "outcomeSource": "operator",
+  "trials": [
+    {"trialId": "fast-entry-01", "startAt": 1000, "endAt": 2000,
+     "intent": "start", "expectedAction": "show", "observed": "unknown"}
+  ]
+}
+```
+
+`observed`取`xdstarter-only`、`native-only`、`both`、`none`、`hidden`、`neighbor-unchanged`或`unknown`。预期`show/hide/cancel`与邻近按钮`neighbor`分开；未知结果不进入已标注Start分母，未看到回调的真实Start意图仍保留，不能从中推断Hook失活原因。`inputSource`区分`physical-mouse/posted-fixture/unknown`，`outcomeSource`区分`operator/independent-observer/fixture`。报告的p50/p95/p99只来自成功且唯一关联的原生前台测量，起点是松开回调，不是硬件事件或动画完成；同时读取失败计数，避免只看成功样本的延迟。查询直方图是进程累计值，不冒充逐试次精确分位数。
+
+## 真实Explorer只观察探针
+
+本轮新增的独立观察探针由`XDSTARTER_BUILD_EXPLORER_ROUTE_PROBE=ON`显式构建，产品不加载它。它不消费输入，先验证当前系统路径、Microsoft签名、完整build/UBR与散列，再观察任务栏线程的队列和窗口过程通路：
+
+```powershell
+cmake -S . -B build/app-release -DXDSTARTER_BUILD_EXPLORER_ROUTE_PROBE=ON
+cmake --build build/app-release --target xdstarter_route_probe
+ctest --test-dir build/app-release -R '^experimental\.explorer-route' --output-on-failure
+./build/app-release/bin/xdstarter_route_probe.exe --inspect
+./build/app-release/bin/xdstarter_route_probe.exe --observe --expected-build BUILD.UBR --expected-explorer-sha256 SHA256_FROM_INSPECTION --seconds 30 --output ./build/explorer-route.ndjson
+```
+
+先单独正常退出XDStarter，避免外部Hook已消费的输入使原生路由观察不完整。真实Start需无遮挡，锁屏或身份不匹配时在安装Hook前拒绝。观察期间按计划进行真实鼠标操作并单独标注时间与结果；队列和窗口过程可能记录同一事件，不能累加当点击次数。窗口过程字段缺少队列时间/坐标时为null，不补造数据。观察器不设置任务栏位置/显示器、不发送物理输入，不调用远程窗口子类或私有接口。
+
+自测只对自有隐藏fixture投递/发送消息，确认Peek不被改变、子窗口消息原样到达、其他根窗口不被记录，以及两种Hook解除后的模块缺席；自测不附加Explorer。真实路由文件可能含临时窗口身份和任务栏位置，只留本地，公开记录仅提交脱敏结论、程序散列、系统构建和验证范围。
 
 ## 对照记录
 

@@ -42,6 +42,100 @@ StartButtonCaptureTarget target() {
             96};
 }
 
+class DeliveryFixture final : public StartButtonCapture {
+  public:
+    void setEnabled(bool enabled) override {
+        generation = enabled ? beginEventSession() : endEventSession();
+        active = enabled;
+    }
+    void stop() override { setEnabled(false); }
+    bool isActive() const override { return active; }
+    bool isSupported() const override { return true; }
+    QJsonObject diagnosticSnapshot() const override { return {}; }
+    void recordHostObservation(const StartButtonHostObservation& observation) override {
+        history.append(observation);
+    }
+    void post(CaptureToggleContext context) { queueToggleRequested(context); }
+    quint64 generation = 0;
+    bool active = false;
+    QList<StartButtonHostObservation> history;
+};
+
+void testCorrelation() {
+    StartButtonGestureTracker tracker;
+    expect(!tracker.observe(StartMouseEvent::LeftUp, 1, 10, false, false).id,
+           "an unmatched release has no invented gesture identity");
+    const auto down = tracker.observe(StartMouseEvent::LeftDown, 1, 20, false, false);
+    expect(down.id && down.pressedAt == 20 && down.sessionGeneration == 1,
+           "physical down starts a correlated observation, not inferred Start intent");
+    expect(!tracker.observe(StartMouseEvent::LeftUp, 1, 25, true, true).id,
+           "injected release does not steal physical gesture ownership");
+    const auto repeat = tracker.observe(StartMouseEvent::LeftDown, 1, 30, false, true);
+    expect(repeat.id == down.id && repeat.pressedAt == down.pressedAt,
+           "repeated owned down preserves the original correlation");
+    const auto drained = tracker.observe(StartMouseEvent::LeftUp, 2, 40, false, true);
+    expect(drained.id == down.id && drained.sessionGeneration == 1,
+           "release drained after pause retains the originating session");
+    expect(!tracker.observe(StartMouseEvent::LeftUp, 2, 41, false, false).id,
+           "duplicate up cannot reuse a completed identity");
+    const auto next = tracker.observe(StartMouseEvent::LeftDown, 2, 50, false, false);
+    expect(next.id > down.id && next.sessionGeneration == 2,
+           "replacement session never reuses a previous gesture ID");
+
+    DeliveryFixture capture;
+    capture.setEnabled(true);
+    QList<CaptureToggleContext> delivered;
+    QObject::connect(&capture, &WinKeyCapture::toggleRequested, &capture,
+                     [&] { delivered.append(capture.deliveringToggleContext()); });
+    capture.post({capture.generation, 101, 100, 150});
+    capture.post({capture.generation, 102, 160, 200});
+    QCoreApplication::processEvents();
+    expect(delivered.size() == 2 && delivered[0].gestureId == 101 &&
+               delivered[1].gestureId == 102 && delivered[0].releasedAt == 150,
+           "queued GUI delivery carries each gesture without latest-event misattribution");
+    expect(!capture.deliveringToggleContext().gestureId,
+           "context cannot leak into unrelated direct activations after signal delivery");
+    DeliveryFixture nested;
+    nested.setEnabled(true);
+    QList<quint64> nestedOrder;
+    QObject::connect(&nested, &WinKeyCapture::toggleRequested, &nested, [&] {
+        const auto id = nested.deliveringToggleContext().gestureId;
+        nestedOrder.append(id);
+        if (id == 201) {
+            nested.post({nested.generation, 202, 110, 160});
+            QCoreApplication::processEvents();
+            nestedOrder.append(nested.deliveringToggleContext().gestureId);
+        }
+    });
+    nested.post({nested.generation, 201, 100, 150});
+    QCoreApplication::processEvents();
+    expect(nestedOrder == QList<quint64>{201, 202, 201} &&
+               !nested.deliveringToggleContext().gestureId,
+           "nested GUI event loops restore the outer gesture context and clear it on exit");
+    capture.post({capture.generation, 103, 210, 250});
+    capture.stop();
+    capture.setEnabled(true);
+    QCoreApplication::processEvents();
+    expect(delivered.size() == 2 && capture.history.last().context.gestureId == 103 &&
+               capture.history.last().event == QStringLiteral("qt-toggle-discarded"),
+           "stale queued toggle is traced as discarded and never delivered to a new session");
+    StartButtonHostObservation host;
+    host.context = {capture.generation, 104, 300, 350};
+    host.event = QStringLiteral("presentation-result");
+    host.requestedAction = QStringLiteral("show");
+    auto json = startButtonHostObservationJson(host, 400);
+    expect(json[QStringLiteral("foreground")].isNull() &&
+               json[QStringLiteral("releasedToObservationMs")].toInteger() == 50 &&
+               json[QStringLiteral("gestureId")].toInteger() == 104,
+           "latency is correlated while an unmeasured native foreground remains unknown");
+    host.nativeMeasured = true;
+    host.foreground = true;
+    json = startButtonHostObservationJson(host, 200);
+    expect(json[QStringLiteral("foreground")].toBool() &&
+               json[QStringLiteral("pressedToObservationMs")].isNull(),
+           "invalid clock order never produces a negative or fabricated latency");
+}
+
 #ifdef Q_OS_WIN
 int inspectNativeTarget(const QString& modeName) {
     if (modeName != QLatin1String("point") && modeName != QLatin1String("area-cache"))
@@ -113,6 +207,7 @@ int main(int argc, char* argv[]) {
     if (arguments.size() == 3 && arguments[1] == QLatin1String("--inspect-native-target"))
         return inspectNativeTarget(arguments[2]);
 #endif
+    testCorrelation();
     const auto ready = target();
     const auto point = ready.qualifiedPoint;
     expect(StartButtonCaptureState::qualifies(ready, point, 1200), "200ms boundary qualifies");

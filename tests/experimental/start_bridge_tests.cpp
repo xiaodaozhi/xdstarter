@@ -285,23 +285,33 @@ void testRecreation(const std::wstring& dll, const std::wstring& fixturePath) {
     SessionServer server;
     if (!start(server, fixture, dll, true))
         return;
-    fixture.command(FixtureCommand::EmulatedPointerPair);
-    expect(until([&] { return server.observe().toggles == 1; }),
-           "emulated-pointer sequence establishes a target-bound compatibility tail");
-    fixture.command(FixtureCommand::EmulatedCompatibilityDown);
-    expect(until([&] {
-               return server.observe().ownsPress && server.observe().promotedDownsOwned == 1;
-           }),
-           "explicit emulated compatibility down takes its distinct ownership path");
-    const auto oldGeneration = count(fixture.window(), generationProperty);
-    fixture.command(FixtureCommand::Recreate);
-    expect(until([&] { return count(fixture.window(), generationProperty) > oldGeneration; }),
-           "controlled InputSite window is destroyed and recreated");
-    expect(until([&] { return !server.observe().ownsPress && server.observe().ready; }),
-           "destroyed compatibility owner clears even after main pointer gesture completed");
-    fixture.command(FixtureCommand::MousePair);
-    expect(until([&] { return server.observe().toggles == 2; }),
-           "new generation is revalidated before accepting a new gesture");
+    for (unsigned iteration = 0; iteration < 3; ++iteration) {
+        fixture.command(FixtureCommand::EmulatedPointerPair);
+        expect(until([&] { return server.observe().toggles == iteration * 2 + 1; }),
+               "emulated-pointer sequence establishes a target-bound compatibility tail");
+        fixture.command(FixtureCommand::EmulatedCompatibilityDown);
+        expect(until([&] {
+                   return server.observe().ownsPress &&
+                          server.observe().promotedDownsOwned == iteration + 1;
+               }),
+               "explicit emulated compatibility down takes its distinct ownership path");
+        const auto oldGeneration = count(fixture.window(), generationProperty);
+        fixture.command(FixtureCommand::Recreate);
+        expect(until([&] { return count(fixture.window(), generationProperty) > oldGeneration; }),
+               "controlled InputSite window is destroyed and recreated");
+        expect(until([&] {
+                   const auto observation = server.observe();
+                   const auto window = fixture.window();
+                   return !observation.ownsPress && observation.ready &&
+                          observation.bindingVerified &&
+                          observation.boundWindow == reinterpret_cast<std::uint64_t>(window) &&
+                          observation.boundGeneration == count(window, generationProperty);
+               }),
+               "destroyed compatibility owner clears even after main pointer gesture completed");
+        fixture.command(FixtureCommand::MousePair);
+        expect(until([&] { return server.observe().toggles == iteration * 2 + 2; }),
+               "new generation is revalidated before accepting a new gesture");
+    }
     expect(server.stop(), "recreated window permits safe drain and module removal");
 }
 

@@ -10,6 +10,13 @@
 
 namespace xdstarter {
 
+struct CaptureToggleContext {
+    quint64 sessionGeneration = 0;
+    quint64 gestureId = 0;
+    quint64 pressedAt = 0;
+    quint64 releasedAt = 0;
+};
+
 // GUI-thread owned. Construction never installs a global input hook. Native
 // input callbacks only queue a toggle; window/focus policy belongs to the host.
 class WinKeyCapture : public QObject {
@@ -23,6 +30,8 @@ class WinKeyCapture : public QObject {
     virtual void stop() = 0;
     [[nodiscard]] virtual bool isActive() const = 0;
     [[nodiscard]] virtual bool isSupported() const = 0;
+    // GUI thread only, valid during synchronous delivery of toggleRequested.
+    [[nodiscard]] CaptureToggleContext deliveringToggleContext() const { return deliveryContext_; }
 
   signals:
     void toggleRequested();
@@ -35,11 +44,14 @@ class WinKeyCapture : public QObject {
     [[nodiscard]] quint64 eventGeneration() const;
     [[nodiscard]] bool isCurrentEventSession(quint64 generation) const;
     void queueToggleRequested(quint64 generation);
+    void queueToggleRequested(CaptureToggleContext context);
+    virtual void recordToggleDelivery(const CaptureToggleContext&, bool) {}
     void queueStatusChanged(quint64 generation, bool active, QString message, QString errorCode);
 
   private:
     std::atomic<quint64> generation_{0};
     std::atomic_bool sessionEnabled_{false};
+    CaptureToggleContext deliveryContext_;
 };
 
 [[nodiscard]] std::unique_ptr<WinKeyCapture> createWinKeyCapture();

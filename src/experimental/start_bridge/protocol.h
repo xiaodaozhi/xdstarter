@@ -21,7 +21,7 @@
 namespace xdstarter::bridge_poc {
 
 constexpr std::uint32_t protocolMagic = 0x35324258;
-constexpr std::uint32_t protocolVersion = 1;
+constexpr std::uint32_t protocolVersion = 2;
 constexpr DWORD imageVersionMs = 0x00010000;
 constexpr DWORD imageVersionLs = 52;
 constexpr DWORD heartbeatLifetimeMs = 300;
@@ -149,6 +149,9 @@ struct SharedSession {
     alignas(8) volatile LONG64 promotedDownsOwned = 0;
     alignas(8) volatile LONG64 pointerMessagesObserved = 0;
     alignas(8) volatile LONG64 emulatedFramesObserved = 0;
+    alignas(8) volatile LONG64 bindingRevision = 0;
+    alignas(8) volatile LONG64 boundWindow = 0;
+    alignas(8) volatile LONG64 boundGeneration = 0;
 };
 
 enum class WireType : std::uint32_t { Hello = 1, Heartbeat, Toggle };

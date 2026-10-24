@@ -3,7 +3,7 @@
 # ADR-0016：开始按钮诊断与隔离接管对照原型
 
 - 状态：接受实验边界，未选择新的产品接管方案
-- 日期：2026-10-23
+- 日期：2026-10-23，2026-10-24扩展关联验收与只观察探针
 - 跟踪：[Issue #52](https://github.com/xiaodaozhi/xdstarter/issues/52)
 - 承接：[ADR-0014](0014-start-click-and-adaptive-taskbar.md)
 
@@ -23,7 +23,11 @@
 
 放行和取消保留结构化原因。查询端记录 UIA 耗时、资格年龄、点差、代次失效来源和订阅 HRESULT。订阅失败取消资格并报告错误，重新启用时重建所需资源。所有状态仍受 session generation 约束，旧会话不能重新唤起窗口。
 
-`--start-capture-diagnostics <path>` 由 GUI 定时器原子覆盖同一诊断文件，退出时补写；没有此选项时不自动创建诊断文件。诊断不包含应用目录、完整输入轨迹或输入文本。显式选项不通过第二实例 IPC 转交给已有进程，必须启动对应的新进程才能改变实验设置。
+`--start-capture-diagnostics <path>` 由 GUI 定时器每250 ms原子覆盖同一诊断文件，退出时补写；没有此选项时不自动创建诊断文件。schema 2记录进程runId、启动时产品文件散列、输入与host各512条有界历史、会话/手势关联、派发与交付丢弃、查询耗时直方图。诊断不包含应用目录、完整移动轨迹或输入文本。显式选项不通过第二实例 IPC 转交给已有进程，必须启动对应的新进程才能改变实验设置。`--start-capture-duration 1..900`只在显式诊断实验中提供正常退出期限，smoke模式拒绝实验参数。
+
+手势ID覆盖观察到的物理左键半序列，包含普通非Start点击，并不推断点击意图。消费后的取消、原生队列派发丢弃、Qt旧会话丢弃、host接收/拒绝/被新请求替代、显示与收起分别记录；同一手势通过会话与ID关联。延迟使用GetTickCount64，表示回调至原生前台测量，具有系统时钟粒度，不代表硬件延迟或动画首帧完成。
+
+有界收集器只读显式诊断，校验runId/模式/二进制散列，限时最多900秒、最多16 MiB，记录历史缺口及源失效；逐试次结果由独立人工/观察器标注。报告不从全局回调量推导Start意图分母，不把没有原生日志当作原生菜单没有出现。无响应、原生单独出现、双菜单、收起、取消及邻近按钮分开，只有独立标注成功且唯一关联、原生前台实测的显示才进入延迟统计。
 
 ### A：外部区域资格原型
 
@@ -39,11 +43,25 @@
 
 会话绑定目标进程、创建时间、GUI 线程、窗口代次、模块身份、位数和随机 nonce。IPC 仅限本地当前用户；未连接、过期或不支持的目标对新手势放行。停用先停止接收新按下，再排空已拥有释放；卸载必须等待回调及 worker 安全结束，超时不能宣称卸载成功。
 
+自有fixture桥接的实验IPC已升为版本2，稳定发布当前绑定窗口/代次，观察端同时复核窗口身份与心跳，避免把已销毁窗口的旧`ready`当作新窗口可用。实验DLL、fixture与控制器须成套重建，旧版不混用，不涉及用户布局格式迁移。
+
 该原型限定在自有 fixture 白名单，拒绝 Explorer。它证明 DLL、队列与 IPC 边界能运行，不证明现代任务栏所有鼠标、触控、键盘和 XAML 输入都经过该队列。现代 InputSite 的共享窗口过程适配、版本门槛及实际 Explorer 接管仍需单独研究和验收。本轮不采用跨进程 `SetWindowSubclass`，不安装系统范围 Hook，不替换系统文件。
 
 本机传输诊断发现手工 `PostMessage(WM_POINTER*)` 返回 `ERROR_INVALID_MESSAGE`（1002），两次消息均未进入 Hook；手工消息也未保留触控兼容鼠标签名。不能以原生计数为零证明输入已被消费。因此 B 本轮仅接管受控宿主的鼠标队列，真实 `WM_POINTER` 通路全部原样放行，未采纳触控拦截。指针与兼容鼠标状态检查改为明确的受控仿真帧，共用规范化手势逻辑，且需要会话显式启用 `enableEmulatedFrames`，默认关闭。仿真帧检查不是 Windows 指针路由验收。
 
-现有产品“不注入 Explorer”约定继续有效。用户授权的本轮进程内对照实验只在上述受控宿主中加载 DLL；将来要进入 Explorer，必须更新目标范围、恢复策略和实际验收记录。不能仅移除白名单使实验成为产品。
+产品“不注入 Explorer”约定继续有效，自有fixture桥接的目标白名单也保持原范围。2026-10-24用户在方案评估后授权继续推进，新增的真实Explorer研究仅限下面独立的只观察探针，不通过移除fixture白名单使消费原型进入Explorer。
+
+### C：真实Explorer消息路由的只观察探针
+
+`XDSTARTER_BUILD_EXPLORER_ROUTE_PROBE`默认关闭，单独生成无Qt DLL、控制台观察器及自有隐藏fixture。产品不链接或加载此DLL。`--inspect`只读检查当前任务栏、子窗口/线程、Explorer路径/创建时间/位数/文件版本/文件散列、完整OS build/UBR及缓存模式的Microsoft Authenticode签名。实际`--observe`要求显式匹配刚检查的构建与散列，当前Start区域资格无遮挡，目标仍为系统目录中已核对的Explorer；没有任意PID、任意DLL或消费输入的参数。
+
+观察器最多附加任务栏及其Explorer子窗口对应的8条线程，每次1至120秒。同用户本地共享映射使用PID/创建时间/线程命名并拒绝冲突，含随机nonce、期限和500 ms心跳。DLL记录`WH_GETMESSAGE`的PM_REMOVE和`WH_CALLWNDPROC`两个通路，始终调用原Hook链，不修改MSG/CWPSTRUCT、不消费输入、不替换窗口过程、不detour。窗口过程记录没有队列时间/位置时明确为未知；两个通路的重复观察不能当作两次物理点击。移动更新最多每通路每50 ms一条，按下/松开保留，环容量2048，文件最多8 MiB，覆盖缺口显式记录。
+
+初始化会在首次回调映射共享内存并核对进程/线程/窗口身份，耗时单独记录，不能宣称首回调严格低延迟。正常结束先停记录、解除两种Hook，再观察模块是否真正消失；解除返回成功不替代模块缺席确认，未知/超时返回失败。没有强制远程卸载或终止Explorer。控制器崩溃时观察期限/心跳会停止记录，但不承诺异常退出后模块立即卸载。
+
+这个探针用于证明当前构建的实际输入路径；队列/窗口过程观察都不等于已经找到可稳定消费的入口。只观察开始时清单中的线程，任务栏重建或出现新线程时需重新预检并开始新轮，不自动跟随注入。没有物理鼠标证据时，不扩展为开始菜单消费接管。若后续需要私有InputSite适配或改变系统原生处理，另行记录目标构建、语义绑定、故障恢复和实际验收后再决定。
+
+原生命中`LockScreenBackstopFrame`只说明当前资格被命中守卫拒绝，窗口类名本身不足以证明用户桌面已锁定；需与用户实际看到的桌面核对，不能仅据此解释所有漏拦截。
 
 ## 验证与取舍
 
@@ -56,6 +74,7 @@
 - [LowLevelMouseProc](https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelmouseproc)：执行线程、消费返回与静默移除限制。
 - [UIA 线程](https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-threading)：独立 MTA 查询和同线程订阅生命周期。
 - [GetMsgProc](https://learn.microsoft.com/en-us/windows/win32/winmsg/getmsgproc)：队列读取、PM_REMOVE 与消息修改范围。
+- [CallWndProc](https://learn.microsoft.com/en-us/windows/win32/winmsg/callwndproc)：窗口过程前的观察范围，此Hook不能修改消息。
 - [SetWindowsHookExW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowshookexw)：指定线程 DLL Hook 与位数约束。
 
 具体实现状态、当前 head 验证与未覆盖项目以 Issue #52、PR 和[测试策略](../testing.md)为准。
