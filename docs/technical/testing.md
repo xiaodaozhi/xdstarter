@@ -815,6 +815,8 @@ $env:PATH = "$PWD/build/Qt/6.8.2/msvc2022_64/bin;$env:PATH"
 
 快捷栏实际验证选择文档等已知入口，检查新系统窗口打开、产品收起及托盘恢复；不批量打开用户目录或设置。托盘文字菜单与 QML 电源菜单分别验收，不将其中一个通过记作另一个通过。测试无托盘恢复和 Explorer 重注册时，分别注明假平台结果与真实系统操作。
 
+Shell 本地化夹具失败时额外记录自有目录的字面文本、ASCII/中文资源路径与系统资源对照，严格本地化断言保持；对照不扫描用户目录、不更改信任策略。#56 跟踪 Windows CI 返回物理名称的问题。[Microsoft KB5103160](https://support.microsoft.com/en-us/servicing/os/windows/docs/2026/06/custom-folder-icons-or-localized-folder-names-might-not-appear-after-installing-the-june-2026-window) 说明 desktop.ini 来源信任硬化是可能影响因素；MOTW、系统版本和原生 API 返回值只是诊断信息，不能单凭该公告确认本机根因或将失败视为通过。
+
 `--smoke-test` 不连接真实目录、桌面动作、托盘或定位服务且无布局 IO 的行为单独验证；正常退出应等待待保存快照落盘，失败应有状态或日志并保留前一有效文件。正常窗口运行不等于已接管 Win 键、开始按钮或 Explorer。
 
 ## Windows 运行时截图与有效缩放

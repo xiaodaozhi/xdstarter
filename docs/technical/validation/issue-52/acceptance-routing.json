@@ -30,7 +30,8 @@
     "tests/experimental/start_bridge_tests.cpp": "e6ea9aa503b8d6ab1956329b5d08f026196a1d01998b66ffec49378bd64d2b72",
     "tests/platform/start_button_capture_tests.cpp": "c881402e99943cb6d9daef3f10466ffa3da2ec89b5d3c4e1ebfba824e5e37129",
     "tests/tooling/test_start_capture_acceptance.py": "a3d7e137ed2f34f312314d6dec9135d02fa88fae32f5b0963db6878639e3bdd3",
-    "tests/ui/tst_desktop_window_host.cpp": "aa503d16f4b2d3c148eccab92f97c3527cb38a7f936ad3decd4b232d97d6dab4"
+    "tests/ui/tst_desktop_window_host.cpp": "aa503d16f4b2d3c148eccab92f97c3527cb38a7f936ad3decd4b232d97d6dab4",
+    "tests/platform/application_platform_tests.cpp": "262c2116811fba9d34dcd2faef5b5598a874bf7c01c325a897c2a74f0beb4cb1"
   },
   "environment": {
     "windowsBuild": "26300.9711",
@@ -171,5 +172,25 @@
   ],
   "computerUsePerformed": false,
   "desktopSettingsChanged": false,
-  "localRawEvidence": "build/validation/issue52-acceptance and ignored build-tree self-test journals; private paths/window identities are not published"
+  "localRawEvidence": "build/validation/issue52-acceptance and ignored build-tree self-test journals; private paths/window identities are not published",
+  "ciFollowup": {
+    "head": "0dc9fe525c23796e38d3008b3f29cb13192666b9",
+    "issue": 56,
+    "failedWindowsJobs": [
+      120752362161,
+      120754751659
+    ],
+    "passedSuitesEach": 17,
+    "totalSuitesEach": 18,
+    "failure": "existing Shell localized folder fixture returned physical names; experimental step did not run",
+    "causeConfirmed": false,
+    "systemTrustPolicyChanged": false,
+    "strictAssertionRetained": true,
+    "diagnosticChange": "failure-only owned literal, ASCII/Unicode resource and system resource controls",
+    "localDiagnosticCandidatePlatformTest": {
+      "passed": true,
+      "seconds": 20.58,
+      "failureControlsExecuted": false
+    }
+  }
 }
