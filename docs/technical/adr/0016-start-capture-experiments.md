@@ -43,6 +43,8 @@
 
 会话绑定目标进程、创建时间、GUI 线程、窗口代次、模块身份、位数和随机 nonce。IPC 仅限本地当前用户；未连接、过期或不支持的目标对新手势放行。停用先停止接收新按下，再排空已拥有释放；卸载必须等待回调及 worker 安全结束，超时不能宣称卸载成功。
 
+自有fixture桥接的实验IPC已升为版本2，稳定发布当前绑定窗口/代次，观察端同时复核窗口身份与心跳，避免把已销毁窗口的旧`ready`当作新窗口可用。实验DLL、fixture与控制器须成套重建，旧版不混用，不涉及用户布局格式迁移。
+
 该原型限定在自有 fixture 白名单，拒绝 Explorer。它证明 DLL、队列与 IPC 边界能运行，不证明现代任务栏所有鼠标、触控、键盘和 XAML 输入都经过该队列。现代 InputSite 的共享窗口过程适配、版本门槛及实际 Explorer 接管仍需单独研究和验收。本轮不采用跨进程 `SetWindowSubclass`，不安装系统范围 Hook，不替换系统文件。
 
 本机传输诊断发现手工 `PostMessage(WM_POINTER*)` 返回 `ERROR_INVALID_MESSAGE`（1002），两次消息均未进入 Hook；手工消息也未保留触控兼容鼠标签名。不能以原生计数为零证明输入已被消费。因此 B 本轮仅接管受控宿主的鼠标队列，真实 `WM_POINTER` 通路全部原样放行，未采纳触控拦截。指针与兼容鼠标状态检查改为明确的受控仿真帧，共用规范化手势逻辑，且需要会话显式启用 `enableEmulatedFrames`，默认关闭。仿真帧检查不是 Windows 指针路由验收。
@@ -59,6 +61,8 @@
 
 这个探针用于证明当前构建的实际输入路径；队列/窗口过程观察都不等于已经找到可稳定消费的入口。只观察开始时清单中的线程，任务栏重建或出现新线程时需重新预检并开始新轮，不自动跟随注入。没有物理鼠标证据时，不扩展为开始菜单消费接管。若后续需要私有InputSite适配或改变系统原生处理，另行记录目标构建、语义绑定、故障恢复和实际验收后再决定。
 
+原生命中`LockScreenBackstopFrame`只说明当前资格被命中守卫拒绝，窗口类名本身不足以证明用户桌面已锁定；需与用户实际看到的桌面核对，不能仅据此解释所有漏拦截。
+
 ## 验证与取舍
 
 纯状态机与故障注入覆盖资格、放行原因、完整手势及诊断边界；真实 Windows 自有进程覆盖 DLL 加载、消息投递、IPC 失联、心跳过期、停用和窗口重建。实验默认不参与产品构建；CI 显式构建并运行受控宿主集成检查。
@@ -70,6 +74,7 @@
 - [LowLevelMouseProc](https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelmouseproc)：执行线程、消费返回与静默移除限制。
 - [UIA 线程](https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-threading)：独立 MTA 查询和同线程订阅生命周期。
 - [GetMsgProc](https://learn.microsoft.com/en-us/windows/win32/winmsg/getmsgproc)：队列读取、PM_REMOVE 与消息修改范围。
+- [CallWndProc](https://learn.microsoft.com/en-us/windows/win32/winmsg/callwndproc)：窗口过程前的观察范围，此Hook不能修改消息。
 - [SetWindowsHookExW](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setwindowshookexw)：指定线程 DLL Hook 与位数约束。
 
 具体实现状态、当前 head 验证与未覆盖项目以 Issue #52、PR 和[测试策略](../testing.md)为准。
