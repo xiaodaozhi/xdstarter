@@ -145,6 +145,8 @@
 
 ## 磁贴按压与内容对齐
 
-[Issue #50](https://github.com/xiaodaozhi/xdstarter/issues/50) 在既有外观上补充按点透视反馈。共享`motion.tilePress`定义90 ms按下、180 ms复原、最多6度倾角和7 DIP边缘深度、600 DIP视距及0.985收缩比例；三档磁贴按实际尺寸限制倾角。实现采用带透视分母的矩阵，仅变换背景和内容，保留固定的输入几何。参考微软[指针点击动画指南](https://download.microsoft.com/download/2/4/A/24A81A29-77CF-4AA5-967E-64E42554F21B/UWP%20app%20design%20guidelines%20v1509.pdf)中的按下缩放／倾斜及松开恢复原则；投影使用Qt的[matrix4x4](https://doc.qt.io/qt-6.8/qml-matrix4x4.html)。具体参数是本项目取值，不作为Windows私有动画参数。
+[Issue #50](https://github.com/xiaodaozhi/xdstarter/issues/50) 在既有外观上补充按点透视反馈，[Issue #58](https://github.com/xiaodaozhi/xdstarter/issues/58) 修正其平面姿态和恢复中重按。共享`motion.tilePress`保留90 ms按下、180 ms复原和600 DIP视距。按点方向先归一化，再用一次合成轴旋转求姿态；48×48、104×104和216×104 DIP磁贴分别按该方向在真实平面上的跨度限制最终倾角，最多6度且整个平面最大后退不超过7 DIP，不能分别限制两轴后叠加。边缘和角落按压围绕对侧边或角，按下侧后退，对侧接近原位；方形对角按压的两枚相邻角可以等深。中心收缩至0.985并下沉2 DIP，随远离中心衰减；恢复途中重按从当前姿态连续插值。
+
+带透视分母的矩阵统一变换背景、图标和文字，保留固定的输入几何与拖动偏移。参考微软[指针点击动画指南](https://download.microsoft.com/download/2/4/A/24A81A29-77CF-4AA5-967E-64E42554F21B/UWP%20app%20design%20guidelines%20v1509.pdf)中的按下缩放／倾斜及松开恢复原则；投影使用Qt的[matrix4x4](https://doc.qt.io/qt-6.8/qml-matrix4x4.html)。具体参数是本项目取值，不作为Windows私有动画参数。聊天中生成的透视说明图不作为视觉参考或验收基准；既有v2稿与tokens保持原有身份，本次运行时证据见[测试策略](../technical/testing.md)。
 
 磁贴内容视口、分组操作、右上关闭按钮及窄模式全部应用共用内容右边界；滚动条置于现有24 DIP外侧留白。磁贴仍按48/8几何排布，任意非吸附宽度可剩下不足一列的自然空白；吸附宽度下整列右缘对齐，见[布局说明](../technical/tile-layout.md)。关于框的“项目主页”文本与正文左边界对齐，不采用默认按钮的水平缩进。

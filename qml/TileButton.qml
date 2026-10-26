@@ -21,6 +21,8 @@ Button {
     property bool pointerPressActive: false
     property bool pressComponentReady: false
     property point pressPoint: Qt.point(0, 0)
+    property real pressDirectionX: 0
+    property real pressDirectionY: 0
     property real pressProgress: 0
     readonly property bool pressAnimating: pressMotion.running
     readonly property var pressTokens: tokens.motion.tilePress
@@ -60,11 +62,30 @@ Button {
     opacity: dragging ? 0.35 : 1
     // Input geometry stays on the untransformed Button. Only its visual layers
     // receive the projective press matrix, independently of pin/reflow motion.
-    NumberAnimation {
+    ParallelAnimation {
         id: pressMotion
-        target: tileButton
-        property: "pressProgress"
-        easing.type: Easing.OutCubic
+        property int durationMs: 0
+        NumberAnimation {
+            id: pressProgressMotion
+            target: tileButton
+            property: "pressProgress"
+            duration: pressMotion.durationMs
+            easing.type: Easing.OutCubic
+        }
+        NumberAnimation {
+            id: pressDirectionXMotion
+            target: tileButton
+            property: "pressDirectionX"
+            duration: pressMotion.durationMs
+            easing.type: Easing.OutCubic
+        }
+        NumberAnimation {
+            id: pressDirectionYMotion
+            target: tileButton
+            property: "pressDirectionY"
+            duration: pressMotion.durationMs
+            easing.type: Easing.OutCubic
+        }
     }
     Behavior on opacity {
         NumberAnimation {
@@ -158,10 +179,22 @@ Button {
     function beginPointerPress(x: real, y: real): void {
         pressMotion.stop();
         pressPoint = Qt.point(Math.max(-1, Math.min(1, 2 * x / Math.max(1, width) - 1)), Math.max(-1, Math.min(1, 2 * y / Math.max(1, height) - 1)));
+        if (pressProgress <= 0) {
+            pressDirectionX = pressPoint.x;
+            pressDirectionY = pressPoint.y;
+        }
         pointerPressActive = true;
-        pressMotion.from = pressProgress;
-        pressMotion.to = 1;
-        pressMotion.duration = pressTokens.pressMs;
+        animatePointerPress(1, pressTokens.pressMs);
+    }
+
+    function animatePointerPress(targetProgress: real, durationMs: int): void {
+        pressProgressMotion.from = pressProgress;
+        pressProgressMotion.to = targetProgress;
+        pressDirectionXMotion.from = pressDirectionX;
+        pressDirectionXMotion.to = targetProgress > 0 ? pressPoint.x : pressDirectionX;
+        pressDirectionYMotion.from = pressDirectionY;
+        pressDirectionYMotion.to = targetProgress > 0 ? pressPoint.y : pressDirectionY;
+        pressMotion.durationMs = durationMs;
         pressMotion.start();
     }
 
@@ -171,14 +204,13 @@ Button {
         pressMotion.stop();
         if (immediate) {
             pressProgress = 0;
+            pressDirectionX = 0;
+            pressDirectionY = 0;
             return;
         }
         if (pressProgress === 0)
             return;
-        pressMotion.from = pressProgress;
-        pressMotion.to = 0;
-        pressMotion.duration = pressTokens.releaseMs;
-        pressMotion.start();
+        animatePointerPress(0, pressTokens.releaseMs);
     }
 
     function projectedPressMatrix(): matrix4x4 {
@@ -188,19 +220,29 @@ Button {
         const centerX = width / 2;
         const centerY = height / 2;
         const maximumAngle = pressTokens.maximumTiltDegrees * Math.PI / 180;
-        const angleX = -pressPoint.y * Math.min(maximumAngle, Math.atan(pressTokens.maximumEdgeDepthDip / Math.max(1, centerY))) * pressProgress;
-        const angleY = pressPoint.x * Math.min(maximumAngle, Math.atan(pressTokens.maximumEdgeDepthDip / Math.max(1, centerX))) * pressProgress;
-        const visualScale = 1 - (1 - pressTokens.pressedScale) * pressProgress;
-        // Keep the far edge behind the resting plane. The pressed side recedes
-        // further, while a centered press has only a small uniform depression.
-        const edgeDepth = Math.abs(Math.sin(angleY)) * centerX + Math.abs(Math.cos(angleY) * Math.sin(angleX)) * centerY;
-        const depth = pressTokens.centerDepthDip * pressProgress + edgeDepth * visualScale;
+        const directionLength = Math.sqrt(pressDirectionX * pressDirectionX + pressDirectionY * pressDirectionY);
+        const strength = Math.min(1, directionLength);
+        const directionX = directionLength > 0 ? pressDirectionX / directionLength : 0;
+        const directionY = directionLength > 0 ? pressDirectionY / directionLength : 0;
+        const centerWeight = 1 - strength;
+        const visualScale = 1 - (1 - pressTokens.pressedScale) * centerWeight * pressProgress;
+        const centerDepth = pressTokens.centerDepthDip * centerWeight * pressProgress;
+        // One axis preserves diagonal symmetry. Bound its full plane span,
+        // rather than adding independently capped X/Y rotations and depths.
+        const span = (Math.abs(directionX) * width + Math.abs(directionY) * height) * visualScale;
+        const depthAngle = Math.asin(Math.min(1, pressTokens.maximumEdgeDepthDip / Math.max(1, span)));
+        const angle = Math.min(maximumAngle, depthAngle) * strength * pressProgress;
+        const pivotX = pressDirectionX === 0 ? 0 : (pressDirectionX > 0 ? -centerX : centerX) * visualScale;
+        const pivotY = pressDirectionY === 0 ? 0 : (pressDirectionY > 0 ? -centerY : centerY) * visualScale;
         const distance = pressTokens.perspectiveDistanceDip;
         matrix.translate(Qt.vector3d(centerX, centerY, 0));
         matrix = matrix.times(Qt.matrix4x4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -1 / distance, 1));
-        matrix.translate(Qt.vector3d(0, 0, -depth));
-        matrix.rotate(angleY * 180 / Math.PI, Qt.vector3d(0, 1, 0));
-        matrix.rotate(angleX * 180 / Math.PI, Qt.vector3d(1, 0, 0));
+        // Keep the opposite edge/corner anchored; center-only depression and
+        // scaling fade out as the press approaches the tile's boundary.
+        matrix.translate(Qt.vector3d(pivotX, pivotY, -centerDepth));
+        if (angle > 0)
+            matrix.rotate(angle * 180 / Math.PI, Qt.vector3d(-directionY, directionX, 0));
+        matrix.translate(Qt.vector3d(-pivotX, -pivotY, 0));
         matrix.scale(visualScale, visualScale, 1);
         matrix.translate(Qt.vector3d(-centerX, -centerY, 0));
         return matrix;

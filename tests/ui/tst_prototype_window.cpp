@@ -44,6 +44,7 @@
 #include <QTemporaryDir>
 #include <QThread>
 #include <QUrl>
+#include <QVector3D>
 #include <QVector4D>
 #include <QtMath>
 #include <QtTest>
@@ -184,6 +185,27 @@ QQuickItem* visualItem(QQuickItem* parent, const QString& name) {
 
 QRectF itemGeometry(const QQuickItem* item) {
     return {item->x(), item->y(), item->width(), item->height()};
+}
+
+QList<QPointF> tileCorners(const QQuickItem* tile) {
+    return {{0, 0}, {tile->width(), 0}, {tile->width(), tile->height()}, {0, tile->height()}};
+}
+
+QVector3D unprojectedPressPoint(const QMatrix4x4& matrix, const QQuickItem* tile,
+                               const QPointF& point) {
+    const auto clip = matrix * QVector4D(point.x(), point.y(), 0, 1);
+    // The matrix translates the perspective result back to the tile center.
+    // Remove that homogeneous translation before measuring its plane normal.
+    return {clip.x() - float(tile->width() / 2) * clip.w(),
+            clip.y() - float(tile->height() / 2) * clip.w(), clip.z()};
+}
+
+qreal tilePressAngleDegrees(const QMatrix4x4& matrix, const QQuickItem* tile) {
+    const auto origin = unprojectedPressPoint(matrix, tile, {0, 0});
+    const auto horizontal = unprojectedPressPoint(matrix, tile, {tile->width(), 0}) - origin;
+    const auto vertical = unprojectedPressPoint(matrix, tile, {0, tile->height()}) - origin;
+    const auto normal = QVector3D::crossProduct(horizontal, vertical).normalized();
+    return qRadiansToDegrees(std::atan2(std::hypot(normal.x(), normal.y()), normal.z()));
 }
 
 QJsonObject rectangleJson(const QRectF& rectangle) {
@@ -341,6 +363,10 @@ class PrototypeWindowTest : public QObject {
     void keyboardAndMouseSelection();
     void tilePressPerspective_data();
     void tilePressPerspective();
+    void tilePressBoundaryGeometry_data();
+    void tilePressBoundaryGeometry();
+    void tilePressSymmetry();
+    void tilePressInterruptedMotion();
     void tilePressSymbolsRemainRendered();
     void tilePressCancellation();
     void tilePressDragAndAlternateInput();
@@ -1024,8 +1050,7 @@ void PrototypeWindowTest::tilePressPerspective() {
 
     const auto matrix = tile->property("pressMatrix").value<QMatrix4x4>();
     QVERIFY(!matrix.isIdentity());
-    const QList<QPointF> corners{
-        {0, 0}, {tile->width(), 0}, {tile->width(), tile->height()}, {0, tile->height()}};
+    const auto corners = tileCorners(tile);
     QList<QPointF> projected;
     QList<qreal> depths;
     for (const auto& corner : corners) {
@@ -1075,10 +1100,12 @@ void PrototypeWindowTest::tilePressPerspective() {
                        tile->boundingRect().center())
                     .length() < 0.001);
     }
+    // A diagonally tilted plane may have two equal-depth corners. Its pressed
+    // corner must still recede farther than the opposite corner.
     if (horizontalTilt && verticalTilt) {
-        for (qsizetype a = 0; a < depths.size(); ++a)
-            for (qsizetype b = a + 1; b < depths.size(); ++b)
-                QVERIFY(std::abs(depths[a] - depths[b]) > 0.0001);
+        const qsizetype pressed = fraction.y() < 0.5 ? (fraction.x() < 0.5 ? 0 : 1)
+                                                     : (fraction.x() < 0.5 ? 3 : 2);
+        QVERIFY(depths[pressed] < depths[(pressed + 2) % 4]);
     }
     const auto left = QLineF(projected[0], projected[3]).length();
     const auto right = QLineF(projected[1], projected[2]).length();
@@ -1106,6 +1133,247 @@ void PrototypeWindowTest::tilePressPerspective() {
     QCOMPARE(tile->mapRectToScene(tile->boundingRect()), inputGeometry);
     QCOMPARE(service_->snapshot(), snapshot);
     captureTilePressFrame(captureName, QStringLiteral("restored"), tile);
+}
+
+void PrototypeWindowTest::tilePressBoundaryGeometry_data() {
+    QTest::addColumn<QString>("tileId");
+    QTest::addColumn<QPointF>("fraction");
+    const QList<QPair<QByteArray, QPointF>> positions{
+        {"top-left", {0, 0}},    {"top", {0.5, 0}},    {"top-right", {1, 0}},
+        {"left", {0, 0.5}},      {"center", {0.5, 0.5}}, {"right", {1, 0.5}},
+        {"bottom-left", {0, 1}}, {"bottom", {0.5, 1}}, {"bottom-right", {1, 1}}};
+    for (const auto& id : {QStringLiteral("daily-small-1"), QStringLiteral("work-standard-1"),
+                           QStringLiteral("daily-wide")}) {
+        for (const auto& position : positions) {
+            const auto name = id.toLatin1() + '-' + position.first;
+            QTest::newRow(name.constData()) << id << position.second;
+        }
+    }
+}
+
+void PrototypeWindowTest::tilePressBoundaryGeometry() {
+    QFETCH(QString, tileId);
+    QFETCH(QPointF, fraction);
+    auto* tile = item(QStringLiteral("tile-") + tileId);
+    QVERIFY(tile);
+    QTRY_COMPARE(tile->property("appearScale").toReal(), 1.0);
+    auto* background = visualItem(tile, QStringLiteral("tilePressBackground"));
+    auto* content = visualItem(tile, QStringLiteral("tilePressContent"));
+    QVERIFY(background && content);
+    const auto geometry = tile->mapRectToScene(tile->boundingRect());
+    const auto snapshot = service_->snapshot();
+    QVERIFY(QMetaObject::invokeMethod(tile, "beginPointerPress",
+                                     Q_ARG(double, fraction.x() * tile->width()),
+                                     Q_ARG(double, fraction.y() * tile->height())));
+    QTRY_VERIFY(!tile->property("pressAnimating").toBool());
+    QCOMPARE(tile->property("pressProgress").toReal(), 1.0);
+    const auto matrix = tile->property("pressMatrix").value<QMatrix4x4>();
+    const auto angle = tilePressAngleDegrees(matrix, tile);
+    QVERIFY2(angle <= 6.001, qPrintable(QStringLiteral("Combined tilt=%1 degrees").arg(angle)));
+    const bool centered = fraction == QPointF(0.5, 0.5);
+    if (centered)
+        QVERIFY(angle < 0.001);
+    else
+        QVERIFY(angle > 0.1);
+    int anchors = 0;
+    qreal deepestRetreat = 0;
+    for (const auto& corner : tileCorners(tile)) {
+        const auto clip = matrix * QVector4D(corner.x(), corner.y(), 0, 1);
+        const auto projected = background->mapToItem(tile, corner);
+        const qreal depth = -clip.z();
+        deepestRetreat = std::max(deepestRetreat, depth);
+        QVERIFY2(depth >= -0.001 && depth <= 7.001,
+                 qPrintable(QStringLiteral("corner=(%1,%2), retreat=%3 DIP")
+                                .arg(corner.x()).arg(corner.y()).arg(depth)));
+        QVERIFY(clip.w() >= 1.0 - 0.000001);
+        QVERIFY(QLineF(projected, content->mapToItem(tile, corner)).length() < 0.001);
+        QVERIFY(QLineF(projected, {clip.x() / clip.w(), clip.y() / clip.w()}).length() < 0.001);
+        // A boundary press rotates about its opposite edge/corner. Neither a
+        // center-scale nor a uniform depression may displace those anchors.
+        const bool oppositeX = fraction.x() == 0.5 ||
+                               corner.x() == (fraction.x() < 0.5 ? tile->width() : 0);
+        const bool oppositeY = fraction.y() == 0.5 ||
+                               corner.y() == (fraction.y() < 0.5 ? tile->height() : 0);
+        if (!centered && oppositeX && oppositeY) {
+            ++anchors;
+            QVERIFY(std::abs(depth) < 0.001);
+            QVERIFY(QLineF(projected, corner).length() < 0.001);
+        }
+        if (centered)
+            QVERIFY(std::abs(depth - 2) < 0.001);
+    }
+    QVERIFY(deepestRetreat > 0);
+    QCOMPARE(anchors, centered ? 0 : (fraction.x() == 0.5 || fraction.y() == 0.5 ? 2 : 1));
+    QCOMPARE(tile->mapRectToScene(tile->boundingRect()), geometry);
+    QCOMPARE(service_->snapshot(), snapshot);
+    QVERIFY(QMetaObject::invokeMethod(tile, "cancelPointerPress", Q_ARG(bool, true)));
+    QVERIFY(tile->property("pressMatrix").value<QMatrix4x4>().isIdentity());
+}
+
+void PrototypeWindowTest::tilePressSymmetry() {
+    for (const auto& id : {QStringLiteral("daily-small-1"), QStringLiteral("work-standard-1"),
+                           QStringLiteral("daily-wide")}) {
+        auto* tile = item(QStringLiteral("tile-") + id);
+        QVERIFY(tile);
+        QTRY_COMPARE(tile->property("appearScale").toReal(), 1.0);
+        auto* background = visualItem(tile, QStringLiteral("tilePressBackground"));
+        QVERIFY(background);
+        const auto press = [&](const QPointF& fraction) {
+            QMetaObject::invokeMethod(tile, "cancelPointerPress", Q_ARG(bool, true));
+            return QMetaObject::invokeMethod(tile, "beginPointerPress",
+                                             Q_ARG(double, fraction.x() * tile->width()),
+                                             Q_ARG(double, fraction.y() * tile->height()));
+        };
+        for (const QPointF fraction : {QPointF(0, 0), QPointF(0.15, 0.15), QPointF(0.15, 0.3)}) {
+            QVERIFY(press(fraction));
+            QTRY_VERIFY(!tile->property("pressAnimating").toBool());
+            const auto reference = tile->property("pressMatrix").value<QMatrix4x4>();
+            QVERIFY(press({1 - fraction.x(), fraction.y()}));
+            QTRY_VERIFY(!tile->property("pressAnimating").toBool());
+            const auto mirroredX = tile->property("pressMatrix").value<QMatrix4x4>();
+            for (const auto& corner : tileCorners(tile)) {
+                const auto expected = reference * QVector4D(corner.x(), corner.y(), 0, 1);
+                const auto actual = mirroredX * QVector4D(tile->width() - corner.x(), corner.y(), 0, 1);
+                QVERIFY(std::abs(expected.z() - actual.z()) < 0.001);
+                QVERIFY(std::abs(tile->width() - expected.x() / expected.w() - actual.x() / actual.w()) < 0.001);
+                QVERIFY(std::abs(expected.y() / expected.w() - actual.y() / actual.w()) < 0.001);
+            }
+            QVERIFY(press({fraction.x(), 1 - fraction.y()}));
+            QTRY_VERIFY(!tile->property("pressAnimating").toBool());
+            const auto mirroredY = tile->property("pressMatrix").value<QMatrix4x4>();
+            for (const auto& corner : tileCorners(tile)) {
+                const auto expected = reference * QVector4D(corner.x(), corner.y(), 0, 1);
+                const auto actual = mirroredY * QVector4D(corner.x(), tile->height() - corner.y(), 0, 1);
+                QVERIFY(std::abs(expected.z() - actual.z()) < 0.001);
+                QVERIFY(std::abs(expected.x() / expected.w() - actual.x() / actual.w()) < 0.001);
+                QVERIFY(std::abs(tile->height() - expected.y() / expected.w() - actual.y() / actual.w()) < 0.001);
+            }
+            if (tile->width() == tile->height()) {
+                QVERIFY(press({fraction.y(), fraction.x()}));
+                QTRY_VERIFY(!tile->property("pressAnimating").toBool());
+                const auto transposed = tile->property("pressMatrix").value<QMatrix4x4>();
+                for (const auto& corner : tileCorners(tile)) {
+                    const auto expected = reference * QVector4D(corner.x(), corner.y(), 0, 1);
+                    const auto actual = transposed * QVector4D(corner.y(), corner.x(), 0, 1);
+                    QVERIFY(std::abs(expected.z() - actual.z()) < 0.001);
+                    QVERIFY(std::abs(expected.x() / expected.w() - actual.y() / actual.w()) < 0.001);
+                    QVERIFY(std::abs(expected.y() / expected.w() - actual.x() / actual.w()) < 0.001);
+                }
+                if (fraction.x() == fraction.y()) {
+                    const auto topRight = reference * QVector4D(tile->width(), 0, 0, 1);
+                    const auto bottomLeft = reference * QVector4D(0, tile->height(), 0, 1);
+                    QVERIFY(std::abs(topRight.z() - bottomLeft.z()) < 0.001);
+                }
+            }
+        }
+        QVERIFY(QMetaObject::invokeMethod(tile, "cancelPointerPress", Q_ARG(bool, true)));
+    }
+}
+
+void PrototypeWindowTest::tilePressInterruptedMotion() {
+    auto* tile = item(QStringLiteral("tile-work-standard-1"));
+    QVERIFY(tile);
+    struct RestoreTokens {
+        QQuickItem* tile;
+        QVariant original;
+        ~RestoreTokens() { tile->setProperty("tokens", original); }
+    } restoreTokens{tile, tile->property("tokens")};
+    // Give this test instance enough intermediate frames on busy CI runners.
+    // JSON round-tripping owns every nested value; production tokens and the
+    // other pointer tests retain their actual 90/180 ms timings.
+    auto testTokens = QJsonDocument::fromVariant(visualTokens_).object().toVariantMap();
+    auto motionTokens = testTokens.value(QStringLiteral("motion")).toMap();
+    auto pressTokens = motionTokens.value(QStringLiteral("tilePress")).toMap();
+    pressTokens.insert(QStringLiteral("pressMs"), 400);
+    pressTokens.insert(QStringLiteral("releaseMs"), 600);
+    motionTokens.insert(QStringLiteral("tilePress"), pressTokens);
+    testTokens.insert(QStringLiteral("motion"), motionTokens);
+    QVERIFY(tile->setProperty("tokens", testTokens));
+    auto* background = visualItem(tile, QStringLiteral("tilePressBackground"));
+    QVERIFY(background);
+    QTRY_COMPARE(tile->property("appearScale").toReal(), 1.0);
+    const auto snapshot = service_->snapshot();
+    QSignalSpy activated(tile, SIGNAL(selected(QString)));
+    QSignalSpy progress(tile, SIGNAL(pressProgressChanged()));
+    QVERIFY(activated.isValid() && progress.isValid());
+    const auto press = [&](const QPointF& fraction) {
+        return QMetaObject::invokeMethod(tile, "beginPointerPress",
+                                         Q_ARG(double, fraction.x() * tile->width()),
+                                         Q_ARG(double, fraction.y() * tile->height()));
+    };
+    const auto projectedCorners = [&] {
+        QList<QPointF> points;
+        for (const auto& corner : tileCorners(tile))
+            points.append(background->mapToItem(tile, corner));
+        return points;
+    };
+    // Releasing before the press animation finishes must recover from the
+    // current pose rather than completing the old press first.
+    QVERIFY(press({0, 0}));
+    QVERIFY(progress.wait(800));
+    QVERIFY(tile->property("pressProgress").toReal() > 0);
+    QVERIFY(tile->property("pressProgress").toReal() < 1);
+    const auto earlyProgress = tile->property("pressProgress").toReal();
+    const auto earlyPose = projectedCorners();
+    QVERIFY(QMetaObject::invokeMethod(tile, "cancelPointerPress", Q_ARG(bool, false)));
+    QCOMPARE(tile->property("pressProgress").toReal(), earlyProgress);
+    QCOMPARE(projectedCorners(), earlyPose);
+    QTRY_COMPARE(tile->property("pressProgress").toReal(), 0.0);
+    QVERIFY(tile->property("pressMatrix").value<QMatrix4x4>().isIdentity());
+
+    QVERIFY(press({0, 0}));
+    QTRY_VERIFY(!tile->property("pressAnimating").toBool());
+    progress.clear();
+    QVERIFY(QMetaObject::invokeMethod(tile, "cancelPointerPress", Q_ARG(bool, false)));
+    QVERIFY(progress.wait(800));
+    QVERIFY(tile->property("pressProgress").toReal() < 1);
+    QVERIFY(tile->property("pressProgress").toReal() > 0);
+    const auto recoveringProgress = tile->property("pressProgress").toReal();
+    const auto recoveringPose = projectedCorners();
+    QVERIFY(press({1, 1}));
+    QCOMPARE(tile->property("pressProgress").toReal(), recoveringProgress);
+    // Recording the new pointer location cannot immediately flip the plane.
+    const auto repressPose = projectedCorners();
+    for (qsizetype index = 0; index < recoveringPose.size(); ++index)
+        QVERIFY(QLineF(recoveringPose[index], repressPose[index]).length() < 0.001);
+    QTRY_VERIFY(!tile->property("pressAnimating").toBool());
+    QCOMPARE(tile->property("pressProgress").toReal(), 1.0);
+    const auto resumedTarget = tile->property("pressMatrix").value<QMatrix4x4>();
+    QVERIFY(QMetaObject::invokeMethod(tile, "cancelPointerPress", Q_ARG(bool, true)));
+    QVERIFY(press({1, 1}));
+    QTRY_VERIFY(!tile->property("pressAnimating").toBool());
+    const auto freshTarget = tile->property("pressMatrix").value<QMatrix4x4>();
+    for (int row = 0; row < 4; ++row)
+        for (int column = 0; column < 4; ++column)
+            QVERIFY(std::abs(resumedTarget(row, column) - freshTarget(row, column)) < 0.00001);
+
+    // Hiding during direction interpolation must cancel every motion channel;
+    // showing again starts at the identity, including on a subsequent press.
+    QVERIFY(QMetaObject::invokeMethod(tile, "cancelPointerPress", Q_ARG(bool, false)));
+    QTRY_VERIFY(tile->property("pressProgress").toReal() < 1);
+    QVERIFY(press({0, 0}));
+    QVERIFY(tile->property("pressAnimating").toBool());
+    tile->setVisible(false);
+    QCOMPARE(tile->property("pressProgress").toReal(), 0.0);
+    QCOMPARE(tile->property("pressDirectionX").toReal(), 0.0);
+    QCOMPARE(tile->property("pressDirectionY").toReal(), 0.0);
+    QVERIFY(!tile->property("pressAnimating").toBool());
+    QVERIFY(!tile->property("pointerPressActive").toBool());
+    QVERIFY(tile->property("pressMatrix").value<QMatrix4x4>().isIdentity());
+    tile->setVisible(true);
+    QTest::qWait(450);
+    QCOMPARE(tile->property("pressDirectionX").toReal(), 0.0);
+    QCOMPARE(tile->property("pressDirectionY").toReal(), 0.0);
+    QVERIFY(tile->property("pressMatrix").value<QMatrix4x4>().isIdentity());
+    QVERIFY(press({1, 1}));
+    QTRY_VERIFY(!tile->property("pressAnimating").toBool());
+    const auto afterHidden = tile->property("pressMatrix").value<QMatrix4x4>();
+    for (int row = 0; row < 4; ++row)
+        for (int column = 0; column < 4; ++column)
+            QVERIFY(std::abs(afterHidden(row, column) - freshTarget(row, column)) < 0.00001);
+    QVERIFY(QMetaObject::invokeMethod(tile, "cancelPointerPress", Q_ARG(bool, true)));
+    QCOMPARE(activated.count(), 0);
+    QCOMPARE(service_->snapshot(), snapshot);
 }
 
 void PrototypeWindowTest::tilePressSymbolsRemainRendered() {
@@ -2642,6 +2910,7 @@ void PrototypeWindowTest::openGroupMenu(const QString& groupId) {
     auto* menu = window_->findChild<QObject*>(QStringLiteral("groupMenu"));
     QVERIFY(menu);
     QTRY_VERIFY(menu->property("opened").toBool());
+    QTRY_COMPARE(window_->property("managedGroupId").toString(), groupId);
     QVERIFY(window_->property("internalPopupVisible").toBool());
     QVERIFY(window_->property("dismissalBlocked").toBool());
 }
@@ -2731,6 +3000,11 @@ void PrototypeWindowTest::groupManagementLifecycle() {
     openGroupMenu(groupId);
     chooseGroupAction(QStringLiteral("groupMoveDownAction"));
     QTRY_COMPARE(controller_->groups().last().toMap().value(QStringLiteral("id")).toString(), groupId);
+    // Moving closes the menu and queues focus restoration. Wait for it as for
+    // move-up above before directing Shift+F10 at another group's button.
+    QTRY_VERIFY(!window_->property("groupFocusPending").toBool());
+    QTRY_VERIFY2(item(QStringLiteral("groupActions-") + groupId)->hasActiveFocus(),
+                 qPrintable(focusDescription()));
     QCOMPARE(tileGeometries(), geometry);
 
     openGroupMenu(QStringLiteral("work"));

@@ -1,0 +1,747 @@
+{
+  "issue": 58,
+  "date": "2026-10-26",
+  "baseCommit": "cea14ea",
+  "status": "Local final runtime checks complete; exact PR head CI and merge tracked in Issue58",
+  "environment": {
+    "windowsBuild": "26300.9711",
+    "qt": "6.8.2",
+    "compiler": "MSVC19.29.30159.0 additional v142 patch compatibility",
+    "sdk": "10.0.19041.0",
+    "formalExactBaselineExecuted": false,
+    "nativeQpa": "windows",
+    "nativeGraphicsApi": "Direct3D11",
+    "nativeDpr": 1.5
+  },
+  "contract": {
+    "pressMs": 90,
+    "releaseMs": 180,
+    "maximumCombinedTiltDegrees": 6,
+    "maximumWholePlaneRetreatDip": 7,
+    "centerDepthDip": 2,
+    "centerScale": 0.985,
+    "oppositeBoundaryAnchor": "fixed",
+    "centerFeedback": "fades with distance from center",
+    "dataFormatChanged": false,
+    "chatImagesUsedAsAcceptanceReference": false
+  },
+  "regressionBefore": {
+    "source": "base main QML plus new tests",
+    "test": {
+      "passed": 2,
+      "failed": 3,
+      "skipped": 0,
+      "seconds": 2.506
+    },
+    "failures": [
+      "combined tilt 8.47751 degrees",
+      "square XY transpose asymmetry",
+      "opposite repress changed pose synchronously"
+    ]
+  },
+  "checks": {
+    "releaseBuild": true,
+    "qmlLintDiagnostics": 0,
+    "initialFocused": {
+      "passed": 61,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 45.019
+    },
+    "finalUi": {
+      "passed": 127,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 128.909
+    },
+    "finalHost": {
+      "passed": 52,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 16.285
+    },
+    "nativeFocused": {
+      "passed": 61,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 56.441
+    },
+    "fullCtestBeforeBudgetAdjustment": {
+      "passed": 17,
+      "total": 18,
+      "seconds": 212.35,
+      "failed": "platform.applications timeout during fixture cleanup"
+    },
+    "platformAfterBudgetAdjustment": {
+      "passed": true,
+      "seconds": 72.2,
+      "timeoutSeconds": 120,
+      "catalogEvidence": {
+        "allFixtureDaclsRestored": true,
+        "directoryDenial": {
+          "allDeniedSuccess": false,
+          "allDeniedWarnings": 2,
+          "mixedRootSuccess": true,
+          "nativeError": 5,
+          "partialApplications": 2,
+          "partialSuccess": true,
+          "partialWarnings": 1
+        },
+        "documentAssociationAvailabilityPreserved": true,
+        "executeDenial": {
+          "availabilityCode": "access-denied",
+          "helperMarkerAbsent": true,
+          "launchCode": "access-denied",
+          "nativeError": 5
+        },
+        "fixtureCleaned": true,
+        "kernelVersion": "10.0.26300",
+        "missingTargetCode": "target-missing",
+        "ownedBuildFixtureValidated": true,
+        "passed": true,
+        "qtVersion": "6.8.2",
+        "removedShortcutCode": "shortcut-missing",
+        "scope": "真实 Windows API 的 build 内隔离快捷方式、受控 helper 与 DACL；不修改用户应用或开始菜单。",
+        "shortcutReadDenial": {
+          "availabilityCode": "access-denied",
+          "launchCode": "access-denied",
+          "nativeError": 5
+        },
+        "uninstalledEquivalentAumidCode": "application-missing"
+      }
+    }
+  },
+  "preservedFailures": [
+    {
+      "run": "first complete CTest",
+      "passed": 16,
+      "total": 18,
+      "seconds": 186.56,
+      "ui": "126 passed / 1 failed; test omitted asynchronous group focus restore wait, now also checks requested menu group",
+      "platform": "19.49 second no-output failure near budget fixture setup; root cause unconfirmed"
+    },
+    {
+      "run": "final full CTest before platform timeout adjustment",
+      "platform": "60.03s cutoff during fixture.remove(); budget-common deleted, budget-user App1374..App2049 (676 links) remained; scan fixture creates 2050 links per root"
+    },
+    {
+      "run": "native batch capture",
+      "exitCode": -1073740791,
+      "completed": [
+        "standard neutral/pressed/restored",
+        "small pressed"
+      ],
+      "conclusion": "abnormal exit 0xC0000409 remains unconfirmed; partial batch is not accepted. Separate processes below all completed normally"
+    }
+  ],
+  "nativeCaptures": [
+    {
+      "case": "daily-small-1-top-left",
+      "processExitCode": 0,
+      "test": {
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "seconds": 3.302
+      },
+      "frames": [
+        {
+          "dpr": 1.5,
+          "freshFrames": 2,
+          "graphicsApi": "Direct3D11",
+          "inputSceneGeometryDip": {
+            "height": 48,
+            "width": 48,
+            "x": 824,
+            "y": 320
+          },
+          "matrixRowMajor": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "phase": "neutral",
+          "projectedCornersDip": [
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 0,
+              "y": 0
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 48,
+              "y": 0
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 48,
+              "y": 48
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 0,
+              "y": 48
+            }
+          ],
+          "qpa": "windows",
+          "tileId": "daily-small-1",
+          "tilePng": "daily-small-1-top-left-neutral-tile.png",
+          "pngSha256": "fb1362b73ee126f42d6a064ec6dc1c86f6187fd4bd2f154c31802ab804bee0c7"
+        },
+        {
+          "dpr": 1.5,
+          "freshFrames": 2,
+          "graphicsApi": "Direct3D11",
+          "inputSceneGeometryDip": {
+            "height": 48,
+            "width": 48,
+            "x": 824,
+            "y": 320
+          },
+          "matrixRowMajor": [
+            0.9944177865982056,
+            -0.00558218639343977,
+            -0.11270342767238617,
+            0.535888671875,
+            -0.00558218639343977,
+            0.9944177865982056,
+            -0.11270342767238617,
+            0.535888671875,
+            0.0729166716337204,
+            0.0729166716337204,
+            0.9946689605712891,
+            -7.000000476837158,
+            -0.00012152778799645603,
+            -0.00012152778799645603,
+            -0.001657781656831503,
+            1.0116667747497559
+          ],
+          "phase": "pressed",
+          "projectedCornersDip": [
+            {
+              "depth": -7.000000476837158,
+              "homogeneousW": 1.0116667747497559,
+              "x": 0.529689826495769,
+              "y": 0.5297086800221678
+            },
+            {
+              "depth": -3.500000238418579,
+              "homogeneousW": 1.005833387374878,
+              "x": 47.987988004877025,
+              "y": 0.26638962275183076
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1.0000001192092896,
+              "x": 47.99997324496792,
+              "y": 47.99999319017007
+            },
+            {
+              "depth": -3.500000238418579,
+              "homogeneousW": 1.005833387374878,
+              "x": 0.26637102654910905,
+              "y": 47.98800820107169
+            }
+          ],
+          "qpa": "windows",
+          "tileId": "daily-small-1",
+          "tilePng": "daily-small-1-top-left-pressed-tile.png",
+          "pngSha256": "36075ced0cd1ce54bff229e4fa3d4b80e296e490ccaa147235ef17b498e1fe4b"
+        },
+        {
+          "dpr": 1.5,
+          "freshFrames": 2,
+          "graphicsApi": "Direct3D11",
+          "inputSceneGeometryDip": {
+            "height": 48,
+            "width": 48,
+            "x": 824,
+            "y": 320
+          },
+          "matrixRowMajor": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "phase": "restored",
+          "projectedCornersDip": [
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 0,
+              "y": 0
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 48,
+              "y": 0
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 48,
+              "y": 48
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 0,
+              "y": 48
+            }
+          ],
+          "qpa": "windows",
+          "tileId": "daily-small-1",
+          "tilePng": "daily-small-1-top-left-restored-tile.png",
+          "pngSha256": "29983d0749cda7cbf8d24699f681e17e1dfdf10c3c2fb33c113ef169903d65ef"
+        }
+      ]
+    },
+    {
+      "case": "work-standard-1-bottom-right",
+      "processExitCode": 0,
+      "test": {
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "seconds": 4.473
+      },
+      "frames": [
+        {
+          "dpr": 1.5,
+          "freshFrames": 2,
+          "graphicsApi": "Direct3D11",
+          "inputSceneGeometryDip": {
+            "height": 104,
+            "width": 104,
+            "x": 376,
+            "y": 152
+          },
+          "matrixRowMajor": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "phase": "neutral",
+          "projectedCornersDip": [
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 0,
+              "y": 0
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 104,
+              "y": 0
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 104,
+              "y": 104
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 0,
+              "y": 104
+            }
+          ],
+          "qpa": "windows",
+          "tileId": "work-standard-1",
+          "tilePng": "work-standard-1-bottom-right-neutral-tile.png",
+          "pngSha256": "1518af04788156374159aca7cfcdb72bfc1ec39c82808dc8eb3f234da405ad6e"
+        },
+        {
+          "dpr": 1.5,
+          "freshFrames": 2,
+          "graphicsApi": "Direct3D11",
+          "inputSceneGeometryDip": {
+            "height": 104,
+            "width": 104,
+            "x": 376,
+            "y": 152
+          },
+          "matrixRowMajor": [
+            1.0019984245300293,
+            0.0023123633582144976,
+            -0.05361209809780121,
+            0.019954681396484375,
+            0.0023123633582144976,
+            1.0019984245300293,
+            -0.05361209809780121,
+            0.019954681396484375,
+            -0.032950013875961304,
+            -0.032950013875961304,
+            0.998913049697876,
+            -0.04185843467712402,
+            5.4916694352868944e-05,
+            5.4916694352868944e-05,
+            -0.0016648551682010293,
+            1.0000697374343872
+          ],
+          "phase": "pressed",
+          "projectedCornersDip": [
+            {
+              "depth": -0.04185843467712402,
+              "homogeneousW": 1.0000697374343872,
+              "x": 0.019950429081802667,
+              "y": 0.019961872375574785
+            },
+            {
+              "depth": -3.4686598777770996,
+              "homogeneousW": 1.0057810544967651,
+              "x": 103.62870702778798,
+              "y": 0.2589519667392892
+            },
+            {
+              "depth": -6.895461082458496,
+              "homogeneousW": 1.011492371559143,
+              "x": 103.28132672126156,
+              "y": 103.28133932804789
+            },
+            {
+              "depth": -3.4686598777770996,
+              "homogeneousW": 1.0057810544967651,
+              "x": 0.25894070880241316,
+              "y": 103.62871982653812
+            }
+          ],
+          "qpa": "windows",
+          "tileId": "work-standard-1",
+          "tilePng": "work-standard-1-bottom-right-pressed-tile.png",
+          "pngSha256": "0fc591cdf718da6760da243adb635eb30d7ef7c6e8225280f3a85fe567f429ab"
+        },
+        {
+          "dpr": 1.5,
+          "freshFrames": 2,
+          "graphicsApi": "Direct3D11",
+          "inputSceneGeometryDip": {
+            "height": 104,
+            "width": 104,
+            "x": 376,
+            "y": 152
+          },
+          "matrixRowMajor": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "phase": "restored",
+          "projectedCornersDip": [
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 0,
+              "y": 0
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 104,
+              "y": 0
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 104,
+              "y": 104
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 0,
+              "y": 104
+            }
+          ],
+          "qpa": "windows",
+          "tileId": "work-standard-1",
+          "tilePng": "work-standard-1-bottom-right-restored-tile.png",
+          "pngSha256": "40f2ce97ef24ed7c422936f0388268c79485f10dd1e9f6648e183f5abc975dd6"
+        }
+      ]
+    },
+    {
+      "case": "daily-wide-bottom-right",
+      "processExitCode": 0,
+      "test": {
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "seconds": 5.344
+      },
+      "frames": [
+        {
+          "dpr": 1.5,
+          "freshFrames": 2,
+          "graphicsApi": "Direct3D11",
+          "inputSceneGeometryDip": {
+            "height": 104,
+            "width": 216,
+            "x": 376,
+            "y": 320
+          },
+          "matrixRowMajor": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "phase": "neutral",
+          "projectedCornersDip": [
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 0,
+              "y": 0
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 216,
+              "y": 0
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 216,
+              "y": 104
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 0,
+              "y": 104
+            }
+          ],
+          "qpa": "windows",
+          "tileId": "daily-wide",
+          "tilePng": "daily-wide-bottom-right-neutral-tile.png",
+          "pngSha256": "87b7c17232c27032e7bf13fdc98aa401b9e3b47e5a85be19c244283f1d36c7a5"
+        },
+        {
+          "dpr": 1.5,
+          "freshFrames": 2,
+          "graphicsApi": "Direct3D11",
+          "inputSceneGeometryDip": {
+            "height": 104,
+            "width": 216,
+            "x": 376,
+            "y": 320
+          },
+          "matrixRowMajor": [
+            1.003479242324829,
+            0.003612346714362502,
+            -0.15820381045341492,
+            0.025421142578125,
+            0.0016494987066835165,
+            1.0014302730560303,
+            -0.06526538729667664,
+            0.012237548828125,
+            -0.02170851081609726,
+            -0.02135695517063141,
+            0.9995360374450684,
+            -0.025676250457763672,
+            3.618085247580893e-05,
+            3.5594926885096356e-05,
+            -0.0016658934764564037,
+            1.0000427961349487
+          ],
+          "phase": "pressed",
+          "projectedCornersDip": [
+            {
+              "depth": -0.025676250457763672,
+              "homogeneousW": 1.0000427961349487,
+              "x": 0.025411471996505952,
+              "y": 0.012244654198809712
+            },
+            {
+              "depth": -4.714714527130127,
+              "homogeneousW": 1.0078579187393188,
+              "x": 215.0868163398162,
+              "y": 0.36566356566157765
+            },
+            {
+              "depth": -6.935837745666504,
+              "homogeneousW": 1.0115597248077393,
+              "x": 214.67108221021147,
+              "y": 103.32289523712052
+            },
+            {
+              "depth": -2.2467994689941406,
+              "homogeneousW": 1.0037447214126587,
+              "x": 0.3996002322542722,
+              "y": 103.77239534045395
+            }
+          ],
+          "qpa": "windows",
+          "tileId": "daily-wide",
+          "tilePng": "daily-wide-bottom-right-pressed-tile.png",
+          "pngSha256": "ab5a01df4d7ddf0de25f5bed240a47ab227e94834591d0ed1b792671bde55188"
+        },
+        {
+          "dpr": 1.5,
+          "freshFrames": 2,
+          "graphicsApi": "Direct3D11",
+          "inputSceneGeometryDip": {
+            "height": 104,
+            "width": 216,
+            "x": 376,
+            "y": 320
+          },
+          "matrixRowMajor": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "phase": "restored",
+          "projectedCornersDip": [
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 0,
+              "y": 0
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 216,
+              "y": 0
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 216,
+              "y": 104
+            },
+            {
+              "depth": 0,
+              "homogeneousW": 1,
+              "x": 0,
+              "y": 104
+            }
+          ],
+          "qpa": "windows",
+          "tileId": "daily-wide",
+          "tilePng": "daily-wide-bottom-right-restored-tile.png",
+          "pngSha256": "5f932ed1eb57d3f9499aa20c55d459368774dfdf01618923cd179d16af42f259"
+        }
+      ]
+    }
+  ],
+  "nativeWindow": {
+    "png": "work-standard-1-bottom-right-pressed-window.png",
+    "sha256": "bce04c6437a6d9be0d84a2808196350d3811b7d50941adfcdf2e7cd236ce523a"
+  },
+  "binarySha256": {
+    "xdstarter.exe": "9cb8d81fda059c231595bed7f0a3fd363061b07ebf7a91ed7bbeec860681371a",
+    "xdstarter_ui_tests.exe": "413dfe6f8b4a49c712a096d6db014bd32e9c34bb2902e4df4fd09412685d6229"
+  },
+  "sourceLfSha256": {
+    "qml/TileButton.qml": "91e903fb1c93764496d2913e3fac63c6834c62d7f1d9451b8e7f388d020ca425",
+    "tests/ui/tst_prototype_window.cpp": "84c887bfbea46f8ec7fa30f39a7143098d2fc03a16d13e289b75361d9c933c43",
+    "tests/ui/CMakeLists.txt": "bfe1282251d450691a813001d0f60a60526be49d8d47633af145eb2bae632a9e",
+    "tests/platform/CMakeLists.txt": "007aaf4592d2f756a2cd66293ac575dc9cc2916fc936fc5d6efac3ec4096a8bb",
+    "docs/design/tokens/visual.json": "de301b8e1f87e3612072e9148c7d2d5a9a8e7438a94be3930b2f0afec20a6d85"
+  },
+  "logs": [
+    "build/issue58-before.txt",
+    "build/issue58-focus.txt",
+    "build/issue58-native.txt",
+    "build/issue58-ctest-first.log",
+    "build/issue58-ctest-first-detail.log",
+    "build/issue58-ctest.log",
+    "build/issue58-ctest-final-detail.log",
+    "build/issue58-platform-bounded.txt",
+    "build/issue58-capture-batch-failed.txt"
+  ],
+  "validationLimits": [
+    "Native Qt tests and captures use anonymous in-memory fixtures, not user layouts or installed application catalogs",
+    "No Computer Use or system taskbar/display setting changes",
+    "No new physical Start-button, complete mixed-DPI, or other Windows build acceptance",
+    "The initial platform failure and native batch fast-fail have not been assigned a proven root cause; successful independent runs do not establish those unrelated failures as fixed"
+  ]
+}
