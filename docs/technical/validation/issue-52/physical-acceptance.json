@@ -1,0 +1,248 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-26",
+  "issue": 52,
+  "sourceBaseCommit": "aadf19cb9c6909c906491c718b8111fff853af68",
+  "sourceIdentity": "Base commit plus LF hashes identify the locally tested changes; CI artifacts are separate builds.",
+  "sourceLfSha256": {
+    "src/app/main.cpp": "71232249a6931e7ed3f4281d21897dd1a0e22618d49c2b24b87e03c179c85a73",
+    "scripts/verify_capture_diagnostics.py": "20f893cf7afc43bebfd18fe72a3cac9f897163249d4d3f11f89b4b65050c16d5",
+    ".github/workflows/application-build.yml": "d594254e07566fcc156d1b7e4b26920659b7f9501e05bc6141a001af833c00ce"
+  },
+  "environment": {
+    "windowsBuild": "26300.9711",
+    "qt": "6.8.2",
+    "msvc": "19.29.30159.0",
+    "windowsSdk": "10.0.19041.0",
+    "scope": "additional v142 patch compatibility; not exact 19.29.30153.0 baseline",
+    "taskbarPosition": "bottom",
+    "taskbarAlignment": "left",
+    "buttonPhysicalRect": {
+      "x": 0,
+      "y": 1528,
+      "width": 83,
+      "height": 72
+    }
+  },
+  "binaries": {
+    "initialBeforeRetryFix": "cdd4f702d73041422c4b9a8f91be5a073f1c3fbd178eb2e3603babafc1cf2842",
+    "physicalPointAndAreaCache": "a195ea3ba9de4cda329b837c6a6c651006df18bf4139db625df04dd1a311c237",
+    "routeController": "9f4dfe14f6aa3103cd14e5ceb7079346a269e25f74beaa41553492f9ad0e89ac",
+    "routeDll": "c75824272e4d72ec9db31ee8052347743b0c4931e703759c1281ac4454dcdede",
+    "explorer": "eee089fe6f927c7f0d51b0abd9d70c094157e33673ad760713ec7b1cea18ee11"
+  },
+  "preflight": {
+    "samples": 8,
+    "qualified": 8,
+    "previousLockScreenOcclusionResolved": true,
+    "physicalSuccessClaim": false
+  },
+  "physicalInput": {
+    "source": "real mouse operated by user",
+    "outcomeSource": "independent user replies",
+    "pointTrials": [
+      {
+        "trialId": "point-hover-show-01",
+        "observed": "xdstarter-only",
+        "success": true,
+        "observedGestureCount": 42,
+        "traceCorrelationAmbiguous": true,
+        "journalHasGaps": false
+      },
+      {
+        "trialId": "point-fast-entry-show-01",
+        "observed": "native-only",
+        "success": false,
+        "observedGestureCount": 25,
+        "traceCorrelationAmbiguous": true,
+        "journalHasGaps": false
+      }
+    ],
+    "areaTrials": [
+      {
+        "trialId": "area-fast-entry-show-01",
+        "observed": "xdstarter-only",
+        "success": true,
+        "observedGestureCount": 31,
+        "traceCorrelationAmbiguous": true,
+        "journalHasGaps": false
+      },
+      {
+        "trialId": "area-drag-out-cancel-01",
+        "observed": "none",
+        "success": true,
+        "observedGestureCount": 50,
+        "traceCorrelationAmbiguous": true,
+        "journalHasGaps": false
+      }
+    ],
+    "areaFastEntryCorrection": "Initial both reply explicitly retracted; final result xdstarter-only. Do not count a double-menu failure for this trial.",
+    "batches": {
+      "areaToggleCyclesRequested": 3,
+      "areaToggleCyclesReported": "all normal",
+      "rightClickStart": "Windows system menu normal",
+      "winX": "Windows system menu normal",
+      "pauseThenResume": "after resume native Start appears intermittently; native-only versus both unresolved",
+      "afterNormalExit": "Windows native Start only"
+    },
+    "statisticalSuccessRate": null,
+    "latencySamples": 0,
+    "correlationLimit": "Prompt-to-reply intervals contain UI/incidental clicks. Global callbacks are not Start-intent denominators; no unique failure attribution or latency percentiles."
+  },
+  "resumeTrace": {
+    "runId": "96a0f140-fd82-49f5-bbf8-44a02f73527d",
+    "sessionGeneration": 3,
+    "gestureId": 134,
+    "events": [
+      {
+        "at": 1030989062,
+        "consumed": false,
+        "epoch": 420,
+        "event": "left-down",
+        "gestureId": 134,
+        "injected": false,
+        "nativeDispatchQueued": false,
+        "originSessionGeneration": 3,
+        "pointDeltaX": 4,
+        "pointDeltaY": -5,
+        "pointDifferenceKnown": true,
+        "pressedAt": 1030989062,
+        "reason": "epoch-changed",
+        "sequence": 267,
+        "sessionGeneration": 3,
+        "snapshotAgeMs": 109,
+        "snapshotEpoch": 418,
+        "toggle": false
+      },
+      {
+        "at": 1030989171,
+        "consumed": false,
+        "epoch": 420,
+        "event": "left-up",
+        "gestureId": 134,
+        "injected": false,
+        "nativeDispatchQueued": false,
+        "originSessionGeneration": 3,
+        "pointDeltaX": 4,
+        "pointDeltaY": -5,
+        "pointDifferenceKnown": true,
+        "pressedAt": 1030989062,
+        "reason": "no-owned-press",
+        "sequence": 268,
+        "sessionGeneration": 3,
+        "snapshotAgeMs": 140,
+        "snapshotEpoch": 420,
+        "toggle": false
+      }
+    ],
+    "subsequentSnapshot": {
+      "exportedAt": 1031048406,
+      "generation": 3,
+      "epoch": 438,
+      "hookInstalled": true,
+      "sessionActive": true,
+      "qualificationLeaseAvailable": true,
+      "subscriptionRootHresult": 0,
+      "subscriptionPropertiesHresult": 0,
+      "subscriptionStructureHresult": 0
+    },
+    "interpretation": "An actual near-button epoch invalidation gap is recorded. Later healthy status cannot exclude it. It is not uniquely correlated with the user-reported intermittent failure."
+  },
+  "diagnosticIoRecovery": {
+    "initialFailure": "QSaveFile replacement failure stopped the diagnostic timer permanently; collector correctly exited 2 for stale source. Not a physical click result.",
+    "fix": "Retain periodic atomic retries, count failed attempts and warn once per consecutive failure period; keep source identity/freshness guards.",
+    "ordinaryReaderHoldSeconds": 1,
+    "recoveredWriteFailures": 4,
+    "exportResumed": true,
+    "collectorExit": 0,
+    "productExit": 0,
+    "finalHookInstalled": false,
+    "finalSessionActive": false,
+    "physicalTrials": 0,
+    "repetitionsPassed": 2,
+    "ciEntry": "scripts/verify_capture_diagnostics.py"
+  },
+  "normalShutdown": {
+    "pointExit": 0,
+    "areaCacheExit": 0,
+    "pointHookInstalled": false,
+    "pointSessionActive": false,
+    "areaHookInstalled": false,
+    "areaSessionActive": false,
+    "mechanism": "WM_QUIT posted to each verified owned tray GUI thread; Qt normal quit. Not synthetic mouse input.",
+    "collectorTermination": "source stale after product exit is expected lifecycle; not an intended Start failure"
+  },
+  "realExplorerObservation": {
+    "inspection": "canonical system Explorer, cached offline Microsoft Windows signature status 0, build/hash matched, Start qualified",
+    "windowsInventoried": 10,
+    "targetGuiThreads": 1,
+    "observeExit": 2,
+    "createdRouteOutput": false,
+    "attachedDll": false,
+    "preflight": {
+      "modulesChecked": 417,
+      "enumerationEndError": 18,
+      "unknownCanonicalPaths": [
+        {
+          "module": "CrashRpt1500.dll",
+          "stage": "open-attributes",
+          "error": 3,
+          "pathCharacters": 71
+        },
+        {
+          "module": "wetype_tip_core.dll",
+          "stage": "open-attributes",
+          "error": 3,
+          "pathCharacters": 75
+        }
+      ],
+      "injected": false
+    },
+    "guard": "modulePresence returns Unknown when any enumerated module path cannot be canonicalized. Guard unchanged; no Explorer restart/input-method modification.",
+    "actualRouteVerified": false
+  },
+  "localChecks": {
+    "releaseBuild": "passed",
+    "toolingTests": {
+      "passed": 30,
+      "total": 30
+    },
+    "diagnosticIoNativeRegression": "passed twice on same patched binary; zero physical trials",
+    "repositoryCheck": {
+      "passed": true,
+      "files": 747
+    },
+    "gitDiffCheck": "passed"
+  },
+  "rawEvidence": {
+    "storage": "ignored local build/validation/issue52-physical/20261026T071020-b28221; hashes only, no user paths/layout/catalog published",
+    "sha256": {
+      "area-preflight.json": "8e1f9936f9bd6cbbda72229174d3116293a220206d60aaaa8b94b647ac63401e",
+      "point-retry-events.ndjson": "c276aaa27e0e42d9290b956ac0388a4fe3d353dafbe00208371f8ed8302aa97f",
+      "point-operator-trials.json": "9febabfae20b8f57cc96479152d9add95b541fdf15f5aef17c343fc8d440bc6e",
+      "point-report.json": "b3054963a3cec6c82e4c0d62e449586ba251c4bf0a2ecd1e6c10fd8797c3470e",
+      "area-events.ndjson": "5452be4b87caf9f3ad30fc0f896ac2095476e878a058898a211bb241aa299853",
+      "area-operator-trials.json": "630508f307856c48f0464f360d9b2b6e842295ef55875122fe2aa288ea07b780",
+      "area-operator-batches.json": "1dcf697b33f77ca60a1d4b4d88b72df02f6b55645a1259b78a90a3e306ab5bf3",
+      "area-report.json": "b5b694642a313d9260ab646a8d6b01cf7e0797abec2bded39a74a59561dc749e",
+      "area-after-resume-failure.json": "7239ddcedad222c6d888e9dfebe12af04365e6fbf9e449d1053d1d7b00329875",
+      "route-inspection.json": "f37c5c3e79693157a69b1178dd110d785f18fc38d2ebc1043448d48ac93a00b4",
+      "route-module-preflight.json": "287e5560f5814fef30139e0afd7840ed9a918c0636e069d9e307c596ec2190d2"
+    }
+  },
+  "unchangedEnvironment": {
+    "computerUse": false,
+    "syntheticMouseInput": false,
+    "taskbarOrDisplaySettingsChanged": false,
+    "userLayoutReplaced": false,
+    "systemShortcutsWritten": false,
+    "observerAttachedToExplorer": false
+  },
+  "remaining": [
+    "Identify exact epoch invalidation sources and improve external capture without weakening native identity checks.",
+    "Actual Explorer queue/window-procedure routes and consumption entry remain unverified.",
+    "No product default change; area-cache resume acceptance failed.",
+    "No hardware touch, full four-edge/alignment/DPI/autohide/Explorer-restart/sleep/Windows-build matrix this round.",
+    "No statistical reliability or latency percentile claim; no independently confirmed double-menu reproduction in this run."
+  ]
+}
