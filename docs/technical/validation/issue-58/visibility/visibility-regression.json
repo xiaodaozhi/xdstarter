@@ -1,0 +1,838 @@
+{
+  "issue": 58,
+  "date": "2026-10-26",
+  "baseCommit": "2cec0505f5de1f504a1b276e0829a21d71645b9d",
+  "status": "Visibility follow-up verified locally; exact PR head CI and delivery tracked in Issue58",
+  "reason": "User rejected the previous actual screenshot: correct direction but visually negligible deformation",
+  "previousParameters": {
+    "maximumTiltDegrees": 6,
+    "maximumEdgeDepthDip": 7,
+    "perspectiveDistanceDip": 600
+  },
+  "parameters": {
+    "maximumTiltDegrees": 10,
+    "maximumEdgeDepthDip": 16,
+    "perspectiveDistanceDip": 180,
+    "pressMs": 90,
+    "releaseMs": 180
+  },
+  "minimumVisibleFeedback": {
+    "sizes": 3,
+    "positions": [
+      "right(.85,.5)",
+      "bottom(.5,.85)",
+      "bottom-right(.85,.85)"
+    ],
+    "cases": 9,
+    "cornerMovementFractionOfShortEdge": 0.04,
+    "sideMidpointRetreatFractionOfShortEdge": 0.025,
+    "pressedVersusOppositeEdgeLengthDifferenceFractionOfShortEdge": 0.025
+  },
+  "oldParametersRegression": {
+    "passed": 2,
+    "failed": 3,
+    "skipped": 0,
+    "seconds": 2.091
+  },
+  "checks": {
+    "releaseBuild": true,
+    "qmlLintDiagnostics": 0,
+    "fullCtest": {
+      "passed": 18,
+      "total": 18,
+      "seconds": 202.73
+    },
+    "gui": {
+      "passed": 136,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 131.911
+    },
+    "host": {
+      "passed": 52,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 16.047
+    },
+    "nativeFocused": {
+      "passed": 70,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 60.249
+    }
+  },
+  "environment": {
+    "windowsBuild": "26300.9711",
+    "qt": "6.8.2",
+    "compiler": "MSVC19.29.30159.0 additional v142 patch compatibility",
+    "sdk": "10.0.19041.0",
+    "formalExactBaselineExecuted": false,
+    "nativeQpa": "windows",
+    "nativeGraphicsApi": "Direct3D11",
+    "nativeDpr": 1.5
+  },
+  "sourceLfSha256": {
+    "docs/design/tokens/visual.json": "91432d0384add69baea834f5ce2d705fafa4485d84b2a211f4d1ad15580ee2a4",
+    "qml/TileButton.qml": "91e903fb1c93764496d2913e3fac63c6834c62d7f1d9451b8e7f388d020ca425",
+    "tests/ui/tst_prototype_window.cpp": "ee9fa08ac53a00dcc5accf84a061655dcaefeca402bbd047bc4ca4a09762f0fb"
+  },
+  "binarySha256": {
+    "xdstarter.exe": "66a21199b877209a25ccaed5c03c1aac1e4898b55bba5b683f9d4cbfd9cea017",
+    "xdstarter_ui_tests.exe": "e751c86d526a1d429f12cd90411986c09dda2e1046040c71a3253367e0e36261"
+  },
+  "nativeSamples": [
+    {
+      "case": "daily-small-1-bottom-right",
+      "fraction": {
+        "x": 0.85,
+        "y": 0.85
+      },
+      "test": {
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "seconds": 13.283
+      },
+      "processExitCode": 0,
+      "qpa": "windows",
+      "graphicsApi": "Direct3D11",
+      "dpr": 1.5,
+      "inputSceneGeometryDip": {
+        "height": 48,
+        "width": 48,
+        "x": 824,
+        "y": 320
+      },
+      "tokens": {
+        "centerDepthDip": 2,
+        "maximumEdgeDepthDip": 16,
+        "maximumTiltDegrees": 10,
+        "perspectiveDistanceDip": 180,
+        "pressMs": 90,
+        "pressedScale": 0.985,
+        "releaseMs": 180
+      },
+      "cornerMovementDip": 3.0539840380727243,
+      "cornerRetreatDip": {
+        "x": 2.159494564126817,
+        "y": 2.159491081785177
+      },
+      "cornerRetreatPhysicalPx": {
+        "x": 3.2392418461902253,
+        "y": 3.2392366226777654
+      },
+      "baseline": {
+        "case": "daily-small-1-top-left",
+        "cornerRetreatDip": {
+          "x": 0.529689826495769,
+          "y": 0.5297086800221678
+        },
+        "cornerRetreatPhysicalPx": {
+          "x": 0.7945347397436535,
+          "y": 0.7945630200332516
+        }
+      },
+      "edgeDifferenceDip": {
+        "vertical": 1.4431317834676491,
+        "horizontal": 1.4431316718064977
+      },
+      "sampledFrames": 14,
+      "observedReadbackMaxMs": 1009,
+      "samplingNote": "Actual GUI-thread grabWindow frames; capture can perturb animation timing. No frame-count or unperturbed timing claim is made.",
+      "stableFrames": [
+        {
+          "captureFinishedMs": 5,
+          "cropPixels": {
+            "height": 78,
+            "width": 78,
+            "x": 1233,
+            "y": 477
+          },
+          "elapsedMs": 0,
+          "file": "small-neutral.png",
+          "matrixRowMajor": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "phase": "neutral",
+          "pointerPressActive": false,
+          "pressProgress": 0,
+          "projectedCornersDip": [
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": 48,
+              "y": 0
+            },
+            {
+              "x": 48,
+              "y": 48
+            },
+            {
+              "x": 0,
+              "y": 48
+            }
+          ],
+          "sha256": "3a84b1173bb03c57e2dc22e6b94dad953162dd1d0f4248b81564aac927af12a3"
+        },
+        {
+          "captureFinishedMs": 6092,
+          "cropPixels": {
+            "height": 78,
+            "width": 78,
+            "x": 1233,
+            "y": 477
+          },
+          "elapsedMs": 6086,
+          "file": "small-pressed.png",
+          "matrixRowMajor": [
+            1.0087755918502808,
+            0.00877557322382927,
+            -0.00851990282535553,
+            0,
+            0.00877557322382927,
+            1.0087755918502808,
+            -0.00851990282535553,
+            0,
+            -0.12278780341148376,
+            -0.12278780341148376,
+            0.9848077297210693,
+            0,
+            0.0006821544957347214,
+            0.0006821544957347214,
+            -0.005471154116094112,
+            1
+          ],
+          "phase": "hold",
+          "pointerPressActive": true,
+          "pressProgress": 1,
+          "projectedCornersDip": [
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": 46.88601903155359,
+              "y": 0.40787237981993485
+            },
+            {
+              "x": 45.84050543587318,
+              "y": 45.84050891821482
+            },
+            {
+              "x": 0.4078723148907102,
+              "y": 46.886022559374624
+            }
+          ],
+          "sha256": "ad73abafde03f0ec608b3297c469b97e9da632fc71520dbd40c34094c56a2fc3"
+        },
+        {
+          "captureFinishedMs": 11149,
+          "cropPixels": {
+            "height": 78,
+            "width": 78,
+            "x": 1233,
+            "y": 477
+          },
+          "elapsedMs": 11142,
+          "file": "small-restored.png",
+          "matrixRowMajor": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "phase": "restored",
+          "pointerPressActive": false,
+          "pressProgress": 0,
+          "projectedCornersDip": [
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": 48,
+              "y": 0
+            },
+            {
+              "x": 48,
+              "y": 48
+            },
+            {
+              "x": 0,
+              "y": 48
+            }
+          ],
+          "sha256": "ab16b85b8ae598c44a215a01fa886b43621ccd63241000eaa1cf297593d0e218"
+        }
+      ],
+      "stateComparison": {
+        "file": "small-states.gif",
+        "sha256": "95976c3192b80fcf8b38bf42b584a5629fd13f29698c7c9525b0c98098c7097c",
+        "sourcePhases": [
+          "neutral",
+          "hold",
+          "restored"
+        ],
+        "presentationHoldMs": 650,
+        "gifControlValidation": {
+          "frameCount": 3,
+          "previousDelayCentiseconds": [
+            0,
+            0,
+            0
+          ],
+          "delayCentiseconds": [
+            65,
+            65,
+            65
+          ],
+          "disposalMethod": 2,
+          "loopCount": 0,
+          "rasterImageBlockSha256": [
+            "3b43ffde4ebbaad37bf2d80c1083ea98e8afb998a474768ed9db2c9206480f73",
+            "14d2f146e5f466181763395275c9a90a755d1a457ca0153b3311a902697d290f",
+            "7d4c1ba7d4e73b4ab1951e4702d35fcc96589c327de0e70c26e04531fdf8d7ca"
+          ],
+          "note": "Only GIF control metadata corrected after WPF dropped it; palette and compressed native image blocks are unchanged"
+        },
+        "note": "Three unscaled native stable frames; presentation holds are deliberate and do not represent production animation duration or smoothness"
+      }
+    },
+    {
+      "case": "work-standard-1-bottom-right",
+      "fraction": {
+        "x": 0.85,
+        "y": 0.85
+      },
+      "test": {
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "seconds": 13.323
+      },
+      "processExitCode": 0,
+      "qpa": "windows",
+      "graphicsApi": "Direct3D11",
+      "dpr": 1.5,
+      "inputSceneGeometryDip": {
+        "height": 104,
+        "width": 104,
+        "x": 376,
+        "y": 152
+      },
+      "tokens": {
+        "centerDepthDip": 2,
+        "maximumEdgeDepthDip": 16,
+        "maximumTiltDegrees": 10,
+        "perspectiveDistanceDip": 180,
+        "pressMs": 90,
+        "pressedScale": 0.985,
+        "releaseMs": 180
+      },
+      "cornerMovementDip": 6.693591637937768,
+      "cornerRetreatDip": {
+        "x": 4.733081625574528,
+        "y": 4.733086449782974
+      },
+      "cornerRetreatPhysicalPx": {
+        "x": 7.099622438361791,
+        "y": 7.0996296746744605
+      },
+      "baseline": {
+        "case": "work-standard-1-bottom-right",
+        "cornerRetreatDip": {
+          "x": 0.7186732787384358,
+          "y": 0.718660671952108
+        },
+        "cornerRetreatPhysicalPx": {
+          "x": 1.0780099181076537,
+          "y": 1.077991007928162
+        }
+      },
+      "edgeDifferenceDip": {
+        "vertical": 4.129000470301648,
+        "horizontal": 4.129000253915947
+      },
+      "sampledFrames": 14,
+      "observedReadbackMaxMs": 1017,
+      "samplingNote": "Actual GUI-thread grabWindow frames; capture can perturb animation timing. No frame-count or unperturbed timing claim is made.",
+      "stableFrames": [
+        {
+          "captureFinishedMs": 6,
+          "cropPixels": {
+            "height": 162,
+            "width": 162,
+            "x": 561,
+            "y": 225
+          },
+          "elapsedMs": 0,
+          "file": "standard-neutral.png",
+          "matrixRowMajor": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "phase": "neutral",
+          "pointerPressActive": false,
+          "pressProgress": 0,
+          "projectedCornersDip": [
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": 104,
+              "y": 0
+            },
+            {
+              "x": 104,
+              "y": 104
+            },
+            {
+              "x": 0,
+              "y": 104
+            }
+          ],
+          "sha256": "328fd6c3d8ce12b02c43f6b9e7fd1d666eecf677edd4085693d20538a09589ac"
+        },
+        {
+          "captureFinishedMs": 5081,
+          "cropPixels": {
+            "height": 162,
+            "width": 162,
+            "x": 561,
+            "y": 225
+          },
+          "elapsedMs": 5075,
+          "file": "standard-pressed.png",
+          "matrixRowMajor": [
+            1.018599510192871,
+            0.018913423642516136,
+            -0.21190133690834045,
+            0.028415679931640625,
+            0.018913423642516136,
+            1.018599510192871,
+            -0.21190133690834045,
+            0.028415679931640625,
+            -0.0753193348646164,
+            -0.0753193348646164,
+            0.9943072199821472,
+            -0.041858673095703125,
+            0.00041844078805297613,
+            0.00041844078805297613,
+            -0.00552392890676856,
+            1.0002325773239136
+          ],
+          "phase": "hold",
+          "pointerPressActive": true,
+          "pressProgress": 1,
+          "projectedCornersDip": [
+            {
+              "x": 0.028419560603765603,
+              "y": 0.028408119172979696
+            },
+            {
+              "x": 101.52118053190412,
+              "y": 1.911770136878431
+            },
+            {
+              "x": 99.26691837442547,
+              "y": 99.26691355021703
+            },
+            {
+              "x": 1.9117799877020047,
+              "y": 101.5211743929851
+            }
+          ],
+          "sha256": "633150dbe3f327564b1a7fb24df903b11f8074153df33bdac16ecb8f575da604"
+        },
+        {
+          "captureFinishedMs": 11129,
+          "cropPixels": {
+            "height": 162,
+            "width": 162,
+            "x": 561,
+            "y": 225
+          },
+          "elapsedMs": 11122,
+          "file": "standard-restored.png",
+          "matrixRowMajor": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "phase": "restored",
+          "pointerPressActive": false,
+          "pressProgress": 0,
+          "projectedCornersDip": [
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": 104,
+              "y": 0
+            },
+            {
+              "x": 104,
+              "y": 104
+            },
+            {
+              "x": 0,
+              "y": 104
+            }
+          ],
+          "sha256": "19be326fecbce521452add48577d23afe1c963e8c4fb0f70f9b8e8d3c9a68f97"
+        }
+      ],
+      "stateComparison": {
+        "file": "standard-states.gif",
+        "sha256": "b09573fea8d365d6deb4e3cf36cf2c64b658c9d39e629805dd594c62a2228967",
+        "sourcePhases": [
+          "neutral",
+          "hold",
+          "restored"
+        ],
+        "presentationHoldMs": 650,
+        "gifControlValidation": {
+          "frameCount": 3,
+          "previousDelayCentiseconds": [
+            0,
+            0,
+            0
+          ],
+          "delayCentiseconds": [
+            65,
+            65,
+            65
+          ],
+          "disposalMethod": 2,
+          "loopCount": 0,
+          "rasterImageBlockSha256": [
+            "9605c2b9668ba26e9419e8ab53017734e8fef2712209c4d57cc55c6afcaa677c",
+            "38694a5949d2b69c7a03d9dea0c5d6fee9acc664ae05ce13f4cd520d3cea5bbb",
+            "2d0c816c2115bbb865590a0b38b06847eab99af29bbf1d949ff9e865c3265718"
+          ],
+          "note": "Only GIF control metadata corrected after WPF dropped it; palette and compressed native image blocks are unchanged"
+        },
+        "note": "Three unscaled native stable frames; presentation holds are deliberate and do not represent production animation duration or smoothness"
+      }
+    },
+    {
+      "case": "daily-wide-bottom-right",
+      "fraction": {
+        "x": 0.85,
+        "y": 0.85
+      },
+      "test": {
+        "passed": 3,
+        "failed": 0,
+        "skipped": 0,
+        "seconds": 14.315
+      },
+      "processExitCode": 0,
+      "qpa": "windows",
+      "graphicsApi": "Direct3D11",
+      "dpr": 1.5,
+      "inputSceneGeometryDip": {
+        "height": 104,
+        "width": 216,
+        "x": 376,
+        "y": 320
+      },
+      "tokens": {
+        "centerDepthDip": 2,
+        "maximumEdgeDepthDip": 16,
+        "maximumTiltDegrees": 10,
+        "perspectiveDistanceDip": 180,
+        "pressMs": 90,
+        "pressedScale": 0.985,
+        "releaseMs": 180
+      },
+      "cornerMovementDip": 10.18570398201639,
+      "cornerRetreatDip": {
+        "x": 9.105339493527367,
+        "y": 4.565233654138126
+      },
+      "cornerRetreatPhysicalPx": {
+        "x": 13.658009240291051,
+        "y": 6.847850481207189
+      },
+      "baseline": {
+        "case": "daily-wide-bottom-right",
+        "cornerRetreatDip": {
+          "x": 1.3289177897885338,
+          "y": 0.6771047628794804
+        },
+        "cornerRetreatPhysicalPx": {
+          "x": 1.9933766846828007,
+          "y": 1.0156571443192206
+        }
+      },
+      "edgeDifferenceDip": {
+        "vertical": 5.6752878369793365,
+        "horizontal": 5.584783364339103
+      },
+      "sampledFrames": 15,
+      "observedReadbackMaxMs": 1008,
+      "samplingNote": "Actual GUI-thread grabWindow frames; capture can perturb animation timing. No frame-count or unperturbed timing claim is made.",
+      "stableFrames": [
+        {
+          "captureFinishedMs": 5,
+          "cropPixels": {
+            "height": 162,
+            "width": 330,
+            "x": 561,
+            "y": 477
+          },
+          "elapsedMs": 0,
+          "file": "wide-neutral.png",
+          "matrixRowMajor": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "phase": "neutral",
+          "pointerPressActive": false,
+          "pressProgress": 0,
+          "projectedCornersDip": [
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": 216,
+              "y": 0
+            },
+            {
+              "x": 216,
+              "y": 104
+            },
+            {
+              "x": 0,
+              "y": 104
+            }
+          ],
+          "sha256": "4854991a93a90642fbd7821b0d28c45d42c671178b0866dcaaf7189bf16fd731"
+        },
+        {
+          "captureFinishedMs": 8103,
+          "cropPixels": {
+            "height": 162,
+            "width": 330,
+            "x": 561,
+            "y": 477
+          },
+          "elapsedMs": 7097,
+          "file": "wide-pressed.png",
+          "matrixRowMajor": [
+            1.0283467769622803,
+            0.02807718515396118,
+            -0.5489142537117004,
+            0.03620147705078125,
+            0.013121898286044598,
+            1.0127168893814087,
+            -0.23936177790164948,
+            0.017429351806640625,
+            -0.04962030425667763,
+            -0.0488167367875576,
+            0.9975734949111938,
+            -0.02567577362060547,
+            0.0002756683970801532,
+            0.00027120410231873393,
+            -0.005542075261473656,
+            1.0001428127288818
+          ],
+          "phase": "hold",
+          "pointerPressActive": true,
+          "pressProgress": 1,
+          "projectedCornersDip": [
+            {
+              "x": 0.03620202898611069,
+              "y": 0.017438305486450645
+            },
+            {
+              "x": 209.64592845259608,
+              "y": 2.691144201029374
+            },
+            {
+              "x": 206.89466050647263,
+              "y": 99.43476634586187
+            },
+            {
+              "x": 2.8747413202693224,
+              "y": 102.43613411615667
+            }
+          ],
+          "sha256": "b1a4425709e9a4454b5a5b39e6b4b31198ac27ccbf73d3e82baecbf333c96b62"
+        },
+        {
+          "captureFinishedMs": 13148,
+          "cropPixels": {
+            "height": 162,
+            "width": 330,
+            "x": 561,
+            "y": 477
+          },
+          "elapsedMs": 13142,
+          "file": "wide-restored.png",
+          "matrixRowMajor": [
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "phase": "restored",
+          "pointerPressActive": false,
+          "pressProgress": 0,
+          "projectedCornersDip": [
+            {
+              "x": 0,
+              "y": 0
+            },
+            {
+              "x": 216,
+              "y": 0
+            },
+            {
+              "x": 216,
+              "y": 104
+            },
+            {
+              "x": 0,
+              "y": 104
+            }
+          ],
+          "sha256": "fa434ed6b19f5d6ddcb127dd1cfcfac8255daf003cde599d5d07a754367b2bc7"
+        }
+      ],
+      "stateComparison": {
+        "file": "wide-states.gif",
+        "sha256": "a70c05c11a6bb428fb54914da0f87a094deb1a4dcd41e22e09f026a5370e8d92",
+        "sourcePhases": [
+          "neutral",
+          "hold",
+          "restored"
+        ],
+        "presentationHoldMs": 650,
+        "gifControlValidation": {
+          "frameCount": 3,
+          "previousDelayCentiseconds": [
+            0,
+            0,
+            0
+          ],
+          "delayCentiseconds": [
+            65,
+            65,
+            65
+          ],
+          "disposalMethod": 2,
+          "loopCount": 0,
+          "rasterImageBlockSha256": [
+            "f0b30b925bb1a0c9d5ddecd15725cdcbf6f9d4c2e390c8902bfcd89dbe49240d",
+            "6cd965fcadad35055a9338fb2f2e625daa3a032a36025b667e5b3c060f56634d",
+            "4311e23253d01b8ab2d4980093119dbba7226a3fb710c17b432b602f99e0778a"
+          ],
+          "note": "Only GIF control metadata corrected after WPF dropped it; palette and compressed native image blocks are unchanged"
+        },
+        "note": "Three unscaled native stable frames; presentation holds are deliberate and do not represent production animation duration or smoothness"
+      }
+    }
+  ],
+  "limits": [
+    "GIFs compare real stable states at 650ms per state; they are not unperturbed animation recordings",
+    "grabWindow readback perturbs sampling; real elapsed and capture times are retained for selected source frames",
+    "Production 90/180ms settings and unrecorded input/animation tests remain separate from capture",
+    "No claim of user visual approval, complete mixed-DPI acceptance or other Windows builds",
+    "Prior mathematical repair and failures retain their historical identity in ../tile-press-regression.json"
+  ],
+  "logs": [
+    "build/issue58-visibility-before.txt",
+    "build/issue58-visibility-build.log",
+    "build/issue58-visibility-lint.log",
+    "build/issue58-visibility-ctest.log",
+    "build/issue58-visibility-ctest-detail.log",
+    "build/issue58-visibility-native-final.txt"
+  ]
+}

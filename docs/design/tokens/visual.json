@@ -93,9 +93,9 @@
     "tilePress": {
       "pressMs": 90,
       "releaseMs": 180,
-      "maximumTiltDegrees": 6,
-      "maximumEdgeDepthDip": 7,
-      "perspectiveDistanceDip": 600,
+      "maximumTiltDegrees": 10,
+      "maximumEdgeDepthDip": 16,
+      "perspectiveDistanceDip": 180,
       "centerDepthDip": 2,
       "pressedScale": 0.985
     }
