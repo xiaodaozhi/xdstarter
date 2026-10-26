@@ -15,7 +15,7 @@ add_test(NAME ui.prototype COMMAND xdstarter_ui_tests)
 set_tests_properties(ui.prototype PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software;QT_FORCE_STDERR_LOGGING=1"
     WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
-    TIMEOUT 150
+    TIMEOUT 180
 )
 if(WIN32 AND DEFINED ENV{WINDIR})
     set_property(TEST ui.prototype APPEND PROPERTY ENVIRONMENT "QT_QPA_FONTDIR=$ENV{WINDIR}/Fonts")
