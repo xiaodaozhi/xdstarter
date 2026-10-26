@@ -8,7 +8,7 @@
 
 [Issue #48](https://github.com/xiaodaozhi/xdstarter/issues/48) 的第二轮交互采用已获用户验收的[2.4浮层设计](design/README.md)：窗口隐藏任务栏入口、统一显示生命周期与自有对话框边界，合并公共／用户目录并保留本地化名称，移除列表图钉与普通成功提示。当前写入格式为严格 schemaVersion 4，兼容读取1/2/3；可用磁贴列数随窗口变化并按56 DIP档位吸附，见 [ADR-0015](technical/adr/0015-responsive-tile-columns.md)。#45程序结果保留历史身份，当前实现和验证结果以[测试策略](technical/testing.md)中#48章节为准。
 
-[Issue #58](https://github.com/xiaodaozhi/xdstarter/issues/58) 修正磁贴按压透视：按下侧后退、对侧接近原位，以一次合成轴旋转统一约束最终倾角和整个平面深度，并保持恢复中重按的连续性。稳定规格见[交互设计](product/interaction.md)与[视觉说明](design/README.md)，构建、自动检查和运行时验证证据统一见[测试策略](technical/testing.md)。聊天中生成的说明图不作为参考图，不改变既有v2视觉基准和共享网格。
+[Issue #58](https://github.com/xiaodaozhi/xdstarter/issues/58) 修正磁贴按压透视：按下侧后退、对侧接近原位，以一次合成轴旋转约束姿态，并保持恢复中重按的连续性。用户反馈首轮结果难以感知后，重新调整视距、倾角及深度，增加三尺寸常用边缘／角落的最低可见幅度检查与原生状态对照。稳定规格见[交互设计](product/interaction.md)与[视觉说明](design/README.md)，构建、自动检查和运行时验证证据统一见[测试策略](technical/testing.md)。聊天中生成的说明图不作为参考图，保留既有v2基础视觉及共享网格。
 
 | 文档 | 内容 |
 | --- | --- |

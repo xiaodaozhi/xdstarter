@@ -43,6 +43,7 @@
 #include <QSysInfo>
 #include <QTemporaryDir>
 #include <QThread>
+#include <QTimer>
 #include <QUrl>
 #include <QVector3D>
 #include <QVector4D>
@@ -363,6 +364,8 @@ class PrototypeWindowTest : public QObject {
     void keyboardAndMouseSelection();
     void tilePressPerspective_data();
     void tilePressPerspective();
+    void tilePressVisibleFeedback_data();
+    void tilePressVisibleFeedback();
     void tilePressBoundaryGeometry_data();
     void tilePressBoundaryGeometry();
     void tilePressSymmetry();
@@ -1135,6 +1138,223 @@ void PrototypeWindowTest::tilePressPerspective() {
     captureTilePressFrame(captureName, QStringLiteral("restored"), tile);
 }
 
+void PrototypeWindowTest::tilePressVisibleFeedback_data() {
+    QTest::addColumn<QString>("tileId");
+    QTest::addColumn<QPointF>("fraction");
+    const QList<QPair<QByteArray, QPointF>> positions{
+        {"right", {0.85, 0.5}}, {"bottom", {0.5, 0.85}}, {"bottom-right", {0.85, 0.85}}};
+    for (const auto& id : {QStringLiteral("daily-small-1"), QStringLiteral("work-standard-1"),
+                           QStringLiteral("daily-wide")}) {
+        for (const auto& position : positions) {
+            const auto name = id.toLatin1() + '-' + position.first;
+            QTest::newRow(name.constData()) << id << position.second;
+        }
+    }
+}
+
+void PrototypeWindowTest::tilePressVisibleFeedback() {
+    QFETCH(QString, tileId);
+    QFETCH(QPointF, fraction);
+    auto* tile = item(QStringLiteral("tile-") + tileId);
+    QVERIFY(tile);
+    tile->forceActiveFocus(Qt::OtherFocusReason);
+    QTRY_VERIFY(viewportScene().contains(tile->mapRectToScene(tile->boundingRect())));
+    QTRY_COMPARE(tile->property("appearScale").toReal(), 1.0);
+    auto* background = visualItem(tile, QStringLiteral("tilePressBackground"));
+    auto* content = visualItem(tile, QStringLiteral("tilePressContent"));
+    QVERIFY(background && content);
+    const auto sceneBounds = tile->mapRectToScene(tile->boundingRect());
+    const auto snapshot = service_->snapshot();
+    const auto minimumDimension = std::min(tile->width(), tile->height());
+    // Use the real MouseArea at a normal in-tile position, rather than only
+    // checking a mathematical boundary or accepting any nonzero projection.
+    const auto pressPosition = tile->mapToScene({tile->width() * fraction.x(),
+                                                tile->height() * fraction.y()}).toPoint();
+    QSignalSpy activated(tile, SIGNAL(selected(QString)));
+    QSignalSpy progress(tile, SIGNAL(pressProgressChanged()));
+    QVERIFY(activated.isValid() && progress.isValid());
+
+    struct MotionFrame {
+        QImage image;
+        QJsonObject metadata;
+    };
+    QVector<MotionFrame> motionFrames;
+    motionFrames.reserve(80);
+    const auto motionDirectory = qEnvironmentVariable("XDSTARTER_TILE_PRESS_MOTION_DIR");
+    QString captureError;
+    QString phase = QStringLiteral("neutral");
+    QElapsedTimer elapsed;
+    elapsed.start();
+    // All captures run on the GUI thread and only retain cropped images in
+    // memory. The timer is destroyed before its captured storage goes away;
+    // no render-thread signal captures stack state, and PNG IO happens later.
+    bool capturing = false;
+    QTimer sampler;
+    sampler.setTimerType(Qt::PreciseTimer);
+    sampler.setInterval(16);
+    const auto capture = [&] {
+        if (capturing)
+            return;
+        capturing = true;
+        const auto startedMs = elapsed.elapsed();
+        const auto matrix = tile->property("pressMatrix").value<QMatrix4x4>();
+        QJsonArray matrixValues;
+        for (int row = 0; row < 4; ++row)
+            for (int column = 0; column < 4; ++column)
+                matrixValues.append(matrix(row, column));
+        QJsonArray corners;
+        for (const auto& corner : tileCorners(tile)) {
+            const auto point = background->mapToItem(tile, corner);
+            corners.append(QJsonObject{{QStringLiteral("x"), point.x()},
+                                       {QStringLiteral("y"), point.y()}});
+        }
+        QJsonObject metadata{
+            {QStringLiteral("phase"), phase},
+            {QStringLiteral("elapsedMs"), startedMs},
+            {QStringLiteral("pressProgress"), tile->property("pressProgress").toReal()},
+            {QStringLiteral("pointerPressActive"), tile->property("pointerPressActive").toBool()},
+            {QStringLiteral("matrixRowMajor"), matrixValues},
+            {QStringLiteral("projectedCornersDip"), corners}};
+        const auto frame = window_->grabWindow();
+        metadata.insert(QStringLiteral("captureFinishedMs"), elapsed.elapsed());
+        if (frame.isNull()) {
+            captureError = QStringLiteral("Native grabWindow returned an empty motion frame");
+            sampler.stop();
+        } else {
+            const qreal scaleX = qreal(frame.width()) / window_->width();
+            const qreal scaleY = qreal(frame.height()) / window_->height();
+            const QRect crop(qFloor((sceneBounds.x() - 2) * scaleX),
+                             qFloor((sceneBounds.y() - 2) * scaleY),
+                             qCeil((sceneBounds.width() + 4) * scaleX),
+                             qCeil((sceneBounds.height() + 4) * scaleY));
+            metadata.insert(QStringLiteral("cropPixels"), rectangleJson(crop));
+            motionFrames.append({frame.copy(crop), metadata});
+        }
+        capturing = false;
+    };
+    if (!motionDirectory.isEmpty()) {
+        connect(&sampler, &QTimer::timeout, &sampler, capture);
+        capture();
+        sampler.start();
+        QTest::qWait(100);
+    }
+
+    phase = QStringLiteral("press");
+    const auto pressInputMs = elapsed.elapsed();
+    QTest::mousePress(window_, Qt::LeftButton, Qt::NoModifier, pressPosition);
+    QVERIFY(tile->property("pointerPressActive").toBool());
+    QVERIFY(tile->property("pressAnimating").toBool());
+    QTRY_COMPARE(tile->property("pressProgress").toReal(), 1.0);
+    if (motionDirectory.isEmpty())
+        QVERIFY(progress.count() >= 2);
+    QCOMPARE(activated.count(), 0);
+    QCOMPARE(tile->mapRectToScene(tile->boundingRect()), sceneBounds);
+    QCOMPARE(service_->snapshot(), snapshot);
+
+    QList<QPointF> projected;
+    for (const auto& corner : tileCorners(tile)) {
+        const auto point = background->mapToItem(tile, corner);
+        projected.append(point);
+        QVERIFY(QLineF(point, content->mapToItem(tile, corner)).length() < 0.001);
+    }
+    const auto cornerMovement = QLineF(projected[2], {tile->width(), tile->height()}).length();
+    const auto verticalEdgeDifference = QLineF(projected[0], projected[3]).length() -
+                                        QLineF(projected[1], projected[2]).length();
+    const auto horizontalEdgeDifference = QLineF(projected[0], projected[1]).length() -
+                                          QLineF(projected[3], projected[2]).length();
+    const bool horizontalTilt = fraction.x() != 0.5;
+    const bool verticalTilt = fraction.y() != 0.5;
+    qreal pressedEdgeMovement = 0;
+    if (horizontalTilt && !verticalTilt) {
+        pressedEdgeMovement = tile->width() -
+                              background->mapToItem(tile, {tile->width(), tile->height() / 2}).x();
+    } else if (verticalTilt && !horizontalTilt) {
+        pressedEdgeMovement = tile->height() -
+                              background->mapToItem(tile, {tile->width() / 2, tile->height()}).y();
+    }
+    const auto detail = QStringLiteral("case=%1, corner movement=%2 DIP, edge movement=%3 DIP, "
+                                       "edge differences=%4/%5 DIP")
+                            .arg(QString::fromLatin1(QTest::currentDataTag()))
+                            .arg(cornerMovement).arg(pressedEdgeMovement)
+                            .arg(verticalEdgeDifference).arg(horizontalEdgeDifference);
+    // A direction-correct subpixel change previously passed. Require a
+    // meaningful corner/edge retreat and shorter pressed edges in all sizes.
+    if (horizontalTilt && verticalTilt)
+        QVERIFY2(cornerMovement >= minimumDimension * 0.04, qPrintable(detail));
+    else
+        QVERIFY2(pressedEdgeMovement >= minimumDimension * 0.025, qPrintable(detail));
+    if (horizontalTilt)
+        QVERIFY2(verticalEdgeDifference >= minimumDimension * 0.025, qPrintable(detail));
+    if (verticalTilt)
+        QVERIFY2(horizontalEdgeDifference >= minimumDimension * 0.025, qPrintable(detail));
+    const auto matrix = tile->property("pressMatrix").value<QMatrix4x4>();
+    const auto pressed = matrix * QVector4D(tile->width(), tile->height(), 0, 1);
+    const auto opposite = matrix * QVector4D(0, 0, 0, 1);
+    QVERIFY(pressed.z() < opposite.z());
+
+    phase = QStringLiteral("hold");
+    if (!motionDirectory.isEmpty()) {
+        capture();
+        QTest::qWait(250);
+    }
+    progress.clear();
+    phase = QStringLiteral("release");
+    const auto releaseInputMs = elapsed.elapsed();
+    QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, pressPosition);
+    QVERIFY(!tile->property("pointerPressActive").toBool());
+    QVERIFY(tile->property("pressAnimating").toBool());
+    QCOMPARE(activated.count(), 1);
+    QTRY_COMPARE(tile->property("pressProgress").toReal(), 0.0);
+    if (motionDirectory.isEmpty())
+        QVERIFY(progress.count() >= 2);
+    QVERIFY(tile->property("pressMatrix").value<QMatrix4x4>().isIdentity());
+    QCOMPARE(tile->mapRectToScene(tile->boundingRect()), sceneBounds);
+    QCOMPARE(service_->snapshot(), snapshot);
+    phase = QStringLiteral("restored");
+    if (motionDirectory.isEmpty())
+        return;
+
+    QTest::qWait(100);
+    sampler.stop();
+    capture();
+    QVERIFY2(captureError.isEmpty(), qPrintable(captureError));
+    const auto destination = QDir(motionDirectory).filePath(
+        QString::fromLatin1(QTest::currentDataTag()));
+    QVERIFY(QDir().mkpath(destination));
+    QJsonArray records;
+    for (qsizetype index = 0; index < motionFrames.size(); ++index) {
+        auto& frame = motionFrames[index];
+        const auto name = QStringLiteral("frame-%1.png").arg(index, 4, 10, QLatin1Char('0'));
+        QVERIFY(frame.image.save(QDir(destination).filePath(name)));
+        frame.metadata.insert(QStringLiteral("file"), name);
+        records.append(frame.metadata);
+    }
+    const auto pressTokens = visualTokens_.value(QStringLiteral("motion")).toMap()
+                                 .value(QStringLiteral("tilePress")).toMap();
+    const QJsonObject record{
+        {QStringLiteral("tileId"), tileId},
+        {QStringLiteral("fraction"), QJsonObject{{QStringLiteral("x"), fraction.x()},
+                                                {QStringLiteral("y"), fraction.y()}}},
+        {QStringLiteral("qpa"), QGuiApplication::platformName()},
+        {QStringLiteral("graphicsApi"), graphicsApiName(window_->rendererInterface()->graphicsApi())},
+        {QStringLiteral("dpr"), window_->devicePixelRatio()},
+        {QStringLiteral("inputSceneGeometryDip"), rectangleJson(sceneBounds)},
+        {QStringLiteral("tokens"), QJsonObject::fromVariantMap(pressTokens)},
+        {QStringLiteral("pressInputMs"), pressInputMs},
+        {QStringLiteral("releaseInputMs"), releaseInputMs},
+        {QStringLiteral("cornerMovementDip"), cornerMovement},
+        {QStringLiteral("pressedEdgeMovementDip"), pressedEdgeMovement},
+        {QStringLiteral("verticalEdgeDifferenceDip"), verticalEdgeDifference},
+        {QStringLiteral("horizontalEdgeDifferenceDip"), horizontalEdgeDifference},
+        {QStringLiteral("captureNote"),
+         QStringLiteral("Actual GUI-thread grabWindow frames; capture can perturb animation timing. "
+                        "No frame-count or unperturbed timing claim is made.")},
+        {QStringLiteral("frames"), records}};
+    QFile output(QDir(destination).filePath(QStringLiteral("motion.json")));
+    QVERIFY(output.open(QIODevice::WriteOnly));
+    QVERIFY(output.write(QJsonDocument(record).toJson()) > 0);
+}
+
 void PrototypeWindowTest::tilePressBoundaryGeometry_data() {
     QTest::addColumn<QString>("tileId");
     QTest::addColumn<QPointF>("fraction");
@@ -1168,8 +1388,14 @@ void PrototypeWindowTest::tilePressBoundaryGeometry() {
     QTRY_VERIFY(!tile->property("pressAnimating").toBool());
     QCOMPARE(tile->property("pressProgress").toReal(), 1.0);
     const auto matrix = tile->property("pressMatrix").value<QMatrix4x4>();
+    const auto pressTokens = visualTokens_.value(QStringLiteral("motion")).toMap()
+                                 .value(QStringLiteral("tilePress")).toMap();
+    const auto maximumTilt = pressTokens.value(QStringLiteral("maximumTiltDegrees")).toReal();
+    const auto maximumDepth = pressTokens.value(QStringLiteral("maximumEdgeDepthDip")).toReal();
     const auto angle = tilePressAngleDegrees(matrix, tile);
-    QVERIFY2(angle <= 6.001, qPrintable(QStringLiteral("Combined tilt=%1 degrees").arg(angle)));
+    QVERIFY2(angle <= maximumTilt + 0.001,
+             qPrintable(QStringLiteral("Combined tilt=%1 degrees; cap=%2 degrees")
+                            .arg(angle).arg(maximumTilt)));
     const bool centered = fraction == QPointF(0.5, 0.5);
     if (centered)
         QVERIFY(angle < 0.001);
@@ -1182,7 +1408,7 @@ void PrototypeWindowTest::tilePressBoundaryGeometry() {
         const auto projected = background->mapToItem(tile, corner);
         const qreal depth = -clip.z();
         deepestRetreat = std::max(deepestRetreat, depth);
-        QVERIFY2(depth >= -0.001 && depth <= 7.001,
+        QVERIFY2(depth >= -0.001 && depth <= maximumDepth + 0.001,
                  qPrintable(QStringLiteral("corner=(%1,%2), retreat=%3 DIP")
                                 .arg(corner.x()).arg(corner.y()).arg(depth)));
         QVERIFY(clip.w() >= 1.0 - 0.000001);
