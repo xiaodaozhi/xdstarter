@@ -245,6 +245,8 @@ int main(int argc, char *argv[]) {
     std::unique_ptr<xdstarter::WinKeyCapture> startButtonCapture;
     std::unique_ptr<xdstarter::DesktopWindowHost> desktopHost;
     QTimer captureDiagnosticsTimer;
+    quint64 captureDiagnosticsWriteFailures = 0;
+    bool captureDiagnosticsFailureReported = false;
     std::function<void()> finalCaptureDiagnostics;
     if (desktopShell) {
         placement = xdstarter::createDesktopPlatform();
@@ -273,14 +275,23 @@ int main(int argc, char *argv[]) {
                 snapshot.insert(QStringLiteral("runId"), runId);
                 snapshot.insert(QStringLiteral("processId"), QCoreApplication::applicationPid());
                 snapshot.insert(QStringLiteral("executableSha256"), executableHash);
+                snapshot.insert(QStringLiteral("diagnosticWriteFailures"),
+                                static_cast<double>(captureDiagnosticsWriteFailures));
                 const auto bytes = QJsonDocument(snapshot).toJson(QJsonDocument::Indented);
                 QSaveFile output(diagnosticsPath);
                 output.setDirectWriteFallback(false);
                 if (!output.open(QIODevice::WriteOnly) || output.write(bytes) != bytes.size() ||
                     !output.commit()) {
-                    qWarning() << "Cannot write start capture diagnostics:" << output.errorString();
-                    captureDiagnosticsTimer.stop();
+                    ++captureDiagnosticsWriteFailures;
+                    if (!captureDiagnosticsFailureReported)
+                        qWarning()
+                            << "Cannot write start capture diagnostics:" << output.errorString();
+                    captureDiagnosticsFailureReported = true;
+                    // A reader can briefly prevent atomic replacement on Windows.
+                    // Keep the next timer attempt; never publish partial JSON.
+                    return;
                 }
+                captureDiagnosticsFailureReported = false;
             };
             captureDiagnosticsTimer.setInterval(250);
             QObject::connect(&captureDiagnosticsTimer, &QTimer::timeout, &application,

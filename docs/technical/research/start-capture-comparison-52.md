@@ -15,6 +15,16 @@
 
 两条命令分两轮执行，中间正常退出。默认不创建诊断文件；显式选择后每250 ms原子覆盖同一文件并在退出时补写，不无限追加日志。可加`--start-capture-duration 120`限定实验时长并正常退出。文件父目录须已经存在。比较时保留程序 SHA-256、模式、Windows 构建、显示器/DPI、任务栏方向/对齐和每个场景的人工观察。相同场景使用同一EXE，仅切换模式；显式布局文件用于隔离验收，不覆盖用户布局。
 
+Windows读者短暂占用目标文件可能使原子替换失败。显式导出保留250 ms后续尝试，连续失败期间只首次输出告警，恢复后的`diagnosticWriteFailures`累计失败次数；不降级为直接写入，也不延长收集器的2秒陈旧守卫。文件持续不可写时仍不能取得有效试次证据。正常退出后若收集器稍后检测到源陈旧，应与产品退出记录对照，不当作一次物理点击失败。
+
+项目固定Qt6.8.2的[Windows原子覆盖实现](https://github.com/qt/qtbase/blob/v6.8.2/src/corelib/io/qfilesystemengine_win.cpp)使用`MoveFileExW`。本机实验中即使读句柄共享删除，保留旧句柄仍可能阻止该覆盖；没有采用仅修改读者共享标志的候选。回归直接复现普通读句柄占用，验证产品写者在释放后的恢复。
+
+可在退出已有XDStarter、正确Qt PATH的Windows环境运行文件占用恢复回归。输出目录必须位于本仓库build内且尚不存在；脚本使用隔离布局，程序十秒后正常退出，不生成鼠标输入：
+
+```powershell
+./build/tooling/Scripts/python.exe scripts/verify_capture_diagnostics.py --executable ./build/app-release/bin/xdstarter.exe --output ./build/validation/capture-diagnostics-recovery
+```
+
 诊断中的 `hookInstalled` 是安装记录，`hookLiveness=unknown` 保留系统静默移除无法直接判断的事实。`inputObservedThisSession` 说明本会话见过回调，不能证明现在或未来健康。`qualificationLeaseAvailable`、`eligibleAtCurrentCursor`、`downDecisions`、`upCanceled`、`epochSources`、订阅 HRESULT 和 `lastQuery` 用于区分资格缺口与失败。
 
 `consumedDown/consumedUp` 是本回调的消费决定；`toggleQueued` 是完整手势派发。host 观察另记录实际显示与原生前台结果，只有原生测量成功才增加 `hostForegroundConfirmedCount`。这些计数都不能单独证明 Windows 原生菜单从未出现，需要与真实结果对照。统计输入范围包括全部鼠标回调，不把所有放行事件都当成用户尝试点击 Start。

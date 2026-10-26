@@ -22,6 +22,8 @@
 
 #52后续提供会话/手势关联、有界收集与独立逐试次标注报告，并增加默认不构建、限时且全部放行的真实Explorer队列/窗口过程观察器。[运行说明](technical/research/start-capture-comparison-52.md)区分产品point/area-cache、自有fixture桥接与真实路由观察，自动检查不替代物理鼠标验收。
 
+2026-10-26解锁后的[真实鼠标对照](technical/validation/issue-52/physical-acceptance.json)复现point快速点击漏出及area-cache恢复后偶发原生菜单；文件占用后的诊断恢复已补修复和原生回归，稳定接管仍由#52继续跟踪。
+
 | 文档 | 内容 |
 | --- | --- |
 | [技术架构](technical/architecture.md) | 模块边界与数据流 |
