@@ -137,7 +137,7 @@ void testCorrelation() {
 }
 
 #ifdef Q_OS_WIN
-int inspectNativeTarget(const QString& modeName) {
+int inspectNativeTarget(const QString& modeName, int count = 8) {
     if (modeName != QLatin1String("point") && modeName != QLatin1String("area-cache"))
         return 2;
     const auto initialized = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
@@ -161,7 +161,9 @@ int inspectNativeTarget(const QString& modeName) {
         const auto mode = modeName == QLatin1String("point")
                               ? StartButtonCaptureMode::Point
                               : StartButtonCaptureMode::ExperimentalAreaCache;
-        for (int index = 0; index < 8; ++index) {
+        const auto deadline = GetTickCount64() + 10000;
+        for (int index = 0; index < count && GetTickCount64() < deadline; ++index) {
+            const auto began = GetTickCount64();
             StartButtonQueryObservation observation;
             const auto current =
                 platform.queryStartButtonCaptureTarget(automation, mode, 1, &observation);
@@ -169,6 +171,9 @@ int inspectNativeTarget(const QString& modeName) {
                 ++identified;
             samples.append(
                 QJsonObject{{QStringLiteral("identified"), current.identified},
+                            {QStringLiteral("queryStartedAt"), qint64(began)},
+                            {QStringLiteral("publishedAt"), qint64(GetTickCount64())},
+                            {QStringLiteral("observedAt"), qint64(current.observedAt)},
                             {QStringLiteral("areaValidated"), current.areaValidated},
                             {QStringLiteral("reason"),
                              QString::fromLatin1(startButtonCaptureReasonName(observation.reason))},
@@ -180,7 +185,7 @@ int inspectNativeTarget(const QString& modeName) {
                             {QStringLiteral("button"),
                              QJsonArray{current.buttonRect.x(), current.buttonRect.y(),
                                         current.buttonRect.width(), current.buttonRect.height()}}});
-            Sleep(20);
+            Sleep(DWORD(startButtonCaptureQueryDelay(mode, GetTickCount64() - began)));
         }
     }
     if (bounded)
@@ -193,6 +198,7 @@ int inspectNativeTarget(const QString& modeName) {
         {QStringLiteral("mode"), modeName},
         {QStringLiteral("setupHresult"), QString::number(status)},
         {QStringLiteral("identifiedSamples"), identified},
+        {QStringLiteral("samplesRequested"), count},
         {QStringLiteral("samples"), samples}};
     std::cout << QJsonDocument(evidence).toJson(QJsonDocument::Indented).constData();
     return FAILED(status) ? 1 : 0;
@@ -204,11 +210,103 @@ int main(int argc, char* argv[]) {
     QCoreApplication application(argc, argv);
 #ifdef Q_OS_WIN
     const auto arguments = application.arguments();
-    if (arguments.size() == 3 && arguments[1] == QLatin1String("--inspect-native-target"))
-        return inspectNativeTarget(arguments[2]);
+    if ((arguments.size() == 3 || arguments.size() == 5) &&
+        arguments[1] == QLatin1String("--inspect-native-target")) {
+        bool valid = true;
+        const int count = arguments.size() == 5 ? arguments[4].toInt(&valid) : 8;
+        if (!valid || count < 1 || count > 128 ||
+            (arguments.size() == 5 && arguments[3] != QLatin1String("--samples")))
+            return 64;
+        return inspectNativeTarget(arguments[2], count);
+    }
 #endif
     testCorrelation();
+    for (const quint64 duration : {quint64(0), quint64(12), quint64(30), quint64(78), quint64(281)}) {
+        expect(startButtonCaptureQueryDelay(StartButtonCaptureMode::Point, duration) == 30,
+               "point control retains the original post-query delay");
+        expect(startButtonCaptureQueryDelay(StartButtonCaptureMode::ExperimentalAreaCache, duration) ==
+                   (duration < 30 ? 30 - duration : 0),
+               "area refresh subtracts completed work from its cadence without extending lease");
+    }
+    {
+        // Controlled provider timings reproduce the refresh overlap: a slow
+        // third query must not inherit an avoidable post-query sleep gap.
+        auto previous = target();
+        previous.mode = StartButtonCaptureMode::ExperimentalAreaCache;
+        previous.areaValidated = true;
+        quint64 queryBegan = 1000;
+        quint64 previousPublished = 0;
+        bool continuouslyQualified = true;
+        for (const quint64 duration : {quint64(47), quint64(31), quint64(143)}) {
+            const auto published = queryBegan + duration;
+            if (previousPublished) {
+                for (auto now = previousPublished; now < published; ++now)
+                    continuouslyQualified &= StartButtonCaptureState::qualifies(
+                        previous, previous.qualifiedPoint, now, previous.mode);
+            }
+            previous.observedAt = queryBegan;
+            previousPublished = published;
+            queryBegan = published + startButtonCaptureQueryDelay(previous.mode, duration);
+        }
+        expect(continuouslyQualified, "overlapping unique refreshes avoid the fixed-delay lease gap");
+        expect(!StartButtonCaptureState::qualifies(previous, previous.qualifiedPoint,
+                                                   previous.observedAt + 201, previous.mode),
+               "provider stalls still fail the unchanged 200ms lease, never renew by publication");
+    }
     const auto ready = target();
+    {
+        const StartButtonElementObservation valid{
+            QStringLiteral("StartButton"), ready.buttonRect, ready.processId, true, true, false};
+        expect(startButtonElementFailure(valid, ready.processId, ready.buttonRect) ==
+                   StartButtonCaptureReason::None,
+               "fresh point identity can renew the same uniquely bound Start element");
+        for (int change = 0; change < 8; ++change) {
+            auto invalid = valid;
+            switch (change) {
+            case 0:
+                invalid.sameBoundElement = false;
+                break;
+            case 1:
+                invalid.automationId = QStringLiteral("startbutton");
+                break;
+            case 2:
+                invalid.buttonRole = false;
+                break;
+            case 3:
+                invalid.offscreen = true;
+                break;
+            case 4:
+                invalid.processId = 0;
+                break;
+            case 5:
+                ++invalid.processId;
+                break;
+            case 6:
+                invalid.bounds.translate(1, 0);
+                break;
+            case 7:
+                invalid.bounds = {};
+                break;
+            }
+            expect(startButtonElementFailure(invalid, ready.processId, ready.buttonRect) !=
+                       StartButtonCaptureReason::None,
+                   "changed identity, semantics, geometry or visibility cannot renew a binding");
+        }
+        auto embedded = valid;
+        embedded.automationId = QStringLiteral("StartButton\0x");
+        expect(startButtonElementFailure(embedded, ready.processId, ready.buttonRect) !=
+                   StartButtonCaptureReason::None,
+               "automation identity with embedded suffix is not a valid Start identifier");
+        expect(startButtonElementFailure(valid, 0, ready.buttonRect) !=
+                   StartButtonCaptureReason::None,
+               "unknown expected native process cannot validate an element");
+        expect(startButtonElementFailure(valid, ready.processId, {}) !=
+                   StartButtonCaptureReason::None,
+               "unknown expected bounds cannot validate an element");
+        expect(startButtonElementFailure({}, ready.processId, ready.buttonRect) !=
+                   StartButtonCaptureReason::None,
+               "missing provider properties cannot validate an element");
+    }
     const auto point = ready.qualifiedPoint;
     expect(StartButtonCaptureState::qualifies(ready, point, 1200), "200ms boundary qualifies");
     expect(!StartButtonCaptureState::qualifies(ready, point, 1201),

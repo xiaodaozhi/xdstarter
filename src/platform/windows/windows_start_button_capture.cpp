@@ -3,6 +3,7 @@
 #include "platform/start_button_capture.h"
 #include "platform/start_button_capture_state.h"
 #include "windows_desktop_platform.h"
+#include "windows_start_button_events.h"
 
 #include <QDebug>
 #include <QJsonArray>
@@ -68,9 +69,9 @@ constexpr std::array<const char*, epochSourceCount> epochNames{"uia-structure",
 struct EpochTracker {
     std::atomic<quint64> value{0};
     std::array<std::atomic<quint64>, epochSourceCount> sources{};
-    void invalidate(EpochSource source) {
+    quint64 invalidate(EpochSource source) {
         sources[static_cast<size_t>(source)].fetch_add(1, std::memory_order_relaxed);
-        value.fetch_add(1);
+        return value.fetch_add(1) + 1;
     }
 };
 
@@ -78,8 +79,10 @@ struct EpochTracker {
 // no input operation and drops a sample if the slot changed while being read.
 struct InputSample {
     std::atomic<quint64> sequence{0}, at{0}, epoch{0}, snapshotEpoch{0};
+    std::atomic<quint64> windowEventSequence{0};
     std::atomic<quint64> session{0}, originSession{0}, gestureId{0}, pressedAt{0};
     std::atomic<qint64> age{-1}, dx{0}, dy{0};
+    std::atomic<LONG> x{0}, y{0};
     std::atomic<int> event{0}, reason{0}, flags{0};
 };
 
@@ -223,8 +226,11 @@ class WindowsStartButtonCapture final : public StartButtonCapture {
                 {QStringLiteral("snapshotAgeMs"), static_cast<qint64>(slot.age.load())},
                 {QStringLiteral("pointDeltaX"), slot.dx.load()},
                 {QStringLiteral("pointDeltaY"), slot.dy.load()},
+                {QStringLiteral("pointX"), qint64(slot.x.load())},
+                {QStringLiteral("pointY"), qint64(slot.y.load())},
                 {QStringLiteral("epoch"), static_cast<qint64>(slot.epoch.load())},
                 {QStringLiteral("snapshotEpoch"), static_cast<qint64>(slot.snapshotEpoch.load())},
+                {QStringLiteral("nativeWindowEventSequence"), qint64(slot.windowEventSequence.load())},
                 {QStringLiteral("consumed"), bool(flags & 1)},
                 {QStringLiteral("toggle"), bool(flags & 2)},
                 {QStringLiteral("nativeDispatchQueued"), bool(flags & 16)},
@@ -257,7 +263,7 @@ class WindowsStartButtonCapture final : public StartButtonCapture {
                                                     : QJsonValue(QJsonValue::Null)},
                 {QStringLiteral("count"), qint64(queryLatency_[index].load())}});
         const auto last = lastInputAt_.load();
-        return {
+        QJsonObject result{
             {QStringLiteral("schemaVersion"), 2},
             {QStringLiteral("clock"), QStringLiteral("GetTickCount64 milliseconds")},
             {QStringLiteral("exportedAt"), qint64(now)},
@@ -344,6 +350,10 @@ class WindowsStartButtonCapture final : public StartButtonCapture {
             {QStringLiteral("hostHistoryCapacity"), 512},
             {QStringLiteral("hostEntriesEvicted"),
              qint64(hostObservations_.load() > 512 ? hostObservations_.load() - 512 : 0)}};
+        const auto windowEvents = windowEvents_.snapshot();
+        for (auto it = windowEvents.begin(); it != windowEvents.end(); ++it)
+            result.insert(it.key(), it.value());
+        return result;
     }
 
     void recordHostObservation(const StartButtonHostObservation& observation) override {
@@ -496,8 +506,11 @@ class WindowsStartButtonCapture final : public StartButtonCapture {
                            : -1);
         slot.dx.store(target.identified ? qint64(point.x) - target.qualifiedPoint.x() : 0);
         slot.dy.store(target.identified ? qint64(point.y) - target.qualifiedPoint.y() : 0);
+        slot.x.store(point.x);
+        slot.y.store(point.y);
         slot.epoch.store(epoch_);
         slot.snapshotEpoch.store(target.epoch);
+        slot.windowEventSequence.store(windowEvents_.sequence());
         slot.event.store(static_cast<int>(event));
         slot.reason.store(static_cast<int>(decision.reason));
         slot.flags.store((decision.consume ? 1 : 0) | (decision.toggle ? 2 : 0) |
@@ -591,15 +604,19 @@ class WindowsStartButtonCapture final : public StartButtonCapture {
         return CallNextHookEx(nullptr, code, message, parameter);
     }
 
-    static void CALLBACK windowEvent(HWINEVENTHOOK, DWORD event, HWND window, LONG, LONG, DWORD,
-                                     DWORD) {
+    static void CALLBACK windowEvent(HWINEVENTHOOK, DWORD event, HWND window, LONG object,
+                                     LONG child, DWORD thread, DWORD time) {
         auto* self = current_;
-        if (!self || (event != EVENT_OBJECT_DESTROY && event != EVENT_OBJECT_SHOW &&
-                      event != EVENT_OBJECT_HIDE && event != EVENT_OBJECT_REORDER &&
-                      event != EVENT_OBJECT_LOCATIONCHANGE))
+        if (!self)
             return;
         const HWND bar = reinterpret_cast<HWND>(self->observedTaskbar_.load());
-        if (window == bar || (bar && GetAncestor(window, GA_ROOT) == bar)) {
+        const StartButtonWindowEvent observed{event, window, object, child, thread, time};
+        const auto decision = classifyStartButtonWindowEvent(observed, bar, self->options_.mode);
+        if (decision.action == StartButtonWindowEventAction::Unrelated)
+            return;
+        auto before = self->epoch_.load();
+        auto after = before;
+        if (decision.action == StartButtonWindowEventAction::Invalidate) {
             auto source = EpochSource::NativeLocation;
             if (event == EVENT_OBJECT_DESTROY)
                 source = EpochSource::NativeDestroy;
@@ -609,8 +626,10 @@ class WindowsStartButtonCapture final : public StartButtonCapture {
                 source = EpochSource::NativeHide;
             else if (event == EVENT_OBJECT_REORDER)
                 source = EpochSource::NativeReorder;
-            self->epochs_->invalidate(source);
+            after = self->epochs_->invalidate(source);
+            before = after - 1;
         }
+        self->windowEvents_.record(observed, decision, bar, self->generation_.load(), before, after);
     }
 
     void queryLoop() {
@@ -639,6 +658,8 @@ class WindowsStartButtonCapture final : public StartButtonCapture {
         int publishedReadiness = -1;
         quint64 publishedGeneration = 0;
         while (!stopping_) {
+            const auto iterationBegan = GetTickCount64();
+            bool queried = false;
             if (requested_ && active_ && !automation) {
                 quint64 failedGeneration = 0;
                 {
@@ -659,6 +680,7 @@ class WindowsStartButtonCapture final : public StartButtonCapture {
                 }
             }
             if (requested_ && active_ && automation) {
+                queried = true;
                 const auto queryGeneration = generation_.load();
                 const auto epoch = epoch_.load();
                 StartButtonQueryObservation observation;
@@ -809,6 +831,9 @@ class WindowsStartButtonCapture final : public StartButtonCapture {
                 {
                     std::lock_guard lock(queryDiagnosticsMutex_);
                     lastQuery_ = {
+                        {QStringLiteral("startedAt"), qint64(iterationBegan)},
+                        {QStringLiteral("completedAt"), qint64(GetTickCount64())},
+                        {QStringLiteral("qualificationObservedAt"), qint64(target.observedAt)},
                         {QStringLiteral("durationMs"), static_cast<qint64>(observation.durationMs)},
                         {QStringLiteral("queryGeneration"), static_cast<qint64>(queryGeneration)},
                         {QStringLiteral("reason"),
@@ -851,7 +876,9 @@ class WindowsStartButtonCapture final : public StartButtonCapture {
                         {});
                 }
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(30));
+            std::this_thread::sleep_for(std::chrono::milliseconds(startButtonCaptureQueryDelay(
+                queried ? options_.mode : StartButtonCaptureMode::Point,
+                GetTickCount64() - iterationBegan)));
         }
         platform.reset(); // Cached UIA elements must die on this still-initialized MTA.
         if (automation) {
@@ -1024,6 +1051,7 @@ class WindowsStartButtonCapture final : public StartButtonCapture {
     std::array<std::atomic<quint64>, reasonCount> downReasons_{}, upReasons_{},
         upCanceledReasons_{}, queryReasons_{};
     std::array<InputSample, 512> samples_{};
+    StartButtonWindowEventJournal windowEvents_;
     std::atomic<quint64> sampleSequence_{0}, nativeDispatchDropped_{0};
     StartButtonGestureTracker gestureTracker_; // hook thread only
     static constexpr std::array<quint64, 8> queryLatencyLimits_{1, 5, 10, 25, 50, 100, 200, 500};

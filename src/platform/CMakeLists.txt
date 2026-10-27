@@ -20,6 +20,8 @@ if(WIN32)
         windows/windows_win_key_capture.cpp
         windows/windows_win_key_capture.h
         windows/windows_start_button_capture.cpp
+        windows/windows_start_button_events.cpp
+        windows/windows_start_button_events.h
     )
 else()
     target_sources(xdstarter_platform PRIVATE

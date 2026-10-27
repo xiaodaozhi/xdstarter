@@ -273,9 +273,32 @@ int main(int argc, char** argv) {
     const auto signer = fixture ? QJsonObject{} : signature(process.path);
     evidence.insert("signature", signer);
     if (parser.isSet("inspect")) {
+        const auto observerDll = support::canonicalPath(
+            QDir(app.applicationDirPath()).filePath("xdstarter_explorer_route.dll").toStdWString());
+        const auto presence = observerDll.empty()
+                                  ? support::ModulePresence::Unknown
+                                  : support::modulePresence(process.processId, observerDll);
+        evidence.insert("observerDllPathKnown", !observerDll.empty());
+        evidence.insert("observerModulePresence", presence == support::ModulePresence::Absent
+                                                     ? "absent"
+                                                 : presence == support::ModulePresence::Present
+                                                     ? "present"
+                                                     : "unknown");
         std::cout << QJsonDocument(evidence).toJson().constData();
         return 0;
     }
+    const auto refuse = [&](const char* stage, const char* reason) {
+        evidence.insert("kind", "route-refused");
+        evidence.insert("preflightStage", QString::fromLatin1(stage));
+        evidence.insert("refusalReason", QString::fromLatin1(reason));
+        std::cerr << "Route observation refused at " << stage << ": " << reason << '\n';
+        std::cout << QJsonDocument(evidence).toJson().constData();
+        if (fixture && bar) {
+            PostMessageW(bar, WM_CLOSE, 0, 0);
+            owned.waitForFinished(2000);
+        }
+        return 2;
+    };
     wchar_t windows[512]{};
     GetWindowsDirectoryW(windows, 512);
     const auto expectedImage = support::canonicalPath(std::wstring(windows) + L"\\explorer.exe");
@@ -283,20 +306,27 @@ int main(int argc, char** argv) {
                      _wcsicmp(process.path, expectedImage.c_str()) || build.isEmpty() ||
                      parser.value("expected-build") != build ||
                      parser.value("expected-explorer-sha256") != evidence["sha256"].toString())) {
-        std::cerr << "Explorer observation refused: exact identity/signature/unoccluded "
-                     "qualification required\n";
-        std::cout << QJsonDocument(evidence).toJson().constData();
-        return 2;
+        return refuse("target-identity",
+                      "exact identity, signature and unoccluded qualification required");
     }
     if (inventory.truncated || inventory.threads.isEmpty() ||
         inventory.threads.size() > maxThreads || process.machine != IMAGE_FILE_MACHINE_AMD64)
-        return 2;
+        return refuse("thread-inventory", "complete bounded inventory and x64 target required");
     const auto dll = support::canonicalPath(
         QDir(app.applicationDirPath()).filePath("xdstarter_explorer_route.dll").toStdWString());
     const auto dllHash = fileHash(QString::fromStdWString(dll));
-    if (dll.empty() || dllHash.isEmpty() ||
-        support::modulePresence(process.processId, dll) != support::ModulePresence::Absent)
-        return 2;
+    if (dll.empty())
+        return refuse("observer-dll-path", "cannot canonicalize observer DLL path");
+    if (dllHash.isEmpty())
+        return refuse("observer-dll-hash", "cannot hash observer DLL");
+    const auto initialPresence = support::modulePresence(process.processId, dll);
+    evidence.insert("initialModulePresence", initialPresence == support::ModulePresence::Absent
+                                                 ? "absent"
+                                             : initialPresence == support::ModulePresence::Present
+                                                 ? "present"
+                                                 : "unknown");
+    if (initialPresence != support::ModulePresence::Absent)
+        return refuse("observer-module-presence", "observer DLL absence could not be verified");
     const auto outputPath =
         fixture && !parser.isSet("output")
             ? QDir::current().filePath(QStringLiteral("route-self-test-%1.ndjson")

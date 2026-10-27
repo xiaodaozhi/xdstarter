@@ -1,0 +1,458 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-27",
+  "issue": 52,
+  "sourceBaseCommit": "0b86899847d11712c126323a02b441f794696c09",
+  "sourceIdentity": "Base plus LF hashes identify changed code. Local tested binaries and CI builds have separate identities.",
+  "sourceLfSha256": {
+    ".github/workflows/application-build.yml": "86560c284db60926bcdafd481cd3e3f312bec8e7900d19e470e98ff684cde69b",
+    "scripts/start_capture_acceptance.py": "9bb446496babc3ec8685041858b4ac10b3bdc4053fc7b5b59cc1b766ba0bf84e",
+    "scripts/verify_capture_diagnostics.py": "80a841c92af5199b8e1c9007dafb65fc012417108d96c2a02a42a6f54156f927",
+    "src/platform/CMakeLists.txt": "b1ca213435e548e29a9ad45469d10910b93a467b0d1734e53a88d3d85dfd2c71",
+    "src/platform/start_button_capture_state.cpp": "514b3e99277c4619b0520083c9c2cfa78abae87ab7ad57c6f783fea8e142dca9",
+    "src/platform/start_button_capture_state.h": "3f7257bc7a6cf24acc8f3ce96440003d5a89fdf1f6bf1fc0c1a74b0a83278630",
+    "src/platform/windows/windows_start_button_capture.cpp": "e415f7487fb7b35f7953b975ddd04311d7bc2dd41bfac2bf528ec26ad6cbf61c",
+    "src/platform/windows/windows_desktop_platform.cpp": "643097047653a653588668ac274a7063d7e95139cedb0bddf30fc50e863c24d8",
+    "src/platform/windows/windows_start_button_events.cpp": "45938862f89c70fc545d3c6c1f8527ba6342446f8e7176f43a3372f5911ead48",
+    "src/platform/windows/windows_start_button_events.h": "693885113ac2b97dbe9ea833b3b344d7e96903da1b9f691bfcf025577a0d6deb",
+    "src/experimental/explorer_route/route_controller.cpp": "b9da2a67507a0346765df9aa61be1ffdd692da4fb0bf75296dd9f555c9e1d5fe",
+    "tests/platform/CMakeLists.txt": "406944a378367e0ab2fe6f19ac1a5491e7ebc38b52adb32331d8b9b7a0b6763f",
+    "tests/platform/start_button_capture_tests.cpp": "f7a8ac5778c1fb34100c9f98639418be7a9e35f45e2b45d6c74378de4fbb47c0",
+    "tests/platform/start_button_window_event_tests.cpp": "1772649180be50bc7974a262acb3ed047eb2003d73c7a8b62a1f35c1de2bc023",
+    "tests/tooling/test_start_capture_acceptance.py": "07ba6417a7ba5425374ac391c99d1d6356eb9545d8530bf38911e829a4aed273"
+  },
+  "environment": {
+    "windowsBuild": "26300.9711",
+    "qt": "6.8.2",
+    "msvc": "19.29.30159.0",
+    "windowsSdk": "10.0.19041.0",
+    "scope": "additional v142 patch compatibility, not exact 19.29.30153.0 baseline",
+    "observedStartPhysicalRect": [
+      0,
+      1528,
+      83,
+      72
+    ],
+    "taskbarScope": "current bottom/left setup; settings not modified"
+  },
+  "firstCandidate": {
+    "sourceLfSha256": {
+      "src/platform/windows/windows_start_button_capture.cpp": "ef221603fa2ed2a8eac386c4fd6de669bab2725c29467b0477a679a205e72406",
+      "src/platform/windows/windows_start_button_events.cpp": "45938862f89c70fc545d3c6c1f8527ba6342446f8e7176f43a3372f5911ead48",
+      "src/platform/windows/windows_start_button_events.h": "693885113ac2b97dbe9ea833b3b344d7e96903da1b9f691bfcf025577a0d6deb",
+      "tests/platform/start_button_window_event_tests.cpp": "1772649180be50bc7974a262acb3ed047eb2003d73c7a8b62a1f35c1de2bc023",
+      "scripts/start_capture_acceptance.py": "9cbdb185f336bba9bbf0ebe134afccf462b6c865e89f9e36316ca27c72d3e4aa",
+      "scripts/verify_capture_diagnostics.py": "80a841c92af5199b8e1c9007dafb65fc012417108d96c2a02a42a6f54156f927",
+      "tests/tooling/test_start_capture_acceptance.py": "7ac80c3505de587005a0589d78f42151505d7094ca0b5157b16e469324bc673f"
+    },
+    "binaries": {
+      "candidate": "67545ea953adc85a292cd96cda188704de07e8978cf9601c13c8ddf38abbb41c",
+      "nativeFixture": "dc616a14e3e9aa5a4708dfd6b1d325a6b8bea2651d98484aca1f6163428579fa"
+    },
+    "postFixChecks": {
+      "releaseBuild": "passed",
+      "toolingTests": 33,
+      "nativeFixture": {
+        "checks": 277,
+        "failures": 0,
+        "seconds": 2.82
+      },
+      "captureState": {
+        "checks": 132,
+        "failures": 0
+      },
+      "focusedCTest": {
+        "passed": 5,
+        "total": 5,
+        "seconds": 23.46
+      },
+      "diagnosticIo": {
+        "point": {
+          "mode": "point",
+          "productExit": 0,
+          "collectorExit": 0,
+          "recoveredWriteFailures": 4,
+          "exportResumed": true,
+          "finalHookInstalled": false,
+          "finalSessionActive": false,
+          "sha256": "67545ea953adc85a292cd96cda188704de07e8978cf9601c13c8ddf38abbb41c",
+          "windowEventSequence": 0,
+          "exportedWindowEvents": 0,
+          "physicalTrials": 0,
+          "collection": "{\"runId\": \"03c953eb-d5c7-462d-9eda-3b134fb9bf6d\", \"mode\": \"point\", \"startedAt\": 1098463812, \"endedAt\": 1098465828, \"reason\": \"duration\"}",
+          "collectionError": ""
+        },
+        "area": {
+          "mode": "area-cache",
+          "productExit": 0,
+          "collectorExit": 0,
+          "recoveredWriteFailures": 4,
+          "exportResumed": true,
+          "finalHookInstalled": false,
+          "finalSessionActive": false,
+          "sha256": "67545ea953adc85a292cd96cda188704de07e8978cf9601c13c8ddf38abbb41c",
+          "windowEventSequence": 0,
+          "exportedWindowEvents": 0,
+          "physicalTrials": 0,
+          "collection": "{\"runId\": \"f280c031-c662-4b1b-a952-5754c0d2047b\", \"mode\": \"area-cache\", \"startedAt\": 1098483953, \"endedAt\": 1098486031, \"reason\": \"duration\"}",
+          "collectionError": ""
+        }
+      },
+      "areaQualificationObserved": true,
+      "timedRunsObservedNativeEvents": 0
+    },
+    "physicalBatch": {
+      "cyclesRequested": 3,
+      "operatorResult": "Windows native Start appears intermittently after resume; failed",
+      "inputSource": "physical mouse, operator outcome",
+      "intendedStartGestureDenominator": null,
+      "failureSnapshot": "after-resume-failure.json",
+      "normalShutdown": {
+        "exitCode": 0,
+        "hookInstalled": false,
+        "sessionActive": false,
+        "runId": "b31d7b68-12ec-41a0-aae0-401a9978ba7c"
+      },
+      "expiredGesture": [
+        {
+          "at": 1099090156,
+          "consumed": false,
+          "epoch": 4,
+          "event": "left-down",
+          "gestureId": 28,
+          "injected": false,
+          "nativeDispatchQueued": false,
+          "nativeWindowEventSequence": 29,
+          "originSessionGeneration": 7,
+          "pointDeltaX": -20,
+          "pointDeltaY": 4,
+          "pointDifferenceKnown": true,
+          "pressedAt": 1099090156,
+          "reason": "expired-snapshot",
+          "sequence": 55,
+          "sessionGeneration": 7,
+          "snapshotAgeMs": 281,
+          "snapshotEpoch": 4,
+          "toggle": false
+        },
+        {
+          "at": 1099090250,
+          "consumed": false,
+          "epoch": 4,
+          "event": "left-up",
+          "gestureId": 28,
+          "injected": false,
+          "nativeDispatchQueued": false,
+          "nativeWindowEventSequence": 29,
+          "originSessionGeneration": 7,
+          "pointDeltaX": -20,
+          "pointDeltaY": 4,
+          "pointDifferenceKnown": true,
+          "pressedAt": 1099090156,
+          "reason": "no-owned-press",
+          "sequence": 56,
+          "sessionGeneration": 7,
+          "snapshotAgeMs": 157,
+          "snapshotEpoch": 4,
+          "toggle": false
+        }
+      ],
+      "epochSources": {
+        "desktop": 0,
+        "dispatch": 0,
+        "message-loop": 0,
+        "native-destroy": 0,
+        "native-hide": 0,
+        "native-location": 1,
+        "native-reorder": 0,
+        "native-show": 0,
+        "pause": 3,
+        "stop": 0,
+        "subscription": 1,
+        "uia-automation-id": 0,
+        "uia-bounds": 0,
+        "uia-control-type": 0,
+        "uia-offscreen": 0,
+        "uia-process": 0,
+        "uia-structure": 0
+      },
+      "queryDurationMaxMs": 422
+    },
+    "rawEvidenceSha256": {
+      "native-red.log": "199ba8ec22e6e7a6736c6737cf779a6ad3c120e29ad454e46e63ccb9862f3f56",
+      "native-green-details.log": "aad897a35d53f34339d59581b64e0e978b225c6e0925c1fc16255270be9824fa",
+      "focused-final.log": "a61a1c09b99fc01157795052ee8e35888d6168e77eef49bdd561d59842bf406e",
+      "focused-final-details.log": "c3cea43252ca26ab88003ec26a5bb9ded731291d8dd6fcbf51ec4cc3653cd697",
+      "tooling.log": "b419bc6f0a4bc29ab08b79bf4d79c8f80c3e1021e91fc9f425e06727d7a30c3d",
+      "io-point/result.json": "98538175116a007a1657c7f6277f4d85c8b1f5135388798d6325e66e177d2883",
+      "io-area/result.json": "a87cafde66338ed70d25cfb23dc0d8c13c76ff01c7b02ded241f7de148f27d94"
+    }
+  },
+  "intermediateQueryCandidate": {
+    "strategy": "unique discovery every query with bulk properties and start-to-start cadence",
+    "beforeInputContextBinary": "6277f0ed643c7ae6c8dbc3f0dd41ec8ca205f187a97d50e2e9025561b7ab8d97",
+    "inputContextBinary": "19c8ff8ddbc96b882993d74b7afe6905107302b132bd873b81c4cfcdb545924f",
+    "quietReadOnlySample": {
+      "requested": 64,
+      "actual": 64,
+      "identified": 64,
+      "maxQueryMs": 79,
+      "leaseGaps": [],
+      "scope": "Read-only UIA freshness sampling; no Hook/input, no capture success-rate claim."
+    },
+    "laterReadOnlySample": {
+      "samples": 64,
+      "identified": 61,
+      "maxQueryMs": 250,
+      "gaps": [
+        {
+          "start": 1101906859,
+          "end": 1101906953
+        },
+        {
+          "start": 1101907418,
+          "end": 1101907421
+        },
+        {
+          "start": 1101908278,
+          "end": 1101908296
+        },
+        {
+          "start": 1101908371,
+          "end": 1101908375
+        },
+        {
+          "start": 1101908981,
+          "end": 1101908984
+        },
+        {
+          "start": 1101909059,
+          "end": 1101909109
+        },
+        {
+          "start": 1101909184,
+          "end": 1101909218
+        },
+        {
+          "start": 1101910387,
+          "end": 1101910437
+        },
+        {
+          "start": 1101910465,
+          "end": 1101910500
+        },
+        {
+          "start": 1101911028,
+          "end": 1101911156
+        },
+        {
+          "start": 1101911156,
+          "end": 1101911406
+        },
+        {
+          "start": 1101911406,
+          "end": 1101911515
+        }
+      ],
+      "scope": "read-only query coverage, not physical capture"
+    },
+    "queryTimeouts": 3,
+    "physicalRequestIssued": false,
+    "startupOrchestrationError": "External Python preflight exit was not checked before launch; owned candidate was normally stopped, exit 0 and Hook/session false. Replaced by explicit coverage/hash guard and negative control.",
+    "ioRegression": {
+      "point": {
+        "mode": "point",
+        "productExit": 0,
+        "collectorExit": 0,
+        "recoveredWriteFailures": 4,
+        "exportResumed": true,
+        "finalHookInstalled": false,
+        "finalSessionActive": false,
+        "sha256": "6277f0ed643c7ae6c8dbc3f0dd41ec8ca205f187a97d50e2e9025561b7ab8d97",
+        "windowEventSequence": 0,
+        "exportedWindowEvents": 0,
+        "physicalTrials": 0,
+        "collection": "{\"runId\": \"cb74aa0a-edb4-4658-9e82-6505ad41cbf4\", \"mode\": \"point\", \"startedAt\": 1101308375, \"endedAt\": 1101310468, \"reason\": \"duration\"}",
+        "collectionError": ""
+      },
+      "area": {
+        "mode": "area-cache",
+        "productExit": 0,
+        "collectorExit": 0,
+        "recoveredWriteFailures": 4,
+        "exportResumed": true,
+        "finalHookInstalled": false,
+        "finalSessionActive": false,
+        "sha256": "6277f0ed643c7ae6c8dbc3f0dd41ec8ca205f187a97d50e2e9025561b7ab8d97",
+        "windowEventSequence": 0,
+        "exportedWindowEvents": 0,
+        "physicalTrials": 0,
+        "collection": "{\"runId\": \"bc5f0fed-d48e-46a1-b031-bb5294ccc3d3\", \"mode\": \"area-cache\", \"startedAt\": 1101323937, \"endedAt\": 1101325937, \"reason\": \"duration\"}",
+        "collectionError": ""
+      }
+    }
+  },
+  "currentCandidate": {
+    "sha256": "0e9a025e216bad49750cb393f7554f54025b8c9d3a618cacca6f65fb1cc3d545",
+    "runId": "362ee049-925f-45cb-b20e-1c4c5629d265",
+    "mode": "area-cache",
+    "strategy": "Unique bind on initialization/invalidation; fresh same-element point identity, exact AutomationId/control role/process/bounds/visibility every renewal; unchanged 200ms observation lease.",
+    "semanticAndCadenceAssertions": 157,
+    "nativeWindowEventAssertions": 277,
+    "nativeFocusedCTest": {
+      "passed": 2,
+      "total": 2,
+      "seconds": 2.89
+    },
+    "readOnlyCoverage": {
+      "samples": 128,
+      "identified": 128,
+      "maxQueryMs": 109,
+      "reusedBindingSamples": 127,
+      "gaps": [],
+      "candidateSha256": "0e9a025e216bad49750cb393f7554f54025b8c9d3a618cacca6f65fb1cc3d545",
+      "scope": "read-only bound-element query coverage; no Hook/input"
+    },
+    "physicalBatch": {
+      "runId": "362ee049-925f-45cb-b20e-1c4c5629d265",
+      "sha256": "0e9a025e216bad49750cb393f7554f54025b8c9d3a618cacca6f65fb1cc3d545",
+      "mode": "area-cache",
+      "inputSource": "physical-mouse",
+      "outcomeSource": "operator",
+      "cyclesRequested": 3,
+      "resumeOperatorResult": "all three normal; XDStarter only; show and hide normal",
+      "intendedGestureDenominator": null,
+      "noReliabilityPercentageClaim": true,
+      "sourceFreshAt": 1104762671,
+      "dragCancel": "neither menu appeared; normal",
+      "rightClick": "Windows system menu normal",
+      "winX": "Windows system menu normal",
+      "pauseNative": "Windows native Start only",
+      "resumeAfterNative": "XDStarter only",
+      "afterNormalExit": "Windows native Start only, independently reported by user"
+    },
+    "shutdown": {
+      "exitCode": 0,
+      "hookInstalled": false,
+      "sessionActive": false,
+      "runId": "362ee049-925f-45cb-b20e-1c4c5629d265"
+    },
+    "collectorEnd": {
+      "kind": "end",
+      "at": 1105041859,
+      "reason": "source-stale-or-clock-invalid",
+      "readErrors": 6,
+      "lastSequences": {
+        "input": 430,
+        "host": 129,
+        "window-event": 260
+      }
+    },
+    "collectorEndInterpretation": "source stale after known product normal exit is lifecycle, not a physical click failure",
+    "qualificationSnapshotLimit": "Availability is instantaneous; later unavailable status does not overturn independent interaction results or prove persistent liveness.",
+    "collectorSourceLfSha256DuringPhysical": "9cbdb185f336bba9bbf0ebe134afccf462b6c865e89f9e36316ca27c72d3e4aa",
+    "collectorVersionNote": "Capacity-stop fix followed physical collection; physical journal stayed below the size limit. Data fields and stream schema unchanged."
+  },
+  "legacyNativeFixture": {
+    "checks": 276,
+    "failures": 26,
+    "objectNotificationGestureFailures": 25,
+    "binarySha256": "ea7dd6c9c648579dc6edf8c1125dfc84c9cc60e76e24cc3eb2e7aa6852650ba4"
+  },
+  "cadenceRegression": {
+    "oldPolicyChecks": 144,
+    "oldPolicyFailures": 5,
+    "logSha256": "ee559d9ba676c209f0f262405b7d2e97f2158abcb483beefaf75b46face48a33"
+  },
+  "localChecks": {
+    "releaseBuild": "passed",
+    "toolingTests": {
+      "passed": 34,
+      "total": 34
+    },
+    "expandedIntermediateCTest": {
+      "total": 11,
+      "passed": 10,
+      "seconds": 34.05,
+      "failure": "experimental.start-bridge: recovery case owns its initial down"
+    },
+    "isolatedBridgeRetest": {
+      "passed": 1,
+      "total": 1,
+      "seconds": 8.48,
+      "rootCauseFixed": false
+    },
+    "finalObserverSelfTest": {
+      "passed": 1,
+      "total": 1,
+      "seconds": 1.62
+    },
+    "negativeObserverPreflight": {
+      "exitCode": 2,
+      "kind": "route-refused",
+      "stage": "observer-dll-path",
+      "reason": "cannot canonicalize observer DLL path",
+      "outputCreated": false,
+      "scope": "owned hidden fixture only, observer DLL intentionally absent; no Explorer attachment"
+    },
+    "launcherNegativeCoverageGuard": "passed; no product instance created for failed coverage",
+    "repositoryCheck": {
+      "passed": true,
+      "files": 775,
+      "scope": "repository content checks; no Qt build or Windows integration claim"
+    },
+    "gitDiffCheck": "passed"
+  },
+  "realExplorerObservation": {
+    "scope": "inspect only; no real attachment attempted this round",
+    "windowsBuild": "26300.9711",
+    "trustedMicrosoft": true,
+    "qualificationStage": "start-occluded",
+    "observerDllPathKnown": true,
+    "modulePresence": "unknown",
+    "controllerSha256": "1f723deea9a3622222fbd9c5b2beaf808740e4342f0d70c7fcb5234ecf5f6e9d",
+    "unknownGuardUnchanged": true
+  },
+  "rawEvidence": {
+    "storage": "ignored build/validation/issue52-resume; raw global callbacks and user layout/catalog not published",
+    "sha256": {
+      "native-red.log": "199ba8ec22e6e7a6736c6737cf779a6ad3c120e29ad454e46e63ccb9862f3f56",
+      "cadence-red.log": "ee559d9ba676c209f0f262405b7d2e97f2158abcb483beefaf75b46face48a33",
+      "focused-query-final.log": "eb206e00985cebcf04d197c34a68ef48efb4a264917bcfb19325b5a94f86d4bd",
+      "focused-query-final-details.log": "8eb26bd82bb20547963d938f47cd0fc22bfafa93c198a4303e5d500f573e5a9d",
+      "bridge-isolated.log": "6149c633502ecd32636c1810ec3e23f1448da29cae4cfcce32375ac8029fc370",
+      "bound-identity-tests.log": "1f4602bb94720da5772394eaa739b04ee49aaa32ac9534e954b0b52209c19497",
+      "bound-identity-query.json": "e1e3f3ffde89bd91b12fd8b193b170842f1ed6485043efb35e74cc160bbbeeb7",
+      "bound-identity-summary.json": "2fe1c0ba6ba39a0edf7d1c79128b07d5a92851058040419167f9949d4a427b0f",
+      "route-refusal-result.json": "c2845b6a82b8abc872720ec333ae2257efcd8c93d411e5c33a441c9cd5e6373c",
+      "route-inspect-current.json": "a2fc19cc23ac002a9674d89dcbfeb4daf9c5a91a866e53820ac5739689ac3fd7",
+      "route-final-test.log": "5c92336cded6559be32fada63b88a974e006f75a857081adad18ea05fc904541",
+      "tooling.log": "b419bc6f0a4bc29ab08b79bf4d79c8f80c3e1021e91fc9f425e06727d7a30c3d",
+      "tooling-final.log": "731df0d0beced974972de6bb104fc76bfce1ebe3c506e1252d927acf0b4c600e",
+      "repository-delivery.log": "a13b203b3d4d102f88c3d2c1a80d73b9c7c851e09fe8464e78a26b4f33885d4a"
+    },
+    "physicalSha256": {
+      "launch.json": "9d45ef89c45ff1d367f86e9a6654cce65ddb5939133887ed82b1b1e52c114d9d",
+      "operator-batches.json": "edf9999b650bd2b1e6ef2d0f6f6f63b9dfd32c8649b8918145a0a28069847d0a",
+      "after-resume-pass.json": "1be8dc4aead981026e11e2e51a1bbcc95fde351be39115ac0b9a9f6eaa8f7ff8",
+      "before-normal-exit.json": "8a7fb36428c9c55af0be0b66ca21618772b7fbcdb517c9fa7b61af24e4e4a438",
+      "snapshot.json": "a952fd6478ba36c08285513c5d0c47dbbaff148c68319f2b2b7f632558c0eacc",
+      "normal-exit.json": "b0e5289366ea8d1592c532f09f511794ccb7f2e4ea73f82f48b67c7bc0f19152",
+      "events.ndjson": "df4d18ed3bf37a27f9b7e6cfdf1a9a653a806046a2f350277b8e0d585c511ddd"
+    }
+  },
+  "unchangedEnvironment": {
+    "computerUse": false,
+    "syntheticMouseInputToExplorer": false,
+    "taskbarOrDisplaySettingsChanged": false,
+    "userLayoutReplaced": false,
+    "observerAttachedToExplorer": false
+  },
+  "limits": [
+    "Operator batch outcomes are independent; global or coordinate-filtered callbacks are not intended-click denominators. No reliability percentage or latency percentile claim.",
+    "Default point mode remains unchanged in selection; area-cache is explicit.",
+    "Only current desktop recovery/quick-click/cancel/native-entry cases physically verified. Full four-edge/alignment/DPI/autohide/restart/sleep/build and hardware touch matrices remain open.",
+    "Unknown module presence and current occlusion still prevent real Explorer route observation; no guard bypass.",
+    "The isolated bridge first-down failure is retained; later pass does not establish its cause or fix."
+  ]
+}
