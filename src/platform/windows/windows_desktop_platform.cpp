@@ -40,6 +40,11 @@ template <typename T> class ComPtr {
     T* operator->() const { return pointer_; }
     T* get() const { return pointer_; }
     T** put() { return &pointer_; }
+    void reset() {
+        if (pointer_)
+            pointer_->Release();
+        pointer_ = nullptr;
+    }
 
   private:
     T* pointer_ = nullptr;
@@ -169,7 +174,8 @@ struct StartButtonDetails {
 
 bool findStartButton(IUIAutomation* automation, HWND taskbar, QRect& button, QString& error,
                      StartButtonDetails* details = nullptr,
-                     IUIAutomationElement** identified = nullptr) {
+                     IUIAutomationElement** identified = nullptr,
+                     IUIAutomationCacheRequest* properties = nullptr) {
     ComPtr<IUIAutomationElement> root;
     HRESULT result = automation->ElementFromHandle(taskbar, root.put());
     if (FAILED(result)) {
@@ -205,11 +211,19 @@ bool findStartButton(IUIAutomation* automation, HWND taskbar, QRect& button, QSt
     }
     ComPtr<IUIAutomationElementArray> elements;
     if (SUCCEEDED(result)) {
-        result = root->FindAll(TreeScope_Descendants, condition.get(), elements.put());
+        result = properties ? root->FindAllBuildCache(TreeScope_Descendants, condition.get(),
+                                                     properties, elements.put())
+                            : root->FindAll(TreeScope_Descendants, condition.get(), elements.put());
     }
     int count = 0;
-    if (FAILED(result) || FAILED(elements->get_Length(&count))) {
+    if (FAILED(result)) {
         error = nativeErrorCode(QStringLiteral("uia-start-query"), result);
+        return false;
+    }
+    if (elements.get())
+        result = elements->get_Length(&count);
+    if (FAILED(result)) {
+        error = nativeErrorCode(QStringLiteral("uia-start-count"), result);
         return false;
     }
     // Multiple candidates are ambiguous. Never choose by localized Name,
@@ -227,9 +241,12 @@ bool findStartButton(IUIAutomation* automation, HWND taskbar, QRect& button, QSt
     DWORD taskbarProcess = 0;
     GetWindowThreadProcessId(taskbar, &taskbarProcess);
     if (FAILED(elements->GetElement(0, element.put())) ||
-        FAILED(element->get_CurrentBoundingRectangle(&bounds)) ||
-        FAILED(element->get_CurrentIsOffscreen(&offscreen)) || offscreen ||
-        FAILED(element->get_CurrentProcessId(&providerProcess)) ||
+        FAILED(properties ? element->get_CachedBoundingRectangle(&bounds)
+                          : element->get_CurrentBoundingRectangle(&bounds)) ||
+        FAILED(properties ? element->get_CachedIsOffscreen(&offscreen)
+                          : element->get_CurrentIsOffscreen(&offscreen)) || offscreen ||
+        FAILED(properties ? element->get_CachedProcessId(&providerProcess)
+                          : element->get_CurrentProcessId(&providerProcess)) ||
         providerProcess != static_cast<int>(taskbarProcess) ||
         !GetWindowRect(taskbar, &taskbarBounds)) {
         error = QStringLiteral("start-button-unavailable");
@@ -555,10 +572,18 @@ class WindowsMenuResizeFilter final {
 class WindowsStartButtonQueryCache final {
   public:
     ComPtr<IUIAutomationElement> button;
-    HWND taskbar = nullptr;
+    ComPtr<IUIAutomationCacheRequest> properties;
+    IUIAutomation* client = nullptr; // The owner keeps this same MTA client alive.
+    DesktopNativeWindowObservation native;
     QRect bounds;
     quint64 epoch = 0;
-    quint64 verifiedAt = 0;
+    quint64 boundAt = 0;
+    void clearBinding() {
+        button.reset();
+        native = {};
+        bounds = {};
+        boundAt = 0;
+    }
 };
 
 WindowsDesktopPlatform::WindowsDesktopPlatform() = default;
@@ -599,6 +624,9 @@ StartButtonCaptureTarget WindowsDesktopPlatform::queryStartButtonCaptureTarget(
     if (observation)
         *observation = {};
     const auto failure = [&](Reason reason, const QString& stage, HRESULT result = S_OK) {
+        if (mode == StartButtonCaptureMode::ExperimentalAreaCache && captureQueryCache_ &&
+            reason != Reason::QueryTimeout)
+            captureQueryCache_->clearBinding();
         if (observation) {
             observation->reason = reason;
             observation->stage = stage;
@@ -633,25 +661,47 @@ StartButtonCaptureTarget WindowsDesktopPlatform::queryStartButtonCaptureTarget(
         !isExplorerWindow(taskbar))
         return failure(Reason::Unidentified, QStringLiteral("native-taskbar"));
 
-    // Only the explicit area experiment caches an element. Point mode retains
-    // its original unique-button lookup on every query for a useful control.
-    const bool cached =
-        mode == StartButtonCaptureMode::ExperimentalAreaCache && captureQueryCache_ &&
-        captureQueryCache_->taskbar == taskbar && captureQueryCache_->epoch == epoch &&
-        began >= captureQueryCache_->verifiedAt && began - captureQueryCache_->verifiedAt < 100;
-    if (!cached) {
+    const bool bulk = mode == StartButtonCaptureMode::ExperimentalAreaCache;
+    if (!bulk || !captureQueryCache_ || captureQueryCache_->client != automation)
         captureQueryCache_ = std::make_unique<WindowsStartButtonQueryCache>();
-        auto& cache = *captureQueryCache_;
-        QString error;
-        if (!findStartButton(automation, taskbar, cache.bounds, error, nullptr, cache.button.put()))
-            return failure(Reason::QueryFailed, error);
-        cache.taskbar = taskbar;
-        cache.epoch = epoch;
-        cache.verifiedAt = began;
-    }
     auto& cache = *captureQueryCache_;
+    cache.client = automation;
+    if (bulk && !cache.properties.get()) {
+        HRESULT configured = automation->CreateCacheRequest(cache.properties.put());
+        if (SUCCEEDED(configured))
+            configured = cache.properties->put_TreeScope(TreeScope_Element);
+        if (SUCCEEDED(configured))
+            configured = cache.properties->put_AutomationElementMode(AutomationElementMode_Full);
+        ComPtr<IUIAutomationCondition> rawView;
+        if (SUCCEEDED(configured))
+            configured = automation->get_RawViewCondition(rawView.put());
+        if (SUCCEEDED(configured))
+            configured = cache.properties->put_TreeFilter(rawView.get());
+        for (const PROPERTYID property : {UIA_BoundingRectanglePropertyId, UIA_IsOffscreenPropertyId,
+                                          UIA_ProcessIdPropertyId, UIA_AutomationIdPropertyId,
+                                          UIA_ControlTypePropertyId}) {
+            if (SUCCEEDED(configured))
+                configured = cache.properties->AddProperty(property);
+        }
+        if (FAILED(configured)) {
+            cache.properties.reset();
+            return failure(Reason::QueryFailed, QStringLiteral("uia-property-cache"), configured);
+        }
+    }
+    const bool bound = bulk && cache.button.get() && cache.epoch == epoch &&
+                       sameWindowObservation(cache.native, before);
+    if (!bound) {
+        cache.clearBinding();
+        QString error;
+        if (!findStartButton(automation, taskbar, cache.bounds, error, nullptr, cache.button.put(),
+                             cache.properties.get()))
+            return failure(Reason::QueryFailed, error);
+        cache.native = before;
+        cache.epoch = epoch;
+        cache.boundAt = began;
+    }
     if (observation)
-        observation->reusedElement = cached;
+        observation->reusedElement = bound;
     const QRect button = cache.bounds;
     const QPoint qualified =
         mode == StartButtonCaptureMode::Point ? QPoint(cursor.x, cursor.y) : button.center();
@@ -662,6 +712,8 @@ StartButtonCaptureTarget WindowsDesktopPlatform::queryStartButtonCaptureTarget(
     if (observation) {
         const auto observedHit = observeWindow(hit);
         observation->details = {
+            {QStringLiteral("bulkProperties"), bulk},
+            {QStringLiteral("uniqueBindingAt"), qint64(cache.boundAt)},
             {QStringLiteral("buttonX"), button.x()},
             {QStringLiteral("buttonY"), button.y()},
             {QStringLiteral("buttonWidth"), button.width()},
@@ -676,7 +728,9 @@ StartButtonCaptureTarget WindowsDesktopPlatform::queryStartButtonCaptureTarget(
     if (GetAncestor(hit, GA_ROOT) != taskbar)
         return failure(Reason::NativeTargetChanged, QStringLiteral("start-occluded"));
     ComPtr<IUIAutomationElement> atPoint;
-    HRESULT status = automation->ElementFromPoint(point, atPoint.put());
+    HRESULT status = bulk ? automation->ElementFromPointBuildCache(point, cache.properties.get(),
+                                                                  atPoint.put())
+                          : automation->ElementFromPoint(point, atPoint.put());
     if (FAILED(status))
         return failure(Reason::QueryFailed, QStringLiteral("element-from-point"), status);
     BOOL same = FALSE;
@@ -688,6 +742,7 @@ StartButtonCaptureTarget WindowsDesktopPlatform::queryStartButtonCaptureTarget(
         return failure(Reason::QueryFailed, QStringLiteral("raw-view-walker"), status);
     IUIAutomationElement* current = atPoint.get();
     current->AddRef();
+    ComPtr<IUIAutomationElement> matched;
     HRESULT compareStatus = S_OK;
     HRESULT parentStatus = S_OK;
     int walked = 0;
@@ -696,7 +751,13 @@ StartButtonCaptureTarget WindowsDesktopPlatform::queryStartButtonCaptureTarget(
         compareStatus = automation->CompareElements(cache.button.get(), current, &same);
         IUIAutomationElement* parent = nullptr;
         if (SUCCEEDED(compareStatus) && !same)
-            parentStatus = walker->GetParentElement(current, &parent);
+            parentStatus = bulk ? walker->GetParentElementBuildCache(current, cache.properties.get(),
+                                                                    &parent)
+                                : walker->GetParentElement(current, &parent);
+        if (SUCCEEDED(compareStatus) && same && bulk) {
+            *matched.put() = current;
+            current->AddRef();
+        }
         current->Release();
         current = parent;
         if (FAILED(compareStatus) || FAILED(parentStatus) || same)
@@ -716,23 +777,50 @@ StartButtonCaptureTarget WindowsDesktopPlatform::queryStartButtonCaptureTarget(
     BOOL offscreen = TRUE;
     POINT afterPoint{};
     int providerProcess = 0;
-    status = cache.button->get_CurrentBoundingRectangle(&finalButton);
+    // Use properties fetched with the point/parent identity observation itself;
+    // a separate refresh would add another provider round trip after that match.
+    if (bulk && !matched.get())
+        return failure(Reason::QueryFailed, QStringLiteral("button-point-cache"), E_POINTER);
+    status = bulk ? matched->get_CachedBoundingRectangle(&finalButton)
+                  : cache.button->get_CurrentBoundingRectangle(&finalButton);
     if (FAILED(status))
         return failure(Reason::QueryFailed, QStringLiteral("button-bounds-read"), status);
     if (rectangle(finalButton) != button)
         return failure(Reason::NativeTargetChanged, QStringLiteral("button-bounds-changed"));
-    status = cache.button->get_CurrentIsOffscreen(&offscreen);
+    status = bulk ? matched->get_CachedIsOffscreen(&offscreen)
+                  : cache.button->get_CurrentIsOffscreen(&offscreen);
     if (FAILED(status))
         return failure(Reason::QueryFailed, QStringLiteral("button-offscreen-read"), status);
     if (offscreen)
         return failure(Reason::NativeTargetChanged, QStringLiteral("button-offscreen"));
-    status = cache.button->get_CurrentProcessId(&providerProcess);
+    status = bulk ? matched->get_CachedProcessId(&providerProcess)
+                  : cache.button->get_CurrentProcessId(&providerProcess);
     if (observation)
         observation->details.insert(QStringLiteral("providerPid"), providerProcess);
     if (FAILED(status))
         return failure(Reason::QueryFailed, QStringLiteral("button-process-read"), status);
     if (providerProcess != static_cast<int>(before.processId))
         return failure(Reason::NativeTargetChanged, QStringLiteral("provider-process-changed"));
+    if (bulk) {
+        BSTR identifier = nullptr;
+        status = matched->get_CachedAutomationId(&identifier);
+        QString name;
+        if (identifier && SysStringLen(identifier) == 11)
+            name = QString::fromWCharArray(identifier, 11);
+        SysFreeString(identifier);
+        if (FAILED(status))
+            return failure(Reason::QueryFailed, QStringLiteral("button-id-read"), status);
+        CONTROLTYPEID type = 0;
+        status = matched->get_CachedControlType(&type);
+        if (FAILED(status))
+            return failure(Reason::QueryFailed, QStringLiteral("button-type-read"), status);
+        const StartButtonElementObservation semantic{
+            name, rectangle(finalButton), quint32(providerProcess), same != FALSE,
+            type == UIA_ButtonControlTypeId, offscreen != FALSE};
+        const auto semanticFailure = startButtonElementFailure(semantic, before.processId, button);
+        if (semanticFailure != Reason::None)
+            return failure(semanticFailure, QStringLiteral("bound-element-semantics"));
+    }
     if (!sameWindowObservation(before, observeWindow(taskbar)))
         return failure(Reason::NativeTargetChanged, QStringLiteral("taskbar-native-changed"));
     if (WindowFromPoint(point) != hit)
@@ -740,10 +828,11 @@ StartButtonCaptureTarget WindowsDesktopPlatform::queryStartButtonCaptureTarget(
     if (mode == StartButtonCaptureMode::Point &&
         (!GetPhysicalCursorPos(&afterPoint) || point.x != afterPoint.x || point.y != afterPoint.y))
         return failure(Reason::QueryPointerMoved, QStringLiteral("pointer-moved"));
-    if (GetTickCount64() - cache.verifiedAt > 200)
+    if (GetTickCount64() - began > 200)
         return failure(Reason::QueryTimeout, QStringLiteral("qualification-expired"));
     StartButtonCaptureTarget result;
-    result.observedAt = cache.verifiedAt;
+    result.observedAt = began;
+    result.epoch = epoch;
     result.qualifiedPoint = qualified;
     result.mode = mode;
     result.areaValidated = mode == StartButtonCaptureMode::ExperimentalAreaCache;

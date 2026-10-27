@@ -23,7 +23,22 @@ Windows读者短暂占用目标文件可能使原子替换失败。显式导出�
 
 ```powershell
 ./build/tooling/Scripts/python.exe scripts/verify_capture_diagnostics.py --executable ./build/app-release/bin/xdstarter.exe --output ./build/validation/capture-diagnostics-recovery
+./build/tooling/Scripts/python.exe scripts/verify_capture_diagnostics.py --executable ./build/app-release/bin/xdstarter.exe --mode area-cache --output ./build/validation/area-diagnostics-recovery
 ```
+
+区域模式的原生窗口失效现在区分窗口自身与共享HWND里的可访问对象。`recentWindowEvents`保留最近128条相关通知及分类；输入中的`nativeWindowEventSequence`指向当时最近记录，不自动证明因果。`epochBefore/epochAfter`是本事件的原生失效决定，不表示期间没有其他线程的UIA失效。`eventTime32`为WinEvent产生时的32位值，不与64位`at`直接相减。报告将同会话的引用及试次时间窗内的事件作为上下文，观察到原生菜单与否仍由独立标注决定。
+
+Windows的`platform.start-button-window-events`只注册本进程／本线程的WinEvent Hook，使用自有隐藏窗口和NotifyWinEvent，覆盖对象通知、窗口通知、恢复后新旧资格、成对释放和有界覆盖。不加载Explorer、不安装低级鼠标Hook、不生成鼠标输入，手势使用虚拟时钟。接口语义依据微软[WinEventProc](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nc-winuser-wineventproc)及[对象标识符](https://learn.microsoft.com/en-us/windows/win32/winauto/object-identifiers)；现场故障是否由这条路径触发仍需新版本物理复测。
+
+区域查询首次或失效后唯一绑定Start，每轮重新验证真实点命中与同一绑定的语义身份，批量取得属性并按实际耗时安排下一轮，保持200 ms期限。依据微软[批量缓存说明](https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-cachingforclients)与[FindAllBuildCache](https://learn.microsoft.com/en-us/windows/win32/api/uiautomationclient/nf-uiautomationclient-iuiautomationelement-findallbuildcache)，避免逐个当前属性的额外提供者往返。`reusedElement`指绑定引用复用，仍须新点观测通过；`uniqueBindingAt`与资格观察时刻分开。可单独运行只读采样，最多128次且十秒停止开始新查询，不安装Hook或生成输入：
+
+```powershell
+./build/app-release/xdstarter_start_button_capture_tests.exe --inspect-native-target area-cache --samples 64
+```
+
+输出包含观察／发布时刻和查询耗时，可检查相邻发布间旧资格是否过期。这只是单线程只读刷新覆盖，不包含产品事件订阅、真实Hook切换或物理点击成功率。观察器附加前拒绝现输出`preflightStage`／`refusalReason`；`observer-module-presence`为unknown时仍须解决身份无法确认的问题，不得删除守卫后冒充路由验收。
+
+输入记录还保留OS提供的`pointX/pointY`，即使当前资格未知也不丢失坐标。它用于独立试次窗口内核对失败位置，不自动推断用户意图；导出仍需显式选择，原始全局点击流不提交到仓库。
 
 诊断中的 `hookInstalled` 是安装记录，`hookLiveness=unknown` 保留系统静默移除无法直接判断的事实。`inputObservedThisSession` 说明本会话见过回调，不能证明现在或未来健康。`qualificationLeaseAvailable`、`eligibleAtCurrentCursor`、`downDecisions`、`upCanceled`、`epochSources`、订阅 HRESULT 和 `lastQuery` 用于区分资格缺口与失败。
 

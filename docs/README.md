@@ -26,6 +26,8 @@
 
 2026-10-26解锁后的[真实鼠标对照](technical/validation/issue-52/physical-acceptance.json)复现point快速点击漏出及area-cache恢复后偶发原生菜单；文件占用后的诊断恢复已补修复和原生回归，稳定接管仍由#52继续跟踪。
 
+2026-10-27针对区域模式细分原生窗口事件，改为唯一绑定后逐轮验证同一Start元素的新点身份，补齐有界原因记录。当前候选的恢复／快速点击、取消、原生入口和退出恢复已通过本机真实鼠标复测；[证据](technical/validation/issue-52/area-resume.json)保留前两阶段失败及有限验收边界，默认点模式和后续真实路由／兼容矩阵选择保持原约定。
+
 | 文档 | 内容 |
 | --- | --- |
 | [技术架构](technical/architecture.md) | 模块边界与数据流 |

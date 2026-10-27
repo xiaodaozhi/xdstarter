@@ -172,6 +172,20 @@ class CaptureAcceptanceTests(unittest.TestCase):
                 events[-2]["pressedAt"] = 110
             self.assertEqual(self.report(events, annotations)["latency"]["samples"], 0)
 
+    def test_window_context_is_session_scoped_and_not_native_outcome_evidence(self):
+        events, annotations = fixture()
+        events[1]["nativeWindowEventSequence"] = 8
+        context = {"kind": "window-event", "sequence": 8, "sessionGeneration": 3,
+                   "at": 90, "eventTime32": 4294967290, "epochAfter": 4,
+                   "objectId": -4, "childId": 7, "action": "accessibility-object"}
+        events.insert(1, context)
+        events.insert(1, {**context, "sessionGeneration": 1})
+        annotations["trials"][0]["observed"] = "unknown"
+        result = self.report(events, annotations)
+        self.assertEqual(result["trials"][0]["windowEvents"], [context])
+        self.assertEqual(result["annotatedStartTrials"], 0)
+        self.assertEqual(result["latency"]["samples"], 0)
+
 
 class CaptureCollectorTests(unittest.TestCase):
     def collect_fixture(self, directory, mutation=None, seconds=1, limit=None):
@@ -182,11 +196,18 @@ class CaptureCollectorTests(unittest.TestCase):
         source = {"schemaVersion": 2, "runId": "fixture", "mode": "point", "processId": 1,
                   "executableSha256": hashlib.sha256(executable.read_bytes()).hexdigest(),
                   "exportedAt": 1000, "recentInput": [], "recentHost": []}
-        if mutation == "size":
+        if mutation in {"size", "size-window-gap"}:
             source["recentInput"] = [{"sequence": i, "event": "left-down", "reason": "x" * 400}
                                      for i in range(1, 100)]
         if mutation == "wrong-binary":
             source["executableSha256"] = "wrong"
+        if mutation in {"window-events", "size-window-gap"}:
+            source.update(epoch=7, snapshotEpoch=5, epochSources={"native-hide": 2},
+                          subscriptionGeneration=3, diagnosticWriteFailures=4,
+                          recentWindowEvents=[{"sequence": n, "at": 900 + n,
+                                               "objectId": -4, "childId": 9,
+                                               "sessionGeneration": 3}
+                                              for n in (3, 4)])
         snapshot.write_text(json.dumps(source), encoding="utf-8")
         clock = SimpleNamespace(now=1000)
 
@@ -205,7 +226,7 @@ class CaptureCollectorTests(unittest.TestCase):
             replacements["MAX_BYTES"] = limit
         with patch.dict(API["collect"].__globals__, replacements), redirect_stdout(io.StringIO()):
             code = API["collect"](arguments)
-        self.assertEqual(code, 2 if mutation in {"identity", "stale", "structure", "size"} else 0)
+        self.assertEqual(code, 2 if mutation in {"identity", "stale", "structure", "size", "size-window-gap"} else 0)
         return arguments.output
 
     def test_identity_staleness_and_size_end_explicitly(self):
@@ -226,6 +247,32 @@ class CaptureCollectorTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "binary hash"):
                 self.collect_fixture(directory, "wrong-binary")
             self.assertFalse((Path(directory) / "events.ndjson").exists())
+
+    def test_window_events_deduplicate_and_keep_their_own_gap(self):
+        with tempfile.TemporaryDirectory() as directory:
+            records = API["read_events"](self.collect_fixture(directory, "window-events"))
+            native = [row for row in records if row["kind"] == "window-event"]
+            self.assertEqual([row["sequence"] for row in native], [3, 4])
+            self.assertEqual(native[0]["objectId"], -4)
+            gaps = [row for row in records if row["kind"] == "gap"]
+            self.assertEqual(gaps, [{"kind": "gap", "stream": "window-event", "after": 0, "before": 3}])
+
+    def test_summary_preserves_invalidation_and_subscription_status(self):
+        with tempfile.TemporaryDirectory() as directory:
+            records = API["read_events"](self.collect_fixture(directory, "window-events"))
+            summary = next(row for row in records if row["kind"] == "snapshot")
+            self.assertEqual(summary["epoch"], 7)
+            self.assertEqual(summary["snapshotEpoch"], 5)
+            self.assertEqual(summary["epochSources"], {"native-hide": 2})
+            self.assertEqual(summary["subscriptionGeneration"], 3)
+            self.assertEqual(summary["diagnosticWriteFailures"], 4)
+
+    def test_full_input_stream_cannot_resume_through_a_later_window_gap(self):
+        with tempfile.TemporaryDirectory() as directory:
+            records = API["read_events"](self.collect_fixture(directory, "size-window-gap", limit=8192))
+            self.assertEqual(records[-1]["reason"], "journal-size-limit")
+            self.assertFalse(any(row["kind"] == "window-event" or row.get("stream") == "window-event"
+                                 for row in records))
 
     def test_never_overwrites_previous_evidence(self):
         with tempfile.TemporaryDirectory() as directory:

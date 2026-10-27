@@ -85,7 +85,7 @@ def collect(args):
                   "clock": "GetTickCount64 milliseconds", "physicalInputGenerated": False,
                   "nativeMenuOutcome": "requires independent per-trial annotation"}
         write(header)
-        last = {"input": 0, "host": 0}
+        last = {"input": 0, "host": 0, "window-event": 0}
         errors = 0
         summary_at = 0
         ended = "duration"
@@ -111,7 +111,10 @@ def collect(args):
                     ended = "source-stale-or-clock-invalid"
                     break
                 full = False
-                for kind, key in (("input", "recentInput"), ("host", "recentHost")):
+                for kind, key in (("input", "recentInput"), ("host", "recentHost"),
+                                  ("window-event", "recentWindowEvents")):
+                    if full:
+                        break
                     pending = sorted((row for row in snapshot.get(key, [])
                                       if row.get("sequence", 0) > last[kind]),
                                      key=lambda row: row["sequence"])
@@ -124,12 +127,17 @@ def collect(args):
                             break
                         last[kind] = row["sequence"]
                 now = native_clock()
-                if now - summary_at >= 1000:
+                if not full and now - summary_at >= 1000:
                     keys = ("generation", "hookInstalled", "hookLiveness", "sessionActive",
                             "qualificationLeaseAvailable", "eligibleAtCurrentCursor",
                             "queryCount", "queryDurationHistogram", "queryDurationTotalMs",
                             "queryDurationMaxMs", "inputSequence", "inputEntriesEvicted",
-                            "hostEntriesEvicted", "nativeDispatchDropped", "lastQuery")
+                            "hostEntriesEvicted", "nativeDispatchDropped", "lastQuery",
+                            "epoch", "snapshotEpoch", "epochSources", "subscriptionGeneration",
+                            "subscriptionRootHresult", "subscriptionStructureHresult",
+                            "subscriptionPropertiesHresult", "diagnosticWriteFailures",
+                            "windowEventSequence", "windowEventInvalidations",
+                            "windowEventAccessibilityObjects", "windowEventEntriesEvicted")
                     full = not write({"kind": "snapshot", "at": now,
                                       **{key: snapshot.get(key) for key in keys}}) or full
                     summary_at = now
@@ -168,6 +176,7 @@ def make_report(events, annotations):
         raise ValueError("independently declare the outcome source")
     inputs = [event for event in events if event.get("kind") == "input"]
     hosts = [event for event in events if event.get("kind") == "host"]
+    window_events = [event for event in events if event.get("kind") == "window-event"]
     trials = annotations.get("trials", [])
     if not isinstance(trials, list) or len(trials) > 10000:
         raise ValueError("trials must be a bounded list")
@@ -202,6 +211,12 @@ def make_report(events, annotations):
                   (event.get("originSessionGeneration"), event.get("gestureId")) in keys]
         linked_host = [event for event in hosts if
                        (event.get("sessionGeneration"), event.get("gestureId")) in keys]
+        referenced_windows = {event.get("nativeWindowEventSequence") for event in linked}
+        sessions = {session for session, _ in keys}
+        window_context = [event for event in window_events if
+                          event.get("sessionGeneration") in sessions and
+                          (event.get("sequence") in referenced_windows or
+                           start <= event.get("at", -1) < end)]
         gaps = [event for event in events if event.get("kind") == "gap"]
         success_outcome = {"show": "xdstarter-only", "hide": "hidden", "cancel": "none",
                            "neighbor": "neighbor-unchanged"}[action]
@@ -209,7 +224,7 @@ def make_report(events, annotations):
         row = {"trialId": identity, "intent": intent, "expectedAction": action,
                "observed": outcome, "success": success,
                "observedGestureCount": len(keys), "traceCorrelationAmbiguous": len(keys) != 1,
-               "input": linked, "host": linked_host,
+               "input": linked, "host": linked_host, "windowEvents": window_context,
                "journalHasGaps": bool(gaps),
                "nativeMenuOutcomeSource": annotations["outcomeSource"]}
         if intent == "start" and outcome != "unknown":

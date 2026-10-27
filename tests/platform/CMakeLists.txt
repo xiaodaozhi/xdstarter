@@ -26,6 +26,12 @@ target_link_libraries(xdstarter_desktop_platform_tests PRIVATE xdstarter_platfor
 if(WIN32)
     target_compile_definitions(xdstarter_desktop_platform_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
     target_link_libraries(xdstarter_desktop_platform_tests PRIVATE user32 dwmapi)
+    add_executable(xdstarter_start_button_window_event_tests start_button_window_event_tests.cpp)
+    target_compile_definitions(xdstarter_start_button_window_event_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+    target_link_libraries(xdstarter_start_button_window_event_tests PRIVATE xdstarter_platform user32)
+    add_test(NAME platform.start-button-window-events COMMAND xdstarter_start_button_window_event_tests)
+    set_tests_properties(platform.start-button-window-events PROPERTIES
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}" TIMEOUT 15)
     add_executable(xdstarter_native_taskbar_probe native_taskbar_probe.cpp)
     target_compile_definitions(xdstarter_native_taskbar_probe PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
     target_link_libraries(xdstarter_native_taskbar_probe PRIVATE xdstarter_platform user32 ole32 oleaut32 uuid)
