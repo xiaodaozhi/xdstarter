@@ -78,10 +78,10 @@
           "run": "$pythonVersion = '${{ steps.toolchain.outputs.python }}'\nuv python install $pythonVersion\nif ($LASTEXITCODE -ne 0) { throw 'Declared Python acquisition failed.' }\n$pythonPath = (uv python find --managed-python $pythonVersion).Trim()\nif ($LASTEXITCODE -ne 0 -or !$pythonPath) { throw 'Cannot locate declared managed Python.' }\n./scripts/build-windows.ps1 -Toolchain MSVC2022 -InstallTools -Python $pythonPath -Fresh -Distribution -BuildNumber $env:GITHUB_RUN_NUMBER"
         },
         {
-          "name": "Compare failed Shell fixture on the system drive",
+          "name": "Compare failed Shell fixture in the user profile",
           "if": "failure()",
           "shell": "pwsh",
-          "run": "$test = Join-Path $PWD 'build/app-release/xdstarter_application_platform_tests.exe'\n$helper = Join-Path $PWD 'build/app-release/xdstarter_launch_fixture.exe'\nif (!(Test-Path $test) -or !(Test-Path $helper)) { Write-Host 'Shell fixture binaries unavailable; comparison skipped.'; exit 0 }\n$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$comparison = Join-Path $env:RUNNER_TEMP \"xdstarter-shell-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT/build/fixture\"\nNew-Item -ItemType Directory -Path $comparison -Force | Out-Null\nPush-Location $comparison\ntry {\n  & $test $helper\n  $result = $LASTEXITCODE\n  Write-Host \"System-drive fixture comparison exit code: $result\"\n} finally { Pop-Location }\nexit 0"
+          "run": "$test = Join-Path $PWD 'build/app-release/xdstarter_application_platform_tests.exe'\n$helper = Join-Path $PWD 'build/app-release/xdstarter_launch_fixture.exe'\nif (!(Test-Path $test) -or !(Test-Path $helper)) { Write-Host 'Shell fixture binaries unavailable; comparison skipped.'; exit 0 }\n$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$comparison = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) \"Temp/xdstarter-shell-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT/build/fixture\"\nNew-Item -ItemType Directory -Path $comparison -Force | Out-Null\nPush-Location $comparison\ntry {\n  & $test $helper\n  $result = $LASTEXITCODE\n  Write-Host \"User-profile fixture comparison exit code: $result\"\n} finally { Pop-Location }\nexit 0"
         },
         {
           "name": "Build and test isolated bridge, route and diagnostic I/O experiments",
