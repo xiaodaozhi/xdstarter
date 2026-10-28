@@ -335,12 +335,8 @@ def collect_notices(cache, qt, root):
             continue
         with tarfile.open(archive_path, 'r:*') as archive:
             for wanted in record['notices']:
-                matches = [member for member in archive.getmembers()
-                           if member.name.endswith('/' + wanted) and member.isfile()]
-                if len(matches) != 1 or matches[0].size > 2 * 1024 * 1024:
-                    raise ValueError('Missing or ambiguous native source notice')
-                with archive.extractfile(matches[0]) as stream:
-                    (native / (record['component'] + '-' + wanted.replace('/', '_'))).write_bytes(stream.read())
+                (native / (record['component'] + '-' + wanted.replace('/', '_'))).write_bytes(
+                    source_notice(archive, wanted))
     installer = config('installer-toolchain.json')['inno_setup']
     for record in installer['materials']:
         source = cache / record['file']
@@ -353,6 +349,17 @@ def collect_notices(cache, qt, root):
     for name in ('Windows-runtime-NOTICE.txt', 'Qt-replacement.txt'):
         (notice / name).write_bytes(b'\xef\xbb\xbf' + (CONFIG / name).read_bytes())
     write_json(notice / 'sources.json', config('sources.json'))
+
+
+def source_notice(archive, wanted):
+    # Match within the archive's single source root. A basename suffix would
+    # confuse LLVM's root license with its separate ARM/support licenses.
+    matches = [member for member in archive.getmembers() if member.isfile() and
+               member.name.removeprefix('./').partition('/')[2] == wanted]
+    if len(matches) != 1 or matches[0].size > 2 * 1024 * 1024:
+        raise ValueError('Missing or ambiguous native source notice: ' + wanted)
+    with archive.extractfile(matches[0]) as stream:
+        return stream.read()
 
 
 def binary_info(path):
@@ -690,7 +697,11 @@ class Workflow:
 
 
 def execute(args):
+    from toolchain import build_environment
     workflow = Workflow(args)
+    # Qt deployment tools also create temporary files. Use the same owned
+    # environment as compilation rather than inheriting a sandbox/user TEMP.
+    os.environ.update(build_environment(workflow.qt))
     if args.command == 'prepare-package':
         prepare(workflow.cache)
     elif args.command == 'package':

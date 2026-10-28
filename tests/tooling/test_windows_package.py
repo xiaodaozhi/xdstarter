@@ -1,9 +1,10 @@
 """Behavioral regressions for candidate payload boundaries and dependency failures."""
-import importlib.util
+import io
 import json
 from pathlib import Path
 import subprocess
 import sys
+import tarfile
 import tempfile
 from types import SimpleNamespace
 import unittest
@@ -116,6 +117,21 @@ class WindowsPackageTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Cached supplier'):
                 package.fetch({'sha256': 'a' * 64, 'url': 'https://example.invalid'}, source)
             network.assert_not_called()
+
+    def test_native_source_notices_match_root_relative_paths(self):
+        buffer = io.BytesIO()
+        with tarfile.open(fileobj=buffer, mode='w') as archive:
+            for name, text in (('llvm/LICENSE.TXT', b'root terms'),
+                               ('llvm/lib/Target/ARM/LICENSE.TXT', b'ARM terms')):
+                member = tarfile.TarInfo(name)
+                member.size = len(text)
+                archive.addfile(member, io.BytesIO(text))
+        buffer.seek(0)
+        with tarfile.open(fileobj=buffer, mode='r:') as archive:
+            self.assertEqual(package.source_notice(archive, 'LICENSE.TXT'), b'root terms')
+            self.assertEqual(package.source_notice(archive, 'lib/Target/ARM/LICENSE.TXT'), b'ARM terms')
+            with self.assertRaises(ValueError):
+                package.source_notice(archive, 'missing-license')
 
     def test_zip_bytes_must_match_the_original_audited_payload(self):
         root = self.directory / 'runtime'
