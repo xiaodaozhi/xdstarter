@@ -102,7 +102,7 @@ def main():
 
         env = dict(os.environ)
         env['PATH'] = str(workflow.qt / 'bin') + os.pathsep + env.get('PATH', '')
-        guard = subprocess.Popen([str(workflow.build / 'tests/platform/xdstarter_installation_guard_tests.exe'),
+        guard = subprocess.Popen([str(workflow.build / 'bin/xdstarter_installation_guard_tests.exe'),
             'runtime'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
         try:
             if guard.stdout.readline().strip() != b'ready':

@@ -1,8 +1,9 @@
 #include "platform/installation_guard.h"
 
+#include <windows.h>
+
 #include <sddl.h>
 #include <vector>
-#include <windows.h>
 
 namespace xdstarter {
 namespace {

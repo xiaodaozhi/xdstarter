@@ -3,6 +3,8 @@ target_link_libraries(xdstarter_application_platform_tests PRIVATE xdstarter_pla
 if(WIN32)
     add_executable(xdstarter_installation_guard_tests installation_guard_tests.cpp)
     target_link_libraries(xdstarter_installation_guard_tests PRIVATE xdstarter_platform)
+    set_target_properties(xdstarter_installation_guard_tests PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
     add_test(NAME platform.installation-guard COMMAND xdstarter_installation_guard_tests)
     set_tests_properties(platform.installation-guard PROPERTIES TIMEOUT 20)
     target_compile_definitions(xdstarter_application_platform_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
