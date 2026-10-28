@@ -162,6 +162,17 @@ class WindowsPackageTests(unittest.TestCase):
         for command in ('install', 'check', 'build', 'prepare-package', 'package', 'verify'):
             self.assertIn(command, result.stdout)
 
+    def test_isolated_runtime_handles_windows_environment_case_and_clears_sdk_paths(self):
+        for key in ('SystemRoot', 'SYSTEMROOT'):
+            environment = {key: str(self.directory), 'PATH': 'old-sdk/bin',
+                           'QT_PLUGIN_PATH': 'old-sdk/plugins', 'QML_IMPORT_PATH': 'old-sdk/qml',
+                           'QSG_RHI_BACKEND': 'vulkan'}
+            with self.subTest(key=key), patch.dict(package.os.environ, environment, clear=True):
+                result = package.isolated_environment(self.directory / 'runtime')
+                self.assertNotIn('old-sdk', result['PATH'])
+                self.assertEqual(result['QSG_RHI_BACKEND'], 'd3d11')
+                self.assertEqual(result['QML_IMPORT_PATH'], str(self.directory / 'runtime/qml'))
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -223,5 +223,5 @@
       "sha256": "7317e078e2d3b5d7ba5a6159e650945153262b44b76f6700f8e9edb261c5143e"
     }
   ],
-  "source_commit_scope": "Pinned license-text retrieval commits, not SDK build commits. Use corresponding-sources.json for archive commit markers."
+  "source_commit_scope": "Pinned license-text retrieval commits, not SDK build commits. Use sources.json for archive commit markers."
 }

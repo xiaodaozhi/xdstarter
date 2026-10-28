@@ -430,7 +430,11 @@ def audit(root, identity, import_reader=imports, pe_reader=binary_info):
 
 def isolated_environment(root, *, software=False):
     environment = dict(os.environ)
-    system = Path(environment['SystemRoot'])
+    system_root = next((value for key, value in environment.items()
+                        if key.casefold() == 'systemroot'), None)
+    if not system_root:
+        raise ValueError('Windows SystemRoot is required for isolated runtime verification')
+    system = Path(system_root)
     for key in list(environment):
         if key.upper().startswith(('QT_', 'QML', 'QSG_')) or key.upper() in ('QTDIR', 'QT_PLUGIN_PATH'):
             del environment[key]
