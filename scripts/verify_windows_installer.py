@@ -35,7 +35,7 @@ def main():
     work.mkdir()
     fixture = compile_installer(workflow.root, audit, work, workflow.cache,
                                 'server-lifecycle-fixture', qa=True)
-    installed = work / 'installed'
+    installed = work / 'application/installed'
     uninstall_key = r'Software\Microsoft\Windows\CurrentVersion\Uninstall\{C5771F18-616D-49D2-9DBF-5E09C5F8D853}_is1'
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, uninstall_key):
@@ -97,13 +97,18 @@ def main():
         except FileNotFoundError:
             return None
 
+    def create_junction(link, target):
+        generated(link)
+        generated(target)
+        subprocess.run(['cmd.exe', '/c', 'mklink', '/J', str(link), str(target)],
+            check=True, capture_output=True, timeout=15)
+
     success = False
     try:
         target = generated(work / 'unrelated-directory')
         target.mkdir()
         link = generated(work / 'linked-parent')
-        subprocess.run(['cmd.exe', '/c', 'mklink', '/J', str(link), str(target)],
-            check=True, capture_output=True, timeout=15)
+        create_junction(link, target)
         try:
             invoke(fixture, 'junction-parent-refused', '/DIR=' + str(link / 'installed'), success=False)
             if any(target.iterdir()) or startup_value() is not None:
@@ -160,6 +165,19 @@ def main():
             '--start-capture-duration', '1'], check=True, timeout=30)
         if custom.read_bytes() != original:
             raise ValueError('Older schema reader modified future user data')
+        container = generated(installed.parent)
+        relocated = generated(work / 'relocated-application')
+        container.rename(relocated)
+        linked = False
+        try:
+            create_junction(container, relocated)
+            linked = True
+            invoke(installed / 'unins000.exe', 'junction-parent-uninstall-refused', success=False)
+            installed_payload_matches()
+        finally:
+            if linked:
+                container.rmdir()
+            generated(relocated).rename(generated(container))
         invoke(installed / 'unins000.exe', 'uninstall-keep-data')
         if layout.read_bytes() != original or not unknown.is_file() or startup_value() is not None:
             raise ValueError('Uninstall did not preserve data/unknown files or remove startup entry')

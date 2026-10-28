@@ -41,8 +41,8 @@ english.Launch=Start XDStarter
 chinesesimplified.Launch=启动 XDStarter
 english.Busy=Exit all XDStarter instances normally from the tray before installing or uninstalling. Another installation may also be running.
 chinesesimplified.Busy=请先从托盘正常退出所有 XDStarter 实例，再安装或卸载。也可能已有安装操作正在进行。
-english.InvalidManifest=The installed file manifest is invalid. Installation stopped without deleting old files.
-chinesesimplified.InvalidManifest=现有安装文件清单无效，已停止安装并保留旧文件。
+english.InvalidManifest=The installation path or file manifest is invalid. Installation or uninstallation stopped without deleting files.
+chinesesimplified.InvalidManifest=安装路径或文件清单无效，已停止安装或卸载并保留文件。
 english.ModifiedFile=An obsolete installed file was modified or cannot be verified. Installation stopped to preserve it.
 chinesesimplified.ModifiedFile=过时安装文件已修改或无法核验，已停止安装并保留该文件。
 english.CleanupFailed=Some obsolete files could not be removed. Close programs using the installation directory and run Setup again.
@@ -348,6 +348,12 @@ begin
   Result := AcquireGate();
   if not Result then begin
     SuppressibleMsgBox(CustomMessage('Busy'), mbError, MB_OK, IDOK);
+    exit;
+  end;
+  if not NormalPath(ExpandConstant('{app}'), ExpandConstant('{app}')) then begin
+    ReleaseGate();
+    Result := False;
+    SuppressibleMsgBox(CustomMessage('InvalidManifest'), mbError, MB_OK, IDOK);
     exit;
   end;
   RemoveUserData := ExpandConstant('{param:REMOVEUSERDATA|0}') = '1';
