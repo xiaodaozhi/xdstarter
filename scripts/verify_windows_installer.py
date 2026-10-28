@@ -99,6 +99,16 @@ def main():
         installed_payload_matches()
         if obsolete.exists() or not unknown.is_file() or startup_value() != expected_startup:
             raise ValueError('Upgrade ownership cleanup or previous-task retention failed')
+        invoke(fixture, 'upgrade-disable-autostart', '/DIR=' + str(installed), '/TASKS=')
+        if startup_value() is not None:
+            raise ValueError('Upgrade did not honor disabled autostart selection')
+        invoke(fixture, 'upgrade-retain-disabled-autostart', '/DIR=' + str(installed))
+        if startup_value() is not None:
+            raise ValueError('Upgrade did not retain disabled autostart selection')
+        invoke(fixture, 'upgrade-enable-autostart', '/DIR=' + str(installed), '/TASKS=autostart')
+        installed_payload_matches()
+        if startup_value() != expected_startup:
+            raise ValueError('Upgrade did not honor enabled autostart selection')
 
         env = dict(os.environ)
         env['PATH'] = str(workflow.qt / 'bin') + os.pathsep + env.get('PATH', '')
