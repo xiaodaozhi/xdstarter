@@ -16,9 +16,11 @@ def render(root, audit, output, cache, prefix, *, qa=False):
     if not re.fullmatch('[0-9a-f]{40}', identity['revision']):
         raise ValueError('Installer requires a full source revision')
     runtime = config('runtime.json')
-    agreement = root / 'share/notices/Microsoft-VC-runtime/license.rtf'
-    if digest(agreement) != runtime['license_sha256']:
+    agreement = root / 'share/notices/Microsoft-VC-runtime/license.docx'
+    if digest(agreement) != runtime['license']['sha256']:
         raise ValueError('Installer requires the original Microsoft runtime agreement')
+    if digest(root / 'share/notices/Microsoft-VC-runtime/license.txt') != runtime['license']['display_sha256']:
+        raise ValueError('Installer agreement display text differs from pinned original extraction')
     notice = root / 'share/notices/Windows-runtime-NOTICE.txt'
     if notice.read_bytes() != b'\xef\xbb\xbf' + (CONFIG / 'Windows-runtime-NOTICE.txt').read_bytes():
         raise ValueError('Installer runtime notice is incomplete')
@@ -63,6 +65,9 @@ def compile_installer(root, audit, output, cache, prefix, development=False, *, 
         'sha256': digest(installer), 'bytes': installer.stat().st_size,
         'executableSha256': digest(root / 'xdstarter.exe'),
         'manifestSha256': digest(manifest), 'compiler': 'Inno Setup 6.7.3',
+        'compilerPackageSha256': config('installer-toolchain.json')['inno_setup']['sha256'],
+        'compilerSourceCommit': config('installer-toolchain.json')['inno_setup']['source_commit'],
+        'microsoftAgreement': config('runtime.json')['license'],
         'scope': 'current-user', 'signed': False, 'developmentFixture': development,
         'serverLifecycleFixture': qa,
         'limits': ['Compiler success does not establish clean Windows 11 installation acceptance.']})

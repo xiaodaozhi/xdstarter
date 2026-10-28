@@ -22,7 +22,7 @@ RestartApplications=no
 UninstallLogMode=append
 WizardStyle=modern
 DisableWelcomePage=no
-LicenseFile=@PAYLOAD@\share\notices\Microsoft-VC-runtime\license.rtf
+LicenseFile=@PAYLOAD@\share\notices\Microsoft-VC-runtime\license.txt
 InfoBeforeFile=@PAYLOAD@\share\notices\Windows-runtime-NOTICE.txt
 UsePreviousTasks=yes
 

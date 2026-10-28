@@ -2,20 +2,20 @@ XDStarter Windows 第三方运行库说明
 
 XDStarter 代码、文档及原创资产的最终许可仍由项目所有者决定。Qt、Unicode 数据及其他第三方组件保留各自许可；本通知不为项目新增授权，也不限制依适用开源许可修改或替换 Qt 的权利。
 
-本包携带 Microsoft Visual C++ x64 正式运行库。安装器许可页展示微软原始协议，仅适用于该运行库。便携包用户也应阅读 Microsoft-VC-runtime/license.rtf 并遵守适用条款。
+本包携带 Microsoft Visual C++ x64 正式运行库。安装器许可页展示微软原始协议，仅适用于该运行库。便携包用户也应阅读 Microsoft-VC-runtime/license.docx / license.txt 并遵守适用条款。
 
 d3dcompiler_47.dll、dxcompiler.dll 和 dxil.dll 来自所选 Windows SDK REDIST，面向 Classic Windows 应用，其协议及通知在 Windows-SDK-graphics。opengl32sw.dll 的 Mesa／LLVM 通知位于 Mesa-LLVM。
 
 Microsoft 组件的再分发受适用开发工具／SDK 协议及可分发清单约束；来源哈希不是再分发资格的认定。普通用户运行本产品无需安装 Visual Studio。
 
-原始 VC++ 协议：https://visualstudio.microsoft.com/license-terms/vs2022-cruntime/
+原始 VC++ 协议：https://visualstudio.microsoft.com/license-terms/vs2026-ga-visualcpp-v14-redist-runtime/
 Windows SDK 可分发清单：https://learn.microsoft.com/en-us/legal/windows-sdk/redist
 
 XDStarter Windows third-party runtime notice
 
 The owner has not selected the final license for XDStarter code, documentation or original assets. Qt, Unicode data and other third-party components retain their own licenses. This notice grants no additional project license and does not restrict applicable rights to modify or replace Qt.
 
-This package includes release Microsoft Visual C++ x64 runtime DLLs. Setup displays the original Microsoft agreement, applicable only to those DLLs. Portable users must also read Microsoft-VC-runtime/license.rtf and comply with applicable terms.
+This package includes release Microsoft Visual C++ x64 runtime DLLs. Setup displays the original Microsoft agreement, applicable only to those DLLs. Portable users must also read Microsoft-VC-runtime/license.docx / license.txt and comply with applicable terms.
 
 d3dcompiler_47.dll, dxcompiler.dll and dxil.dll are Windows SDK REDIST components for Classic Windows applications. Their terms are in Windows-SDK-graphics. Mesa/LLVM notices for opengl32sw.dll are in Mesa-LLVM.
 

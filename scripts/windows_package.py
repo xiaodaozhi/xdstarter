@@ -194,7 +194,8 @@ def prepare(cache):
     cache = generated(cache)
     files(cache)
     runtime = config('runtime.json')
-    bundle = fetch(runtime, cache / 'vc_redist.x64.exe')
+    crt_cache = cache / 'crt' / runtime['version']
+    bundle = fetch(runtime, crt_cache / 'vc_redist.x64.exe')
     wix_archive = fetch(runtime['wix'], cache / 'wix.zip')
     wix = cache / 'wix'
     with zipfile.ZipFile(wix_archive) as archive:
@@ -203,21 +204,33 @@ def prepare(cache):
             if (member.external_attr >> 16) & 0o170000 == 0o120000:
                 raise ValueError('Build tool archive contains a link')
         archive.extractall(wix)
-    extracted = cache / 'extracted'
+    extracted = crt_cache / 'extracted'
     command(wix / 'dark.exe', '-nologo', '-x', extracted, bundle)
-    raw = cache / 'raw'
+    raw = crt_cache / 'raw'
     raw.mkdir(exist_ok=True)
     command('expand.exe', '-F:*', extracted / 'AttachedContainer/packages/vcRuntimeMinimum_amd64/cab1.cab', raw)
-    target = cache / 'runtime'
-    target.mkdir(exist_ok=True)
+    target = cache / 'runtime' / runtime['version']
+    target.mkdir(parents=True, exist_ok=True)
     inputs = {name: raw / (name + '_amd64') for name in runtime['files']}
-    inputs['Microsoft-VC-runtime-license.rtf'] = extracted / 'UX/license.rtf'
-    expected = {**runtime['files'], 'Microsoft-VC-runtime-license.rtf': runtime['license_sha256']}
+    agreement = fetch(runtime['license'], crt_cache / 'Microsoft-VC-runtime-license.docx')
+    from runtime_license import agreement_text
+    display = agreement_text(agreement)
+    if hashlib.sha256(display).hexdigest() != runtime['license']['display_sha256']:
+        raise ValueError('Microsoft agreement display text hash mismatch')
+    # The supplier bundle now links its original agreement instead of embedding RTF.
+    import xml.etree.ElementTree as ET
+    supplier = ET.parse(extracted / 'UX/BootstrapperApplicationData.xml')
+    declaration = supplier.find('.//{http://schemas.microsoft.com/wix/2010/BootstrapperApplicationData}WixStdbaInformation')
+    if declaration is None or declaration.get('LicenseUrl') != runtime['license']['bundle_license_url']:
+        raise ValueError('Microsoft bundle license reference changed')
+    inputs['Microsoft-VC-runtime-license.docx'] = agreement
+    expected = {**runtime['files'], 'Microsoft-VC-runtime-license.docx': runtime['license']['sha256']}
     for name, path in inputs.items():
         if digest(path) != expected[name]:
             raise ValueError('Extracted Microsoft material hash mismatch')
     for name, path in inputs.items():
         shutil.copyfile(path, target / name)
+    (target / 'Microsoft-VC-runtime-license.txt').write_bytes(display)
     installer = config('installer-toolchain.json')['inno_setup']
     setup = fetch(installer, cache / 'compiler-setup.exe')
     compiler = cache / 'compiler'
@@ -264,15 +277,18 @@ def prune(root):
 
 def copy_crt(cache, root):
     runtime = config('runtime.json')
-    inputs = {**runtime['files'], 'Microsoft-VC-runtime-license.rtf': runtime['license_sha256']}
+    source = cache / 'runtime' / runtime['version']
+    inputs = {**runtime['files'], 'Microsoft-VC-runtime-license.docx': runtime['license']['sha256'],
+              'Microsoft-VC-runtime-license.txt': runtime['license']['display_sha256']}
     for name, expected in inputs.items():
-        if digest(cache / 'runtime' / name) != expected:
+        if digest(source / name) != expected:
             raise ValueError('Prepared CRT hash mismatch')
     notice = root / 'share/notices/Microsoft-VC-runtime'
     notice.mkdir(parents=True)
     for name in runtime['files']:
-        shutil.copyfile(cache / 'runtime' / name, root / name)
-    shutil.copyfile(cache / 'runtime/Microsoft-VC-runtime-license.rtf', notice / 'license.rtf')
+        shutil.copyfile(source / name, root / name)
+    shutil.copyfile(source / 'Microsoft-VC-runtime-license.docx', notice / 'license.docx')
+    shutil.copyfile(source / 'Microsoft-VC-runtime-license.txt', notice / 'license.txt')
     write_json(notice / 'provenance.json', runtime)
 
 
@@ -445,6 +461,7 @@ def isolated_environment(root, *, software=False):
         QT_FORCE_STDERR_LOGGING='1')
     if software:
         environment['QT_QUICK_BACKEND'] = 'software'
+        environment['QT_QPA_FONTDIR'] = str(system / 'Fonts')
     else:
         environment['QSG_RHI_BACKEND'] = 'd3d11'
     return environment
@@ -537,7 +554,8 @@ class Workflow:
             if runtime_version < tuple(version):
                 raise ValueError('Pinned CRT predates the Qt SDK compiler; review runtime lock')
         if runtime_version < linker_version:
-            raise ValueError('Pinned CRT predates application toolchain; review runtime lock')
+            raise ValueError(f'Pinned CRT {config("runtime.json")["version"]} predates application '
+                             f'linker {receipt["linkerVersion"]}; review runtime lock')
         self.output.mkdir(parents=True, exist_ok=True)
         return identity, receipt
 
@@ -548,6 +566,10 @@ class Workflow:
             raise ValueError('Successful deployed audit required')
         if not self.args.development and (record['identity']['dirty'] or not record['identity']['distribution']):
             raise ValueError('Development runtime cannot become a distribution candidate')
+        if not self.args.development:
+            current_identity, _ = self.preflight()
+            if current_identity != record['identity']:
+                raise ValueError('Runtime and current clean build identities differ')
         verify_inventory(self.root, record['files'])
         return record
 

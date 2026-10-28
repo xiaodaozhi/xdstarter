@@ -50,6 +50,7 @@ Qt 运行库许可与应用许可证分别处理，依赖清单、许可证文�
 [packaging/windows](../../packaging/windows) 保存本项目独立的官方 URL、版本与 SHA256，构建无需 xdzip 仓库。策略参考 [xdzip Windows 部署](https://github.com/xiaodaozhi/xdzip/issues/15)。
 
 - VC_redist 只用于提取八个 x64 app-local CRT DLL 与原始协议，不安装运行库，不从 System32 收集 DLL。WiX dark 和 expand 只用于构建。CRT 安全维护通过依赖 PR 更新锁定材料与回归。
+- 当前锁定 v14 14.51.36247.0，以满足 MSVC 2022 runner 的实际工具链；其原始协议由微软包内链接指向 DOCX。原件与带编号的确定性 UTF-8 文本同时交付，分别固定哈希，安装器展示文本且保留原件；没有借用旧版协议。
 - 同版 windeployqt 扫描产品 QML 和构建 imports，固定 Basic；移除其他样式、未使用 Effects、qmltooling 和 `.qmltypes`。保留运行 QML、qmldir、Dialogs 原生及 Quick 回退依赖；Test、offscreen、实验和设计程序不进入产品。
 - 保留 Qt Mesa 的 opengl32sw，以及明确 SDK REDIST 的 D3D／DXC／DXIL，附来源与协议，不从环境搜索替代输入。
 - Qt 翻译兼容 SDK 的 qtbase 和部署合并的 qt 目录名；携带简体中文目录，英文使用源文，不扩展为完整产品双语能力。

@@ -156,6 +156,27 @@ class WindowsPackageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Portable archive'):
             workflow.verify_archives()
 
+    def test_production_runtime_reuse_requires_the_same_current_clean_build(self):
+        root = self.directory / 'runtime'
+        root.mkdir()
+        (root / 'owned.txt').write_bytes(b'original')
+        identity = {'version': '0.1.0', 'build': 1, 'revision': 'a' * 40,
+                    'dirty': False, 'distribution': True}
+        record = {'status': 'passed', 'mode': 'deployed', 'identity': identity,
+                  'files': package.inventory(root)}
+        package.write_json(self.directory / 'deployment-audit.json', record)
+        workflow = package.Workflow(SimpleNamespace(qt_prefix=None, output_dir=self.directory,
+            package_cache=self.directory / 'cache', preset='app-release', development=False))
+        other_identity = {**identity, 'revision': 'b' * 40}
+        with patch.object(workflow, 'preflight', return_value=(other_identity, {})):
+            with self.assertRaisesRegex(ValueError, 'identities differ'):
+                workflow.read_audit()
+        with patch.object(workflow, 'preflight', side_effect=ValueError('Source changed')):
+            with self.assertRaisesRegex(ValueError, 'Source changed'):
+                workflow.read_audit()
+        with patch.object(workflow, 'preflight', return_value=(identity, {})):
+            self.assertEqual(workflow.read_audit(), record)
+
     def test_existing_toolchain_cli_remains_available(self):
         result = subprocess.run([sys.executable, str(ROOT / 'scripts/toolchain.py'), '--help'],
                                 capture_output=True, text=True, check=True)
@@ -172,6 +193,8 @@ class WindowsPackageTests(unittest.TestCase):
                 self.assertNotIn('old-sdk', result['PATH'])
                 self.assertEqual(result['QSG_RHI_BACKEND'], 'd3d11')
                 self.assertEqual(result['QML_IMPORT_PATH'], str(self.directory / 'runtime/qml'))
+                software = package.isolated_environment(self.directory / 'runtime', software=True)
+                self.assertEqual(software['QT_QPA_FONTDIR'], str(self.directory / 'Fonts'))
 
 
 if __name__ == '__main__':
