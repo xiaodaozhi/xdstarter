@@ -1,4 +1,12 @@
 find_package(Qt6 REQUIRED COMPONENTS Test)
+add_executable(xdstarter_runtime_support_tests runtime_support_tests.cpp
+    "${PROJECT_SOURCE_DIR}/src/app/runtime_support.cpp")
+target_include_directories(xdstarter_runtime_support_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(xdstarter_runtime_support_tests PRIVATE Qt6::Core)
+set_target_properties(xdstarter_runtime_support_tests PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
+add_test(NAME app.qt-translations COMMAND xdstarter_runtime_support_tests
+    "$<TARGET_FILE_DIR:Qt6::Core>/../translations")
 qt_add_executable(xdstarter_ui_tests
     tst_prototype_window.cpp
     native_chrome_probe.h

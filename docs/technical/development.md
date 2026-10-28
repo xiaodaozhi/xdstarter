@@ -2,6 +2,8 @@
 
 ## 工程基线
 
+构建与打包准备分别执行，新增 `-Stage prepare-package|package|verify|all`、distribution 身份和工件说明见[Windows 发行流程](release.md)。默认入口保留本机基线和编译／检查；缺少 Inno Setup 不阻止普通开发。
+
 本项目按所有者要求，正式采用与 xdzip 已核实的 Windows 本机构建相同的工具版本。[toolchain.json](../../toolchain.json) 是本项目自己的版本声明，获取、检查、构建和应用 CI 均读取它；不依赖 xdzip 仓库存在，也不从另一个仓库动态继承版本。
 
 | 项目 | 正式基线 |

@@ -1,17 +1,21 @@
 #include "application_icon_provider.h"
+#include "build_identity.h"
 #include "desktop_window_host.h"
 #include "interface_font.h"
 #include "menu_controller.h"
+#include "runtime_support.h"
 
 #include "core/tile_grid.h"
 #include "platform/application_platform.h"
 #include "platform/desktop_platform.h"
 #include "platform/desktop_tray.h"
+#include "platform/installation_guard.h"
 #include "platform/platform_integration.h"
 #include "platform/start_button_capture.h"
 #include "platform/win_key_capture.h"
 #include "services/application_catalog.h"
 #include "services/desktop_shell_service.h"
+#include "services/layout_store.h"
 #include "services/prototype_service.h"
 #include "services/session_instance.h"
 
@@ -40,6 +44,7 @@
 
 #include <cstdlib>
 #include <functional>
+#include <iostream>
 #include <optional>
 
 namespace {
@@ -68,12 +73,12 @@ std::optional<QVariantMap> loadVisualTokens() {
                  menuSize.value(QStringLiteral("width")).toDouble() > 0 &&
                  menuSize.value(QStringLiteral("height")).toDouble() > 0 &&
                  object.value(QStringLiteral("tileLabelFontDip")).toDouble() > 0;
-    for (const auto *key : {"blue", "cyan", "ink"}) {
+    for (const auto* key : {"blue", "cyan", "ink"}) {
         valid = valid && QColor(brand.value(QLatin1String(key)).toString()).isValid();
     }
-    for (const auto *themeName : {"dark", "light"}) {
+    for (const auto* themeName : {"dark", "light"}) {
         const auto theme = themes.value(QLatin1String(themeName)).toObject();
-        for (const auto *key : {"foreground", "secondary", "opaqueFallback"}) {
+        for (const auto* key : {"foreground", "secondary", "opaqueFallback"}) {
             valid = valid && QColor(theme.value(QLatin1String(key)).toString()).isValid();
         }
     }
@@ -86,7 +91,27 @@ std::optional<QVariantMap> loadVisualTokens() {
 
 } // namespace
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
+    // Identity queries neither initialize the platform plugin nor activate a resident instance.
+    if (argc == 2 && (QString::fromLocal8Bit(argv[1]) == QLatin1String("--version") ||
+                      QString::fromLocal8Bit(argv[1]) == QLatin1String("--build-info"))) {
+        if (QString::fromLocal8Bit(argv[1]) == QLatin1String("--version")) {
+            std::cout << "XDStarter " << xdstarter::build::version << " (build "
+                      << xdstarter::build::number << ", " << xdstarter::build::revision
+                      << (xdstarter::build::dirty ? ", dirty" : "") << ")\n";
+        } else {
+            const QJsonObject info{
+                {QStringLiteral("version"), QLatin1String(xdstarter::build::version)},
+                {QStringLiteral("revision"), QLatin1String(xdstarter::build::revision)},
+                {QStringLiteral("build"), xdstarter::build::number},
+                {QStringLiteral("dirty"), xdstarter::build::dirty},
+                {QStringLiteral("distribution"), xdstarter::build::distribution},
+                {QStringLiteral("qt"), QStringLiteral(QT_VERSION_STR)},
+                {QStringLiteral("layoutSchema"), xdstarter::LayoutStore::schemaVersion}};
+            std::cout << QJsonDocument(info).toJson(QJsonDocument::Compact).constData() << '\n';
+        }
+        return EXIT_SUCCESS;
+    }
     QGuiApplication application(argc, argv);
     QGuiApplication::setOrganizationName(QStringLiteral("xiaodaozhi"));
     QGuiApplication::setOrganizationDomain(QStringLiteral("github.com/xiaodaozhi"));
@@ -110,6 +135,7 @@ int main(int argc, char *argv[]) {
     QCommandLineParser parser;
     parser.setApplicationDescription(QStringLiteral("XDStarter Qt Quick 菜单弹层原型"));
     parser.addHelpOption();
+    parser.addVersionOption();
     const QCommandLineOption smokeTestOption(
         QStringLiteral("smoke-test"),
         QStringLiteral("加载界面后短暂运行并退出，用于资源 smoke 检查。"));
@@ -157,6 +183,12 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    auto installationGuard = xdstarter::createInstallationGuard();
+    if (!installationGuard->acquire()) {
+        qCritical() << installationGuard->errorString();
+        return EXIT_FAILURE;
+    }
+    xdstarter::initializeQtTranslation();
     std::unique_ptr<xdstarter::SessionInstance> instance;
     bool pendingActivation = false;
     if (!parser.isSet(smokeTestOption)) {
@@ -233,7 +265,7 @@ int main(int argc, char *argv[]) {
     if (engine.rootObjects().isEmpty()) {
         return EXIT_FAILURE;
     }
-    auto *window = qobject_cast<QWindow *>(engine.rootObjects().first());
+    auto* window = qobject_cast<QWindow*>(engine.rootObjects().first());
     if (!window) {
         qCritical() << "Root QML object is not a window";
         return EXIT_FAILURE;
