@@ -1,0 +1,9 @@
+#pragma once
+
+namespace xdstarter::build {
+inline constexpr char version[] = "@PROJECT_VERSION@";
+inline constexpr char revision[] = "@XDSTARTER_REVISION@";
+inline constexpr int number = @XDSTARTER_BUILD_NUMBER@;
+inline constexpr bool dirty = @XDSTARTER_DIRTY@;
+inline constexpr bool distribution = @XDSTARTER_DISTRIBUTION@;
+} // namespace xdstarter::build

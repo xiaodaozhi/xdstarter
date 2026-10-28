@@ -1,0 +1,84 @@
+{
+  "scope": "Original supplier sources and build tools; archive availability does not establish SDK binary equivalence. No Qt source rebuild is claimed.",
+  "schemaVersion": 1,
+  "archives": [
+    {
+      "module": "qtbase",
+      "file": "qtbase-everywhere-src-6.8.2.tar.xz",
+      "url": "https://download.qt.io/archive/qt/6.8/6.8.2/submodules/qtbase-everywhere-src-6.8.2.tar.xz",
+      "sha256": "012043ce6d411e6e8a91fdc4e05e6bedcfa10fcb1347d3c33908f7fdd10dfe05",
+      "source_commit": "f1136de66638060b8a1ab9bc0cdf1a91dcb5ec01"
+    },
+    {
+      "module": "qtdeclarative",
+      "file": "qtdeclarative-everywhere-src-6.8.2.tar.xz",
+      "url": "https://download.qt.io/archive/qt/6.8/6.8.2/submodules/qtdeclarative-everywhere-src-6.8.2.tar.xz",
+      "sha256": "144d876adc8bb55909735143e678d1e24eadcd0a380a0186792d88b731346d56",
+      "source_commit": "0a8139c574fe150aba92d5f2484a8f3fdb774977"
+    },
+    {
+      "module": "qtsvg",
+      "file": "qtsvg-everywhere-src-6.8.2.tar.xz",
+      "url": "https://download.qt.io/archive/qt/6.8/6.8.2/submodules/qtsvg-everywhere-src-6.8.2.tar.xz",
+      "sha256": "aa2579f21ca66d19cbcf31d87e9067e07932635d36869c8239d4decd0a9dc1fa",
+      "source_commit": "e59eaa7dbc09fbf885b1c5a69d93b7e2fb1c7ce3"
+    },
+    {
+      "module": "qttranslations",
+      "file": "qttranslations-everywhere-src-6.8.2.tar.xz",
+      "url": "https://download.qt.io/archive/qt/6.8/6.8.2/submodules/qttranslations-everywhere-src-6.8.2.tar.xz",
+      "sha256": "d2106e8a580bfd77702c4c1840299288d344902b0e2c758ca813ea04c6d6a3d1",
+      "source_commit": "6a47261ffdbf3a694e8867f984f61daded03d291"
+    },
+    {
+      "module": "qtshadertools",
+      "file": "qtshadertools-everywhere-src-6.8.2.tar.xz",
+      "url": "https://download.qt.io/archive/qt/6.8/6.8.2/submodules/qtshadertools-everywhere-src-6.8.2.tar.xz",
+      "sha256": "d1d5f90e8885fc70d63ac55a4ce4d9a2688562033a000bc4aff9320f5f551871",
+      "source_commit": "9b81996cea92b13d9f896504516d920976a77a86"
+    },
+    {
+      "module": "qttools",
+      "file": "qttools-everywhere-src-6.8.2.tar.xz",
+      "url": "https://download.qt.io/archive/qt/6.8/6.8.2/submodules/qttools-everywhere-src-6.8.2.tar.xz",
+      "sha256": "326381b7d43f07913612f291abc298ae79bd95382e2233abce982cff2b53d2c0",
+      "source_commit": "8aa2456d4461516f54c98916fcd699557afb41ad"
+    },
+    {
+      "component": "Mesa",
+      "version": "11.2.2",
+      "file": "mesa-11.2.2.tar.xz",
+      "url": "https://archive.mesa3d.org/older-versions/11.x/11.2.2/mesa-11.2.2.tar.xz",
+      "sha256": "40e148812388ec7c6d7b6657d5a16e2e8dabba8b97ddfceea5197947647bdfb4",
+      "platform": "windows",
+      "notices": [
+        "docs/license.html",
+        "docs/COPYING"
+      ]
+    },
+    {
+      "component": "LLVM",
+      "version": "3.6.2",
+      "file": "llvm-3.6.2.src.tar.xz",
+      "url": "https://releases.llvm.org/3.6.2/llvm-3.6.2.src.tar.xz",
+      "sha256": "f60dc158bfda6822de167e87275848969f0558b3134892ff54fced87e4667b94",
+      "platform": "windows",
+      "notices": [
+        "LICENSE.TXT",
+        "lib/Support/COPYRIGHT.regex",
+        "include/llvm/Support/LICENSE.TXT",
+        "lib/Target/ARM/LICENSE.TXT",
+        "lib/Support/MD5.cpp",
+        "include/llvm/Support/MD5.h"
+      ]
+    }
+  ],
+  "mesaBinary": {
+    "file": "opengl32sw.dll",
+    "sha256": "b04de4541863bc7d8879040a78889c4849c1b1da2784c4630f734c146c2998ce",
+    "url": "https://download.qt.io/development_releases/prebuilt/llvmpipe/windows/opengl32sw-64-mesa_11_2_2-signed_sha256.7z",
+    "archive_sha256": "c61f801c1760aa24b02c7a8354323cddf368b86f8f5c34b50b3b224f7d728afd",
+    "scope": "Exact official Qt prebuilt binary; embedded strings identify Mesa 11.2.2 and LLVM 3.6.2, not complete supplier build history."
+  },
+  "qtVersion": "6.8.2"
+}

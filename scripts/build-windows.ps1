@@ -7,11 +7,29 @@ param(
     [string]$Toolchain = 'Baseline',
     [switch]$InstallTools,
     [switch]$DesignAssets,
-    [switch]$Fresh
+    [switch]$Fresh,
+    [ValidateSet('build', 'prepare-package', 'package', 'verify', 'all')]
+    [string]$Stage = 'build',
+    [ValidateSet('runtime', 'installer', 'all')]
+    [string]$Kind = 'all',
+    [string]$OutputDirectory = 'build/package',
+    [string]$PackageCache = 'build/package-tools',
+    [int]$BuildNumber = 0,
+    [switch]$Distribution,
+    [switch]$DevelopmentPackage
 )
 
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
+if (($Stage -ne 'build' -or $Distribution) -and $Preset -ne 'app-release') {
+    throw 'Packaging and distribution builds require app-release.'
+}
+if ($Distribution -and $Toolchain -ne 'MSVC2022') {
+    throw 'Distribution candidates use MSVC2022; the local baseline is unchanged.'
+}
+if ($Distribution -and $DevelopmentPackage) {
+    throw 'A distribution build cannot be marked as a development package.'
+}
 if ($DesignAssets -and $Preset.StartsWith('core-')) {
     throw '-DesignAssets requires an app preset and the declared Qt SDK.'
 }
@@ -54,8 +72,21 @@ try {
     $buildArguments = @('build', '--preset', $Preset) + $commonArguments
     if ($Fresh) { $buildArguments += '--fresh' }
     if (!$baseline) { $buildArguments += '--alternate-msvc' }
-    & $projectPython $toolScript @buildArguments
-    if ($LASTEXITCODE -ne 0) { throw "Build validation failed: $LASTEXITCODE" }
+    $buildArguments += @('--build-number', $BuildNumber)
+    if ($Distribution) { $buildArguments += '--distribution' }
+    if ($Stage -in @('build', 'all')) {
+        & $projectPython $toolScript @buildArguments
+        if ($LASTEXITCODE -ne 0) { throw "Build validation failed: $LASTEXITCODE" }
+    }
+    if ($Stage -ne 'build') {
+        $packageArguments = @('--preset', $Preset, '--output-dir', $OutputDirectory, '--package-cache', $PackageCache, '--kind', $Kind) + $commonArguments
+        if ($DevelopmentPackage) { $packageArguments += '--development' }
+        $stages = if ($Stage -eq 'all') { @('prepare-package', 'package') } else { @($Stage) }
+        foreach ($packageStage in $stages) {
+            & $projectPython $toolScript $packageStage @packageArguments
+            if ($LASTEXITCODE -ne 0) { throw "Windows $packageStage failed: $LASTEXITCODE" }
+        }
+    }
     if ($DesignAssets) {
         $previousTemp = $env:TEMP
         $previousTmp = $env:TMP

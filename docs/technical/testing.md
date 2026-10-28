@@ -1,5 +1,11 @@
 # 测试策略与验收
 
+## Windows 打包工程验证
+
+[#64](https://github.com/xiaodaozhi/xdstarter/issues/64) 增加路径／清单、供应方哈希、普通与延迟 DLL 导入、插件依赖、缺失 CRT、测试依赖隔离及 ZIP 字节回归。installation-guard 原生测试用独立进程验证安装／运行互斥及正常释放；Qt 翻译测试分别加载 SDK 与实际部署目录。入口与工件见[发行流程](release.md)。
+
+CI 清除副本的 SDK 搜索路径，验证软件和 Windows D3D11；Test／offscreen 只加入副本。一次性 hosted Server 夹具与实际产品分别记录哈希，夹具只降低 OS 门槛，不计作干净 Windows 11 验收。运行结果、失败和剩余项在 #64／#36 与 CI 工件登记；本节不宣称尚未运行的检查通过。
+
 ## 当前自动检查
 
 `python3 scripts/check_repository.py` 检查本地文档/图片链接、JSON/SVG/PNG 基本有效性、当前设计尺寸、Logo 透明通道及 SVG 网格几何。该检查不运行 Qt，也不代表 Windows 原型通过。

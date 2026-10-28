@@ -46,6 +46,8 @@ Unicode 数据完整许可及源版权通知随派生表保留在 `third_party/u
 
 ## 支持与升级边界
 
+Windows 打包增加阶段专用依赖：VC++ x64 14.44.35211.0、WiX 3.14.1 和 Inno Setup 6.7.3，官方 URL／SHA256 由 [packaging/windows](../../packaging/windows) 独立记录。CRT DLL 和安装器引擎进入交付，WiX、编译器和 VC_redist bootstrapper 不进入产品。来源与再分发资格分别核对。Qt 清单补齐 QuickDialogs2，与已有 CMake／QML 能力一致。契约见[发行流程](release.md)及 [ADR-0017](adr/0017-windows-packaging.md)。
+
 Qt 官方 6.8 Windows 支持配置列出 MSVC 2022；本项目按所有者要求正式采用与 xdzip 相同的 MSVC 2019 实测环境，同时保留其超出上游普遍兼容保证的边界，见 [ADR-0002](adr/0002-toolchain-baseline.md)。项目自己的正式基线并不改变 Qt/Microsoft 的支持政策。此前使用旧 CMake/Ninja 的结果不能证明这份新工具清单已经完成构建，最新证据以 Issues 和实际运行记录为准。
 
 固定版本不是永久冻结：补丁、安全更新或工具链变更通过依赖 PR 更新清单、文档及适用回归；Qt 升级至少覆盖布局、焦点、输入与部署。当前没有第三方二进制入库或应用安装包，不将工具缓存捆绑入产品。

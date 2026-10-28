@@ -1,4 +1,5 @@
 add_library(xdstarter_platform STATIC platform_integration.cpp platform_integration.h
+    installation_guard.cpp installation_guard.h
     application_platform.cpp application_platform.h
     desktop_platform.cpp desktop_platform.h
     desktop_width_snap.cpp desktop_width_snap.h
@@ -9,6 +10,7 @@ add_library(xdstarter_platform STATIC platform_integration.cpp platform_integrat
     start_button_capture_state.cpp start_button_capture_state.h)
 if(WIN32)
     target_sources(xdstarter_platform PRIVATE
+        windows/windows_installation_guard.cpp
         windows/windows_platform_integration.cpp
         windows/windows_platform_integration.h
         windows/windows_application_platform.cpp
@@ -42,5 +44,5 @@ target_link_libraries(xdstarter_platform PUBLIC Qt6::Core Qt6::Gui)
 if(WIN32)
     target_compile_definitions(xdstarter_platform PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
     target_link_libraries(xdstarter_platform PRIVATE shell32 ole32 oleaut32 user32 gdi32 propsys uuid
-        uiautomationcore dwmapi comctl32)
+        uiautomationcore dwmapi comctl32 advapi32)
 endif()

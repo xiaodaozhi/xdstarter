@@ -20,6 +20,8 @@
 
 ## 技术设计
 
+[#64](https://github.com/xiaodaozhi/xdstarter/issues/64) 接入 Windows 分阶段构建、app-local CRT、Qt 裁剪和当前用户安装器，见[发行流程](technical/release.md)与 [ADR-0017](technical/adr/0017-windows-packaging.md)。本机 v142 与 MSVC 2022 CI 交付分别记录；候选、Server 夹具和干净 Windows 11 验收互不替代，公开发行继续由 #36／#3 跟踪。
+
 [Issue #53](https://github.com/xiaodaozhi/xdstarter/issues/53) 跟踪公共／用户 Programs 中等价叶子快捷方式的重复展示，目标身份与原文件启动保持独立。[Issue #52](https://github.com/xiaodaozhi/xdstarter/issues/52) 补充开始按钮漏拦截诊断，并比较显式外部区域资格与独立进程内桥接实验；默认产品入口和真实 Windows 验证边界见 [ADR-0016](technical/adr/0016-start-capture-experiments.md)。隔离宿主、模拟输入与物理 Explorer 验收不能相互替代。
 
 #52后续提供会话/手势关联、有界收集与独立逐试次标注报告，并增加默认不构建、限时且全部放行的真实Explorer队列/窗口过程观察器。[运行说明](technical/research/start-capture-comparison-52.md)区分产品point/area-cache、自有fixture桥接与真实路由观察，自动检查不替代物理鼠标验收。
