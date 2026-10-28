@@ -99,6 +99,18 @@ def main():
 
     success = False
     try:
+        target = generated(work / 'unrelated-directory')
+        target.mkdir()
+        link = generated(work / 'linked-parent')
+        subprocess.run(['cmd.exe', '/c', 'mklink', '/J', str(link), str(target)],
+            check=True, capture_output=True, timeout=15)
+        try:
+            invoke(fixture, 'junction-parent-refused', '/DIR=' + str(link / 'installed'), success=False)
+            if any(target.iterdir()) or startup_value() is not None:
+                raise ValueError('Installer crossed the junction-parent boundary')
+        finally:
+            # Remove only the owned junction, never its target tree.
+            link.rmdir()
         invoke(fixture, 'install', '/DIR=' + str(installed), '/TASKS=autostart')
         installed_payload_matches()
         expected_startup = '"' + str(installed / 'xdstarter.exe') + '"'

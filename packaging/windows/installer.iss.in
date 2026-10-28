@@ -107,6 +107,8 @@ function NativeRelease(Handle: THandle): Boolean;
 external 'ReleaseMutex@kernel32.dll stdcall';
 function NativeError(): LongWord;
 external 'GetLastError@kernel32.dll stdcall';
+function NativeAttributes(Name: String): LongWord;
+external 'GetFileAttributesW@kernel32.dll stdcall';
 
 function CurrentSid(): String;
 var Token: THandle; Info: TTokenUserBuffer; Needed, Text: LongWord; Buffer: String;
@@ -191,21 +193,25 @@ begin
 end;
 
 function NormalPath(Name, Root: String): Boolean;
-var Info: TFindRec;
+var Parent, Prefix: String; Attributes, Error: LongWord;
 begin
   Result := False;
   Root := RemoveBackslashUnlessRoot(Root);
-  while Length(Name) >= Length(Root) do begin
-    if FindFirst(Name, Info) then begin
-      FindClose(Info);
-      if (Info.Attributes and FILE_ATTRIBUTE_REPARSE_POINT) <> 0 then exit;
-    end;
-    if CompareText(Name, Root) = 0 then begin
-      Result := True;
-      exit;
-    end;
-    Name := ExtractFileDir(Name);
-  end;
+  Name := RemoveBackslashUnlessRoot(Name);
+  Prefix := AddBackslash(Root);
+  if (CompareText(Name, Root) <> 0) and
+     (CompareText(Copy(Name, 1, Length(Prefix)), Prefix) <> 0) then exit;
+  repeat
+    Attributes := NativeAttributes(Name);
+    if Attributes = $FFFFFFFF then begin
+      Error := NativeError();
+      if (Error <> 2) and (Error <> 3) then exit;
+    end else if (Attributes and FILE_ATTRIBUTE_REPARSE_POINT) <> 0 then exit;
+    Parent := ExtractFileDir(Name);
+    if (Parent = '') or (CompareText(Parent, Name) = 0) then break;
+    Name := Parent;
+  until False;
+  Result := True;
 end;
 
 function EntryName(const Entry: String): String;
