@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import time
 import uuid
 
 from windows_package import ROOT, Workflow, digest, generated, write_json
@@ -52,6 +53,24 @@ def main():
     custom.write_bytes(original)
     run_key = r'Software\Microsoft\Windows\CurrentVersion\Run'
     outcomes = []
+    guard_executable = workflow.build / 'bin/xdstarter_installation_guard_tests.exe'
+    guard_environment = dict(os.environ)
+    guard_environment['PATH'] = str(workflow.qt / 'bin') + os.pathsep + guard_environment.get('PATH', '')
+
+    def wait_for_uninstaller():
+        # Inno's original uninstaller can exit before its temporary engine.
+        # Observe the shared gate, rather than retrying Setup or sleeping blindly.
+        started = time.monotonic()
+        while True:
+            probe = subprocess.run([str(guard_executable), 'install'], input=b'\n',
+                capture_output=True, timeout=5, env=guard_environment)
+            if probe.returncode == 0 and probe.stdout.strip() == b'ready':
+                return round((time.monotonic() - started) * 1000)
+            if probe.returncode != 2:
+                raise ValueError('Uninstaller completion probe failed: ' + str(probe.returncode))
+            if time.monotonic() - started >= 15:
+                raise ValueError('Uninstaller did not release the installation gate')
+            time.sleep(0.05)
 
     def invoke(executable, label, *extra, success=True):
         result = subprocess.run([str(executable), '/VERYSILENT', '/SUPPRESSMSGBOXES',
@@ -59,7 +78,10 @@ def main():
             capture_output=True, timeout=120)
         if (result.returncode == 0) != success:
             raise ValueError(label + ' unexpected exit code ' + str(result.returncode))
-        outcomes.append({'case': label, 'exitCode': result.returncode, 'passed': True})
+        outcome = {'case': label, 'exitCode': result.returncode, 'passed': True}
+        if success and executable.name.casefold().startswith('unins'):
+            outcome['installationGateWaitMs'] = wait_for_uninstaller()
+        outcomes.append(outcome)
 
     def installed_payload_matches():
         for item in audit['files']:
@@ -110,10 +132,8 @@ def main():
         if startup_value() != expected_startup:
             raise ValueError('Upgrade did not honor enabled autostart selection')
 
-        env = dict(os.environ)
-        env['PATH'] = str(workflow.qt / 'bin') + os.pathsep + env.get('PATH', '')
-        guard = subprocess.Popen([str(workflow.build / 'bin/xdstarter_installation_guard_tests.exe'),
-            'runtime'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
+        guard = subprocess.Popen([str(guard_executable), 'runtime'], stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=guard_environment)
         try:
             if guard.stdout.readline().strip() != b'ready':
                 raise ValueError('Native runtime guard fixture did not start')
