@@ -9,6 +9,9 @@ import platform
 import re
 import subprocess
 import sys
+import time
+
+import ci_timing
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = json.loads((ROOT / 'toolchain.json').read_text(encoding='utf-8'))
@@ -18,9 +21,19 @@ BIN = TOOLS / ('Scripts' if WINDOWS else 'bin')
 PYTHON = BIN / ('python.exe' if WINDOWS else 'python')
 
 
-def run(command, **kwargs):
+def run(command, *, phase='tool', **kwargs):
     print('+', subprocess.list2cmdline([str(part) for part in command]), flush=True)
-    return subprocess.run([str(part) for part in command], check=True, cwd=ROOT, **kwargs)
+    kwargs.setdefault('cwd', ROOT)
+    started = time.monotonic_ns()
+    result = None
+    try:
+        result = subprocess.run([str(part) for part in command], check=True, **kwargs)
+        return result
+    except subprocess.CalledProcessError as error:
+        result = error
+        raise
+    finally:
+        ci_timing.record(phase, started, result.returncode if result is not None else None)
 
 
 def capture(command, **kwargs):
@@ -70,14 +83,14 @@ def check_qt(prefix):
 def install(args):
     require_python()
     if not PYTHON.is_file():
-        run([sys.executable, '-m', 'venv', TOOLS])
+        run([sys.executable, '-m', 'venv', TOOLS], phase='venv')
     # Reject a stale venv before mutating its packages.
     actual_python = capture([PYTHON, '-c', 'import platform; print(platform.python_version())'])
     if actual_python != MANIFEST['python']['version']:
         raise ValueError(f'{TOOLS} uses Python {actual_python}; choose a new/clean local cache '
                          'before installing the declared baseline.')
     requirements = [f'{name}=={version}' for name, version in MANIFEST['packages'].items()]
-    run([PYTHON, '-m', 'pip', 'install', '--disable-pip-version-check', *requirements])
+    run([PYTHON, '-m', 'pip', 'install', '--disable-pip-version-check', *requirements], phase='python-packages')
     if args.core_only:
         return
     prefix = qt_prefix(args.qt_prefix)
@@ -89,8 +102,7 @@ def install(args):
         work.mkdir(parents=True, exist_ok=True)
         command = [PYTHON, '-m', 'aqt', 'install-qt', qt['host'], qt['target'],
                    qt['version'], qt['architecture'], '-O', ROOT / MANIFEST['cache']['qt']]
-        print('+', subprocess.list2cmdline([str(part) for part in command]), flush=True)
-        subprocess.run([str(part) for part in command], cwd=work, check=True)
+        run(command, cwd=work, phase='qt-download')
     check_qt(prefix)
 
 
@@ -160,7 +172,7 @@ def build(args):
         if args.distribution:
             configure += ['-DXDSTARTER_BUILD_START_BRIDGE_POC=OFF',
                           '-DXDSTARTER_BUILD_EXPLORER_ROUTE_PROBE=OFF']
-    run(configure, env=environment)
+    run(configure, env=environment, phase='configure')
     if WINDOWS and not args.core_only:
         compiler_files = list((ROOT / 'build' / args.preset / 'CMakeFiles').glob('*/CMakeCXXCompiler.cmake'))
         if not compiler_files:
@@ -177,10 +189,15 @@ def build(args):
         if not args.alternate_msvc and (match[1] != MANIFEST['windows']['compilerVersion'] or
                                       linker[1] != MANIFEST['windows']['linkerVersion']):
             raise ValueError('The selected compiler/linker differ from the declared Windows baseline.')
-    run([tool('cmake'), '--build', '--preset', args.preset, '--parallel', args.parallel], env=environment)
+    run([tool('cmake'), '--build', '--preset', args.preset, '--parallel', args.parallel], env=environment, phase='compile')
     if not args.core_only:
-        run([tool('cmake'), '--build', 'build/' + args.preset, '--target', 'xdstarter_qmllint'], env=environment)
-    run([tool('ctest'), '--preset', args.preset], env=environment)
+        run([tool('cmake'), '--build', 'build/' + args.preset, '--target', 'xdstarter_qmllint'], env=environment, phase='qml-lint')
+    ctest = [tool('ctest'), '--preset', args.preset]
+    if evidence := os.environ.get('XDSTARTER_CI_EVIDENCE'):
+        directory = Path(evidence).resolve()
+        directory.mkdir(parents=True, exist_ok=True)
+        ctest += ['--output-log', str(directory / 'ctest.log')]
+    run(ctest, env=environment, phase='ctest')
     if not args.core_only:
         if source != source_identity():
             raise ValueError('Source changed during build/test; repeat with stable source.')

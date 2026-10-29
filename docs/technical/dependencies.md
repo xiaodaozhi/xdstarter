@@ -30,6 +30,8 @@ xdzip 根 CMake 最低要求 3.24，其 CI 的 CMake/Ninja/Python 依赖 runner�
 
 Python 包通过 PyPI 精确版本取得，项目工具保存在忽略的 `build/tooling/`；默认 Qt 缓存在 `build/Qt/`。版本检查同时核对包元数据、CMake/Ninja 可执行文件及 qmake 返回的 Qt 版本；本地结果保存在 `build/<preset>/toolchain-validation.json`。脚本不把所有传递依赖逐一固定，也未增加完整下载哈希锁，因此不能称作完整离线/位级可复现环境。首次获取需要网络，已安装相同工具和 SDK 时无需重复下载。
 
+[#92](https://github.com/xiaodaozhi/xdstarter/issues/92) 的 CI 缓存仅覆盖 Windows 打包清单中已有供应商 URL 与 SHA-256 的原始下载；键包含完整来源及哈希，恢复后在使用前逐项核验，并拒绝非精确键、额外文件和链接。仅 `main` 推送保存这些公开输入，工具解压目录、Qt SDK、Python 环境、构建产物和测试结论均不进入缓存。缓存不构成供应商签名校验，也不改变 Python 或 Qt SDK 尚无完整字节锁定的事实。工作流、分类与证据边界见[测试策略](testing.md)。
+
 应用 CI 固定 actions/checkout、actions/setup-python 与 Windows 使用的 astral-sh/setup-uv 提交；Python 补丁与工具版本由清单读取。Python 3.12.13 为仅源码安全版本，官方不提供该版 Windows 安装器；Windows CI 通过固定版本 uv 获取与本机相同渠道的 CPython，显式定位解释器后传入现有构建入口，严格版本检查保持不变。Linux 核心任务继续使用 setup-python。`windows-2022` runner 的 MSVC 2022/SDK 随镜像变化，仅作为显式附加兼容验证，不冒充上述 v142/19041 精确基线；实际日志记录其选择结果。Ubuntu 核心检查使用 runner 的 C++20 编译器，不提供 Qt/Windows 验收结论。Actions 恢复和检查证据见 [#12](https://github.com/xiaodaozhi/xdstarter/issues/12) 与 [PR #17](https://github.com/xiaodaozhi/xdstarter/pull/17)。
 
 所有工作流的 `actions/checkout` 统一固定为 [v7.0.1](https://github.com/actions/checkout/releases/tag/v7.0.1) 的 `3d3c42e5aac5ba805825da76410c181273ba90b1`，并保留 `persist-credentials: false` 与原有最小权限。该 Action 使用 Node 24；[官方升级说明](https://github.com/actions/checkout/blob/v7.0.1/README.md#whats-new)增加 ESM 与受信任事件中的 fork 检出限制。当前工作流仅使用 `push`、`pull_request` 和 `workflow_dispatch`，无需开启 `allow-unsafe-pr-checkout`。项目初始化的 `--apply` 仅在匹配路径的 `main` 推送或手动触发时执行；PR 中只运行初始化预览和安全、幂等单测，不将预览结果表述为实际写入验收。依赖维护与更新基线后的检查记录见 [PR #1](https://github.com/xiaodaozhi/xdstarter/pull/1)。
