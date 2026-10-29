@@ -78,6 +78,12 @@
           "run": "$pythonVersion = '${{ steps.toolchain.outputs.python }}'\nuv python install $pythonVersion\nif ($LASTEXITCODE -ne 0) { throw 'Declared Python acquisition failed.' }\n$pythonPath = (uv python find --managed-python $pythonVersion).Trim()\nif ($LASTEXITCODE -ne 0 -or !$pythonPath) { throw 'Cannot locate declared managed Python.' }\n./scripts/build-windows.ps1 -Toolchain MSVC2022 -InstallTools -Python $pythonPath -Fresh -Distribution -BuildNumber $env:GITHUB_RUN_NUMBER"
         },
         {
+          "name": "Record smoke startup phases",
+          "if": "always()",
+          "shell": "pwsh",
+          "run": "$test = Join-Path $PWD 'build/app-release/bin/xdstarter.exe'\n$ctest = Join-Path $PWD 'build/tooling/Scripts/ctest.exe'\nif (!(Test-Path $test) -or !(Test-Path $ctest)) { Write-Host 'Smoke binary or CTest unavailable; phase comparison skipped.'; exit 0 }\n$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$env:TEMP = Join-Path $PWD 'build/tmp'\n$env:TMP = $env:TEMP\n& $ctest --test-dir build/app-release -R '^app\\.qml_smoke$' --verbose --no-tests=error\nif ($LASTEXITCODE -ne 0) { throw 'Smoke startup phase check failed.' }"
+        },
+        {
           "name": "Compare failed Shell fixture in the user profile",
           "if": "failure()",
           "shell": "pwsh",
