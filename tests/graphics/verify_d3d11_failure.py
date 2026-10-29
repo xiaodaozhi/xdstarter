@@ -216,7 +216,9 @@ def verify(args):
                     while resident.poll() is None and time.monotonic() < deadline:
                         try:
                             snapshot = json.loads(diagnostics.read_text(encoding='utf-8'))
-                            ready = snapshot.get('processId') == resident.pid
+                            ready = (snapshot.get('processId') == resident.pid and
+                                     snapshot.get('sessionActive') is True and
+                                     snapshot.get('hookInstalled') is True)
                             if ready:
                                 initial = snapshot
                         except (OSError, ValueError):
@@ -224,9 +226,9 @@ def verify(args):
                         if ready:
                             break
                         time.sleep(0.1)
-                    if resident.poll() is None:
-                        if not ready:
-                            raise ValueError('Resident process did not publish its readiness snapshot')
+                    if not ready and resident.poll() is None:
+                        raise ValueError('Resident input capture was not observed active before failure')
+                    if ready and resident.poll() is None:
                         activation = subprocess.run([str(runtime / 'xdstarter.exe'), '--layout-file', str(layout),
                             '--start-capture-diagnostics', str(owned / 'activation-diagnostics.json'),
                             '--start-capture-duration', '25'], cwd=owned, env=resident_env,
@@ -247,6 +249,8 @@ def verify(args):
             resident_elapsed = time.monotonic() - started
             for notice_pid in notice_pids:
                 wait_for_owned_notice(int(notice_pid), runtime / 'xdstarter.exe')
+            if not ready:
+                raise ValueError('Resident input capture was not observed active before failure')
             if (resident.returncode == 0 or 'Graphics initialization failed:' not in output_text or
                     output_text.count('action=injected-failure') < 2):
                 raise ValueError('Resident process did not handle the injected graphics failure')
