@@ -70,7 +70,8 @@ class DesktopWindowHost final : public QObject {
   private:
     void requestPlacement();
     void toggleWindowFrom(const QString &source);
-    void updateRecovery(bool available, const QString &message);
+    void beginTrayReset();
+    void updateRecovery(bool available, const QString &message, bool deferRecoverySurface = false);
     void publishStatus();
     void publishWinKeyCapture();
     void publishStartButtonCapture();
