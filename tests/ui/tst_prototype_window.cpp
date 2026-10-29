@@ -58,9 +58,47 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <iterator>
 #include <memory>
 
+#ifdef Q_OS_WIN
+#include <qt_windows.h>
+#ifdef small
+#undef small
+#endif
+#endif
+
 namespace {
+
+#ifdef Q_OS_WIN
+struct NativeDialogLookup {
+    DWORD processId;
+    HWND owner;
+    QString title;
+    HWND result = nullptr;
+};
+
+BOOL CALLBACK findNativeDialogWindow(HWND candidate, LPARAM parameter) {
+    auto& lookup = *reinterpret_cast<NativeDialogLookup*>(parameter);
+    DWORD processId = 0;
+    GetWindowThreadProcessId(candidate, &processId);
+    if (processId != lookup.processId || GetWindow(candidate, GW_OWNER) != lookup.owner ||
+        !IsWindowVisible(candidate))
+        return TRUE;
+    wchar_t title[512]{};
+    GetWindowTextW(candidate, title, int(std::size(title)));
+    if (QString::fromWCharArray(title) != lookup.title)
+        return TRUE;
+    lookup.result = candidate;
+    return FALSE;
+}
+
+HWND visibleNativeDialog(QWindow* owner, const QString& title) {
+    NativeDialogLookup lookup{GetCurrentProcessId(), reinterpret_cast<HWND>(owner->winId()), title};
+    EnumWindows(findNativeDialogWindow, reinterpret_cast<LPARAM>(&lookup));
+    return lookup.result;
+}
+#endif
 
 QColor compositeOver(const QColor& foreground, const QColor& background) {
     const auto alpha = foreground.alphaF();
@@ -5760,10 +5798,27 @@ void PrototypeWindowTest::layoutImportFailureAndExitFence() {
 }
 
 void PrototypeWindowTest::layoutImportFilePickerOwnership() {
+#ifdef Q_OS_WIN
+    const auto diagnostic = qEnvironmentVariable("XDSTARTER_NATIVE_PICKER_DIAGNOSTIC");
+    if (!diagnostic.isEmpty()) {
+        QVERIFY(diagnostic == QLatin1String("immediate") || diagnostic == QLatin1String("shown"));
+        QCOMPARE(qEnvironmentVariable("GITHUB_ACTIONS"), QStringLiteral("true"));
+        QCOMPARE(qEnvironmentVariable("RUNNER_ENVIRONMENT"), QStringLiteral("github-hosted"));
+        QCOMPARE(QGuiApplication::platformName(), QStringLiteral("windows"));
+    }
+#endif
     QTemporaryDir directory;
     destroyWindow();
     createWindow(directory.filePath(QStringLiteral("current.json")), false);
+#ifdef Q_OS_WIN
+    if (!diagnostic.isEmpty())
+        QCOMPARE(window_->rendererInterface()->graphicsApi(), QSGRendererInterface::Direct3D11);
+#endif
     for (const bool dark : {true, false}) {
+#ifdef Q_OS_WIN
+        QElapsedTimer pickerClock;
+        pickerClock.start();
+#endif
         controller_->setDarkTheme(dark);
         openMoreMenu();
         QVERIFY(item(QStringLiteral("importLayoutButton"))->isEnabled());
@@ -5779,6 +5834,19 @@ void PrototypeWindowTest::layoutImportFilePickerOwnership() {
         QCOMPARE(picker->property("modality").toInt(), int(Qt::WindowModal));
         QVERIFY(window_->property("internalPopupVisible").toBool());
         QVERIFY(window_->property("dismissalBlocked").toBool());
+#ifdef Q_OS_WIN
+        if (!diagnostic.isEmpty()) {
+            if (diagnostic == QLatin1String("shown")) {
+                QTRY_VERIFY_WITH_TIMEOUT(
+                    visibleNativeDialog(window_, picker->property("title").toString()), 5000);
+            }
+            qInfo() << "Native picker before close:" << diagnostic << "dark=" << dark
+                    << "elapsedMs=" << pickerClock.elapsed()
+                    << "qmlVisible=" << picker->property("visible").toBool()
+                    << "nativeVisible=" << bool(visibleNativeDialog(
+                           window_, picker->property("title").toString()));
+        }
+#endif
         // The offscreen backend may use a fallback. Native HWND ownership and
         // focus handoffs require a separate Windows product-window acceptance.
         if (dark)
@@ -5789,6 +5857,19 @@ void PrototypeWindowTest::layoutImportFilePickerOwnership() {
         QTRY_VERIFY(!window_->property("internalPopupVisible").toBool());
         QVERIFY(!window_->property("dismissalBlocked").toBool());
         QVERIFY(window_->isVisible());
+#ifdef Q_OS_WIN
+        if (!diagnostic.isEmpty()) {
+            if (diagnostic == QLatin1String("shown")) {
+                QTRY_VERIFY_WITH_TIMEOUT(
+                    !visibleNativeDialog(window_, picker->property("title").toString()), 5000);
+            }
+            qInfo() << "Native picker after close:" << diagnostic << "dark=" << dark
+                    << "elapsedMs=" << pickerClock.elapsed()
+                    << "qmlVisible=" << picker->property("visible").toBool()
+                    << "nativeVisible=" << bool(visibleNativeDialog(
+                           window_, picker->property("title").toString()));
+        }
+#endif
     }
 }
 

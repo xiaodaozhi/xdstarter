@@ -58,6 +58,16 @@ if(WIN32 AND "$ENV{GITHUB_ACTIONS}" STREQUAL "true" AND
         ENVIRONMENT "QT_QPA_PLATFORM=windows;QSG_RHI_BACKEND=d3d11;QSG_INFO=1;QT_FORCE_STDERR_LOGGING=1;XDSTARTER_TEST_REQUIRE_D3D11=1"
         WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
         TIMEOUT 60)
+    set(picker_evidence "${PROJECT_BINARY_DIR}/native-picker-evidence")
+    file(MAKE_DIRECTORY "${picker_evidence}")
+    foreach(picker_mode IN ITEMS immediate shown)
+        add_test(NAME ui.native-picker-${picker_mode} COMMAND xdstarter_ui_tests
+            layoutImportFilePickerOwnership -o "${picker_evidence}/${picker_mode}.log,txt")
+        set_tests_properties(ui.native-picker-${picker_mode} PROPERTIES
+            ENVIRONMENT "QT_QPA_PLATFORM=windows;QSG_RHI_BACKEND=d3d11;QSG_INFO=1;QT_FORCE_STDERR_LOGGING=1;QT_LOGGING_RULES=qt.qpa.dialogs.debug=true;XDSTARTER_NATIVE_PICKER_DIAGNOSTIC=${picker_mode}"
+            WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
+            TIMEOUT 60)
+    endforeach()
     set(contrast_evidence "${PROJECT_BINARY_DIR}/high-contrast-native-evidence")
     file(MAKE_DIRECTORY "${contrast_evidence}")
     add_test(NAME ui.high-contrast-native COMMAND xdstarter_ui_tests
