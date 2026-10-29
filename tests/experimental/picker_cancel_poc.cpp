@@ -234,14 +234,13 @@ int wmain(int argc, wchar_t** argv) {
         printResult("pre-cancel", before, false);
     }
     {
-        Request raced(ownerA, L"XDStarter picker PoC raced");
+        Request raced(ownerA, L"XDStarter picker PoC shared title");
         start(raced, false);
         require(waitEvent(raced.checked, 10000), "raced check");
         require(SUCCEEDED(raced.setupResult.load()), "raced setup");
         raced.cancel = true;
-        SetEvent(raced.proceed);
 
-        Request next(ownerB, L"XDStarter picker PoC subsequent");
+        Request next(ownerB, L"XDStarter picker PoC shared title");
         start(next, false);
         require(waitEvent(next.checked, 10000), "next check");
         require(SUCCEEDED(next.setupResult.load()), "next setup");
@@ -250,6 +249,8 @@ int wmain(int argc, wchar_t** argv) {
         Lookup wrongOwner{ownerA, &next.title};
         EnumWindows(findDialog, reinterpret_cast<LPARAM>(&wrongOwner));
         require(!wrongOwner.found, "owner identity prevents matching later request");
+        require(WaitForSingleObject(raced.finished, 0) == WAIT_TIMEOUT,
+                "raced request remains pending while next is visible");
         bool lateObserved = false;
         require(cancelAndWait(raced, 10000, &lateObserved), "raced cancellation finishes");
         require(raced.callbacks.load() > 0 || lateObserved, "raced Show reached a callback or visible window");
