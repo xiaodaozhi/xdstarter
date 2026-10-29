@@ -1,0 +1,1935 @@
+{
+  "schemaVersion": 1,
+  "capturedAtUtc": "2026-10-29T10:44:46.493758+00:00",
+  "binarySha256": "f1b2d8d7d37405a4d944a066ef50a6dc7a18bd0aca39f653d714945ffd00a7f9",
+  "scope": "synthetic search service; index ready; no QML, real catalog or native input",
+  "percentileMethod": "nearest rank; 100 samples; p50=50th and p95=95th",
+  "cases": [
+    {
+      "aliasesPerEntry": 1,
+      "binarySha256": "f1b2d8d7d37405a4d944a066ef50a6dc7a18bd0aca39f653d714945ffd00a7f9",
+      "buildAbi": "x86_64-little_endian-llp64",
+      "buildMilliseconds": 0.009,
+      "compiler": "MSVC 192930159",
+      "dataset": "synthetic-offline-applications-v1",
+      "directLookup": {
+        "matchCountChecksum": 0,
+        "maximumMilliseconds": 0.0019,
+        "p50Milliseconds": 0.0012,
+        "p95Milliseconds": 0.0015
+      },
+      "distinctMeasuredQueries": 100,
+      "entries": 0,
+      "kernelVersion": "10.0.26300",
+      "matchCountChecksum": 0,
+      "measuredQueries": 100,
+      "monotonicClock": true,
+      "perQueryResultsIdentical": true,
+      "perQueryTimeoutMilliseconds": 5000,
+      "qtBuildVersion": "6.8.2",
+      "qtRuntimeVersion": "6.8.2",
+      "querySet": "ten-families-ten-numbers-v2",
+      "releaseNdebug": true,
+      "reportVersion": 2,
+      "resultLimit": 100,
+      "samples": [
+        {
+          "directMilliseconds": 0.0012,
+          "matchCount": 0,
+          "query": "paint 0",
+          "serviceMilliseconds": 0.181
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "huatugongju 1",
+          "serviceMilliseconds": 0.186
+        },
+        {
+          "directMilliseconds": 0.0008,
+          "matchCount": 0,
+          "query": "htgj 1",
+          "serviceMilliseconds": 0.0981
+        },
+        {
+          "directMilliseconds": 0.0014,
+          "matchCount": 0,
+          "query": "chongqingyinhang 2",
+          "serviceMilliseconds": 0.1819
+        },
+        {
+          "directMilliseconds": 0.0007,
+          "matchCount": 0,
+          "query": "cqyh 2",
+          "serviceMilliseconds": 0.1325
+        },
+        {
+          "directMilliseconds": 0.0016,
+          "matchCount": 0,
+          "query": "lvseyingyong 3",
+          "serviceMilliseconds": 0.1476
+        },
+        {
+          "directMilliseconds": 0.0015,
+          "matchCount": 0,
+          "query": "calculator 6",
+          "serviceMilliseconds": 0.229
+        },
+        {
+          "directMilliseconds": 0.0004,
+          "matchCount": 0,
+          "query": "找不到应用 0",
+          "serviceMilliseconds": 0.1511
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "Studio 4",
+          "serviceMilliseconds": 0.1807
+        },
+        {
+          "directMilliseconds": 0.0004,
+          "matchCount": 0,
+          "query": "常用工具 7",
+          "serviceMilliseconds": 0.1882
+        },
+        {
+          "directMilliseconds": 0.0011,
+          "matchCount": 0,
+          "query": "paint 8",
+          "serviceMilliseconds": 0.213
+        },
+        {
+          "directMilliseconds": 0.0015,
+          "matchCount": 0,
+          "query": "huatugongju 9",
+          "serviceMilliseconds": 0.5843
+        },
+        {
+          "directMilliseconds": 0.0012,
+          "matchCount": 0,
+          "query": "htgj 9",
+          "serviceMilliseconds": 0.303
+        },
+        {
+          "directMilliseconds": 0.0019,
+          "matchCount": 0,
+          "query": "chongqingyinhang 10",
+          "serviceMilliseconds": 0.1707
+        },
+        {
+          "directMilliseconds": 0.0011,
+          "matchCount": 0,
+          "query": "cqyh 10",
+          "serviceMilliseconds": 0.2841
+        },
+        {
+          "directMilliseconds": 0.0016,
+          "matchCount": 0,
+          "query": "lvseyingyong 11",
+          "serviceMilliseconds": 0.1383
+        },
+        {
+          "directMilliseconds": 0.0014,
+          "matchCount": 0,
+          "query": "calculator 14",
+          "serviceMilliseconds": 0.1281
+        },
+        {
+          "directMilliseconds": 0.0004,
+          "matchCount": 0,
+          "query": "找不到应用 8",
+          "serviceMilliseconds": 0.1236
+        },
+        {
+          "directMilliseconds": 0.0014,
+          "matchCount": 0,
+          "query": "Studio 12",
+          "serviceMilliseconds": 0.0991
+        },
+        {
+          "directMilliseconds": 0.0004,
+          "matchCount": 0,
+          "query": "常用工具 15",
+          "serviceMilliseconds": 0.4275
+        },
+        {
+          "directMilliseconds": 0.001,
+          "matchCount": 0,
+          "query": "paint 16",
+          "serviceMilliseconds": 0.0506
+        },
+        {
+          "directMilliseconds": 0.0016,
+          "matchCount": 0,
+          "query": "huatugongju 17",
+          "serviceMilliseconds": 0.0422
+        },
+        {
+          "directMilliseconds": 0.001,
+          "matchCount": 0,
+          "query": "htgj 17",
+          "serviceMilliseconds": 0.0402
+        },
+        {
+          "directMilliseconds": 0.0015,
+          "matchCount": 0,
+          "query": "chongqingyinhang 18",
+          "serviceMilliseconds": 0.0418
+        },
+        {
+          "directMilliseconds": 0.0009,
+          "matchCount": 0,
+          "query": "cqyh 18",
+          "serviceMilliseconds": 0.0404
+        },
+        {
+          "directMilliseconds": 0.0014,
+          "matchCount": 0,
+          "query": "lvseyingyong 19",
+          "serviceMilliseconds": 0.0414
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "calculator 22",
+          "serviceMilliseconds": 0.0414
+        },
+        {
+          "directMilliseconds": 0.0004,
+          "matchCount": 0,
+          "query": "找不到应用 16",
+          "serviceMilliseconds": 0.0393
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "Studio 20",
+          "serviceMilliseconds": 0.0435
+        },
+        {
+          "directMilliseconds": 0.0004,
+          "matchCount": 0,
+          "query": "常用工具 23",
+          "serviceMilliseconds": 0.0844
+        },
+        {
+          "directMilliseconds": 0.001,
+          "matchCount": 0,
+          "query": "paint 24",
+          "serviceMilliseconds": 0.2871
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "huatugongju 25",
+          "serviceMilliseconds": 0.2765
+        },
+        {
+          "directMilliseconds": 0.0009,
+          "matchCount": 0,
+          "query": "htgj 25",
+          "serviceMilliseconds": 0.1461
+        },
+        {
+          "directMilliseconds": 0.0014,
+          "matchCount": 0,
+          "query": "chongqingyinhang 26",
+          "serviceMilliseconds": 0.1469
+        },
+        {
+          "directMilliseconds": 0.0009,
+          "matchCount": 0,
+          "query": "cqyh 26",
+          "serviceMilliseconds": 0.2044
+        },
+        {
+          "directMilliseconds": 0.0014,
+          "matchCount": 0,
+          "query": "lvseyingyong 27",
+          "serviceMilliseconds": 0.2204
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "calculator 30",
+          "serviceMilliseconds": 0.2104
+        },
+        {
+          "directMilliseconds": 0.0004,
+          "matchCount": 0,
+          "query": "找不到应用 24",
+          "serviceMilliseconds": 0.1549
+        },
+        {
+          "directMilliseconds": 0.0012,
+          "matchCount": 0,
+          "query": "Studio 28",
+          "serviceMilliseconds": 0.2462
+        },
+        {
+          "directMilliseconds": 0.0003,
+          "matchCount": 0,
+          "query": "常用工具 31",
+          "serviceMilliseconds": 0.2639
+        },
+        {
+          "directMilliseconds": 0.0009,
+          "matchCount": 0,
+          "query": "paint 32",
+          "serviceMilliseconds": 0.1865
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "huatugongju 33",
+          "serviceMilliseconds": 0.1123
+        },
+        {
+          "directMilliseconds": 0.0009,
+          "matchCount": 0,
+          "query": "htgj 33",
+          "serviceMilliseconds": 0.1053
+        },
+        {
+          "directMilliseconds": 0.0014,
+          "matchCount": 0,
+          "query": "chongqingyinhang 34",
+          "serviceMilliseconds": 0.1096
+        },
+        {
+          "directMilliseconds": 0.0008,
+          "matchCount": 0,
+          "query": "cqyh 34",
+          "serviceMilliseconds": 0.1037
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "lvseyingyong 35",
+          "serviceMilliseconds": 0.1263
+        },
+        {
+          "directMilliseconds": 0.0012,
+          "matchCount": 0,
+          "query": "calculator 38",
+          "serviceMilliseconds": 0.1578
+        },
+        {
+          "directMilliseconds": 0.0003,
+          "matchCount": 0,
+          "query": "找不到应用 32",
+          "serviceMilliseconds": 0.1554
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "Studio 36",
+          "serviceMilliseconds": 0.2015
+        },
+        {
+          "directMilliseconds": 0.0004,
+          "matchCount": 0,
+          "query": "常用工具 39",
+          "serviceMilliseconds": 0.1678
+        },
+        {
+          "directMilliseconds": 0.0009,
+          "matchCount": 0,
+          "query": "paint 40",
+          "serviceMilliseconds": 0.1819
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "huatugongju 41",
+          "serviceMilliseconds": 0.1108
+        },
+        {
+          "directMilliseconds": 0.0009,
+          "matchCount": 0,
+          "query": "htgj 41",
+          "serviceMilliseconds": 0.1636
+        },
+        {
+          "directMilliseconds": 0.0014,
+          "matchCount": 0,
+          "query": "chongqingyinhang 42",
+          "serviceMilliseconds": 0.1846
+        },
+        {
+          "directMilliseconds": 0.0009,
+          "matchCount": 0,
+          "query": "cqyh 42",
+          "serviceMilliseconds": 0.1299
+        },
+        {
+          "directMilliseconds": 0.0012,
+          "matchCount": 0,
+          "query": "lvseyingyong 43",
+          "serviceMilliseconds": 0.1167
+        },
+        {
+          "directMilliseconds": 0.0012,
+          "matchCount": 0,
+          "query": "calculator 46",
+          "serviceMilliseconds": 0.1005
+        },
+        {
+          "directMilliseconds": 0.0004,
+          "matchCount": 0,
+          "query": "找不到应用 40",
+          "serviceMilliseconds": 0.0655
+        },
+        {
+          "directMilliseconds": 0.0015,
+          "matchCount": 0,
+          "query": "Studio 44",
+          "serviceMilliseconds": 0.1166
+        },
+        {
+          "directMilliseconds": 0.0003,
+          "matchCount": 0,
+          "query": "常用工具 47",
+          "serviceMilliseconds": 0.0906
+        },
+        {
+          "directMilliseconds": 0.001,
+          "matchCount": 0,
+          "query": "paint 48",
+          "serviceMilliseconds": 0.1203
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "huatugongju 49",
+          "serviceMilliseconds": 0.1539
+        },
+        {
+          "directMilliseconds": 0.0009,
+          "matchCount": 0,
+          "query": "htgj 49",
+          "serviceMilliseconds": 0.113
+        },
+        {
+          "directMilliseconds": 0.0014,
+          "matchCount": 0,
+          "query": "chongqingyinhang 50",
+          "serviceMilliseconds": 0.0896
+        },
+        {
+          "directMilliseconds": 0.0009,
+          "matchCount": 0,
+          "query": "cqyh 50",
+          "serviceMilliseconds": 0.1518
+        },
+        {
+          "directMilliseconds": 0.0014,
+          "matchCount": 0,
+          "query": "lvseyingyong 51",
+          "serviceMilliseconds": 0.1333
+        },
+        {
+          "directMilliseconds": 0.0014,
+          "matchCount": 0,
+          "query": "calculator 54",
+          "serviceMilliseconds": 0.1179
+        },
+        {
+          "directMilliseconds": 0.0004,
+          "matchCount": 0,
+          "query": "找不到应用 48",
+          "serviceMilliseconds": 0.1632
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "Studio 52",
+          "serviceMilliseconds": 0.1571
+        },
+        {
+          "directMilliseconds": 0.0003,
+          "matchCount": 0,
+          "query": "常用工具 55",
+          "serviceMilliseconds": 0.1807
+        },
+        {
+          "directMilliseconds": 0.0009,
+          "matchCount": 0,
+          "query": "paint 56",
+          "serviceMilliseconds": 0.3598
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "huatugongju 57",
+          "serviceMilliseconds": 0.424
+        },
+        {
+          "directMilliseconds": 0.0008,
+          "matchCount": 0,
+          "query": "htgj 57",
+          "serviceMilliseconds": 0.0922
+        },
+        {
+          "directMilliseconds": 0.0015,
+          "matchCount": 0,
+          "query": "chongqingyinhang 58",
+          "serviceMilliseconds": 0.0452
+        },
+        {
+          "directMilliseconds": 0.0009,
+          "matchCount": 0,
+          "query": "cqyh 58",
+          "serviceMilliseconds": 0.0414
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "lvseyingyong 59",
+          "serviceMilliseconds": 0.0409
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "calculator 62",
+          "serviceMilliseconds": 0.0416
+        },
+        {
+          "directMilliseconds": 0.0003,
+          "matchCount": 0,
+          "query": "找不到应用 56",
+          "serviceMilliseconds": 0.0417
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "Studio 60",
+          "serviceMilliseconds": 0.0419
+        },
+        {
+          "directMilliseconds": 0.0004,
+          "matchCount": 0,
+          "query": "常用工具 63",
+          "serviceMilliseconds": 0.0414
+        },
+        {
+          "directMilliseconds": 0.0009,
+          "matchCount": 0,
+          "query": "paint 64",
+          "serviceMilliseconds": 0.0416
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "huatugongju 65",
+          "serviceMilliseconds": 0.0426
+        },
+        {
+          "directMilliseconds": 0.0008,
+          "matchCount": 0,
+          "query": "htgj 65",
+          "serviceMilliseconds": 0.0412
+        },
+        {
+          "directMilliseconds": 0.0014,
+          "matchCount": 0,
+          "query": "chongqingyinhang 66",
+          "serviceMilliseconds": 0.1328
+        },
+        {
+          "directMilliseconds": 0.0009,
+          "matchCount": 0,
+          "query": "cqyh 66",
+          "serviceMilliseconds": 0.1278
+        },
+        {
+          "directMilliseconds": 0.0014,
+          "matchCount": 0,
+          "query": "lvseyingyong 67",
+          "serviceMilliseconds": 0.1775
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "calculator 70",
+          "serviceMilliseconds": 0.1935
+        },
+        {
+          "directMilliseconds": 0.0004,
+          "matchCount": 0,
+          "query": "找不到应用 64",
+          "serviceMilliseconds": 0.1988
+        },
+        {
+          "directMilliseconds": 0.0014,
+          "matchCount": 0,
+          "query": "Studio 68",
+          "serviceMilliseconds": 0.1808
+        },
+        {
+          "directMilliseconds": 0.0003,
+          "matchCount": 0,
+          "query": "常用工具 71",
+          "serviceMilliseconds": 0.224
+        },
+        {
+          "directMilliseconds": 0.001,
+          "matchCount": 0,
+          "query": "paint 72",
+          "serviceMilliseconds": 0.1323
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "huatugongju 73",
+          "serviceMilliseconds": 0.1961
+        },
+        {
+          "directMilliseconds": 0.0009,
+          "matchCount": 0,
+          "query": "htgj 73",
+          "serviceMilliseconds": 0.1802
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "chongqingyinhang 74",
+          "serviceMilliseconds": 0.3022
+        },
+        {
+          "directMilliseconds": 0.0009,
+          "matchCount": 0,
+          "query": "cqyh 74",
+          "serviceMilliseconds": 0.1834
+        },
+        {
+          "directMilliseconds": 0.0013,
+          "matchCount": 0,
+          "query": "lvseyingyong 75",
+          "serviceMilliseconds": 0.1279
+        },
+        {
+          "directMilliseconds": 0.0012,
+          "matchCount": 0,
+          "query": "calculator 78",
+          "serviceMilliseconds": 0.1248
+        },
+        {
+          "directMilliseconds": 0.0003,
+          "matchCount": 0,
+          "query": "找不到应用 72",
+          "serviceMilliseconds": 0.1435
+        },
+        {
+          "directMilliseconds": 0.0014,
+          "matchCount": 0,
+          "query": "Studio 76",
+          "serviceMilliseconds": 0.1655
+        },
+        {
+          "directMilliseconds": 0.0003,
+          "matchCount": 0,
+          "query": "常用工具 79",
+          "serviceMilliseconds": 0.1268
+        }
+      ],
+      "searchMaximumMilliseconds": 0.0019,
+      "searchP50Milliseconds": 0.0012,
+      "searchP95Milliseconds": 0.0015,
+      "serviceIndexReadyMilliseconds": 2.8165,
+      "serviceRoundTrip": {
+        "matchCountChecksum": 0,
+        "maximumMilliseconds": 0.5843,
+        "p50Milliseconds": 0.1383,
+        "p95Milliseconds": 0.3022
+      },
+      "serviceRoundTripBoundary": "setQuery-to-GUI-results-accepted; includes-worker-queue; excludes-QML",
+      "warmupQueries": 20
+    },
+    {
+      "aliasesPerEntry": 1,
+      "binarySha256": "f1b2d8d7d37405a4d944a066ef50a6dc7a18bd0aca39f653d714945ffd00a7f9",
+      "buildAbi": "x86_64-little_endian-llp64",
+      "buildMilliseconds": 26.4118,
+      "compiler": "MSVC 192930159",
+      "dataset": "synthetic-offline-applications-v1",
+      "directLookup": {
+        "matchCountChecksum": 501,
+        "maximumMilliseconds": 11.223,
+        "p50Milliseconds": 5.4924,
+        "p95Milliseconds": 7.0339
+      },
+      "distinctMeasuredQueries": 100,
+      "entries": 1000,
+      "kernelVersion": "10.0.26300",
+      "matchCountChecksum": 501,
+      "measuredQueries": 100,
+      "monotonicClock": true,
+      "perQueryResultsIdentical": true,
+      "perQueryTimeoutMilliseconds": 5000,
+      "qtBuildVersion": "6.8.2",
+      "qtRuntimeVersion": "6.8.2",
+      "querySet": "ten-families-ten-numbers-v2",
+      "releaseNdebug": true,
+      "reportVersion": 2,
+      "resultLimit": 100,
+      "samples": [
+        {
+          "directMilliseconds": 7.1205,
+          "matchCount": 1,
+          "query": "paint 0",
+          "serviceMilliseconds": 7.7666
+        },
+        {
+          "directMilliseconds": 5.5021,
+          "matchCount": 14,
+          "query": "huatugongju 1",
+          "serviceMilliseconds": 6.3939
+        },
+        {
+          "directMilliseconds": 4.6622,
+          "matchCount": 14,
+          "query": "htgj 1",
+          "serviceMilliseconds": 6.0523
+        },
+        {
+          "directMilliseconds": 5.33,
+          "matchCount": 15,
+          "query": "chongqingyinhang 2",
+          "serviceMilliseconds": 6.8418
+        },
+        {
+          "directMilliseconds": 4.9741,
+          "matchCount": 15,
+          "query": "cqyh 2",
+          "serviceMilliseconds": 7.4679
+        },
+        {
+          "directMilliseconds": 3.6197,
+          "matchCount": 14,
+          "query": "lvseyingyong 3",
+          "serviceMilliseconds": 6.8176
+        },
+        {
+          "directMilliseconds": 6.0263,
+          "matchCount": 14,
+          "query": "calculator 6",
+          "serviceMilliseconds": 6.7113
+        },
+        {
+          "directMilliseconds": 0.1745,
+          "matchCount": 0,
+          "query": "找不到应用 0",
+          "serviceMilliseconds": 0.5388
+        },
+        {
+          "directMilliseconds": 5.9108,
+          "matchCount": 14,
+          "query": "Studio 4",
+          "serviceMilliseconds": 6.0425
+        },
+        {
+          "directMilliseconds": 0.2869,
+          "matchCount": 111,
+          "query": "常用工具 7",
+          "serviceMilliseconds": 0.5295
+        },
+        {
+          "directMilliseconds": 5.9521,
+          "matchCount": 16,
+          "query": "paint 8",
+          "serviceMilliseconds": 6.5452
+        },
+        {
+          "directMilliseconds": 5.5675,
+          "matchCount": 14,
+          "query": "huatugongju 9",
+          "serviceMilliseconds": 7.0172
+        },
+        {
+          "directMilliseconds": 5.5218,
+          "matchCount": 14,
+          "query": "htgj 9",
+          "serviceMilliseconds": 6.3101
+        },
+        {
+          "directMilliseconds": 4.8774,
+          "matchCount": 2,
+          "query": "chongqingyinhang 10",
+          "serviceMilliseconds": 6.8321
+        },
+        {
+          "directMilliseconds": 6.7783,
+          "matchCount": 2,
+          "query": "cqyh 10",
+          "serviceMilliseconds": 6.4264
+        },
+        {
+          "directMilliseconds": 5.8818,
+          "matchCount": 2,
+          "query": "lvseyingyong 11",
+          "serviceMilliseconds": 6.7808
+        },
+        {
+          "directMilliseconds": 4.3875,
+          "matchCount": 2,
+          "query": "calculator 14",
+          "serviceMilliseconds": 7.1623
+        },
+        {
+          "directMilliseconds": 0.1308,
+          "matchCount": 0,
+          "query": "找不到应用 8",
+          "serviceMilliseconds": 0.4297
+        },
+        {
+          "directMilliseconds": 4.938,
+          "matchCount": 2,
+          "query": "Studio 12",
+          "serviceMilliseconds": 6.9901
+        },
+        {
+          "directMilliseconds": 0.1929,
+          "matchCount": 11,
+          "query": "常用工具 15",
+          "serviceMilliseconds": 0.5325
+        },
+        {
+          "directMilliseconds": 4.6343,
+          "matchCount": 3,
+          "query": "paint 16",
+          "serviceMilliseconds": 7.3957
+        },
+        {
+          "directMilliseconds": 4.5674,
+          "matchCount": 2,
+          "query": "huatugongju 17",
+          "serviceMilliseconds": 6.6927
+        },
+        {
+          "directMilliseconds": 3.526,
+          "matchCount": 2,
+          "query": "htgj 17",
+          "serviceMilliseconds": 8.2944
+        },
+        {
+          "directMilliseconds": 5.6536,
+          "matchCount": 2,
+          "query": "chongqingyinhang 18",
+          "serviceMilliseconds": 6.5946
+        },
+        {
+          "directMilliseconds": 5.292,
+          "matchCount": 2,
+          "query": "cqyh 18",
+          "serviceMilliseconds": 6.221
+        },
+        {
+          "directMilliseconds": 4.5769,
+          "matchCount": 2,
+          "query": "lvseyingyong 19",
+          "serviceMilliseconds": 7.0431
+        },
+        {
+          "directMilliseconds": 5.6221,
+          "matchCount": 2,
+          "query": "calculator 22",
+          "serviceMilliseconds": 6.657
+        },
+        {
+          "directMilliseconds": 0.18,
+          "matchCount": 0,
+          "query": "找不到应用 16",
+          "serviceMilliseconds": 0.5459
+        },
+        {
+          "directMilliseconds": 5.7362,
+          "matchCount": 2,
+          "query": "Studio 20",
+          "serviceMilliseconds": 6.4293
+        },
+        {
+          "directMilliseconds": 0.1861,
+          "matchCount": 11,
+          "query": "常用工具 23",
+          "serviceMilliseconds": 0.454
+        },
+        {
+          "directMilliseconds": 5.7466,
+          "matchCount": 3,
+          "query": "paint 24",
+          "serviceMilliseconds": 7.8327
+        },
+        {
+          "directMilliseconds": 7.0704,
+          "matchCount": 2,
+          "query": "huatugongju 25",
+          "serviceMilliseconds": 6.4554
+        },
+        {
+          "directMilliseconds": 6.2578,
+          "matchCount": 2,
+          "query": "htgj 25",
+          "serviceMilliseconds": 6.8383
+        },
+        {
+          "directMilliseconds": 4.2512,
+          "matchCount": 2,
+          "query": "chongqingyinhang 26",
+          "serviceMilliseconds": 7.6657
+        },
+        {
+          "directMilliseconds": 6.1162,
+          "matchCount": 2,
+          "query": "cqyh 26",
+          "serviceMilliseconds": 6.6336
+        },
+        {
+          "directMilliseconds": 5.22,
+          "matchCount": 2,
+          "query": "lvseyingyong 27",
+          "serviceMilliseconds": 7.898
+        },
+        {
+          "directMilliseconds": 4.514,
+          "matchCount": 2,
+          "query": "calculator 30",
+          "serviceMilliseconds": 7.1855
+        },
+        {
+          "directMilliseconds": 0.1728,
+          "matchCount": 0,
+          "query": "找不到应用 24",
+          "serviceMilliseconds": 0.5144
+        },
+        {
+          "directMilliseconds": 5.8521,
+          "matchCount": 2,
+          "query": "Studio 28",
+          "serviceMilliseconds": 6.7671
+        },
+        {
+          "directMilliseconds": 0.1927,
+          "matchCount": 11,
+          "query": "常用工具 31",
+          "serviceMilliseconds": 0.4028
+        },
+        {
+          "directMilliseconds": 4.3799,
+          "matchCount": 3,
+          "query": "paint 32",
+          "serviceMilliseconds": 6.6033
+        },
+        {
+          "directMilliseconds": 3.7463,
+          "matchCount": 2,
+          "query": "huatugongju 33",
+          "serviceMilliseconds": 7.7788
+        },
+        {
+          "directMilliseconds": 4.2855,
+          "matchCount": 2,
+          "query": "htgj 33",
+          "serviceMilliseconds": 7.6142
+        },
+        {
+          "directMilliseconds": 5.8327,
+          "matchCount": 2,
+          "query": "chongqingyinhang 34",
+          "serviceMilliseconds": 7.8372
+        },
+        {
+          "directMilliseconds": 7.1692,
+          "matchCount": 2,
+          "query": "cqyh 34",
+          "serviceMilliseconds": 6.5232
+        },
+        {
+          "directMilliseconds": 6.1701,
+          "matchCount": 2,
+          "query": "lvseyingyong 35",
+          "serviceMilliseconds": 6.3551
+        },
+        {
+          "directMilliseconds": 5.7215,
+          "matchCount": 2,
+          "query": "calculator 38",
+          "serviceMilliseconds": 6.3449
+        },
+        {
+          "directMilliseconds": 0.1813,
+          "matchCount": 0,
+          "query": "找不到应用 32",
+          "serviceMilliseconds": 0.4457
+        },
+        {
+          "directMilliseconds": 4.9794,
+          "matchCount": 2,
+          "query": "Studio 36",
+          "serviceMilliseconds": 6.3688
+        },
+        {
+          "directMilliseconds": 0.134,
+          "matchCount": 11,
+          "query": "常用工具 39",
+          "serviceMilliseconds": 0.776
+        },
+        {
+          "directMilliseconds": 5.2315,
+          "matchCount": 3,
+          "query": "paint 40",
+          "serviceMilliseconds": 7.3753
+        },
+        {
+          "directMilliseconds": 4.6035,
+          "matchCount": 2,
+          "query": "huatugongju 41",
+          "serviceMilliseconds": 5.6377
+        },
+        {
+          "directMilliseconds": 5.4924,
+          "matchCount": 2,
+          "query": "htgj 41",
+          "serviceMilliseconds": 6.7599
+        },
+        {
+          "directMilliseconds": 4.732,
+          "matchCount": 2,
+          "query": "chongqingyinhang 42",
+          "serviceMilliseconds": 5.9422
+        },
+        {
+          "directMilliseconds": 5.6139,
+          "matchCount": 2,
+          "query": "cqyh 42",
+          "serviceMilliseconds": 5.992
+        },
+        {
+          "directMilliseconds": 6.3441,
+          "matchCount": 2,
+          "query": "lvseyingyong 43",
+          "serviceMilliseconds": 6.0875
+        },
+        {
+          "directMilliseconds": 5.1393,
+          "matchCount": 2,
+          "query": "calculator 46",
+          "serviceMilliseconds": 5.8834
+        },
+        {
+          "directMilliseconds": 0.1767,
+          "matchCount": 0,
+          "query": "找不到应用 40",
+          "serviceMilliseconds": 0.5755
+        },
+        {
+          "directMilliseconds": 4.1171,
+          "matchCount": 2,
+          "query": "Studio 44",
+          "serviceMilliseconds": 7.1097
+        },
+        {
+          "directMilliseconds": 0.1753,
+          "matchCount": 11,
+          "query": "常用工具 47",
+          "serviceMilliseconds": 0.6457
+        },
+        {
+          "directMilliseconds": 6.4804,
+          "matchCount": 3,
+          "query": "paint 48",
+          "serviceMilliseconds": 5.7129
+        },
+        {
+          "directMilliseconds": 6.1026,
+          "matchCount": 2,
+          "query": "huatugongju 49",
+          "serviceMilliseconds": 6.2612
+        },
+        {
+          "directMilliseconds": 4.8601,
+          "matchCount": 2,
+          "query": "htgj 49",
+          "serviceMilliseconds": 6.5616
+        },
+        {
+          "directMilliseconds": 5.8089,
+          "matchCount": 2,
+          "query": "chongqingyinhang 50",
+          "serviceMilliseconds": 7.6156
+        },
+        {
+          "directMilliseconds": 6.9721,
+          "matchCount": 2,
+          "query": "cqyh 50",
+          "serviceMilliseconds": 6.2841
+        },
+        {
+          "directMilliseconds": 5.3733,
+          "matchCount": 2,
+          "query": "lvseyingyong 51",
+          "serviceMilliseconds": 6.9152
+        },
+        {
+          "directMilliseconds": 7.1561,
+          "matchCount": 2,
+          "query": "calculator 54",
+          "serviceMilliseconds": 6.4756
+        },
+        {
+          "directMilliseconds": 0.1696,
+          "matchCount": 0,
+          "query": "找不到应用 48",
+          "serviceMilliseconds": 0.6154
+        },
+        {
+          "directMilliseconds": 6.0552,
+          "matchCount": 2,
+          "query": "Studio 52",
+          "serviceMilliseconds": 6.0486
+        },
+        {
+          "directMilliseconds": 0.1517,
+          "matchCount": 11,
+          "query": "常用工具 55",
+          "serviceMilliseconds": 0.5174
+        },
+        {
+          "directMilliseconds": 6.5751,
+          "matchCount": 3,
+          "query": "paint 56",
+          "serviceMilliseconds": 5.7939
+        },
+        {
+          "directMilliseconds": 5.8724,
+          "matchCount": 2,
+          "query": "huatugongju 57",
+          "serviceMilliseconds": 6.1091
+        },
+        {
+          "directMilliseconds": 4.4256,
+          "matchCount": 2,
+          "query": "htgj 57",
+          "serviceMilliseconds": 6.1414
+        },
+        {
+          "directMilliseconds": 6.2902,
+          "matchCount": 2,
+          "query": "chongqingyinhang 58",
+          "serviceMilliseconds": 6.3687
+        },
+        {
+          "directMilliseconds": 6.8736,
+          "matchCount": 2,
+          "query": "cqyh 58",
+          "serviceMilliseconds": 6.4128
+        },
+        {
+          "directMilliseconds": 5.6818,
+          "matchCount": 2,
+          "query": "lvseyingyong 59",
+          "serviceMilliseconds": 6.381
+        },
+        {
+          "directMilliseconds": 6.2566,
+          "matchCount": 2,
+          "query": "calculator 62",
+          "serviceMilliseconds": 6.0519
+        },
+        {
+          "directMilliseconds": 0.172,
+          "matchCount": 0,
+          "query": "找不到应用 56",
+          "serviceMilliseconds": 0.5438
+        },
+        {
+          "directMilliseconds": 11.223,
+          "matchCount": 2,
+          "query": "Studio 60",
+          "serviceMilliseconds": 6.1408
+        },
+        {
+          "directMilliseconds": 0.476,
+          "matchCount": 11,
+          "query": "常用工具 63",
+          "serviceMilliseconds": 0.4222
+        },
+        {
+          "directMilliseconds": 6.2855,
+          "matchCount": 3,
+          "query": "paint 64",
+          "serviceMilliseconds": 6.1117
+        },
+        {
+          "directMilliseconds": 6.43,
+          "matchCount": 2,
+          "query": "huatugongju 65",
+          "serviceMilliseconds": 5.9508
+        },
+        {
+          "directMilliseconds": 5.6927,
+          "matchCount": 2,
+          "query": "htgj 65",
+          "serviceMilliseconds": 6.4493
+        },
+        {
+          "directMilliseconds": 6.2647,
+          "matchCount": 2,
+          "query": "chongqingyinhang 66",
+          "serviceMilliseconds": 6.602
+        },
+        {
+          "directMilliseconds": 6.1565,
+          "matchCount": 2,
+          "query": "cqyh 66",
+          "serviceMilliseconds": 6.2203
+        },
+        {
+          "directMilliseconds": 5.3537,
+          "matchCount": 2,
+          "query": "lvseyingyong 67",
+          "serviceMilliseconds": 7.046
+        },
+        {
+          "directMilliseconds": 5.7962,
+          "matchCount": 2,
+          "query": "calculator 70",
+          "serviceMilliseconds": 5.9827
+        },
+        {
+          "directMilliseconds": 0.1772,
+          "matchCount": 0,
+          "query": "找不到应用 64",
+          "serviceMilliseconds": 0.3909
+        },
+        {
+          "directMilliseconds": 5.5553,
+          "matchCount": 2,
+          "query": "Studio 68",
+          "serviceMilliseconds": 5.5589
+        },
+        {
+          "directMilliseconds": 0.1422,
+          "matchCount": 11,
+          "query": "常用工具 71",
+          "serviceMilliseconds": 0.4197
+        },
+        {
+          "directMilliseconds": 6.163,
+          "matchCount": 3,
+          "query": "paint 72",
+          "serviceMilliseconds": 5.4776
+        },
+        {
+          "directMilliseconds": 6.5836,
+          "matchCount": 2,
+          "query": "huatugongju 73",
+          "serviceMilliseconds": 6.2874
+        },
+        {
+          "directMilliseconds": 7.0339,
+          "matchCount": 2,
+          "query": "htgj 73",
+          "serviceMilliseconds": 6.6804
+        },
+        {
+          "directMilliseconds": 6.9963,
+          "matchCount": 2,
+          "query": "chongqingyinhang 74",
+          "serviceMilliseconds": 7.5906
+        },
+        {
+          "directMilliseconds": 6.9741,
+          "matchCount": 2,
+          "query": "cqyh 74",
+          "serviceMilliseconds": 6.3948
+        },
+        {
+          "directMilliseconds": 7.0091,
+          "matchCount": 2,
+          "query": "lvseyingyong 75",
+          "serviceMilliseconds": 6.6395
+        },
+        {
+          "directMilliseconds": 6.692,
+          "matchCount": 2,
+          "query": "calculator 78",
+          "serviceMilliseconds": 7.3973
+        },
+        {
+          "directMilliseconds": 0.15,
+          "matchCount": 0,
+          "query": "找不到应用 72",
+          "serviceMilliseconds": 0.4162
+        },
+        {
+          "directMilliseconds": 5.3997,
+          "matchCount": 2,
+          "query": "Studio 76",
+          "serviceMilliseconds": 6.0575
+        },
+        {
+          "directMilliseconds": 0.2791,
+          "matchCount": 11,
+          "query": "常用工具 79",
+          "serviceMilliseconds": 0.3921
+        }
+      ],
+      "searchMaximumMilliseconds": 11.223,
+      "searchP50Milliseconds": 5.4924,
+      "searchP95Milliseconds": 7.0339,
+      "serviceIndexReadyMilliseconds": 30.6476,
+      "serviceRoundTrip": {
+        "matchCountChecksum": 501,
+        "maximumMilliseconds": 8.2944,
+        "p50Milliseconds": 6.3688,
+        "p95Milliseconds": 7.7666
+      },
+      "serviceRoundTripBoundary": "setQuery-to-GUI-results-accepted; includes-worker-queue; excludes-QML",
+      "warmupQueries": 20
+    },
+    {
+      "aliasesPerEntry": 1,
+      "binarySha256": "f1b2d8d7d37405a4d944a066ef50a6dc7a18bd0aca39f653d714945ffd00a7f9",
+      "buildAbi": "x86_64-little_endian-llp64",
+      "buildMilliseconds": 198.5751,
+      "compiler": "MSVC 192930159",
+      "dataset": "synthetic-offline-applications-v1",
+      "directLookup": {
+        "matchCountChecksum": 1909,
+        "maximumMilliseconds": 60.0828,
+        "p50Milliseconds": 33.7529,
+        "p95Milliseconds": 51.0416
+      },
+      "distinctMeasuredQueries": 100,
+      "entries": 4096,
+      "kernelVersion": "10.0.26300",
+      "matchCountChecksum": 1909,
+      "measuredQueries": 100,
+      "monotonicClock": true,
+      "perQueryResultsIdentical": true,
+      "perQueryTimeoutMilliseconds": 5000,
+      "qtBuildVersion": "6.8.2",
+      "qtRuntimeVersion": "6.8.2",
+      "querySet": "ten-families-ten-numbers-v2",
+      "releaseNdebug": true,
+      "reportVersion": 2,
+      "resultLimit": 100,
+      "samples": [
+        {
+          "directMilliseconds": 46.552,
+          "matchCount": 1,
+          "query": "paint 0",
+          "serviceMilliseconds": 25.0028
+        },
+        {
+          "directMilliseconds": 41.4203,
+          "matchCount": 139,
+          "query": "huatugongju 1",
+          "serviceMilliseconds": 25.065
+        },
+        {
+          "directMilliseconds": 37.9116,
+          "matchCount": 139,
+          "query": "htgj 1",
+          "serviceMilliseconds": 26.2312
+        },
+        {
+          "directMilliseconds": 27.3542,
+          "matchCount": 140,
+          "query": "chongqingyinhang 2",
+          "serviceMilliseconds": 26.2028
+        },
+        {
+          "directMilliseconds": 31.2008,
+          "matchCount": 140,
+          "query": "cqyh 2",
+          "serviceMilliseconds": 25.3085
+        },
+        {
+          "directMilliseconds": 25.9563,
+          "matchCount": 139,
+          "query": "lvseyingyong 3",
+          "serviceMilliseconds": 23.0015
+        },
+        {
+          "directMilliseconds": 33.2878,
+          "matchCount": 14,
+          "query": "calculator 6",
+          "serviceMilliseconds": 28.0902
+        },
+        {
+          "directMilliseconds": 2.4242,
+          "matchCount": 0,
+          "query": "找不到应用 0",
+          "serviceMilliseconds": 1.2152
+        },
+        {
+          "directMilliseconds": 37.9207,
+          "matchCount": 26,
+          "query": "Studio 4",
+          "serviceMilliseconds": 25.3996
+        },
+        {
+          "directMilliseconds": 1.0926,
+          "matchCount": 111,
+          "query": "常用工具 7",
+          "serviceMilliseconds": 1.1189
+        },
+        {
+          "directMilliseconds": 34.9972,
+          "matchCount": 16,
+          "query": "paint 8",
+          "serviceMilliseconds": 27.3077
+        },
+        {
+          "directMilliseconds": 42.5789,
+          "matchCount": 14,
+          "query": "huatugongju 9",
+          "serviceMilliseconds": 27.8997
+        },
+        {
+          "directMilliseconds": 28.0117,
+          "matchCount": 14,
+          "query": "htgj 9",
+          "serviceMilliseconds": 26.455
+        },
+        {
+          "directMilliseconds": 48.4322,
+          "matchCount": 15,
+          "query": "chongqingyinhang 10",
+          "serviceMilliseconds": 27.4484
+        },
+        {
+          "directMilliseconds": 34.7578,
+          "matchCount": 15,
+          "query": "cqyh 10",
+          "serviceMilliseconds": 28.4612
+        },
+        {
+          "directMilliseconds": 40.8221,
+          "matchCount": 14,
+          "query": "lvseyingyong 11",
+          "serviceMilliseconds": 24.3153
+        },
+        {
+          "directMilliseconds": 58.6717,
+          "matchCount": 14,
+          "query": "calculator 14",
+          "serviceMilliseconds": 24.7584
+        },
+        {
+          "directMilliseconds": 0.7723,
+          "matchCount": 0,
+          "query": "找不到应用 8",
+          "serviceMilliseconds": 0.9988
+        },
+        {
+          "directMilliseconds": 32.1818,
+          "matchCount": 14,
+          "query": "Studio 12",
+          "serviceMilliseconds": 21.5638
+        },
+        {
+          "directMilliseconds": 0.8868,
+          "matchCount": 111,
+          "query": "常用工具 15",
+          "serviceMilliseconds": 1.1574
+        },
+        {
+          "directMilliseconds": 40.5829,
+          "matchCount": 16,
+          "query": "paint 16",
+          "serviceMilliseconds": 21.4153
+        },
+        {
+          "directMilliseconds": 51.0416,
+          "matchCount": 14,
+          "query": "huatugongju 17",
+          "serviceMilliseconds": 19.4997
+        },
+        {
+          "directMilliseconds": 45.8991,
+          "matchCount": 14,
+          "query": "htgj 17",
+          "serviceMilliseconds": 21.9921
+        },
+        {
+          "directMilliseconds": 29.9103,
+          "matchCount": 15,
+          "query": "chongqingyinhang 18",
+          "serviceMilliseconds": 20.4037
+        },
+        {
+          "directMilliseconds": 27.4628,
+          "matchCount": 15,
+          "query": "cqyh 18",
+          "serviceMilliseconds": 22.1195
+        },
+        {
+          "directMilliseconds": 30.3845,
+          "matchCount": 14,
+          "query": "lvseyingyong 19",
+          "serviceMilliseconds": 20.9528
+        },
+        {
+          "directMilliseconds": 32.9202,
+          "matchCount": 14,
+          "query": "calculator 22",
+          "serviceMilliseconds": 19.5741
+        },
+        {
+          "directMilliseconds": 0.8212,
+          "matchCount": 0,
+          "query": "找不到应用 16",
+          "serviceMilliseconds": 0.7861
+        },
+        {
+          "directMilliseconds": 28.0497,
+          "matchCount": 14,
+          "query": "Studio 20",
+          "serviceMilliseconds": 17.8066
+        },
+        {
+          "directMilliseconds": 0.9938,
+          "matchCount": 111,
+          "query": "常用工具 23",
+          "serviceMilliseconds": 1.0796
+        },
+        {
+          "directMilliseconds": 28.3077,
+          "matchCount": 16,
+          "query": "paint 24",
+          "serviceMilliseconds": 17.407
+        },
+        {
+          "directMilliseconds": 26.9812,
+          "matchCount": 14,
+          "query": "huatugongju 25",
+          "serviceMilliseconds": 18.7294
+        },
+        {
+          "directMilliseconds": 33.6094,
+          "matchCount": 14,
+          "query": "htgj 25",
+          "serviceMilliseconds": 19.7161
+        },
+        {
+          "directMilliseconds": 33.7529,
+          "matchCount": 15,
+          "query": "chongqingyinhang 26",
+          "serviceMilliseconds": 17.3459
+        },
+        {
+          "directMilliseconds": 30.2562,
+          "matchCount": 15,
+          "query": "cqyh 26",
+          "serviceMilliseconds": 17.4618
+        },
+        {
+          "directMilliseconds": 37.27,
+          "matchCount": 14,
+          "query": "lvseyingyong 27",
+          "serviceMilliseconds": 18.3853
+        },
+        {
+          "directMilliseconds": 48.185,
+          "matchCount": 14,
+          "query": "calculator 30",
+          "serviceMilliseconds": 18.4888
+        },
+        {
+          "directMilliseconds": 0.9094,
+          "matchCount": 0,
+          "query": "找不到应用 24",
+          "serviceMilliseconds": 0.9381
+        },
+        {
+          "directMilliseconds": 43.3992,
+          "matchCount": 14,
+          "query": "Studio 28",
+          "serviceMilliseconds": 19.5374
+        },
+        {
+          "directMilliseconds": 1.1375,
+          "matchCount": 111,
+          "query": "常用工具 31",
+          "serviceMilliseconds": 0.8571
+        },
+        {
+          "directMilliseconds": 34.8204,
+          "matchCount": 16,
+          "query": "paint 32",
+          "serviceMilliseconds": 20.297
+        },
+        {
+          "directMilliseconds": 32.8644,
+          "matchCount": 14,
+          "query": "huatugongju 33",
+          "serviceMilliseconds": 19.583
+        },
+        {
+          "directMilliseconds": 34.706,
+          "matchCount": 14,
+          "query": "htgj 33",
+          "serviceMilliseconds": 22.1522
+        },
+        {
+          "directMilliseconds": 33.1966,
+          "matchCount": 15,
+          "query": "chongqingyinhang 34",
+          "serviceMilliseconds": 19.7772
+        },
+        {
+          "directMilliseconds": 32.6421,
+          "matchCount": 15,
+          "query": "cqyh 34",
+          "serviceMilliseconds": 27.2033
+        },
+        {
+          "directMilliseconds": 45.0639,
+          "matchCount": 14,
+          "query": "lvseyingyong 35",
+          "serviceMilliseconds": 20.6889
+        },
+        {
+          "directMilliseconds": 33.7157,
+          "matchCount": 14,
+          "query": "calculator 38",
+          "serviceMilliseconds": 22.1737
+        },
+        {
+          "directMilliseconds": 0.8294,
+          "matchCount": 0,
+          "query": "找不到应用 32",
+          "serviceMilliseconds": 1.1023
+        },
+        {
+          "directMilliseconds": 37.006,
+          "matchCount": 14,
+          "query": "Studio 36",
+          "serviceMilliseconds": 21.9685
+        },
+        {
+          "directMilliseconds": 1.4476,
+          "matchCount": 111,
+          "query": "常用工具 39",
+          "serviceMilliseconds": 1.1874
+        },
+        {
+          "directMilliseconds": 35.1726,
+          "matchCount": 15,
+          "query": "paint 40",
+          "serviceMilliseconds": 19.7167
+        },
+        {
+          "directMilliseconds": 37.8918,
+          "matchCount": 2,
+          "query": "huatugongju 41",
+          "serviceMilliseconds": 24.0908
+        },
+        {
+          "directMilliseconds": 54.126,
+          "matchCount": 2,
+          "query": "htgj 41",
+          "serviceMilliseconds": 18.3723
+        },
+        {
+          "directMilliseconds": 39.9041,
+          "matchCount": 2,
+          "query": "chongqingyinhang 42",
+          "serviceMilliseconds": 20.2818
+        },
+        {
+          "directMilliseconds": 35.9387,
+          "matchCount": 2,
+          "query": "cqyh 42",
+          "serviceMilliseconds": 21.5262
+        },
+        {
+          "directMilliseconds": 29.1847,
+          "matchCount": 2,
+          "query": "lvseyingyong 43",
+          "serviceMilliseconds": 17.8606
+        },
+        {
+          "directMilliseconds": 38.7617,
+          "matchCount": 2,
+          "query": "calculator 46",
+          "serviceMilliseconds": 20.7215
+        },
+        {
+          "directMilliseconds": 1.0077,
+          "matchCount": 0,
+          "query": "找不到应用 40",
+          "serviceMilliseconds": 1.1163
+        },
+        {
+          "directMilliseconds": 44.8835,
+          "matchCount": 2,
+          "query": "Studio 44",
+          "serviceMilliseconds": 20.672
+        },
+        {
+          "directMilliseconds": 0.9686,
+          "matchCount": 11,
+          "query": "常用工具 47",
+          "serviceMilliseconds": 0.8956
+        },
+        {
+          "directMilliseconds": 41.2038,
+          "matchCount": 3,
+          "query": "paint 48",
+          "serviceMilliseconds": 24.5621
+        },
+        {
+          "directMilliseconds": 54.6487,
+          "matchCount": 2,
+          "query": "huatugongju 49",
+          "serviceMilliseconds": 20.0036
+        },
+        {
+          "directMilliseconds": 35.2855,
+          "matchCount": 2,
+          "query": "htgj 49",
+          "serviceMilliseconds": 19.6373
+        },
+        {
+          "directMilliseconds": 31.4537,
+          "matchCount": 2,
+          "query": "chongqingyinhang 50",
+          "serviceMilliseconds": 24.4329
+        },
+        {
+          "directMilliseconds": 30.4257,
+          "matchCount": 2,
+          "query": "cqyh 50",
+          "serviceMilliseconds": 17.3367
+        },
+        {
+          "directMilliseconds": 32.4484,
+          "matchCount": 2,
+          "query": "lvseyingyong 51",
+          "serviceMilliseconds": 18.6055
+        },
+        {
+          "directMilliseconds": 37.9947,
+          "matchCount": 2,
+          "query": "calculator 54",
+          "serviceMilliseconds": 24.0864
+        },
+        {
+          "directMilliseconds": 0.857,
+          "matchCount": 0,
+          "query": "找不到应用 48",
+          "serviceMilliseconds": 0.8857
+        },
+        {
+          "directMilliseconds": 49.8836,
+          "matchCount": 2,
+          "query": "Studio 52",
+          "serviceMilliseconds": 21.0387
+        },
+        {
+          "directMilliseconds": 0.63,
+          "matchCount": 11,
+          "query": "常用工具 55",
+          "serviceMilliseconds": 1.3749
+        },
+        {
+          "directMilliseconds": 34.7199,
+          "matchCount": 3,
+          "query": "paint 56",
+          "serviceMilliseconds": 22.4065
+        },
+        {
+          "directMilliseconds": 36.9369,
+          "matchCount": 2,
+          "query": "huatugongju 57",
+          "serviceMilliseconds": 21.7027
+        },
+        {
+          "directMilliseconds": 32.2599,
+          "matchCount": 2,
+          "query": "htgj 57",
+          "serviceMilliseconds": 28.4462
+        },
+        {
+          "directMilliseconds": 49.5399,
+          "matchCount": 2,
+          "query": "chongqingyinhang 58",
+          "serviceMilliseconds": 26.7592
+        },
+        {
+          "directMilliseconds": 35.3703,
+          "matchCount": 2,
+          "query": "cqyh 58",
+          "serviceMilliseconds": 26.2863
+        },
+        {
+          "directMilliseconds": 36.2073,
+          "matchCount": 2,
+          "query": "lvseyingyong 59",
+          "serviceMilliseconds": 30.6945
+        },
+        {
+          "directMilliseconds": 37.3493,
+          "matchCount": 2,
+          "query": "calculator 62",
+          "serviceMilliseconds": 25.5156
+        },
+        {
+          "directMilliseconds": 0.7624,
+          "matchCount": 0,
+          "query": "找不到应用 56",
+          "serviceMilliseconds": 1.2807
+        },
+        {
+          "directMilliseconds": 43.1263,
+          "matchCount": 2,
+          "query": "Studio 60",
+          "serviceMilliseconds": 30.2411
+        },
+        {
+          "directMilliseconds": 0.901,
+          "matchCount": 11,
+          "query": "常用工具 63",
+          "serviceMilliseconds": 1.2656
+        },
+        {
+          "directMilliseconds": 42.0014,
+          "matchCount": 3,
+          "query": "paint 64",
+          "serviceMilliseconds": 29.4388
+        },
+        {
+          "directMilliseconds": 34.0458,
+          "matchCount": 2,
+          "query": "huatugongju 65",
+          "serviceMilliseconds": 30.3646
+        },
+        {
+          "directMilliseconds": 34.8694,
+          "matchCount": 2,
+          "query": "htgj 65",
+          "serviceMilliseconds": 33.6012
+        },
+        {
+          "directMilliseconds": 36.3048,
+          "matchCount": 2,
+          "query": "chongqingyinhang 66",
+          "serviceMilliseconds": 32.7665
+        },
+        {
+          "directMilliseconds": 47.8102,
+          "matchCount": 2,
+          "query": "cqyh 66",
+          "serviceMilliseconds": 28.7129
+        },
+        {
+          "directMilliseconds": 60.0828,
+          "matchCount": 2,
+          "query": "lvseyingyong 67",
+          "serviceMilliseconds": 28.5402
+        },
+        {
+          "directMilliseconds": 51.9861,
+          "matchCount": 2,
+          "query": "calculator 70",
+          "serviceMilliseconds": 28.7179
+        },
+        {
+          "directMilliseconds": 1.4072,
+          "matchCount": 0,
+          "query": "找不到应用 64",
+          "serviceMilliseconds": 1.4486
+        },
+        {
+          "directMilliseconds": 45.9586,
+          "matchCount": 2,
+          "query": "Studio 68",
+          "serviceMilliseconds": 28.4026
+        },
+        {
+          "directMilliseconds": 0.9048,
+          "matchCount": 11,
+          "query": "常用工具 71",
+          "serviceMilliseconds": 0.958
+        },
+        {
+          "directMilliseconds": 33.2635,
+          "matchCount": 3,
+          "query": "paint 72",
+          "serviceMilliseconds": 26.3152
+        },
+        {
+          "directMilliseconds": 46.7449,
+          "matchCount": 2,
+          "query": "huatugongju 73",
+          "serviceMilliseconds": 27.9211
+        },
+        {
+          "directMilliseconds": 38.9598,
+          "matchCount": 2,
+          "query": "htgj 73",
+          "serviceMilliseconds": 29.4456
+        },
+        {
+          "directMilliseconds": 35.7174,
+          "matchCount": 2,
+          "query": "chongqingyinhang 74",
+          "serviceMilliseconds": 26.1788
+        },
+        {
+          "directMilliseconds": 32.814,
+          "matchCount": 2,
+          "query": "cqyh 74",
+          "serviceMilliseconds": 32.0246
+        },
+        {
+          "directMilliseconds": 28.4466,
+          "matchCount": 2,
+          "query": "lvseyingyong 75",
+          "serviceMilliseconds": 30.1186
+        },
+        {
+          "directMilliseconds": 29.0449,
+          "matchCount": 2,
+          "query": "calculator 78",
+          "serviceMilliseconds": 32.3713
+        },
+        {
+          "directMilliseconds": 0.6874,
+          "matchCount": 0,
+          "query": "找不到应用 72",
+          "serviceMilliseconds": 1.4011
+        },
+        {
+          "directMilliseconds": 26.5456,
+          "matchCount": 2,
+          "query": "Studio 76",
+          "serviceMilliseconds": 29.5265
+        },
+        {
+          "directMilliseconds": 0.8294,
+          "matchCount": 11,
+          "query": "常用工具 79",
+          "serviceMilliseconds": 1.6301
+        }
+      ],
+      "searchMaximumMilliseconds": 60.0828,
+      "searchP50Milliseconds": 33.7529,
+      "searchP95Milliseconds": 51.0416,
+      "serviceIndexReadyMilliseconds": 125.1049,
+      "serviceRoundTrip": {
+        "matchCountChecksum": 1909,
+        "maximumMilliseconds": 33.6012,
+        "p50Milliseconds": 21.5262,
+        "p95Milliseconds": 30.3646
+      },
+      "serviceRoundTripBoundary": "setQuery-to-GUI-results-accepted; includes-worker-queue; excludes-QML",
+      "warmupQueries": 20
+    }
+  ]
+}
