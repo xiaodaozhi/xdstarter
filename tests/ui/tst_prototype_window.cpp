@@ -16,6 +16,7 @@
 #include <QAccessible>
 #include <QDir>
 #include <QElapsedTimer>
+#include <QEventLoop>
 #include <QFile>
 #include <QFontInfo>
 #include <QGuiApplication>
@@ -424,6 +425,7 @@ class PrototypeWindowTest : public QObject {
     void layoutImportCancellationAndProtection();
     void layoutImportFailureAndExitFence();
     void layoutImportFilePickerOwnership();
+    void layoutImportDialogThemeAndKeyboard_data();
     void layoutImportDialogThemeAndKeyboard();
     void layoutImportMinimumPanel();
     void contextMenuShortcutsRespectFocus();
@@ -5076,7 +5078,14 @@ void PrototypeWindowTest::layoutImportFilePickerOwnership() {
     }
 }
 
+void PrototypeWindowTest::layoutImportDialogThemeAndKeyboard_data() {
+    QTest::addColumn<bool>("completeDuringKeyClick");
+    QTest::newRow("normal") << false;
+    QTest::newRow("completion-during-key-click") << true;
+}
+
 void PrototypeWindowTest::layoutImportDialogThemeAndKeyboard() {
+    QFETCH(bool, completeDuringKeyClick);
     QTemporaryDir directory;
     const auto path = directory.filePath(QStringLiteral("current.json"));
     const auto source = directory.filePath(QStringLiteral("source.json"));
@@ -5084,6 +5093,9 @@ void PrototypeWindowTest::layoutImportDialogThemeAndKeyboard() {
     auto replacement = sample.snapshot();
     destroyWindow();
     createWindow(path, false);
+    if (qEnvironmentVariableIsSet("XDSTARTER_TEST_REQUIRE_D3D11")) {
+        QCOMPARE(window_->rendererInterface()->graphicsApi(), QSGRendererInterface::Direct3D11);
+    }
     for (const bool dark : {true, false}) {
         controller_->setDarkTheme(dark);
         replacement.insert(QStringLiteral("preferences"),
@@ -5129,10 +5141,64 @@ void PrototypeWindowTest::layoutImportDialogThemeAndKeyboard() {
         QVERIFY(QMetaObject::invokeMethod(dialog, "open"));
         QTRY_VERIFY(dialog->property("opened").toBool());
         confirm->forceActiveFocus(Qt::TabFocusReason);
+        QTRY_VERIFY(confirm->hasActiveFocus());
+        const bool focusedBeforeReturn = confirm->hasActiveFocus();
+
+        // Key delivery pumps events; a fast save may finish before keyClick()
+        // returns. Observe the actual transition and UI state while it occurs.
+        QObject observer;
+        bool sawCommitting = false;
+        bool sawDisabled = false;
+        bool sawDimmed = false;
+        bool completedBeforeReturn = false;
+        const auto observe = [&] {
+            if (controller_->importCommitting()) {
+                sawCommitting = true;
+                sawDisabled = sawDisabled || !confirm->isEnabled();
+                sawDimmed = sawDimmed || qFuzzyCompare(confirm->opacity(), 0.45);
+            }
+        };
+        QObject::connect(controller_.get(), &xdstarter::MenuController::importStateChanged,
+                         &observer, observe);
+        QObject::connect(confirm, &QQuickItem::enabledChanged, &observer, observe);
+        QObject::connect(confirm, &QQuickItem::opacityChanged, &observer, observe);
+        if (completeDuringKeyClick) {
+            // Force the queued completion to run while QTest is still delivering
+            // the key, reproducing the timing that made the old assertion flaky.
+            QTimer::singleShot(0, &observer, [&] {
+                if (!sawCommitting)
+                    return;
+                QEventLoop loop;
+                QTimer timeout;
+                timeout.setSingleShot(true);
+                QObject::connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
+                QObject::connect(controller_.get(), &xdstarter::MenuController::importStateChanged,
+                                 &loop, [&] {
+                                     if (!controller_->importCommitting())
+                                         loop.quit();
+                                 });
+                if (controller_->importCommitting()) {
+                    timeout.start(5000);
+                    loop.exec();
+                }
+                completedBeforeReturn = !controller_->importCommitting();
+            });
+        }
         QTest::keyClick(window_, Qt::Key_Return);
-        QVERIFY(controller_->importCommitting());
-        QVERIFY(!confirm->isEnabled());
-        QCOMPARE(confirm->opacity(), 0.45);
+        const auto trace = QStringLiteral("dark=%1 focusBefore=%2 committing=%3 disabled=%4 dimmed=%5 "
+                                          "completedBeforeReturn=%6")
+                               .arg(dark)
+                               .arg(focusedBeforeReturn)
+                               .arg(sawCommitting)
+                               .arg(sawDisabled)
+                               .arg(sawDimmed)
+                               .arg(completedBeforeReturn);
+        qInfo().noquote() << "Layout import confirmation:" << trace;
+        QVERIFY2(sawCommitting, qPrintable(trace));
+        QVERIFY2(sawDisabled, qPrintable(trace));
+        QVERIFY2(sawDimmed, qPrintable(trace));
+        if (completeDuringKeyClick)
+            QVERIFY2(completedBeforeReturn, qPrintable(trace));
         QTRY_VERIFY(!controller_->importBusy());
         QCOMPARE(service_->snapshot(), replacement);
         QCOMPARE(controller_->darkTheme(), dark);

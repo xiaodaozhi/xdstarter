@@ -119,6 +119,17 @@
             "if-no-files-found": "warn",
             "retention-days": 7
           }
+        },
+        {
+          "name": "Upload hosted layout import evidence",
+          "if": "always()",
+          "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "with": {
+            "name": "xdstarter-layout-import-${{ github.sha }}",
+            "path": "build/app-release/layout-import-native-evidence/*.log",
+            "if-no-files-found": "warn",
+            "retention-days": 7
+          }
         }
       ],
       "name": "Windows MSVC 2022 candidate (local v142 baseline unchanged)"
