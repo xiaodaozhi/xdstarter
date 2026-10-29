@@ -5882,8 +5882,12 @@ void PrototypeWindowTest::layoutImportFilePickerOwnership() {
                         << "lateNativeVisible=" << bool(lateWindow);
                 if (lateWindow) {
                     // The diagnostic owns this process, owner, title and HWND. Close
-                    // only a late fixture dialog, never another process's window.
-                    QVERIFY(PostMessageW(lateWindow, WM_CLOSE, 0, 0));
+                    // only a late fixture dialog, never another process's window. It
+                    // may also close by itself between observation and the post.
+                    const bool posted = visibleNativeDialog(
+                        window_, picker->property("title").toString()) == lateWindow &&
+                        PostMessageW(lateWindow, WM_CLOSE, 0, 0);
+                    qInfo() << "Native picker fixture cleanup posted=" << posted;
                     QTRY_VERIFY_WITH_TIMEOUT(
                         !visibleNativeDialog(window_, picker->property("title").toString()), 5000);
                 }
