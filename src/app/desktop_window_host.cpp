@@ -147,7 +147,9 @@ DesktopWindowHost::DesktopWindowHost(QWindow &window, DesktopShellService &shell
         if (!stopping_)
             emit exitRequested();
     });
-    connect(&tray_, &DesktopTray::registrationChanged, this, &DesktopWindowHost::updateRecovery);
+    connect(&tray_, &DesktopTray::registrationAboutToReset, this, &DesktopWindowHost::beginTrayReset);
+    connect(&tray_, &DesktopTray::registrationChanged, this,
+            [this](bool available, const QString& message) { updateRecovery(available, message); });
     connect(&window, &QWindow::visibleChanged, this, [this](bool visible) {
         if (!visible) {
             recordCaptureHostObservation(QStringLiteral("hidden"));
@@ -801,7 +803,25 @@ void DesktopWindowHost::requestPlacement() {
     placementRequest_ = shell_.requestStartButtonAnchor();
 }
 
-void DesktopWindowHost::updateRecovery(bool available, const QString &message) {
+void DesktopWindowHost::beginTrayReset() {
+    if (stopping_ || !started_)
+        return;
+    if (pendingReveal_) {
+        recordCaptureHostObservation(QStringLiteral("presentation-canceled"), nullptr,
+                                     QStringLiteral("taskbar-reset"));
+        startButtonTogglePending_ = false;
+        cancelRevealPreparation();
+        pendingReveal_ = false;
+        placementRequest_ = 0;
+    }
+    shell_.invalidateStartButtonAnchor();
+    // Re-registration runs next in the same queued callback. Only expose the
+    // recovery window on the next event-loop turn if the tray is still absent.
+    updateRecovery(false, QStringLiteral("任务栏正在重建，接管已暂停。"), true);
+}
+
+void DesktopWindowHost::updateRecovery(bool available, const QString &message,
+                                       bool deferRecoverySurface) {
     if (stopping_)
         return;
     recoveryAvailable_ = available;
@@ -839,9 +859,18 @@ void DesktopWindowHost::updateRecovery(bool available, const QString &message) {
         dismissTimer_.stop();
         dismissPending_ = false;
         if (window_ && (!window_->isVisible() || window_->visibility() == QWindow::Minimized) &&
-            !pendingReveal_)
-            showRecoveryWindow();
-        else if (window_ && window_->isVisible())
+            !pendingReveal_) {
+            if (deferRecoverySurface) {
+                QTimer::singleShot(0, this, [this] {
+                    if (!stopping_ && started_ && !recoveryAvailable_ && window_ &&
+                        (!window_->isVisible() || window_->visibility() == QWindow::Minimized) &&
+                        !pendingReveal_)
+                        showRecoveryWindow();
+                });
+            } else {
+                showRecoveryWindow();
+            }
+        } else if (window_ && window_->isVisible())
             prepareWindow("restorePresentationFocus");
     }
 }

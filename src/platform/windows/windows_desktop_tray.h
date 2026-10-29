@@ -6,7 +6,10 @@ namespace xdstarter {
 
 class WindowsDesktopTray final : public DesktopTray {
   public:
-    explicit WindowsDesktopTray(QObject* parent = nullptr);
+    // The optional operation is used by owned-window tests; production always
+    // delegates to Shell_NotifyIconW when none is supplied.
+    using NotificationOperation = std::function<bool(quint32 command, void* data)>;
+    explicit WindowsDesktopTray(QObject* parent = nullptr, NotificationOperation operation = {});
     ~WindowsDesktopTray() override;
 
     [[nodiscard]] DesktopActionResult start(const QImage& icon) override;
