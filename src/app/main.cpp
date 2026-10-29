@@ -84,7 +84,7 @@ std::optional<QVariantMap> loadVisualTokens() {
     }
     for (const auto* themeName : {"dark", "light"}) {
         const auto theme = themes.value(QLatin1String(themeName)).toObject();
-        for (const auto* key : {"foreground", "secondary", "opaqueFallback"}) {
+        for (const auto* key : {"foreground", "secondary", "opaqueFallback", "focusAccent", "focusControl", "focusTileInner"}) {
             valid = valid && QColor(theme.value(QLatin1String(key)).toString()).isValid();
         }
     }

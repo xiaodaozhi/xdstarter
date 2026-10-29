@@ -11,6 +11,7 @@ Button {
     required property var tokens
     property var motion: ({})
     property bool keyboardNavigation: false
+    property bool darkTheme: true
     property bool hintsEnabled: true
     property bool animationsEnabled: true
     property bool editMode: false
@@ -372,7 +373,20 @@ Button {
             }
         }
         border.width: (tileButton.activeFocus && tileButton.keyboardNavigation) ? 2 : 1
-        border.color: (tileButton.activeFocus && tileButton.keyboardNavigation) ? tileButton.tokens.brand.cyan : Qt.lighter(tileButton.baseColor, tileButton.pointerHovered ? 1.36 : 1.12)
+        border.color: (tileButton.activeFocus && tileButton.keyboardNavigation) ? tileButton.tokens.themes[tileButton.darkTheme ? "dark" : "light"].focusAccent : Qt.lighter(tileButton.baseColor, tileButton.pointerHovered ? 1.36 : 1.12)
+
+        // The outer ring contrasts with the panel; the inner ring remains
+        // visible against every tile palette color in either theme.
+        Rectangle {
+            objectName: "tileFocusInner"
+            anchors.fill: parent
+            anchors.margins: 2
+            radius: Math.max(0, tileButton.tokens.cornerRadiusDip.tile - 2)
+            color: "transparent"
+            border.width: 2
+            border.color: tileButton.tokens.themes[tileButton.darkTheme ? "dark" : "light"].focusTileInner
+            visible: tileButton.activeFocus && tileButton.keyboardNavigation
+        }
     }
 
     contentItem: Item {

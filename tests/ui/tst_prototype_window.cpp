@@ -61,6 +61,13 @@
 
 namespace {
 
+QColor compositeOver(const QColor& foreground, const QColor& background) {
+    const auto alpha = foreground.alphaF();
+    return QColor::fromRgbF(foreground.redF() * alpha + background.redF() * (1 - alpha),
+                            foreground.greenF() * alpha + background.greenF() * (1 - alpha),
+                            foreground.blueF() * alpha + background.blueF() * (1 - alpha));
+}
+
 class ManualMotionPreference final : public xdstarter::MotionPreference {
   public:
     explicit ManualMotionPreference(bool enabled) : MotionPreference(enabled) {}
@@ -371,6 +378,8 @@ class PrototypeWindowTest : public QObject {
     void categoryGlyphsAreCentered_data();
     void categoryGlyphsAreCentered();
     void themeSwitchRetainsGeometry();
+    void focusOutlineContrast_data();
+    void focusOutlineContrast();
     void systemThemePreferenceTracksAndPersists();
     void layoutImportPreservesSystemTheme();
     void reducedMotionFollowsPreference();
@@ -997,6 +1006,118 @@ void PrototypeWindowTest::themeSwitchRetainsGeometry() {
     QCOMPARE(surface->property("color").value<QColor>(), originalColor);
     QCOMPARE(tileGeometries(), geometry);
     QCOMPARE(window_->size(), size);
+}
+
+void PrototypeWindowTest::focusOutlineContrast_data() {
+    QTest::addColumn<bool>("dark");
+    QTest::newRow("light") << false;
+    QTest::newRow("dark") << true;
+}
+
+void PrototypeWindowTest::focusOutlineContrast() {
+    QFETCH(bool, dark);
+    controller_->setDarkTheme(dark);
+    const auto geometry = tileGeometries();
+    auto* chrome = item(QStringLiteral("menuSurface"));
+    QVERIFY(chrome);
+    const auto panel = chrome->property("color").value<QColor>();
+    const auto rail = chrome->property("railColor").value<QColor>();
+    QVERIFY(panel.isValid() && rail.isValid());
+    struct FocusCase {
+        QString name;
+        QColor surroundings;
+        qreal width;
+    };
+    for (const auto& target : {FocusCase{QStringLiteral("groupActions-work"), panel, 2},
+                               FocusCase{QStringLiteral("shortcut-documents"), rail, 2},
+                               FocusCase{QStringLiteral("moreMenuButton"), panel, 1},
+                               FocusCase{QStringLiteral("searchField"), panel, 2}}) {
+        auto* control = item(target.name);
+        QVERIFY(control && control->isVisible());
+        // The offscreen QPA disables hover by default. Enable it on this
+        // fixture so the actual hovered background can be exercised too.
+        QVERIFY(control->setProperty("hoverEnabled", true));
+        for (const bool hovered : {false, true}) {
+            QTest::mouseMove(window_, hovered ? control->mapToScene(control->boundingRect().center()).toPoint()
+                                             : QPoint(1, 1));
+            QTRY_COMPARE_WITH_TIMEOUT(control->property("hovered").toBool(), hovered, 1000);
+            QTest::keyClick(window_, Qt::Key_Tab);
+            control->forceActiveFocus(Qt::TabFocusReason);
+            QTRY_VERIFY(control->hasActiveFocus());
+            QVERIFY(controller_->keyboardNavigation());
+            auto* background = control->property("background").value<QQuickItem*>();
+            QVERIFY(background);
+            QCOMPARE(QQmlProperty::read(background, "border.width").toReal(), target.width);
+            const auto border = QQmlProperty::read(background, "border.color").value<QColor>();
+            const auto fill = background->property("color").value<QColor>();
+            const auto adjacent = compositeOver(fill, target.surroundings);
+            const auto ratio = contrastRatio(border, adjacent);
+            QVERIFY2(ratio >= 3.0,
+                     qPrintable(QStringLiteral("%1 hovered=%2 focus %3 vs %4: %5:1")
+                                    .arg(target.name).arg(hovered).arg(border.name())
+                                    .arg(adjacent.name()).arg(ratio)));
+            QVERIFY(contrastRatio(border, target.surroundings) >= 3.0);
+            if (control->metaObject()->indexOfProperty("down") >= 0) {
+                QVERIFY(control->setProperty("down", true));
+                const auto pressed = compositeOver(background->property("color").value<QColor>(),
+                                                   target.surroundings);
+                const auto pressedRatio = contrastRatio(border, pressed);
+                QVERIFY2(pressedRatio >= 3.0,
+                         qPrintable(QStringLiteral("%1 pressed focus %2 vs %3: %4:1")
+                                        .arg(target.name, border.name(), pressed.name())
+                                        .arg(pressedRatio)));
+                QVERIFY(control->setProperty("down", false));
+            }
+        }
+    }
+
+    auto* tile = item(QStringLiteral("tile-work-standard-1"));
+    QVERIFY(tile && tile->isVisible());
+    for (const bool hovered : {false, true}) {
+        QTest::mouseMove(window_, hovered ? tile->mapToScene(tile->boundingRect().center()).toPoint()
+                                         : QPoint(1, 1));
+        QTRY_COMPARE_WITH_TIMEOUT(tile->property("pointerHovered").toBool(), hovered, 1000);
+        QTest::keyClick(window_, Qt::Key_Tab);
+        tile->forceActiveFocus(Qt::TabFocusReason);
+        QTRY_VERIFY(tile->hasActiveFocus());
+        auto* background = tile->property("background").value<QQuickItem*>();
+        QVERIFY(background);
+        QCOMPARE(QQmlProperty::read(background, "border.width").toReal(), qreal(2));
+        const auto outer = QQmlProperty::read(background, "border.color").value<QColor>();
+        QVERIFY(contrastRatio(outer, panel) >= 3.0);
+        auto* inner = background->findChild<QQuickItem*>(QStringLiteral("tileFocusInner"));
+        QVERIFY(inner);
+        QVERIFY(inner->isVisible());
+        const auto innerColor = QQmlProperty::read(inner, "border.color").value<QColor>();
+        QCOMPARE(QQmlProperty::read(inner, "border.width").toReal(), qreal(2));
+        if (!dark)
+            QVERIFY(contrastRatio(innerColor, outer) >= 3.0);
+        QVERIFY(contrastRatio(innerColor, tile->property("fillTopColor").value<QColor>()) >= 3.0);
+        QVERIFY(contrastRatio(innerColor, tile->property("fillBottomColor").value<QColor>()) >= 3.0);
+        QVERIFY(tile->setProperty("pointerPressActive", true));
+        QVERIFY(contrastRatio(innerColor, tile->property("fillTopColor").value<QColor>()) >= 3.0);
+        QVERIFY(contrastRatio(innerColor, tile->property("fillBottomColor").value<QColor>()) >= 3.0);
+        QVERIFY(tile->setProperty("pointerPressActive", false));
+        // Cover all palette entries and the exact normal, hovered, and pressed
+        // gradient endpoints, even if this fixture does not use every color.
+        for (const auto& value : visualTokens_.value(QStringLiteral("tilePalette")).toList()) {
+            const QColor base(value.toString());
+            QVERIFY(base.isValid());
+            for (const auto& fill : {base.lighter(105), base.darker(104),
+                                     base.lighter(116), base.lighter(106),
+                                     base.darker(110), base.darker(116)}) {
+                QVERIFY2(contrastRatio(innerColor, fill) >= 3.0,
+                         qPrintable(QStringLiteral("tile inner %1 vs %2").arg(innerColor.name(), fill.name())));
+            }
+        }
+    }
+    auto* tileBackground = tile->property("background").value<QQuickItem*>();
+    QVERIFY(tileBackground);
+    auto* tileFocus = tileBackground->findChild<QQuickItem*>(QStringLiteral("tileFocusInner"));
+    QVERIFY(tileFocus);
+    item(QStringLiteral("moreMenuButton"))->forceActiveFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(!tileFocus->isVisible());
+    QCOMPARE(tileGeometries(), geometry);
 }
 
 void PrototypeWindowTest::systemThemePreferenceTracksAndPersists() {

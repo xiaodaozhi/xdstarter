@@ -53,7 +53,7 @@ Dialog {
             radius: 6
             color: button.down ? dialog.theme.pressed : button.hovered ? dialog.theme.hover : dialog.theme.surface
             border.width: (button.activeFocus && dialog.controller.keyboardNavigation) ? 2 : 1
-            border.color: (button.activeFocus && dialog.controller.keyboardNavigation) ? dialog.tokens.brand.blue : dialog.theme.controlBorder
+            border.color: (button.activeFocus && dialog.controller.keyboardNavigation) ? dialog.theme.focusControl : dialog.theme.controlBorder
         }
         Keys.onReturnPressed: clicked()
         Keys.onEnterPressed: clicked()
