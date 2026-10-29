@@ -12,7 +12,7 @@
 
 [#72](https://github.com/xiaodaozhi/xdstarter/issues/72) 的布局导入键盘测试在状态变化时记录提交中、确认按钮禁用与透明度，并在按键前检查焦点；快速完成的测试行强制后台提交在按键函数返回前完成，仍要求观察到提交中状态及最终布局。Windows hosted CTest 单独运行原生 D3D11 版本并上传日志，发行目录仍保留原有验证；Qt 系统文件选择器线程清理警告的原因及真实 Windows 11 行为另行跟踪，不能以该测试代替。
 
-[#88](https://github.com/xiaodaozhi/xdstarter/issues/88) 的诊断只在一次性 GitHub-hosted Windows 上运行两个独立 QtTest 进程：分别在 QML 文件选择器可见后立即关闭，或等进程内、owner 和标题匹配的原生窗口可见后关闭，保留 Qt 对话框线程日志和时间点。诊断检查窗口操作的完成，不把 QtTest 返回成功当成线程清理成功；Qt 警告是否消失、根因及真实 Windows 11 行为以 Issue 证据为准。
+[#88](https://github.com/xiaodaozhi/xdstarter/issues/88) 的诊断只在一次性 GitHub-hosted Windows 上运行两个独立 QtTest 进程：分别在 QML 文件选择器可见后立即关闭，或等进程内、owner 和标题匹配的原生窗口可见后关闭，保留 Qt 对话框线程日志和时间点。立即关闭后另观察最多 1.2 秒；若同一测试进程的匹配窗口迟到，仅向该 HWND 发送关闭消息并等待其不可见。诊断检查窗口操作的完成，不把 QtTest 返回成功或有限观察当成线程清理成功；Qt 警告是否消失、根因及真实 Windows 11 行为以 Issue 证据为准。
 
 ## 当前自动检查
 

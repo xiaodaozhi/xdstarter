@@ -5868,6 +5868,26 @@ void PrototypeWindowTest::layoutImportFilePickerOwnership() {
                     << "qmlVisible=" << picker->property("visible").toBool()
                     << "nativeVisible=" << bool(visibleNativeDialog(
                            window_, picker->property("title").toString()));
+            if (diagnostic == QLatin1String("immediate")) {
+                QElapsedTimer observation;
+                observation.start();
+                HWND lateWindow = nullptr;
+                while (observation.elapsed() < 1200 && !lateWindow) {
+                    lateWindow = visibleNativeDialog(window_, picker->property("title").toString());
+                    if (!lateWindow)
+                        QTest::qWait(20);
+                }
+                qInfo() << "Native picker after-close observation:" << "dark=" << dark
+                        << "durationMs=" << observation.elapsed()
+                        << "lateNativeVisible=" << bool(lateWindow);
+                if (lateWindow) {
+                    // The diagnostic owns this process, owner, title and HWND. Close
+                    // only a late fixture dialog, never another process's window.
+                    QVERIFY(PostMessageW(lateWindow, WM_CLOSE, 0, 0));
+                    QTRY_VERIFY_WITH_TIMEOUT(
+                        !visibleNativeDialog(window_, picker->property("title").toString()), 5000);
+                }
+            }
         }
 #endif
     }
