@@ -46,6 +46,17 @@ set_tests_properties(ui.prototype PROPERTIES
 if(WIN32 AND DEFINED ENV{WINDIR})
     set_property(TEST ui.prototype APPEND PROPERTY ENVIRONMENT "QT_QPA_FONTDIR=$ENV{WINDIR}/Fonts")
 endif()
+if(WIN32 AND "$ENV{GITHUB_ACTIONS}" STREQUAL "true" AND
+   "$ENV{RUNNER_ENVIRONMENT}" STREQUAL "github-hosted")
+    set(import_evidence "${PROJECT_BINARY_DIR}/layout-import-native-evidence")
+    file(MAKE_DIRECTORY "${import_evidence}")
+    add_test(NAME ui.layout-import-native COMMAND xdstarter_ui_tests
+        layoutImportDialogThemeAndKeyboard -o "${import_evidence}/native-d3d11.log,txt")
+    set_tests_properties(ui.layout-import-native PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=windows;QSG_RHI_BACKEND=d3d11;QSG_INFO=1;QT_FORCE_STDERR_LOGGING=1;XDSTARTER_TEST_REQUIRE_D3D11=1"
+        WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
+        TIMEOUT 60)
+endif()
 
 qt_add_executable(xdstarter_desktop_window_host_tests
     tst_desktop_window_host.cpp
