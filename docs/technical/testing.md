@@ -608,6 +608,20 @@ PR 初次 head `72d13d4` 的[附加 MSVC 2022 检查](https://github.com/xiaodao
 
 直接建索引为 80.63 ms；服务索引就绪探测为 86.62 ms，未计入热查询分位。direct/service 的匹配总数校验和均为 1909，每次超时上限 5 秒。该参考数据集的热搜索 P95 小于 PRD-012 的 100 ms 目标；计时不含 QML 布局／绘制、真实 Shell 扫描或图标加载，也不是键盘到屏幕呈现的 P95。单次参考运行不代表所有设备、系统负载或 8192×16×256 容量上限组合；多音状态匹配仍受查询长度及读音候选影响，正在执行的任务不会因新查询即时终止。
 
+### 可复核的搜索服务采样（#35）
+
+`scripts/benchmark_search.py` 显式运行 Release 搜索测试程序，默认分别使用 0、1000 和 4096 个匿名目录项，每组预热 20 次并采集 100 个不同查询。程序逐条核对直接索引与异步服务的结果身份和总数，报告保存每次查询及两条路径的原始耗时、匹配数量、程序 SHA-256、Qt/编译器和单调时钟信息；采集脚本独立复算第 50 和第 95 个排序样本，并拒绝缺失、重复、非有限耗时、身份散列或汇总不一致的结果。
+
+例如先将 Qt 6.8.2 的 `bin` 加入当前进程的 `PATH`，再运行：
+
+```powershell
+python scripts/benchmark_search.py --executable build/app-release/xdstarter_search_service_tests.exe --output build/validation/issue-35/search-service.json
+```
+
+输出路径必须是新文件，脚本不会覆盖已有证据。可通过 `--entries` 显式选择 0 至 8192 个不同规模；每组仍为 100 个查询。本采样在索引就绪后测量，包含服务 worker 排队，但不启动产品常驻进程、不加载 QML、不扫描真实目录或安装输入 Hook。空目录不等于空布局，服务结果接收不等于屏幕呈现；冷／热唤起、100 磁贴界面、帧耗时及常驻资源仍需另行采集，不能用这份报告关闭 #35 或宣称端到端目标通过。
+
+2026-10-29 一次本机受控采样的[全部原始数据](validation/issue-35/search-service.json)保留三个规模各 100 条记录。环境为 Windows 11 26300.9711、Intel Core i7-11370H、约 31.8 GiB 内存、Qt 6.8.2，Release 使用附加 v142 编译器 19.29.30159 / SDK 19041；不同于声明的精确编译器基线。1000 项的服务 P95 / 最大值为 7.77 / 8.29 ms，4096 项为 30.36 / 33.60 ms。测试程序 SHA-256 为 `f1b2d8d7d37405a4d944a066ef50a6dc7a18bd0aca39f653d714945ffd00a7f9`；该次编译的 `search_service_tests.cpp` SHA-256 为 `3fd07351f9637ecb9ee2f1bbfa810c474a51cf9eebd30f24594c5b8ae0e3c531`，其余源码以 `3821b4e1fb24311f80acc4a376b6295898b2f211` 为基础。系统负载未隔离，最大值和全部样本均予保留，不能把单次服务层结果推广为所有设备或端到端体验。
+
 ### 本轮 Windows 真机证据
 
 用户确认开始桌面验收后，使用同一 GUI hash、Windows QPA 执行 `searchKeyboardAndLaunchLifecycle`，3/3 通过（含初始化／清理，2.617 秒），日志为本地 `build/issue8-render-native.log`。该用例直接导出[原生浅色样例](../design/validation/issue-8/search-light-native.png)和[原生深色样例](../design/validation/issue-8/search-dark-native.png)，均为 1028×728 RGBA、DPR 1，四角 alpha 为 0；已目视核对搜索框、结果名称、图标占位、固定状态、单层边框和主题。[抓帧元数据](../design/validation/issue-8/search-render-native.json)标明 `fixtureOnly: true`，没有读取用户目录或启动真实应用，不以此替代下述产品验收。
