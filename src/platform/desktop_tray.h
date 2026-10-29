@@ -35,6 +35,9 @@ class DesktopTray : public QObject {
     void quitRequested();
     void winKeyCaptureToggleRequested();
     void startButtonCaptureToggleRequested();
+    // The native notification area is being recreated. Capture must be
+    // suspended before the replacement icon is registered.
+    void registrationAboutToReset();
     void registrationChanged(bool available, QString message);
 
   protected:

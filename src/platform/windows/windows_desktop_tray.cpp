@@ -5,6 +5,7 @@
 
 #include <cstring>
 #include <iterator>
+#include <utility>
 
 #include <windows.h>
 
@@ -74,7 +75,19 @@ QString trayError(const QString& prefix) {
 
 class WindowsDesktopTray::Impl {
   public:
-    explicit Impl(WindowsDesktopTray* owner) : owner(owner) {}
+    explicit Impl(WindowsDesktopTray* owner, NotificationOperation operation)
+        : owner(owner), notificationOperation(std::move(operation)) {
+        if (!notificationOperation) {
+            notificationOperation = [](quint32 command, void* data) {
+                return Shell_NotifyIconW(static_cast<DWORD>(command),
+                                         static_cast<NOTIFYICONDATAW*>(data)) != FALSE;
+            };
+        }
+    }
+
+    bool notifyIcon(DWORD command, NOTIFYICONDATAW* data) {
+        return notificationOperation(static_cast<quint32>(command), data);
+    }
 
     NOTIFYICONDATAW notification() const {
         NOTIFYICONDATAW data{};
@@ -116,17 +129,32 @@ class WindowsDesktopTray::Impl {
         if (!window || !icon) {
             return false;
         }
+        const auto generation = owner->eventSessionGeneration();
+        const HWND expectedWindow = window;
+        const HICON expectedIcon = icon;
+        const auto current = [this, generation, expectedWindow, expectedIcon] {
+            return owner->eventSessionGeneration() == generation && window == expectedWindow &&
+                   icon == expectedIcon;
+        };
         NOTIFYICONDATAW data = notification();
-        if (!Shell_NotifyIconW(NIM_ADD, &data)) {
-            available = false;
+        if (!notifyIcon(NIM_ADD, &data)) {
+            if (current())
+                available = false;
             return false;
         }
+        if (!current())
+            return false;
         data.uVersion = NOTIFYICON_VERSION_4;
-        if (!Shell_NotifyIconW(NIM_SETVERSION, &data)) {
-            Shell_NotifyIconW(NIM_DELETE, &data);
-            available = false;
+        if (!notifyIcon(NIM_SETVERSION, &data)) {
+            if (current()) {
+                notifyIcon(NIM_DELETE, &data);
+                if (current())
+                    available = false;
+            }
             return false;
         }
+        if (!current())
+            return false;
         available = true;
         return true;
     }
@@ -136,7 +164,14 @@ class WindowsDesktopTray::Impl {
             // Explorer has discarded its icon registry. Re-registration happens
             // on the Qt event loop, outside the native callback.
             owner->queueSessionCallback([this] {
+                const auto generation = owner->eventSessionGeneration();
+                available = false;
+                emit owner->registrationAboutToReset();
+                if (!owner->isCurrentEventSession(generation))
+                    return;
                 const bool restored = registerIcon();
+                if (!owner->isCurrentEventSession(generation))
+                    return;
                 emit owner->registrationChanged(
                     restored, restored
                                   ? QStringLiteral("托盘入口已恢复。")
@@ -182,6 +217,7 @@ class WindowsDesktopTray::Impl {
     }
 
     WindowsDesktopTray* owner;
+    NotificationOperation notificationOperation;
     HWND window = nullptr;
     HICON icon = nullptr;
     UINT taskbarCreatedMessage = 0;
@@ -196,8 +232,8 @@ class WindowsDesktopTray::Impl {
     QPoint menuPosition;
 };
 
-WindowsDesktopTray::WindowsDesktopTray(QObject* parent)
-    : DesktopTray(parent), impl_(std::make_unique<Impl>(this)) {}
+WindowsDesktopTray::WindowsDesktopTray(QObject* parent, NotificationOperation operation)
+    : DesktopTray(parent), impl_(std::make_unique<Impl>(this, std::move(operation))) {}
 
 WindowsDesktopTray::~WindowsDesktopTray() { stop(); }
 
@@ -249,7 +285,7 @@ void WindowsDesktopTray::stop() {
     }
     if (impl_->window) {
         NOTIFYICONDATAW data = impl_->notification();
-        Shell_NotifyIconW(NIM_DELETE, &data);
+        impl_->notifyIcon(NIM_DELETE, &data);
         DestroyWindow(impl_->window);
         impl_->window = nullptr;
     }
@@ -272,7 +308,7 @@ void WindowsDesktopTray::setWinKeyCaptureState(bool active, bool canEnable, cons
     impl_->winKeyStatus = status.left(512).simplified();
     if (impl_->available) {
         NOTIFYICONDATAW data = impl_->notification();
-        if (!Shell_NotifyIconW(NIM_MODIFY, &data)) {
+        if (!impl_->notifyIcon(NIM_MODIFY, &data)) {
             impl_->available = false;
             emit registrationChanged(false,
                                      QStringLiteral("托盘状态更新失败；可从窗口退出 XDStarter。"));
@@ -337,7 +373,7 @@ void WindowsDesktopTray::setStartButtonCaptureState(bool active, bool canEnable,
     impl_->startButtonCanEnable = canEnable;
     if (impl_->available) {
         auto notification = impl_->notification();
-        if (!Shell_NotifyIconW(NIM_MODIFY, &notification)) {
+        if (!impl_->notifyIcon(NIM_MODIFY, &notification)) {
             impl_->available = false;
             emit registrationChanged(false, QStringLiteral("无法更新托盘状态。"));
         }

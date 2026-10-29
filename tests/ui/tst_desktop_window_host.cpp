@@ -5,6 +5,15 @@
 #include "platform/win_key_capture.h"
 #include "services/desktop_shell_service.h"
 
+#ifdef Q_OS_WIN
+#include "platform/windows/windows_desktop_tray.h"
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <qt_windows.h>
+#include <shellapi.h>
+#endif
+
 #include <QGuiApplication>
 #include <QImage>
 #include <QPainter>
@@ -17,6 +26,7 @@
 #include <QtTest>
 
 #include <atomic>
+#include <cwchar>
 #include <memory>
 #include <limits>
 #include <functional>
@@ -278,6 +288,28 @@ QImage trayIcon() {
     return image;
 }
 
+#ifdef Q_OS_WIN
+struct OwnedTrayWindow {
+    HWND handle = nullptr;
+    int count = 0;
+};
+
+BOOL CALLBACK collectOwnedTrayWindow(HWND window, LPARAM parameter) {
+    DWORD process = 0;
+    GetWindowThreadProcessId(window, &process);
+    if (process != GetCurrentProcessId())
+        return TRUE;
+    wchar_t className[80]{};
+    if (GetClassNameW(window, className, 80) &&
+        std::wcscmp(className, L"XDStarter.DesktopTray.1") == 0) {
+        auto* found = reinterpret_cast<OwnedTrayWindow*>(parameter);
+        found->handle = window;
+        ++found->count;
+    }
+    return TRUE;
+}
+#endif
+
 } // namespace
 
 class MenuWindow final : public QWindow {
@@ -379,10 +411,210 @@ class DesktopWindowHostTest : public QObject {
     void startButtonCaptureRejectsUnavailableAndLateSignals();
     void startButtonDiagnosticsDistinguishNativeForegroundAndHidden();
     void startButtonOldQueuedFailureCannotDisableNewSession();
+#ifdef Q_OS_WIN
+    void taskbarRecreationSuspendsCapture_data();
+    void taskbarRecreationSuspendsCapture();
+    void taskbarRecreationRejectsOldPlacement();
+    void taskbarRecreationCannotRestartStoppedTray();
+    void taskbarRecreationRejectsReentrantStop();
+    void taskbarRecreationCannotChangeNewTraySession();
+#endif
 
   private:
     bool originalQuitOnClose_ = false;
 };
+
+#ifdef Q_OS_WIN
+void DesktopWindowHostTest::taskbarRecreationSuspendsCapture_data() {
+    QTest::addColumn<int>("failurePhase");
+    QTest::newRow("registration-success") << 0;
+    QTest::newRow("add-failure") << 1;
+    QTest::newRow("version-failure") << 2;
+}
+
+void DesktopWindowHostTest::taskbarRecreationSuspendsCapture() {
+    QFETCH(int, failurePhase);
+    const bool restored = failurePhase == 0;
+    auto state = std::make_shared<AnchorState>();
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    PlacementPlatform placement;
+    FakeWinKeyCapture startCapture;
+    FakeWinKeyCapture winCapture;
+    int additions = 0;
+    bool pausedBeforeRegistration = false;
+    xdstarter::WindowsDesktopTray tray(nullptr, [&](quint32 command, void*) {
+        if (command == NIM_ADD) {
+            ++additions;
+            if (additions > 1) {
+                pausedBeforeRegistration = !startCapture.isActive() && !winCapture.isActive();
+                return failurePhase != 1;
+            }
+        }
+        if (command == NIM_SETVERSION && additions > 1 && failurePhase == 2)
+            return false;
+        return true;
+    });
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.attachStartButtonCapture(startCapture);
+    host.attachWinKeyCapture(winCapture);
+    host.start(trayIcon());
+    QVERIFY(startCapture.isActive());
+    host.toggleWinKeyCapture();
+    QVERIFY(winCapture.isActive());
+    QVERIFY(!window.isVisible());
+    OwnedTrayWindow owned;
+    EnumThreadWindows(GetCurrentThreadId(), collectOwnedTrayWindow,
+                      reinterpret_cast<LPARAM>(&owned));
+    QCOMPARE(owned.count, 1);
+    const UINT taskbarCreated = RegisterWindowMessageW(L"TaskbarCreated");
+    QVERIFY(taskbarCreated != 0);
+    QSignalSpy reset(&tray, &xdstarter::DesktopTray::registrationAboutToReset);
+    SendMessageW(owned.handle, taskbarCreated, 0, 0);
+    QCOMPARE(reset.count(), 0); // WndProc only queues the event.
+    QVERIFY(startCapture.isActive());
+    QTRY_COMPARE(reset.count(), 1);
+    QTRY_COMPARE(additions, 2);
+    QVERIFY(pausedBeforeRegistration);
+    QVERIFY(!startCapture.isActive());
+    QVERIFY(!winCapture.isActive());
+    QCOMPARE(tray.isAvailable(), restored);
+    if (restored) {
+        QVERIFY(!window.isVisible());
+        host.toggleStartButtonCapture();
+        QVERIFY(startCapture.isActive());
+        host.toggleWinKeyCapture();
+        QVERIFY(winCapture.isActive());
+    } else {
+        QTRY_VERIFY(window.isVisible());
+        const auto requests = startCapture.requests;
+        host.toggleStartButtonCapture();
+        QCOMPARE(startCapture.requests, requests);
+    }
+    host.shutdown();
+    QVERIFY(!startCapture.isActive());
+    QVERIFY(!winCapture.isActive());
+}
+
+void DesktopWindowHostTest::taskbarRecreationRejectsOldPlacement() {
+    auto state = std::make_shared<AnchorState>();
+    state->delay = true;
+    xdstarter::DesktopShellService shell(std::make_unique<AnchorPlatform>(state));
+    MenuWindow window;
+    PlacementPlatform placement;
+    FakeWinKeyCapture startCapture;
+    int additions = 0;
+    xdstarter::WindowsDesktopTray tray(nullptr, [&](quint32 command, void*) {
+        if (command == NIM_ADD)
+            ++additions;
+        return true;
+    });
+    xdstarter::DesktopWindowHost host(window, shell, placement, tray);
+    host.attachStartButtonCapture(startCapture);
+    host.start(trayIcon());
+    QVERIFY(startCapture.isActive());
+    startCapture.toggle();
+    QTRY_COMPARE(state->queries.load(), 1);
+    OwnedTrayWindow owned;
+    EnumThreadWindows(GetCurrentThreadId(), collectOwnedTrayWindow,
+                      reinterpret_cast<LPARAM>(&owned));
+    QCOMPARE(owned.count, 1);
+    const UINT taskbarCreated = RegisterWindowMessageW(L"TaskbarCreated");
+    QVERIFY(taskbarCreated != 0);
+    SendMessageW(owned.handle, taskbarCreated, 0, 0);
+    QTRY_COMPARE(additions, 2);
+    QVERIFY(!startCapture.isActive());
+    state->delay = false;
+    state->release.release();
+    QTRY_COMPARE(state->completed.load(), 1);
+    QTest::qWait(50);
+    QVERIFY(!window.isVisible());
+    QCOMPARE(placement.placements, 0);
+    host.toggleStartButtonCapture();
+    QVERIFY(startCapture.isActive());
+    startCapture.toggle();
+    QTRY_VERIFY(window.isVisible());
+    QCOMPARE(placement.placements, 1);
+    host.shutdown();
+}
+
+void DesktopWindowHostTest::taskbarRecreationCannotRestartStoppedTray() {
+    int additions = 0;
+    xdstarter::WindowsDesktopTray tray(nullptr, [&](quint32 command, void*) {
+        if (command == NIM_ADD)
+            ++additions;
+        return true;
+    });
+    QVERIFY(tray.start(trayIcon()).success);
+    OwnedTrayWindow owned;
+    EnumThreadWindows(GetCurrentThreadId(), collectOwnedTrayWindow,
+                      reinterpret_cast<LPARAM>(&owned));
+    QCOMPARE(owned.count, 1);
+    QSignalSpy registration(&tray, &xdstarter::DesktopTray::registrationChanged);
+    QSignalSpy reset(&tray, &xdstarter::DesktopTray::registrationAboutToReset);
+    connect(&tray, &xdstarter::DesktopTray::registrationAboutToReset, &tray,
+            [&tray] { tray.stop(); });
+    const UINT taskbarCreated = RegisterWindowMessageW(L"TaskbarCreated");
+    QVERIFY(taskbarCreated != 0);
+    SendMessageW(owned.handle, taskbarCreated, 0, 0);
+    QTRY_COMPARE(reset.count(), 1);
+    QCOMPARE(additions, 1);
+    QCOMPARE(registration.count(), 0);
+    QVERIFY(!tray.isAvailable());
+}
+
+void DesktopWindowHostTest::taskbarRecreationRejectsReentrantStop() {
+    int additions = 0;
+    xdstarter::WindowsDesktopTray* current = nullptr;
+    xdstarter::WindowsDesktopTray tray(nullptr, [&](quint32 command, void*) {
+        if (command == NIM_ADD && ++additions == 2)
+            current->stop();
+        return true;
+    });
+    current = &tray;
+    QVERIFY(tray.start(trayIcon()).success);
+    OwnedTrayWindow owned;
+    EnumThreadWindows(GetCurrentThreadId(), collectOwnedTrayWindow,
+                      reinterpret_cast<LPARAM>(&owned));
+    QCOMPARE(owned.count, 1);
+    QSignalSpy registration(&tray, &xdstarter::DesktopTray::registrationChanged);
+    const UINT taskbarCreated = RegisterWindowMessageW(L"TaskbarCreated");
+    QVERIFY(taskbarCreated != 0);
+    SendMessageW(owned.handle, taskbarCreated, 0, 0);
+    QTRY_COMPARE(additions, 2);
+    QCOMPARE(registration.count(), 0);
+    QVERIFY(!tray.isAvailable());
+}
+
+void DesktopWindowHostTest::taskbarRecreationCannotChangeNewTraySession() {
+    int additions = 0;
+    bool restarted = false;
+    xdstarter::WindowsDesktopTray* current = nullptr;
+    xdstarter::WindowsDesktopTray tray(nullptr, [&](quint32 command, void*) {
+        if (command == NIM_ADD && ++additions == 2) {
+            current->stop();
+            restarted = current->start(trayIcon()).success;
+        }
+        return true;
+    });
+    current = &tray;
+    QVERIFY(tray.start(trayIcon()).success);
+    OwnedTrayWindow owned;
+    EnumThreadWindows(GetCurrentThreadId(), collectOwnedTrayWindow,
+                      reinterpret_cast<LPARAM>(&owned));
+    QCOMPARE(owned.count, 1);
+    QSignalSpy registration(&tray, &xdstarter::DesktopTray::registrationChanged);
+    const UINT taskbarCreated = RegisterWindowMessageW(L"TaskbarCreated");
+    QVERIFY(taskbarCreated != 0);
+    SendMessageW(owned.handle, taskbarCreated, 0, 0);
+    QTRY_COMPARE(additions, 3);
+    QVERIFY(restarted);
+    QVERIFY(tray.isAvailable());
+    QCOMPARE(registration.count(), 1);
+    QVERIFY(registration.at(0).at(0).toBool());
+    tray.stop();
+}
+#endif
 
 void DesktopWindowHostTest::startButtonCaptureStartsInTrayAndCanPause() {
     auto state = std::make_shared<AnchorState>();
