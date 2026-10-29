@@ -10,6 +10,7 @@
 #include "platform/desktop_platform.h"
 #include "platform/platform_integration.h"
 #include "platform/motion_preference.h"
+#include "platform/contrast_preference.h"
 #include "services/application_catalog.h"
 #include "services/desktop_shell_service.h"
 #include "services/prototype_service.h"
@@ -72,6 +73,11 @@ class ManualMotionPreference final : public xdstarter::MotionPreference {
   public:
     explicit ManualMotionPreference(bool enabled) : MotionPreference(enabled) {}
     void setEnabled(bool enabled) { publishAnimationsEnabled(enabled); }
+};
+
+class ManualContrastPreference final : public xdstarter::ContrastPreference {
+  public:
+    void setState(xdstarter::ContrastState state) { publish(std::move(state)); }
 };
 
 xdstarter::LaunchTarget catalogTarget(const QString& name, const QString& identity,
@@ -380,6 +386,7 @@ class PrototypeWindowTest : public QObject {
     void themeSwitchRetainsGeometry();
     void focusOutlineContrast_data();
     void focusOutlineContrast();
+    void highContrastTracksSystemPalette();
     void systemThemePreferenceTracksAndPersists();
     void layoutImportPreservesSystemTheme();
     void reducedMotionFollowsPreference();
@@ -463,7 +470,8 @@ class PrototypeWindowTest : public QObject {
     void createWindow(const QString& path = {}, bool sampleMode = true,
                       std::shared_ptr<CatalogTestState> catalogState = {},
                       std::shared_ptr<DesktopTestState> desktopState = {},
-                      xdstarter::MotionPreference* motionPreference = nullptr);
+                      xdstarter::MotionPreference* motionPreference = nullptr,
+                      xdstarter::ContrastPreference* contrastPreference = nullptr);
     void destroyWindow();
     void beginMouseDrag(const QString& tileId);
     void moveMouseToGrid(const QString& groupId, const QPointF& position);
@@ -831,7 +839,8 @@ void PrototypeWindowTest::init() {
 void PrototypeWindowTest::createWindow(const QString& path, bool sampleMode,
                                       std::shared_ptr<CatalogTestState> catalogState,
                                       std::shared_ptr<DesktopTestState> desktopState,
-                                      xdstarter::MotionPreference* motionPreference) {
+                                      xdstarter::MotionPreference* motionPreference,
+                                      xdstarter::ContrastPreference* contrastPreference) {
     service_ = std::make_unique<xdstarter::PrototypeService>(grid_, path, sampleMode);
     platform_ = xdstarter::createPlatformIntegration();
     if (catalogState) {
@@ -844,7 +853,7 @@ void PrototypeWindowTest::createWindow(const QString& path, bool sampleMode,
     }
     controller_ = std::make_unique<xdstarter::MenuController>(
         *service_, *platform_, visualTokens_, nullptr, catalog_.get(), desktopShell_.get(),
-        motionPreference);
+        motionPreference, contrastPreference);
     engine_ = std::make_unique<QQmlApplicationEngine>();
     if (catalog_) {
         engine_->addImageProvider(QStringLiteral("application-icons"),
@@ -1118,6 +1127,252 @@ void PrototypeWindowTest::focusOutlineContrast() {
     item(QStringLiteral("moreMenuButton"))->forceActiveFocus(Qt::TabFocusReason);
     QTRY_VERIFY(!tileFocus->isVisible());
     QCOMPARE(tileGeometries(), geometry);
+}
+
+void PrototypeWindowTest::highContrastTracksSystemPalette() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = directory.filePath(QStringLiteral("contrast-layout.json"));
+    ManualContrastPreference preference;
+    ManualMotionPreference motion(false);
+    const auto catalogState = std::make_shared<CatalogTestState>();
+    destroyWindow();
+    createWindow(path, true, catalogState, {}, &motion, &preference);
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 2);
+    if (qEnvironmentVariableIsSet("XDSTARTER_TEST_REQUIRE_D3D11"))
+        QCOMPARE(window_->rendererInterface()->graphicsApi(), QSGRendererInterface::Direct3D11);
+    QVERIFY(!controller_->animationsEnabled());
+    QCOMPARE(window_->property("dismissAnimationDuration").toInt(), 0);
+    controller_->setThemePreference(QStringLiteral("light"));
+    QVERIFY(controller_->flushSave());
+    QFile saved(path);
+    QVERIFY(saved.open(QIODevice::ReadOnly));
+    const auto original = saved.readAll();
+    saved.close();
+    const auto geometry = tileGeometries();
+    auto* chrome = item(QStringLiteral("menuSurface"));
+    auto* tile = item(QStringLiteral("tile-work-standard-1"));
+    auto* railText = item(QStringLiteral("shortcutHighContrastText-documents"));
+    auto* railIcon = item(QStringLiteral("shortcutIcon-documents"));
+    QVERIFY(chrome && tile && railText && railIcon);
+    auto* tileLabel = visualItem(tile, QStringLiteral("tileLabel"));
+    auto* tileSymbol = visualItem(tile, QStringLiteral("tileSymbol"));
+    auto* tileIcon = visualItem(tile, QStringLiteral("tileIcon"));
+    QVERIFY(tileLabel && tileSymbol && tileIcon);
+    const QVariantMap dark{{QStringLiteral("window"), QColor(QStringLiteral("#101020"))},
+                           {QStringLiteral("windowText"), QColor(QStringLiteral("#FFFF00"))},
+                           {QStringLiteral("highlight"), QColor(QStringLiteral("#003399"))},
+                           {QStringLiteral("highlightText"), QColor(Qt::white)},
+                           {QStringLiteral("grayText"), QColor(QStringLiteral("#B0B0B0"))}};
+    const QVariantMap light{{QStringLiteral("window"), QColor(QStringLiteral("#FFFDD0"))},
+                            {QStringLiteral("windowText"), QColor(QStringLiteral("#202040"))},
+                            {QStringLiteral("highlight"), QColor(QStringLiteral("#800020"))},
+                            {QStringLiteral("highlightText"), QColor(Qt::white)},
+                            {QStringLiteral("grayText"), QColor(QStringLiteral("#555555"))}};
+    const auto capture = [this](const QString& name) {
+        const auto destination = qEnvironmentVariable("XDSTARTER_CONTRAST_CAPTURE_DIR");
+        if (destination.isEmpty())
+            return;
+        QVERIFY(QDir().mkpath(destination));
+        window_->requestUpdate();
+        QTest::qWait(250);
+        const auto initial = window_->grabWindow();
+        QVERIFY(!initial.isNull());
+        QVERIFY(initial.save(QDir(destination).filePath(QStringLiteral("first-") + name)));
+        QTest::qWait(350);
+        const auto frame = window_->grabWindow();
+        QVERIFY(!frame.isNull());
+        QVERIFY(frame.save(QDir(destination).filePath(name)));
+    };
+    QSignalSpy changes(controller_.get(), &xdstarter::MenuController::highContrastChanged);
+    const auto check = [&](const QVariantMap& colors) {
+        preference.setState({true, colors});
+        QTRY_VERIFY(window_->property("highContrast").toBool());
+        const auto background = colors.value(QStringLiteral("window")).value<QColor>();
+        const auto foreground = colors.value(QStringLiteral("windowText")).value<QColor>();
+        QTRY_COMPARE(chrome->property("color").value<QColor>(), background);
+        QCOMPARE(chrome->property("railColor").value<QColor>(), background);
+        QVERIFY(!chrome->property("shadowEnabled").toBool());
+        QCOMPARE(tile->property("fillTopColor").value<QColor>(), background);
+        QCOMPARE(tile->property("fillBottomColor").value<QColor>(), background);
+        QCOMPARE(tileLabel->property("color").value<QColor>(), foreground);
+        QCOMPARE(tileSymbol->property("color").value<QColor>(), foreground);
+        QVERIFY(tileSymbol->isVisible());
+        QVERIFY(!tileIcon->isVisible());
+        QVERIFY(railText->isVisible());
+        QVERIFY(!railIcon->isVisible());
+        QCOMPARE(railText->property("color").value<QColor>(), foreground);
+        QCOMPARE(QQmlProperty::read(window_, "palette.highlight").value<QColor>(),
+                 colors.value(QStringLiteral("highlight")).value<QColor>());
+        QCOMPARE(QQmlProperty::read(window_, "palette.highlightedText").value<QColor>(),
+                 colors.value(QStringLiteral("highlightText")).value<QColor>());
+        QCOMPARE(tileGeometries(), geometry);
+    };
+    check(dark);
+    capture(QStringLiteral("contrast-dark.png"));
+    check(light);
+    auto* small = item(QStringLiteral("tile-daily-small-1"));
+    QVERIFY(small);
+    auto* smallAccessible = QAccessible::queryAccessibleInterface(small);
+    QVERIFY(smallAccessible);
+    QCOMPARE(smallAccessible->text(QAccessible::Name),
+             tileData(QStringLiteral("daily-small-1")).value(QStringLiteral("name")).toString());
+    auto* powerAccessible = QAccessible::queryAccessibleInterface(item(QStringLiteral("shortcut-power")));
+    QVERIFY(powerAccessible);
+    QCOMPARE(powerAccessible->text(QAccessible::Name), QStringLiteral("电源与退出"));
+    QCOMPARE(item(QStringLiteral("shortcutHighContrastText-account"))->property("text").toString(),
+             QStringLiteral("账户"));
+    QCOMPARE(item(QStringLiteral("shortcutHighContrastText-power"))->property("text").toString(),
+             QStringLiteral("电源"));
+    QCOMPARE(changes.size(), 2);
+    QCOMPARE(controller_->themePreference(), QStringLiteral("light"));
+    QVERIFY(controller_->flushSave());
+    QVERIFY(saved.open(QIODevice::ReadOnly));
+    QCOMPARE(saved.readAll(), original);
+    saved.close();
+
+    QTest::keyClick(window_, Qt::Key_Tab);
+    tile->forceActiveFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(tile->hasActiveFocus());
+    auto* tileBackground = tile->property("background").value<QQuickItem*>();
+    QVERIFY(tileBackground);
+    QCOMPARE(QQmlProperty::read(tileBackground, "border.color").value<QColor>(),
+             light.value(QStringLiteral("windowText")).value<QColor>());
+    auto* inner = tileBackground->findChild<QQuickItem*>(QStringLiteral("tileFocusInner"));
+    QVERIFY(inner && inner->isVisible());
+    QCOMPARE(QQmlProperty::read(inner, "border.color").value<QColor>(),
+             light.value(QStringLiteral("windowText")).value<QColor>());
+    QVERIFY(tile->setProperty("pointerPressActive", true));
+    QCOMPARE(QQmlProperty::read(tileBackground, "border.width").toReal(), qreal(3));
+    QVERIFY(tile->setProperty("pointerPressActive", false));
+    auto* tileTip = tile->findChild<QObject*>(QStringLiteral("tileToolTip"));
+    QVERIFY(tileTip);
+    QTRY_VERIFY_WITH_TIMEOUT(tileTip->property("visible").toBool(), 1500);
+    auto* tipBackground = tileTip->property("background").value<QQuickItem*>();
+    auto* tipText = tileTip->property("contentItem").value<QQuickItem*>();
+    QVERIFY(tipBackground && tipText);
+    QCOMPARE(tipBackground->property("color").value<QColor>(),
+             light.value(QStringLiteral("window")).value<QColor>());
+    QCOMPARE(tipText->property("color").value<QColor>(),
+             light.value(QStringLiteral("windowText")).value<QColor>());
+    capture(QStringLiteral("contrast-light-focus.png"));
+    auto* groupActions = item(QStringLiteral("groupActions-work"));
+    QVERIFY(groupActions && groupActions->isVisible());
+    QVERIFY(groupActions->setProperty("hoverEnabled", true));
+    QTest::mouseMove(window_, groupActions->mapToScene(groupActions->boundingRect().center()).toPoint());
+    QTRY_VERIFY(groupActions->property("hovered").toBool());
+    auto* groupBackground = groupActions->property("background").value<QQuickItem*>();
+    QVERIFY(groupBackground);
+    QCOMPARE(QQmlProperty::read(groupBackground, "border.width").toReal(), qreal(1));
+    QVERIFY(groupActions->setProperty("down", true));
+    QCOMPARE(QQmlProperty::read(groupBackground, "border.width").toReal(), qreal(2));
+    QVERIFY(groupActions->setProperty("down", false));
+    openMoreMenu();
+    auto* menuAction = item(QStringLiteral("saveLayoutButton"));
+    QVERIFY(menuAction && menuAction->isVisible());
+    auto* menuText = menuAction->property("contentItem").value<QQuickItem*>();
+    QVERIFY(menuText);
+    QCOMPARE(menuText->property("color").value<QColor>(),
+             light.value(QStringLiteral("windowText")).value<QColor>());
+    capture(QStringLiteral("contrast-light-menu.png"));
+    click(item(QStringLiteral("aboutButton")));
+    auto* about = window_->findChild<QObject*>(QStringLiteral("aboutPopup"));
+    QVERIFY(about);
+    QTRY_VERIFY(about->property("opened").toBool());
+    auto* aboutClose = item(QStringLiteral("closeAboutButton"));
+    QVERIFY(aboutClose);
+    auto* aboutBackground = aboutClose->property("background").value<QQuickItem*>();
+    auto* aboutText = aboutClose->property("contentItem").value<QQuickItem*>();
+    QVERIFY(aboutBackground && aboutText);
+    QCOMPARE(aboutBackground->property("color").value<QColor>(),
+             light.value(QStringLiteral("windowText")).value<QColor>());
+    QCOMPARE(aboutText->property("color").value<QColor>(),
+             light.value(QStringLiteral("window")).value<QColor>());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!about->property("visible").toBool());
+
+    auto* importDialog = window_->findChild<QObject*>(QStringLiteral("layoutImportDialog"));
+    QVERIFY(importDialog);
+    QVERIFY(QMetaObject::invokeMethod(importDialog, "open"));
+    QTRY_VERIFY(importDialog->property("opened").toBool());
+    auto* importBackground = importDialog->property("background").value<QQuickItem*>();
+    auto* importConfirm = item(QStringLiteral("layoutImportConfirmButton"));
+    QVERIFY(importBackground && importConfirm && !importConfirm->isEnabled());
+    QCOMPARE(importBackground->property("color").value<QColor>(),
+             light.value(QStringLiteral("window")).value<QColor>());
+    QCOMPARE(importConfirm->opacity(), qreal(1));
+    auto* importText = importConfirm->property("contentItem").value<QQuickItem*>();
+    QVERIFY(importText);
+    QCOMPARE(importText->property("color").value<QColor>(),
+             light.value(QStringLiteral("grayText")).value<QColor>());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!importDialog->property("visible").toBool());
+
+    const auto target = catalogState->applications.first();
+    auto* application = item(QStringLiteral("applicationLaunch-") + target.id);
+    QVERIFY(application);
+    auto* catalogIcon = visualItem(application, QStringLiteral("applicationIcon"));
+    auto* catalogFallback = visualItem(application, QStringLiteral("catalogIconFallback"));
+    QVERIFY(catalogIcon && catalogFallback && !catalogIcon->isVisible() && catalogFallback->isVisible());
+    QCOMPARE(catalogFallback->property("color").value<QColor>(),
+             light.value(QStringLiteral("windowText")).value<QColor>());
+    auto* searchField = item(QStringLiteral("searchField"));
+    QVERIFY(searchField->setProperty("text", target.name));
+    QTRY_VERIFY(item(QStringLiteral("searchResult-") + target.id));
+    auto* searchResult = item(QStringLiteral("searchResult-") + target.id);
+    auto* searchIcon = visualItem(searchResult, QStringLiteral("searchResultIcon"));
+    auto* searchFallback = visualItem(searchResult, QStringLiteral("searchIconFallback"));
+    QVERIFY(searchIcon && searchFallback && !searchIcon->isVisible() && searchFallback->isVisible());
+    QCOMPARE(searchFallback->property("color").value<QColor>(),
+             light.value(QStringLiteral("windowText")).value<QColor>());
+    QVERIFY(searchField->setProperty("text", QString{}));
+    QTRY_VERIFY(!controller_->searchActive());
+
+    motion.setEnabled(true);
+    QVERIFY(controller_->animationsEnabled());
+    beginMouseDrag(QStringLiteral("work-standard-1"));
+    auto* dragPreview = item(QStringLiteral("dragPlacementPreview"));
+    auto* dragStatus = item(QStringLiteral("dragContrastStatus"));
+    QVERIFY(dragPreview && dragStatus && dragPreview->isVisible() && dragStatus->isVisible());
+    QCOMPARE(dragPreview->property("color").value<QColor>(),
+             light.value(QStringLiteral("window")).value<QColor>());
+    QCOMPARE(dragStatus->property("color").value<QColor>(),
+             light.value(QStringLiteral("windowText")).value<QColor>());
+    QCOMPARE(tile->opacity(), qreal(1));
+    preference.setState({true, dark});
+    QTRY_COMPARE(dragPreview->property("color").value<QColor>(),
+                 dark.value(QStringLiteral("window")).value<QColor>());
+    QCOMPARE(tile->opacity(), qreal(1));
+    preference.setState({true, light});
+    QTRY_COMPARE(dragPreview->property("color").value<QColor>(),
+                 light.value(QStringLiteral("window")).value<QColor>());
+    QVERIFY(window_->setProperty("dragValid", false));
+    QCOMPARE(dragStatus->property("text").toString(), QStringLiteral("不可放"));
+    QVERIFY(window_->setProperty("dragValid", true));
+    QCOMPARE(dragStatus->property("text").toString(), QStringLiteral("可放"));
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, QPoint(1, 1));
+    QTRY_VERIFY(!window_->property("dragActive").toBool());
+    motion.setEnabled(false);
+    QVERIFY(!controller_->animationsEnabled());
+
+    auto simulatedTile = tile->property("tile").toMap();
+    QVERIFY(!simulatedTile.isEmpty());
+    simulatedTile[QStringLiteral("name")] = QStringLiteral("😀 天气");
+    QVERIFY(tile->setProperty("tile", simulatedTile));
+    QCOMPARE(tileSymbol->property("text").toString(), QStringLiteral("😀"));
+    auto* tileAccessible = QAccessible::queryAccessibleInterface(tile);
+    QVERIFY(tileAccessible);
+    QCOMPARE(tileAccessible->text(QAccessible::Name), QStringLiteral("😀 天气"));
+
+    preference.setState({});
+    QTRY_VERIFY(!window_->property("highContrast").toBool());
+    QVERIFY(!railText->isVisible());
+    QVERIFY(railIcon->isVisible());
+    QCOMPARE(tileGeometries(), geometry);
+    QCOMPARE(controller_->themePreference(), QStringLiteral("light"));
+    QVERIFY(saved.open(QIODevice::ReadOnly));
+    QCOMPARE(saved.readAll(), original);
 }
 
 void PrototypeWindowTest::systemThemePreferenceTracksAndPersists() {

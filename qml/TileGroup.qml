@@ -14,7 +14,9 @@ Item {
     property bool hintsEnabled: true
     property bool animationsEnabled: true
     property bool darkTheme: true
-    readonly property var theme: tokens.themes[darkTheme ? "dark" : "light"]
+    property var themeOverride: null
+    property bool highContrast: false
+    readonly property var theme: themeOverride || tokens.themes[darkTheme ? "dark" : "light"]
     readonly property real occupiedGridHeight: {
         let occupied = 0;
         for (let index = 0; index < group.tiles.length; ++index) {
@@ -93,6 +95,7 @@ Item {
 
             Hint {
                 id: titleToolTip
+                contrastTheme: tileGroup.highContrast ? tileGroup.theme : null
                 delay: 600
                 font.family: groupLabel.font.family
 
@@ -103,7 +106,7 @@ Item {
                     font.family: groupLabel.font.family
                     text: tileGroup.group.name
                     textFormat: Text.PlainText
-                    color: titleToolTip.palette.toolTipText
+                    color: titleToolTip.foregroundColor
                     wrapMode: Text.Wrap
                 }
             }
@@ -130,22 +133,23 @@ Item {
             background: Rectangle {
                 radius: 6
                 color: groupActions.down ? tileGroup.theme.pressed : (groupActions.hovered ? tileGroup.theme.hover : "transparent")
-                border.width: (groupActions.activeFocus && tileGroup.keyboardNavigation) ? 2 : 0
+                border.width: (groupActions.activeFocus && tileGroup.keyboardNavigation) || (tileGroup.highContrast && groupActions.down) ? 2 : tileGroup.highContrast && groupActions.hovered ? 1 : 0
                 border.color: tileGroup.theme.focusAccent
             }
 
             contentItem: Text {
                 font.family: groupLabel.font.family
                 text: groupActions.text
-                color: tileGroup.titleColor
+                color: tileGroup.highContrast && !groupActions.enabled ? tileGroup.theme.disabled : tileGroup.titleColor
                 font.pixelSize: 20
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
-                opacity: groupActions.enabled ? 1 : 0.45
+                opacity: groupActions.enabled || tileGroup.highContrast ? 1 : 0.45
             }
 
             Hint {
                 id: actionsToolTip
+                contrastTheme: tileGroup.highContrast ? tileGroup.theme : null
                 delay: 600
                 font.family: groupLabel.font.family
 
@@ -155,7 +159,7 @@ Item {
                 contentItem: Text {
                     text: actionsToolTip.text
                     textFormat: Text.PlainText
-                    color: actionsToolTip.palette.toolTipText
+                    color: actionsToolTip.foregroundColor
                     font: actionsToolTip.font
                     wrapMode: Text.Wrap
                 }
@@ -222,6 +226,8 @@ Item {
 
                 keyboardNavigation: tileGroup.keyboardNavigation
                 darkTheme: tileGroup.darkTheme
+                themeOverride: tileGroup.theme
+                highContrast: tileGroup.highContrast
                 motion: tileGroup.tileTransitions[modelData.id] || ({})
                 tile: modelData
                 tokens: tileGroup.tokens

@@ -38,11 +38,11 @@ Dialog {
         leftPadding: 14
         rightPadding: 14
         focusPolicy: Qt.StrongFocus
-        opacity: enabled ? 1 : 0.45
+        opacity: enabled || dialog.controller.highContrast ? 1 : 0.45
         contentItem: Text {
             text: button.text
             textFormat: Text.PlainText
-            color: dialog.theme.foreground
+            color: !button.enabled && dialog.controller.highContrast ? dialog.controller.highContrastColors.grayText : dialog.theme.foreground
             font: button.font
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
@@ -52,7 +52,7 @@ Dialog {
             objectName: button.objectName + "Background"
             radius: 6
             color: button.down ? dialog.theme.pressed : button.hovered ? dialog.theme.hover : dialog.theme.surface
-            border.width: (button.activeFocus && dialog.controller.keyboardNavigation) ? 2 : 1
+            border.width: dialog.controller.highContrast && button.down ? 3 : (button.activeFocus && dialog.controller.keyboardNavigation) || (dialog.controller.highContrast && button.hovered) ? 2 : 1
             border.color: (button.activeFocus && dialog.controller.keyboardNavigation) ? dialog.theme.focusControl : dialog.theme.controlBorder
         }
         Keys.onReturnPressed: clicked()
@@ -66,7 +66,7 @@ Dialog {
             width: dialog.panelWidth
             height: dialog.panelHeight
             radius: dialog.tokens.cornerRadiusDip.menu
-            color: Qt.rgba(0, 0, 0, 0.4)
+            color: dialog.controller.highContrast ? "transparent" : Qt.rgba(0, 0, 0, 0.4)
         }
     }
     header: Label {
@@ -116,6 +116,7 @@ Dialog {
             }
             Hint {
                 id: sourceToolTip
+                contrastTheme: dialog.controller.highContrast ? dialog.theme : null
                 delay: 600
                 font.family: dialog.font.family
 
@@ -128,7 +129,7 @@ Dialog {
                     wrapMode: Text.WrapAnywhere
                     maximumLineCount: 8
                     elide: Text.ElideMiddle
-                    color: sourceToolTip.palette.toolTipText
+                    color: sourceToolTip.foregroundColor
                     font: sourceToolTip.font
                 }
             }

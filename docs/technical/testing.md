@@ -16,6 +16,12 @@
 
 [#80](https://github.com/xiaodaozhi/xdstarter/issues/80) 的隔离 QML 回归检查深浅主题下分组管理、快捷栏、更多按钮和搜索框的真实键盘焦点边框，并比较常态、悬停及可按控件的按下色；另检查磁贴内外焦点线、全部调色板的常态／悬停／按下渐变端点和网格几何。颜色比较使用 sRGB 相对亮度、3:1 设计参考；它不等于对整个应用的 WCAG 合规审计。离屏夹具与实际 Windows 显示、高对比度和屏幕阅读器验收分别记录。
 
+[#83](https://github.com/xiaodaozhi/xdstarter/issues/83) 的高对比度检查以两组注入的系统色测试切换／恢复、提示、菜单、应用目录、搜索、拖动状态、完整名称和几何，并与减少动画共同执行；平台测试注入读取器，向本进程自有隐藏窗口发送系统色通知，不改本机设置。本机 Qt 6.8.2、附加 MSVC v142 19.29.30159、offscreen/software 的完整 UI、启动冒烟和两个偏好测试 **4/4**，QML lint 通过。样例测试程序 SHA-256 为 `b0e354ecf7734fede2974c4f197178ed8a9ebc9db25965b1b6a565c68c4d7c85`；[深底](../design/validation/issue-83/contrast-dark.png)、[浅底焦点](../design/validation/issue-83/contrast-light-focus.png)、[浅底菜单](../design/validation/issue-83/contrast-light-menu.png)是匿名模拟色离屏抓帧，不代表实际系统配色或物理显示。
+
+平台测试还只读比较正式读取器与当前系统参数；查询不可用或测试期间状态改变时记录跳过，不切换系统设置。仅一次性 GitHub-hosted Windows runner 启用 `ui.high-contrast-native`，要求 Windows QPA 和 Direct3D11 RHI，上传模拟色的日志和抓帧；RHI 名称不证明具体适配器，运行结果以该次 CI 为准。
+
+首轮模拟切换暴露颜色与启用状态通知顺序导致 QML 未定义颜色警告，调整绑定与保留有效配色后定向测试通过；先前一次短等待抓帧出现局部绘制不完整，offscreen/software 中等待两次 `frameSwapped` 未达到要求，后续分时抓帧完整，但未定位该次画面异常原因。真实 Windows 主题切换、屏幕阅读器及更多系统组合仍未完成，不能以模拟结果宣称通过。
+
 `python3 scripts/check_repository.py` 检查本地文档/图片链接、JSON/SVG/PNG 基本有效性、当前设计尺寸、Logo 透明通道及 SVG 网格几何。该检查不运行 Qt，也不代表 Windows 原型通过。
 
 GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查看 PNG，核对字体、应用图标、长名称、间隙及辅助功能信息的表达。

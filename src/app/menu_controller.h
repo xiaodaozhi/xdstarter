@@ -20,6 +20,7 @@ namespace xdstarter {
 
 class PlatformIntegration;
 class MotionPreference;
+class ContrastPreference;
 class PrototypeService;
 class ApplicationCatalog;
 class DesktopShellService;
@@ -52,6 +53,8 @@ class MenuController : public QObject {
     Q_PROPERTY(bool darkTheme READ darkTheme WRITE setDarkTheme NOTIFY darkThemeChanged)
     Q_PROPERTY(QString themePreference READ themePreference WRITE setThemePreference NOTIFY themePreferenceChanged)
     Q_PROPERTY(bool animationsEnabled READ animationsEnabled NOTIFY animationsEnabledChanged)
+    Q_PROPERTY(bool highContrast READ highContrast NOTIFY highContrastChanged)
+    Q_PROPERTY(QVariantMap highContrastColors READ highContrastColors NOTIFY highContrastChanged)
     Q_PROPERTY(bool readOnly READ readOnly NOTIFY readOnlyChanged)
     Q_PROPERTY(bool saving READ saving NOTIFY savingChanged)
     Q_PROPERTY(bool layoutImportSupported READ layoutImportSupported CONSTANT)
@@ -88,7 +91,8 @@ class MenuController : public QObject {
                    QVariantMap visualTokens, QObject* parent = nullptr,
                    ApplicationCatalog* catalog = nullptr,
                    DesktopShellService* desktopShell = nullptr,
-                   MotionPreference* motionPreference = nullptr);
+                   MotionPreference* motionPreference = nullptr,
+                   ContrastPreference* contrastPreference = nullptr);
     ~MenuController() override;
 
     [[nodiscard]] QVariantList tiles() const;
@@ -115,6 +119,8 @@ class MenuController : public QObject {
     [[nodiscard]] QString themePreference() const;
     void setThemePreference(const QString& preference);
     [[nodiscard]] bool animationsEnabled() const { return animationsEnabled_; }
+    [[nodiscard]] bool highContrast() const { return highContrast_; }
+    [[nodiscard]] QVariantMap highContrastColors() const { return highContrastColors_; }
     [[nodiscard]] bool readOnly() const;
     [[nodiscard]] bool saving() const;
     [[nodiscard]] QString operationMessage() const;
@@ -185,6 +191,7 @@ class MenuController : public QObject {
     void darkThemeChanged();
     void themePreferenceChanged();
     void animationsEnabledChanged();
+    void highContrastChanged();
     void readOnlyChanged();
     void savingChanged();
     void importStateChanged();
@@ -244,6 +251,8 @@ class MenuController : public QObject {
     bool keyboardNavigation_ = false;
     bool darkTheme_ = true;
     bool animationsEnabled_ = true;
+    bool highContrast_ = false;
+    QVariantMap highContrastColors_;
     QString themePreference_ = QStringLiteral("dark");
     Qt::ColorScheme systemColorScheme_ = Qt::ColorScheme::Unknown;
     bool readOnly_ = false;

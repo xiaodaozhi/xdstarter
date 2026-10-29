@@ -1,6 +1,12 @@
 add_executable(xdstarter_application_platform_tests application_platform_tests.cpp)
 target_link_libraries(xdstarter_application_platform_tests PRIVATE xdstarter_platform)
 if(WIN32)
+    add_executable(xdstarter_contrast_preference_tests contrast_preference_tests.cpp)
+    target_compile_definitions(xdstarter_contrast_preference_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+    target_link_libraries(xdstarter_contrast_preference_tests PRIVATE xdstarter_platform)
+    add_test(NAME platform.contrast-preference COMMAND xdstarter_contrast_preference_tests)
+    set_tests_properties(platform.contrast-preference PROPERTIES TIMEOUT 15
+        ENVIRONMENT "QT_QPA_PLATFORM=windows")
     add_executable(xdstarter_motion_preference_tests motion_preference_tests.cpp)
     target_compile_definitions(xdstarter_motion_preference_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
     target_link_libraries(xdstarter_motion_preference_tests PRIVATE xdstarter_platform)
