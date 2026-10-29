@@ -63,13 +63,16 @@
 
 ## 主题、表面与控件状态
 
-品牌蓝 `#368BFF`、青 `#36D6CB`、深蓝 `#142138` 保留用于品牌、焦点和强调。正文使用当前实色 `opaqueFallback`，快捷栏及高层表面使用 `surface`；搜索、控件边框、分隔线和交互状态从同一主题表取值。
+品牌蓝 `#368BFF`、青 `#36D6CB`、深蓝 `#142138` 保留用于品牌和强调。正文使用当前实色 `opaqueFallback`，快捷栏及高层表面使用 `surface`；搜索、控件边框、分隔线、焦点和交互状态从同一主题表取值。
 
 | Token | 浅色 | 深色 |
 | --- | --- | --- |
 | `opaqueFallback` | `#EFF5FC` | `#182334` |
 | `surface` | `#F8FAFE` | `#223148` |
 | `searchBackground` | `#FFFFFF` | `#23334A` |
+| `focusAccent` | `#2164D7` | `#36D6CB` |
+| `focusControl` | `#2164D7` | `#93BDFF` |
+| `focusTileInner` | `#FFFFFF` | `#FFFFFF` |
 | `foreground` | `#172338` | `#F4F7FB` |
 | `secondary` | `#596A82` | `#ACBBD0` |
 | `errorForeground` | `#B42318` | `#FF9696` |
@@ -78,6 +81,8 @@
 | `separator` | `#D4DEEB` | `#324258` |
 | `hover` | `#E2EAF5` | `#2B3E57` |
 | `pressed` | `#D5E1F0` | `#344B68` |
+
+[#80](https://github.com/xiaodaozhi/xdstarter/issues/80) 的键盘焦点使用主题焦点色：分组和快捷栏采用 `focusAccent`，普通控件采用 `focusControl`；磁贴焦点的外圈对比面板，白色内圈对比磁贴渐变，均在原尺寸内绘制。非焦点的品牌、选中及表面色不变。修订 2.3 的交互状态图保留当时配色，当前焦点样式以运行时 tokens 和测试记录为准。
 
 菜单、对话框、按钮和列表沿用这些表面及状态色；鼠标悬停、按下、键盘焦点和禁用状态应可区分。重要错误和只读原因保留文字，并使用主题独立的 `errorForeground` 确保浅色/深色底上的可读性；全局 `status.error = #ED7777` 继续用于失效标记填充等图形，不能直接作为浅色背景上的错误文字。正常成功状态不占用常驻底栏。主体 Canvas 先绘制边框色的 12 DIP 圆角外轮廓，再向内缩进 1 DIP 绘制面板和侧栏，内圆角为 11 DIP；外缘只覆盖一次边框色，避免同一抗锯齿边缘的面板填色和描边叠加使曲线变淡。侧栏限制在内轮廓中，边框外侧没有第二层圆角遮罩。Windows 原生边框、圆角、阴影均禁用。透明外窗只用于承载阴影，不表示已启用模糊背景材料。决策见 [ADR-0007](../technical/adr/0007-custom-menu-chrome.md)，本次光栅化修正由 [#31](https://github.com/xiaodaozhi/xdstarter/issues/31) 跟踪；v2 修订 2.3 的几何与颜色不变，运行时结果与设计导出分别验收。
 

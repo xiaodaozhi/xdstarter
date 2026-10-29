@@ -14,6 +14,8 @@
 
 ## 当前自动检查
 
+[#80](https://github.com/xiaodaozhi/xdstarter/issues/80) 的隔离 QML 回归检查深浅主题下分组管理、快捷栏、更多按钮和搜索框的真实键盘焦点边框，并比较常态、悬停及可按控件的按下色；另检查磁贴内外焦点线、全部调色板的常态／悬停／按下渐变端点和网格几何。颜色比较使用 sRGB 相对亮度、3:1 设计参考；它不等于对整个应用的 WCAG 合规审计。离屏夹具与实际 Windows 显示、高对比度和屏幕阅读器验收分别记录。
+
 `python3 scripts/check_repository.py` 检查本地文档/图片链接、JSON/SVG/PNG 基本有效性、当前设计尺寸、Logo 透明通道及 SVG 网格几何。该检查不运行 Qt，也不代表 Windows 原型通过。
 
 GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查看 PNG，核对字体、应用图标、长名称、间隙及辅助功能信息的表达。

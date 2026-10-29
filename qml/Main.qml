@@ -327,7 +327,7 @@ ApplicationWindow {
             radius: 6
             color: actionButton.down ? window.theme.pressed : actionButton.hovered ? window.theme.hover : window.theme.surface
             border.width: (actionButton.activeFocus && window.controller.keyboardNavigation) ? 2 : 1
-            border.color: (actionButton.activeFocus && window.controller.keyboardNavigation) ? window.tokens.brand.blue : window.theme.controlBorder
+            border.color: (actionButton.activeFocus && window.controller.keyboardNavigation) ? window.theme.focusControl : window.theme.controlBorder
         }
     }
 
@@ -351,7 +351,7 @@ ApplicationWindow {
             radius: iconButton.cornerRadius
             color: iconButton.down ? window.theme.pressed : iconButton.checked ? Qt.alpha(window.tokens.brand.blue, 0.14) : iconButton.hovered ? window.theme.hover : "transparent"
             border.width: (iconButton.activeFocus && window.controller.keyboardNavigation) || iconButton.checked ? 1 : 0
-            border.color: window.tokens.brand.blue
+            border.color: (iconButton.activeFocus && window.controller.keyboardNavigation) ? window.theme.focusControl : window.tokens.brand.blue
         }
     }
 
@@ -1502,7 +1502,7 @@ ApplicationWindow {
                             radius: window.tokens.layout.searchHeight / 2
                             color: window.theme.searchBackground
                             border.width: (searchField.activeFocus && window.controller.keyboardNavigation) ? 2 : 1
-                            border.color: (searchField.activeFocus && window.controller.keyboardNavigation) ? window.tokens.brand.blue : window.theme.controlBorder
+                            border.color: (searchField.activeFocus && window.controller.keyboardNavigation) ? window.theme.focusControl : window.theme.controlBorder
                         }
 
                         Image {
@@ -1815,7 +1815,7 @@ ApplicationWindow {
                                             color: appButton.down ? window.theme.pressed : appButton.hovered ? window.theme.hover : "transparent"
                                             radius: 6
                                             border.width: (appButton.activeFocus && window.controller.keyboardNavigation) ? 2 : 0
-                                            border.color: window.tokens.brand.blue
+                                            border.color: window.theme.focusControl
                                         }
 
                                         contentItem: RowLayout {
@@ -2244,7 +2244,7 @@ ApplicationWindow {
                                 radius: 6
                                 color: searchRow.down ? window.theme.pressed : searchRow.hovered || searchRow.index === searchResultsList.currentIndex ? window.theme.hover : "transparent"
                                 border.width: (searchRow.activeFocus && window.controller.keyboardNavigation) ? 2 : 0
-                                border.color: window.tokens.brand.blue
+                                border.color: window.theme.focusControl
                             }
 
                             contentItem: RowLayout {
@@ -2893,7 +2893,7 @@ ApplicationWindow {
                     radius: 6
                     color: window.theme.searchBackground
                     border.width: (groupNameField.activeFocus && window.controller.keyboardNavigation) ? 2 : 1
-                    border.color: (groupNameField.activeFocus && window.controller.keyboardNavigation) ? window.tokens.brand.blue : window.theme.controlBorder
+                    border.color: (groupNameField.activeFocus && window.controller.keyboardNavigation) ? window.theme.focusControl : window.theme.controlBorder
                 }
                 Keys.priority: Keys.BeforeItem
                 Keys.onPressed: event => {
@@ -3039,7 +3039,7 @@ ApplicationWindow {
                     radius: 6
                     color: window.theme.searchBackground
                     border.width: (tileNameField.activeFocus && window.controller.keyboardNavigation) ? 2 : 1
-                    border.color: (tileNameField.activeFocus && window.controller.keyboardNavigation) ? window.tokens.brand.blue : window.theme.controlBorder
+                    border.color: (tileNameField.activeFocus && window.controller.keyboardNavigation) ? window.theme.focusControl : window.theme.controlBorder
                 }
                 Keys.priority: Keys.BeforeItem
                 Keys.onPressed: event => {

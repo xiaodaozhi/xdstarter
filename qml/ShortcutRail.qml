@@ -54,7 +54,7 @@ Rectangle {
             radius: 8
             color: button.down ? rail.theme.pressed : (button.hovered ? rail.theme.hover : "transparent")
             border.width: (button.activeFocus && rail.keyboardNavigation) ? 2 : 0
-            border.color: rail.tokens.brand.cyan
+            border.color: rail.theme.focusAccent
         }
 
         contentItem: Item {
