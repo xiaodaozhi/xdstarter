@@ -20,7 +20,7 @@ python3 -m unittest discover -s tests/tooling -v
 | `services/session_instance_tests.cpp` | `services.session_instance` | 独立进程 activate 握手、重复启动、会话隔离和主实例释放恢复；本机命名管道需要正常桌面权限 |
 | `services/application_browser_tests.cpp` | `services.application_browser` | 中文拼音／数字／拉丁／未知分类、稳定排序、文件夹层级／返回及刷新移除恢复 |
 | `services/application_catalog_tests.cpp` | `services.application_catalog` | worker 调用、目录刷新、图标更新/缓存预算、启动复核与失效目标保留 |
-| `platform/` | `platform.applications` | Windows 隔离快捷方式、原生图标、失效目标及受控 helper 实际启动与参数/工作目录 |
+| `platform/` | `platform.applications`、`platform.applications.localized`（后者仅 hosted Windows） | 隔离快捷方式、原生图标、失效目标及受控启动；工作区按 Shell 显示名验证，用户配置临时目录严格核对中文与路径身份 |
 | `platform/desktop_platform_tests.cpp` | `platform.desktop` | 桌面动作白名单、可信/失败面板矩形一致、工作区夹限/极值/阴影留白转换、原生装饰抑制与窗口所有权边界及托盘旧会话事件失效；只读 UIA probe 显式执行 |
 | `platform/desktop_width_snap_tests.cpp` | `platform.desktop-width-snap` | 五档缩放、负坐标、左右拖动、最近档位、最大边界及非法输入的宽度吸附 |
 | `platform/native_taskbar_probe.cpp` | `platform.native-menu-resize`（仅 Windows） | 自有隐藏 HWND 的 36 项原生消息／窗口策略回归：原 24 项边角、非活动、阶段、最大边界与窗口策略，另加四边各 3 项 region／重新定位与尺寸／Qt mask 清空重套；不发送全局输入 |

@@ -57,6 +57,26 @@ xdstarter::LaunchTarget shortcut(const QString& path, const QString& name) {
 #ifdef Q_OS_WIN
 constexpr int localizedFolderResourceId = 5301;
 
+QString shellDisplayName(const QString& path) {
+    const auto initialized = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    if (FAILED(initialized))
+        return {};
+    const auto native = QDir::toNativeSeparators(path);
+    IShellItem* item = nullptr;
+    PWSTR value = nullptr;
+    const auto created = SHCreateItemFromParsingName(
+        reinterpret_cast<LPCWSTR>(native.utf16()), nullptr, IID_PPV_ARGS(&item));
+    const auto named = SUCCEEDED(created) ? item->GetDisplayName(SIGDN_NORMALDISPLAY, &value)
+                                          : created;
+    const auto result = SUCCEEDED(named) && value ? QString::fromWCharArray(value).trimmed()
+                                                  : QString();
+    CoTaskMemFree(value);
+    if (item)
+        item->Release();
+    CoUninitialize();
+    return result;
+}
+
 QJsonObject localizationSourceDiagnostics(const QString& path) {
     const auto native = QDir::toNativeSeparators(path);
     const auto zonePath = native + QStringLiteral(":Zone.Identifier");
@@ -75,13 +95,78 @@ QJsonObject localizationSourceDiagnostics(const QString& path) {
     wchar_t volumePath[32768]{};
     const bool volumeAvailable =
         GetVolumePathNameW(reinterpret_cast<LPCWSTR>(native.utf16()), volumePath, 32768) != FALSE;
+    wchar_t fileSystem[256]{};
+    DWORD volumeFlags = 0;
+    const bool volumeInfoAvailable =
+        volumeAvailable && GetVolumeInformationW(volumePath, nullptr, 0, nullptr, nullptr,
+                                                  &volumeFlags, fileSystem, 256) != FALSE;
     return {{QStringLiteral("path"), path},
             {QStringLiteral("zoneIdentifierPresent"), zone != INVALID_HANDLE_VALUE},
             {QStringLiteral("zoneIdentifierOpenError"), static_cast<int>(zoneError)},
             {QStringLiteral("zoneIdentifier"), QString::fromUtf8(zoneBytes)},
             {QStringLiteral("volumePath"),
              volumeAvailable ? QString::fromWCharArray(volumePath) : QString()},
-            {QStringLiteral("driveType"), volumeAvailable ? int(GetDriveTypeW(volumePath)) : -1}};
+            {QStringLiteral("driveType"), volumeAvailable ? int(GetDriveTypeW(volumePath)) : -1},
+            {QStringLiteral("volumeInfoAvailable"), volumeInfoAvailable},
+            {QStringLiteral("fileSystem"),
+             volumeInfoAvailable ? QString::fromWCharArray(fileSystem) : QString()},
+            {QStringLiteral("volumeFlagsHex"),
+             volumeInfoAvailable ? QString::number(volumeFlags, 16) : QString()}};
+}
+
+QJsonArray localizationTimingDiagnostics(const QString& root, const QString& resourceModule) {
+    // Independent owned folders compare first lookup, a cached physical name,
+    // and a targeted Shell notification without changing system policy.
+    const auto reference = QStringLiteral("@%1,-%2")
+                               .arg(QDir::toNativeSeparators(resourceModule))
+                               .arg(localizedFolderResourceId);
+    QJsonArray result;
+    for (int index = 0; index < 3; ++index) {
+        const auto folder = QDir(root).filePath(QStringLiteral("timing-control-%1").arg(index));
+        const auto native = QDir::toNativeSeparators(folder);
+        const auto ini = QDir(folder).filePath(QStringLiteral("desktop.ini"));
+        const auto nativeIni = QDir::toNativeSeparators(ini);
+        const bool created = QDir().mkpath(folder);
+        const auto before = created && index == 1 ? shellDisplayName(folder) : QString();
+        const bool marked = created &&
+                            PathMakeSystemFolderW(reinterpret_cast<LPCWSTR>(native.utf16()));
+        QFile output(ini);
+        const auto content = QStringLiteral("[.ShellClassInfo]\r\nLocalizedResourceName=") +
+                             reference + QStringLiteral("\r\n");
+        const bool written = marked && output.open(QIODevice::WriteOnly) &&
+                             output.write(QByteArray("\xff\xfe", 2)) == 2 &&
+                             output.write(reinterpret_cast<const char*>(content.utf16()),
+                                          content.size() * 2) == content.size() * 2;
+        output.close();
+        const bool configured =
+            written && SetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeIni.utf16()),
+                                          FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM);
+        const bool notified = index != 0;
+        if (configured && notified)
+            SHChangeNotify(SHCNE_UPDATEITEM, SHCNF_PATHW | SHCNF_FLUSH,
+                           reinterpret_cast<LPCWSTR>(native.utf16()), nullptr);
+        QJsonArray samples;
+        QElapsedTimer elapsed;
+        elapsed.start();
+        for (const int delay : {0, 100, 400}) {
+            if (delay)
+                QThread::msleep(static_cast<unsigned long>(delay));
+            const auto name = shellDisplayName(folder);
+            samples.append(QJsonObject{{QStringLiteral("elapsedMs"), static_cast<double>(elapsed.elapsed())},
+                                       {QStringLiteral("name"), name}});
+        }
+        result.append(QJsonObject{{QStringLiteral("case"), index},
+                                  {QStringLiteral("queriedBeforeConfiguration"), index == 1},
+                                  {QStringLiteral("beforeName"), before},
+                                  {QStringLiteral("configured"), configured},
+                                  {QStringLiteral("notified"), notified},
+                                  {QStringLiteral("samples"), samples}});
+        if (written)
+            SetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeIni.utf16()), FILE_ATTRIBUTE_NORMAL);
+        if (created)
+            SetFileAttributesW(reinterpret_cast<LPCWSTR>(native.utf16()), FILE_ATTRIBUTE_NORMAL);
+    }
+    return result;
 }
 
 QJsonObject nativeOsDiagnostics() {
@@ -532,8 +617,11 @@ int main(int argc, char* argv[]) {
                 "AUMID cannot become a shell command");
 
 #ifdef Q_OS_WIN
-    test.expect(application.arguments().size() == 2, "controlled launch helper supplied");
-    if (application.arguments().size() != 2) {
+    const auto arguments = application.arguments();
+    const bool compareShellDisplay =
+        arguments.size() == 3 && arguments.at(2) == QLatin1String("--compare-shell-display");
+    test.expect(arguments.size() == 2 || compareShellDisplay, "controlled launch helper supplied");
+    if (arguments.size() != 2 && !compareShellDisplay) {
         return 1;
     }
     const auto currentDirectory = QDir::fromNativeSeparators(QDir::current().canonicalPath());
@@ -558,9 +646,9 @@ int main(int argc, char* argv[]) {
     const QString linkPath = QDir(root).filePath(QStringLiteral("受控启动.lnk"));
     const QString secondPath = QDir(root).filePath(QStringLiteral("不同参数.lnk"));
     const QString missingPath = QDir(root).filePath(QStringLiteral("已删除应用.lnk"));
-    const QString arguments = QStringLiteral("\"%1\" \"中文 参数\" \"--literal=one & two\"")
-                                  .arg(QDir::toNativeSeparators(marker));
-    test.expect(createShortcut(linkPath, helper, arguments, root), "fixture shortcut created");
+    const QString shortcutArguments = QStringLiteral("\"%1\" \"中文 参数\" \"--literal=one & two\"")
+                                          .arg(QDir::toNativeSeparators(marker));
+    test.expect(createShortcut(linkPath, helper, shortcutArguments, root), "fixture shortcut created");
     test.expect(createShortcut(secondPath, helper, QStringLiteral("different-argument"), root),
                 "second shortcut retains distinct argument");
     test.expect(
@@ -694,6 +782,9 @@ int main(int argc, char* argv[]) {
     int nestedChildren = 0;
     bool localizedFolder = false;
     bool sameDisplayNameDistinctPath = false;
+    QString userDisplayName;
+    QString separateDisplayName;
+    QString separateId;
     for (const auto& entry : merged.applications) {
         if (entry.type == QLatin1String("folder") && entry.parentFolderId.isEmpty())
             ++rootFolders;
@@ -704,6 +795,12 @@ int main(int argc, char* argv[]) {
         if (entry.type == QLatin1String("shortcut") && entry.parentFolderId == nestedId)
             ++nestedChildren;
         localizedFolder = localizedFolder || (entry.id == folderId && entry.name == localizedName);
+        if (entry.id == folderId)
+            userDisplayName = entry.name;
+        if (entry.shortcutPath == separateFolder) {
+            separateDisplayName = entry.name;
+            separateId = entry.id;
+        }
         sameDisplayNameDistinctPath =
             sameDisplayNameDistinctPath ||
             (entry.shortcutPath == separateFolder && entry.name == localizedName);
@@ -715,9 +812,62 @@ int main(int argc, char* argv[]) {
                     xdstarter::applicationTargetId(QStringLiteral("shortcut"), userLink) !=
                         xdstarter::applicationTargetId(QStringLiteral("shortcut"), commonLink),
                 "same named shortcuts with different parameters retain complete path identities");
-    test.expect(localizedFolder && sameDisplayNameDistinctPath,
-                "real Shell localized folder names display without merging different paths");
-    if (!localizedFolder || !sameDisplayNameDistinctPath) {
+    const auto systemUserName = shellDisplayName(userFolder);
+    const auto systemSeparateName = shellDisplayName(separateFolder);
+    const bool nativeMatches = !systemUserName.isEmpty() && !systemSeparateName.isEmpty() &&
+                               userDisplayName == systemUserName &&
+                               separateDisplayName == systemSeparateName && !separateId.isEmpty() &&
+                               separateId != folderId;
+    test.expect(nativeMatches, "catalog follows native Shell display names and preserves path identity");
+    bool displayNamesValid = localizedFolder && sameDisplayNameDistinctPath && nativeMatches;
+    if (compareShellDisplay) {
+        const bool userKnown = systemUserName == localizedName || systemUserName == QLatin1String("Tools");
+        const bool separateKnown =
+            systemSeparateName == localizedName || systemSeparateName == QLatin1String("Other");
+        displayNamesValid = userKnown && separateKnown && nativeMatches;
+        const QJsonObject observed{{QStringLiteral("userShellName"), systemUserName},
+                                   {QStringLiteral("separateShellName"), systemSeparateName},
+                                   {QStringLiteral("userCatalogName"), userDisplayName},
+                                   {QStringLiteral("separateCatalogName"), separateDisplayName}};
+        std::cout << "Shell display contract: "
+                  << QJsonDocument(observed).toJson(QJsonDocument::Compact).constData() << '\n';
+        test.expect(displayNamesValid,
+                    "catalog follows native Shell display names without merging distinct paths");
+    } else {
+        test.expect(displayNamesValid,
+                    "real Shell localized folder names display without merging different paths");
+    }
+    evidence.insert(QStringLiteral("shellDisplay"),
+                    QJsonObject{{QStringLiteral("mode"), compareShellDisplay ? QStringLiteral("system")
+                                                                            : QStringLiteral("strict-localized")},
+                                {QStringLiteral("userShellName"), systemUserName},
+                                {QStringLiteral("separateShellName"), systemSeparateName},
+                                {QStringLiteral("userCatalogName"), userDisplayName},
+                                {QStringLiteral("separateCatalogName"), separateDisplayName},
+                                {QStringLiteral("matchesNativeShell"), nativeMatches},
+                                {QStringLiteral("strictLocalizedDistinctPaths"),
+                                 localizedFolder && sameDisplayNameDistinctPath},
+                                {QStringLiteral("displayAssertionPassed"), displayNamesValid}});
+    const auto timingControls = localizationTimingDiagnostics(fixture.path(), resourceModule);
+    bool timingAvailable = timingControls.size() == 3;
+    for (const auto& value : timingControls) {
+        const auto control = value.toObject();
+        const auto samples = control.value(QStringLiteral("samples")).toArray();
+        timingAvailable = timingAvailable && control.value(QStringLiteral("configured")).toBool() &&
+                          samples.size() == 3;
+        for (const auto& sample : samples)
+            timingAvailable = timingAvailable &&
+                              !sample.toObject().value(QStringLiteral("name")).toString().isEmpty();
+        if (control.value(QStringLiteral("queriedBeforeConfiguration")).toBool())
+            timingAvailable = timingAvailable &&
+                              !control.value(QStringLiteral("beforeName")).toString().isEmpty();
+    }
+    test.expect(timingAvailable, "owned Shell timing controls configured and observed");
+    evidence.insert(QStringLiteral("shellTimingControls"), timingControls);
+    evidence.insert(QStringLiteral("shellSourceDiagnostics"),
+                    localizationSourceDiagnostics(QDir(userFolder).filePath(QStringLiteral("desktop.ini"))));
+    evidence.insert(QStringLiteral("shellNativeOs"), nativeOsDiagnostics());
+    if (!displayNamesValid) {
         QJsonArray folderNames;
         for (const auto& entry : merged.applications) {
             if (entry.type == QLatin1String("folder")) {
@@ -798,6 +948,90 @@ int main(int argc, char* argv[]) {
                                            FILE_ATTRIBUTE_NORMAL),
                     "owned localized fixture attributes restored before temporary cleanup");
     }
+    // A folder with no desktop.ini always exercises the native physical-name
+    // path, independently of whether this Windows session honors localization.
+    const auto plainRoot = fixture.filePath(QStringLiteral("physical-name-root"));
+    const auto plainFolder = QDir(plainRoot).filePath(QStringLiteral("PhysicalFolder"));
+    test.expect(QDir().mkpath(plainFolder), "physical-name fixture created");
+    xdstarter::WindowsApplicationPlatform plainPlatform({plainRoot, plainRoot});
+    const auto plain = plainPlatform.scanApplications();
+    bool physicalFolder = false;
+    for (const auto& entry : plain.applications) {
+        if (entry.type == QLatin1String("folder") && entry.shortcutPath == plainFolder &&
+            entry.name == QLatin1String("PhysicalFolder") &&
+            entry.id == xdstarter::applicationTargetId(QStringLiteral("folder"), plainFolder))
+            physicalFolder = true;
+    }
+    test.expect(plain.success && physicalFolder,
+                "unconfigured folder keeps its physical name and path identity");
+    evidence.insert(QStringLiteral("physicalNameFixturePassed"), plain.success && physicalFolder);
+
+    // Mark only an owned test desktop.ini as originating from the Internet.
+    // Windows decides whether to honor it; the catalog must follow Shell.
+    const auto markedRoot = fixture.filePath(QStringLiteral("marked-name-root"));
+    const auto markedFolder = QDir(markedRoot).filePath(QStringLiteral("MarkedFolder"));
+    const auto nativeMarkedFolder = QDir::toNativeSeparators(markedFolder);
+    const bool markedDirectory = QDir().mkpath(markedFolder) &&
+                                 PathMakeSystemFolderW(reinterpret_cast<LPCWSTR>(nativeMarkedFolder.utf16()));
+    QFile markedIni(QDir(markedFolder).filePath(QStringLiteral("desktop.ini")));
+    const auto markedContent = QStringLiteral("[.ShellClassInfo]\r\nLocalizedResourceName=") +
+                               localizedReference + QStringLiteral("\r\n");
+    const bool markedWritten = markedDirectory && markedIni.open(QIODevice::WriteOnly) &&
+                               markedIni.write(QByteArray("\xff\xfe", 2)) == 2 &&
+                               markedIni.write(reinterpret_cast<const char*>(markedContent.utf16()),
+                                               markedContent.size() * 2) == markedContent.size() * 2;
+    markedIni.close();
+    const auto nativeMarkedIni = QDir::toNativeSeparators(markedIni.fileName());
+    const auto nativeZone = nativeMarkedIni + QStringLiteral(":Zone.Identifier");
+    const auto zoneHandle = CreateFileW(reinterpret_cast<LPCWSTR>(nativeZone.utf16()), GENERIC_WRITE,
+                                        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                        nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    const QByteArray zoneData("[ZoneTransfer]\r\nZoneId=3\r\n");
+    DWORD zoneBytes = 0;
+    const bool zoneWritten = zoneHandle != INVALID_HANDLE_VALUE &&
+                             WriteFile(zoneHandle, zoneData.constData(), DWORD(zoneData.size()),
+                                       &zoneBytes, nullptr) && zoneBytes == DWORD(zoneData.size());
+    if (zoneHandle != INVALID_HANDLE_VALUE)
+        CloseHandle(zoneHandle);
+    const bool markedAttributes =
+        markedWritten && SetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeMarkedIni.utf16()),
+                                            FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM);
+    const auto markedSource = localizationSourceDiagnostics(markedIni.fileName());
+    test.expect(markedDirectory && markedWritten && zoneWritten && markedAttributes &&
+                    markedSource.value(QStringLiteral("zoneIdentifierPresent")).toBool() &&
+                    markedSource.value(QStringLiteral("zoneIdentifier")).toString().contains(
+                        QStringLiteral("ZoneId=3")),
+                "source marker is written only to the owned localization fixture");
+    if (markedAttributes)
+        SHChangeNotify(SHCNE_UPDATEITEM, SHCNF_PATHW | SHCNF_FLUSH,
+                       reinterpret_cast<LPCWSTR>(nativeMarkedFolder.utf16()), nullptr);
+    const auto markedShellName = shellDisplayName(markedFolder);
+    xdstarter::WindowsApplicationPlatform markedPlatform({markedRoot, markedRoot});
+    const auto marked = markedPlatform.scanApplications();
+    QString markedCatalogName;
+    bool markedIdentity = false;
+    for (const auto& entry : marked.applications) {
+        if (entry.type == QLatin1String("folder") && entry.shortcutPath == markedFolder) {
+            markedCatalogName = entry.name;
+            markedIdentity = entry.id ==
+                             xdstarter::applicationTargetId(QStringLiteral("folder"), markedFolder);
+        }
+    }
+    const bool markedKnown = markedShellName == localizedName || markedShellName == QLatin1String("MarkedFolder");
+    const bool markedMatches = marked.success && markedKnown && markedIdentity &&
+                               markedCatalogName == markedShellName;
+    test.expect(markedMatches, "source-marked folder follows Shell display name and path identity");
+    evidence.insert(QStringLiteral("sourceMarkedFixture"),
+                    QJsonObject{{QStringLiteral("source"), markedSource},
+                                {QStringLiteral("shellName"), markedShellName},
+                                {QStringLiteral("catalogName"), markedCatalogName},
+                                {QStringLiteral("matchesNativeShell"), markedMatches},
+                                {QStringLiteral("shellUsedPhysicalName"),
+                                 markedShellName == QLatin1String("MarkedFolder")}});
+    if (markedWritten)
+        SetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeMarkedIni.utf16()), FILE_ATTRIBUTE_NORMAL);
+    if (markedDirectory)
+        SetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeMarkedFolder.utf16()), FILE_ATTRIBUTE_NORMAL);
     const auto target = shortcut(linkPath, QStringLiteral("受控启动"));
     test.expect(platform.checkAvailability(target).success, "valid shortcut availability resolves");
     const auto missing = shortcut(missingPath, QStringLiteral("已删除应用"));
