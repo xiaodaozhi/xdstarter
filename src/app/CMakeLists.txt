@@ -10,6 +10,8 @@ function(xdstarter_add_ui target import_root)
         "${PROJECT_SOURCE_DIR}/src/app/interface_font.cpp"
         "${PROJECT_SOURCE_DIR}/src/app/scene_graph_failure_guard.h"
         "${PROJECT_SOURCE_DIR}/src/app/scene_graph_failure_guard.cpp"
+        "${PROJECT_SOURCE_DIR}/src/app/scene_graph_failure_notice.h"
+        "${PROJECT_SOURCE_DIR}/src/app/scene_graph_failure_notice.cpp"
         "${PROJECT_SOURCE_DIR}/src/app/runtime_support.cpp"
     )
     set(qml_files)

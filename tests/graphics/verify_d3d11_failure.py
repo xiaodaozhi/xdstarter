@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -24,6 +25,49 @@ def require_hosted_resident(environment):
     if (environment.get('GITHUB_ACTIONS') != 'true' or
             environment.get('RUNNER_ENVIRONMENT') != 'github-hosted'):
         raise ValueError('Resident verification is restricted to disposable hosted runners')
+
+
+def wait_for_owned_notice(pid, executable):
+    """Wait for the detached helper before deleting its private runtime copy."""
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    kernel.OpenProcess.restype = wintypes.HANDLE
+    kernel.WaitForSingleObject.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+    kernel.WaitForSingleObject.restype = wintypes.DWORD
+    kernel.QueryFullProcessImageNameW.argtypes = (wintypes.HANDLE, wintypes.DWORD,
+                                                 wintypes.LPWSTR, ctypes.POINTER(wintypes.DWORD))
+    kernel.QueryFullProcessImageNameW.restype = wintypes.BOOL
+    kernel.TerminateProcess.argtypes = (wintypes.HANDLE, wintypes.UINT)
+    kernel.CloseHandle.argtypes = (wintypes.HANDLE,)
+    handle = kernel.OpenProcess(0x100000 | 0x1000 | 0x0001, False, pid)
+    if not handle:
+        if ctypes.get_last_error() == 87:  # Already exited.
+            return
+        raise ValueError('Cannot inspect the detached notice process')
+    try:
+        if kernel.WaitForSingleObject(handle, 0) == 0:
+            return
+        buffer = ctypes.create_unicode_buffer(32768)
+        size = wintypes.DWORD(len(buffer))
+        if not kernel.QueryFullProcessImageNameW(handle, 0, buffer, ctypes.byref(size)):
+            if kernel.WaitForSingleObject(handle, 0) == 0:
+                return  # It exited while its image was being queried.
+            raise ValueError('Cannot inspect the detached notice process image')
+        if (os.path.normcase(os.path.abspath(buffer.value)) !=
+                os.path.normcase(os.path.abspath(executable))):
+            raise ValueError('Detached notice process no longer belongs to this fixture')
+        wait = kernel.WaitForSingleObject(handle, 35000)
+        if wait == 0:
+            return
+        if wait == 258:
+            # Only the helper whose image was verified in our private copy.
+            kernel.TerminateProcess(handle, 1)
+            kernel.WaitForSingleObject(handle, 5000)
+            raise ValueError('Detached notice helper outlived its watchdog')
+        raise ValueError('Could not wait for the detached notice helper')
+    finally:
+        kernel.CloseHandle(handle)
 
 
 def verify(args):
@@ -98,6 +142,8 @@ def verify(args):
                 raise ValueError(name + ' did not exit within 30 seconds') from error
             log = logs / (output.stem + '-' + name + '.log')
             log.write_text(process.stdout, encoding='utf-8')
+            if 'Graphics failure notice launched:' in process.stdout:
+                raise ValueError(name + ' smoke test unexpectedly launched a user notice')
             results[name] = {'exitCode': process.returncode,
                              'elapsedSeconds': round(time.monotonic() - started, 3),
                              'log': log.relative_to(output.parent).as_posix()}
@@ -170,7 +216,9 @@ def verify(args):
                     while resident.poll() is None and time.monotonic() < deadline:
                         try:
                             snapshot = json.loads(diagnostics.read_text(encoding='utf-8'))
-                            ready = snapshot.get('processId') == resident.pid
+                            ready = (snapshot.get('processId') == resident.pid and
+                                     snapshot.get('sessionActive') is True and
+                                     snapshot.get('hookInstalled') is True)
                             if ready:
                                 initial = snapshot
                         except (OSError, ValueError):
@@ -178,9 +226,9 @@ def verify(args):
                         if ready:
                             break
                         time.sleep(0.1)
-                    if resident.poll() is None:
-                        if not ready:
-                            raise ValueError('Resident process did not publish its readiness snapshot')
+                    if not ready and resident.poll() is None:
+                        raise ValueError('Resident input capture was not observed active before failure')
+                    if ready and resident.poll() is None:
                         activation = subprocess.run([str(runtime / 'xdstarter.exe'), '--layout-file', str(layout),
                             '--start-capture-diagnostics', str(owned / 'activation-diagnostics.json'),
                             '--start-capture-duration', '25'], cwd=owned, env=resident_env,
@@ -197,9 +245,17 @@ def verify(args):
                         resident.kill()
                         resident.wait(timeout=10)
             output_text = resident_log.read_text(encoding='utf-8', errors='replace')
+            notice_pids = re.findall(r'Graphics failure notice launched:\s+(\d+)', output_text)
+            resident_elapsed = time.monotonic() - started
+            for notice_pid in notice_pids:
+                wait_for_owned_notice(int(notice_pid), runtime / 'xdstarter.exe')
+            if not ready:
+                raise ValueError('Resident input capture was not observed active before failure')
             if (resident.returncode == 0 or 'Graphics initialization failed:' not in output_text or
                     output_text.count('action=injected-failure') < 2):
                 raise ValueError('Resident process did not handle the injected graphics failure')
+            if len(notice_pids) != 1:
+                raise ValueError('Resident did not launch exactly one graphics failure notice')
             final = json.loads(diagnostics.read_text(encoding='utf-8'))
             if (final.get('processId') != resident.pid or final.get('requested') is not False or
                     final.get('sessionActive') is not False or final.get('hookInstalled') is not False):
@@ -207,7 +263,8 @@ def verify(args):
             saved_diagnostics = logs / (output.stem + '-resident-diagnostics.json')
             shutil.copyfile(diagnostics, saved_diagnostics)
             results['hosted-resident'] = {'exitCode': resident.returncode,
-                'elapsedSeconds': round(time.monotonic() - started, 3),
+                'elapsedSeconds': round(resident_elapsed, 3),
+                'noticeHelperPid': int(notice_pids[0]),
                 'log': resident_log.relative_to(output.parent).as_posix(),
                 'diagnostics': saved_diagnostics.relative_to(output.parent).as_posix(),
                 'captureActiveBeforeFailure': initial.get('sessionActive') if initial else None,

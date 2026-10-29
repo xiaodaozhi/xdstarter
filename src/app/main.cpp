@@ -5,11 +5,13 @@
 #include "menu_controller.h"
 #include "runtime_support.h"
 #include "scene_graph_failure_guard.h"
+#include "scene_graph_failure_notice.h"
 
 #include "core/tile_grid.h"
 #include "platform/application_platform.h"
 #include "platform/desktop_platform.h"
 #include "platform/desktop_tray.h"
+#include "platform/graphics_failure_notice.h"
 #include "platform/installation_guard.h"
 #include "platform/platform_integration.h"
 #include "platform/start_button_capture.h"
@@ -35,6 +37,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QQmlApplicationEngine>
+#include <QProcess>
 #include <QQuickStyle>
 #include <QQuickWindow>
 #include <QSaveFile>
@@ -93,6 +96,10 @@ std::optional<QVariantMap> loadVisualTokens() {
 } // namespace
 
 int main(int argc, char* argv[]) {
+    if (argc == 2 && QString::fromLocal8Bit(argv[1]) ==
+                         QLatin1String(xdstarter::graphicsFailureNoticeArgument)) {
+        return xdstarter::runGraphicsFailureNotice();
+    }
     // Identity queries neither initialize the platform plugin nor activate a resident instance.
     if (argc == 2 && (QString::fromLocal8Bit(argv[1]) == QLatin1String("--version") ||
                       QString::fromLocal8Bit(argv[1]) == QLatin1String("--build-info"))) {
@@ -281,6 +288,21 @@ int main(int argc, char* argv[]) {
     std::unique_ptr<xdstarter::WinKeyCapture> winKeyCapture;
     std::unique_ptr<xdstarter::WinKeyCapture> startButtonCapture;
     std::unique_ptr<xdstarter::DesktopWindowHost> desktopHost;
+    xdstarter::SceneGraphFailureNotice graphicsNotice(
+        application, graphicsFailure, !parser.isSet(smokeTestOption),
+        [&desktopHost] {
+            if (desktopHost)
+                desktopHost->shutdown();
+        },
+        [] {
+            qint64 pid = 0;
+            const bool started = QProcess::startDetached(
+                QCoreApplication::applicationFilePath(),
+                {QLatin1String(xdstarter::graphicsFailureNoticeArgument)}, {}, &pid);
+            if (started)
+                qInfo() << "Graphics failure notice launched:" << pid;
+            return started;
+        });
     QTimer captureDiagnosticsTimer;
     quint64 captureDiagnosticsWriteFailures = 0;
     bool captureDiagnosticsFailureReported = false;
@@ -391,8 +413,11 @@ int main(int argc, char* argv[]) {
     }
     // exit() has no effect before exec(); also retain a failure if another
     // exit request is already pending when Qt reports the graphics error.
-    if (graphicsFailure.failed())
+    if (graphicsFailure.failed()) {
+        graphicsNotice.dispatch();
         return EXIT_FAILURE;
+    }
     const int result = application.exec();
+    graphicsNotice.dispatch();
     return graphicsFailure.failed() ? EXIT_FAILURE : result;
 }

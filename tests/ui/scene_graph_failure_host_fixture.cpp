@@ -1,5 +1,6 @@
 #include "app/desktop_window_host.h"
 #include "app/scene_graph_failure_guard.h"
+#include "app/scene_graph_failure_notice.h"
 #include "platform/desktop_platform.h"
 #include "platform/desktop_tray.h"
 #include "platform/win_key_capture.h"
@@ -75,9 +76,32 @@ int main(int argc, char* argv[]) {
         // able to observe the failure and return before entering it.
         QQuickWindow earlyWindow;
         xdstarter::SceneGraphFailureGuard earlyFailure(earlyWindow, application);
+        int earlyShutdown = 0;
+        int earlyLaunch = 0;
+        xdstarter::SceneGraphFailureNotice earlyNotice(
+            application, earlyFailure, true, [&] { ++earlyShutdown; },
+            [&] { ++earlyLaunch; return false; });
+        earlyNotice.dispatch();
+        if (earlyShutdown || earlyLaunch)
+            return EXIT_FAILURE;
         emit earlyWindow.sceneGraphError(QQuickWindow::ContextNotAvailable,
                                          QStringLiteral("pre-loop fixture failure"));
-        if (!earlyFailure.failed())
+        earlyNotice.dispatch();
+        earlyNotice.dispatch();
+        if (!earlyFailure.failed() || earlyShutdown != 1 || earlyLaunch != 1)
+            return EXIT_FAILURE;
+    }
+    {
+        QQuickWindow smokeWindow;
+        xdstarter::SceneGraphFailureGuard smokeFailure(smokeWindow, application);
+        int smokeActions = 0;
+        xdstarter::SceneGraphFailureNotice smokeNotice(
+            application, smokeFailure, false, [&] { ++smokeActions; },
+            [&] { ++smokeActions; return true; });
+        emit smokeWindow.sceneGraphError(QQuickWindow::ContextNotAvailable,
+                                         QStringLiteral("smoke fixture failure"));
+        smokeNotice.dispatch();
+        if (smokeActions)
             return EXIT_FAILURE;
     }
     QQuickWindow window;
@@ -98,6 +122,15 @@ int main(int argc, char* argv[]) {
     if (!tray.active || !startButton.active || !winKey.active)
         return EXIT_FAILURE;
 
+    int launches = 0;
+    bool wasStoppedAtLaunch = false;
+    xdstarter::SceneGraphFailureNotice notice(
+        application, failure, true, [&host] { host.shutdown(); }, [&] {
+            ++launches;
+            wasStoppedAtLaunch = !tray.active && !startButton.active && !winKey.active;
+            stopped.append(QStringLiteral("notice"));
+            return true;
+        });
     QObject::connect(&application, &QCoreApplication::aboutToQuit, &host,
                      &xdstarter::DesktopWindowHost::shutdown);
     QTimer::singleShot(0, &window, [&window] {
@@ -108,10 +141,13 @@ int main(int argc, char* argv[]) {
     });
     QTimer::singleShot(5000, &application, [&application] { application.exit(99); });
     const int result = application.exec();
+    notice.dispatch();
     if (result != EXIT_FAILURE || !failure.failed() || tray.active || startButton.active ||
         winKey.active || tray.stops != 1 || startButton.stops != 1 || winKey.stops != 1 ||
+        launches != 1 || !wasStoppedAtLaunch ||
         stopped !=
-            QStringList{QStringLiteral("win"), QStringLiteral("start"), QStringLiteral("tray")})
+            QStringList{QStringLiteral("win"), QStringLiteral("start"), QStringLiteral("tray"),
+                        QStringLiteral("notice")})
         return EXIT_FAILURE;
 
     // Neither stale notifications nor repeated shutdown may restart captures.
