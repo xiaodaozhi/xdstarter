@@ -49,6 +49,7 @@ class MenuController : public QObject {
     Q_PROPERTY(bool editMode READ editMode WRITE setEditMode NOTIFY editModeChanged)
     Q_PROPERTY(bool keyboardNavigation READ keyboardNavigation NOTIFY keyboardNavigationChanged)
     Q_PROPERTY(bool darkTheme READ darkTheme WRITE setDarkTheme NOTIFY darkThemeChanged)
+    Q_PROPERTY(QString themePreference READ themePreference WRITE setThemePreference NOTIFY themePreferenceChanged)
     Q_PROPERTY(bool readOnly READ readOnly NOTIFY readOnlyChanged)
     Q_PROPERTY(bool saving READ saving NOTIFY savingChanged)
     Q_PROPERTY(bool layoutImportSupported READ layoutImportSupported CONSTANT)
@@ -108,6 +109,8 @@ class MenuController : public QObject {
     void setEditMode(bool enabled);
     [[nodiscard]] bool darkTheme() const;
     void setDarkTheme(bool enabled);
+    [[nodiscard]] QString themePreference() const;
+    void setThemePreference(const QString& preference);
     [[nodiscard]] bool readOnly() const;
     [[nodiscard]] bool saving() const;
     [[nodiscard]] QString operationMessage() const;
@@ -176,6 +179,7 @@ class MenuController : public QObject {
     void groupsChanged();
     void editModeChanged();
     void darkThemeChanged();
+    void themePreferenceChanged();
     void readOnlyChanged();
     void savingChanged();
     void importStateChanged();
@@ -201,6 +205,7 @@ class MenuController : public QObject {
     bool eventFilter(QObject* watched, QEvent* event) override;
 
   private:
+    void applyThemePreference(const QString& preference);
     void refreshGroups();
     void setOperationMessage(QString message, bool error = false);
     void setPersistenceStatus(QString status, bool error = false);
@@ -233,6 +238,8 @@ class MenuController : public QObject {
     bool editMode_ = true;
     bool keyboardNavigation_ = false;
     bool darkTheme_ = true;
+    QString themePreference_ = QStringLiteral("dark");
+    Qt::ColorScheme systemColorScheme_ = Qt::ColorScheme::Unknown;
     bool readOnly_ = false;
     bool saving_ = false;
     QString operationMessage_;

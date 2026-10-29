@@ -41,6 +41,7 @@
 #include <QRawFont>
 #include <QSGRendererInterface>
 #include <QScreen>
+#include <QStyleHints>
 #include <QSysInfo>
 #include <QTemporaryDir>
 #include <QThread>
@@ -362,6 +363,8 @@ class PrototypeWindowTest : public QObject {
     void categoryGlyphsAreCentered_data();
     void categoryGlyphsAreCentered();
     void themeSwitchRetainsGeometry();
+    void systemThemePreferenceTracksAndPersists();
+    void layoutImportPreservesSystemTheme();
     void keyboardAndMouseSelection();
     void tilePressPerspective_data();
     void tilePressPerspective();
@@ -981,6 +984,163 @@ void PrototypeWindowTest::themeSwitchRetainsGeometry() {
     QCOMPARE(surface->property("color").value<QColor>(), originalColor);
     QCOMPARE(tileGeometries(), geometry);
     QCOMPARE(window_->size(), size);
+}
+
+void PrototypeWindowTest::systemThemePreferenceTracksAndPersists() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = directory.filePath(QStringLiteral("theme-layout.json"));
+    destroyWindow();
+    createWindow(path);
+    auto* hints = QGuiApplication::styleHints();
+    QVERIFY(hints);
+    const auto sendScheme = [hints](Qt::ColorScheme scheme) {
+        return QMetaObject::invokeMethod(hints, "colorSchemeChanged", Qt::DirectConnection,
+                                         Q_ARG(Qt::ColorScheme, scheme));
+    };
+    QVERIFY(sendScheme(Qt::ColorScheme::Light));
+    QCOMPARE(controller_->themePreference(), QStringLiteral("dark"));
+    QVERIFY(controller_->darkTheme()); // An explicit choice ignores system changes.
+    const auto geometry = tileGeometries();
+    openMoreMenu();
+    auto* themeButton = item(QStringLiteral("themeButton"));
+    QVERIFY(themeButton);
+    themeButton->forceActiveFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(themeButton->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_Return);
+    auto* systemItem = item(QStringLiteral("appearanceSystemItem"));
+    QVERIFY(systemItem);
+    QTRY_VERIFY(systemItem->isVisible());
+    systemItem->forceActiveFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(systemItem->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_Return);
+    QTRY_COMPARE(controller_->themePreference(), QStringLiteral("system"));
+    QVERIFY(!controller_->darkTheme());
+    QCOMPARE(tileGeometries(), geometry);
+
+    // Reopening and reselecting the current choice must keep its check mark.
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        openMoreMenu();
+        themeButton->forceActiveFocus(Qt::TabFocusReason);
+        QTRY_VERIFY(themeButton->hasActiveFocus());
+        QTest::keyClick(window_, Qt::Key_Return);
+        QTRY_VERIFY(systemItem->isVisible());
+        QVERIFY(systemItem->property("checked").toBool());
+        QVERIFY(!item(QStringLiteral("appearanceLightItem"))->property("checked").toBool());
+        QVERIFY(!item(QStringLiteral("appearanceDarkItem"))->property("checked").toBool());
+        systemItem->forceActiveFocus(Qt::TabFocusReason);
+        QTRY_VERIFY(systemItem->hasActiveFocus());
+        QTest::keyClick(window_, Qt::Key_Return);
+    }
+    QVERIFY(controller_->flushSave());
+    QFile saved(path);
+    QVERIFY(saved.open(QIODevice::ReadOnly));
+    const auto beforeChanges = saved.readAll();
+    saved.close();
+    const auto savedObject = QJsonDocument::fromJson(beforeChanges).object();
+    QCOMPARE(savedObject.value(QStringLiteral("schemaVersion")).toInt(), 5);
+    QCOMPARE(savedObject.value(QStringLiteral("preferences")).toObject()
+                 .value(QStringLiteral("theme")).toString(), QStringLiteral("system"));
+
+    QVERIFY(sendScheme(Qt::ColorScheme::Dark));
+    QVERIFY(controller_->darkTheme());
+    QVERIFY(sendScheme(Qt::ColorScheme::Light));
+    QVERIFY(!controller_->darkTheme());
+    QVERIFY(sendScheme(Qt::ColorScheme::Unknown));
+    QVERIFY(controller_->darkTheme()); // Unknown has the existing dark fallback.
+    QCOMPARE(tileGeometries(), geometry);
+    QTest::qWait(650); // More than the save debounce: system events must not write.
+    QVERIFY(saved.open(QIODevice::ReadOnly));
+    QCOMPARE(saved.readAll(), beforeChanges);
+    saved.close();
+
+    destroyWindow();
+    createWindow(path);
+    QCOMPARE(controller_->themePreference(), QStringLiteral("system"));
+    QVERIFY(sendScheme(Qt::ColorScheme::Light));
+    QVERIFY(!controller_->darkTheme());
+    controller_->setThemePreference(QStringLiteral("dark"));
+    QVERIFY(controller_->darkTheme());
+    QVERIFY(sendScheme(Qt::ColorScheme::Light));
+    QVERIFY(controller_->darkTheme());
+    controller_->setThemePreference(QStringLiteral("light"));
+    QVERIFY(sendScheme(Qt::ColorScheme::Dark));
+    QVERIFY(!controller_->darkTheme());
+    controller_->setThemePreference(QStringLiteral("unknown"));
+    QCOMPARE(controller_->themePreference(), QStringLiteral("light"));
+    QVERIFY(controller_->flushSave());
+    destroyWindow();
+    createWindow(path);
+    QCOMPARE(controller_->themePreference(), QStringLiteral("light"));
+    QVERIFY(!controller_->darkTheme());
+    openMoreMenu();
+    themeButton = item(QStringLiteral("themeButton"));
+    themeButton->forceActiveFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(themeButton->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_Return);
+    auto* lightItem = item(QStringLiteral("appearanceLightItem"));
+    auto* darkItem = item(QStringLiteral("appearanceDarkItem"));
+    QTRY_VERIFY(lightItem->isVisible());
+    QVERIFY(lightItem->property("checked").toBool());
+    QVERIFY(!darkItem->property("checked").toBool());
+    darkItem->forceActiveFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(darkItem->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_Return);
+    QTRY_COMPARE(controller_->themePreference(), QStringLiteral("dark"));
+    openMoreMenu();
+    themeButton->forceActiveFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(themeButton->hasActiveFocus());
+    QTest::keyClick(window_, Qt::Key_Return);
+    QTRY_VERIFY(darkItem->isVisible());
+    QVERIFY(darkItem->property("checked").toBool());
+    QVERIFY(!lightItem->property("checked").toBool());
+    QVERIFY(!item(QStringLiteral("appearanceSystemItem"))->property("checked").toBool());
+}
+
+void PrototypeWindowTest::layoutImportPreservesSystemTheme() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = directory.filePath(QStringLiteral("current.json"));
+    const auto source = directory.filePath(QStringLiteral("system.json"));
+    xdstarter::PrototypeService sample(grid_);
+    auto replacement = sample.snapshot();
+    replacement.insert(QStringLiteral("preferences"),
+                       QJsonObject{{QStringLiteral("theme"), QStringLiteral("system")}});
+    QVERIFY(xdstarter::LayoutStore(source).save(replacement).success);
+    destroyWindow();
+    createWindow(path, false);
+    auto* hints = QGuiApplication::styleHints();
+    QVERIFY(QMetaObject::invokeMethod(hints, "colorSchemeChanged", Qt::DirectConnection,
+                                      Q_ARG(Qt::ColorScheme, Qt::ColorScheme::Light)));
+    QVERIFY(controller_->stageLayoutImport(QUrl::fromLocalFile(source)));
+    QTRY_VERIFY(!controller_->importBusy());
+    auto* dialog = window_->findChild<QObject*>(QStringLiteral("layoutImportDialog"));
+    QVERIFY(dialog);
+    QVERIFY(QMetaObject::invokeMethod(dialog, "open"));
+    QTRY_VERIFY(dialog->property("opened").toBool());
+    auto* counts = item(QStringLiteral("layoutImportCounts"));
+    QVERIFY(counts);
+    QVERIFY(counts->property("text").toString().contains(QStringLiteral("跟随系统")));
+    const auto preview = controller_->importPreview();
+    QVERIFY(!preview.isEmpty());
+    QVERIFY(QMetaObject::invokeMethod(hints, "colorSchemeChanged", Qt::DirectConnection,
+                                      Q_ARG(Qt::ColorScheme, Qt::ColorScheme::Dark)));
+    QCOMPARE(controller_->importPreview(), preview);
+    QVERIFY(QMetaObject::invokeMethod(hints, "colorSchemeChanged", Qt::DirectConnection,
+                                      Q_ARG(Qt::ColorScheme, Qt::ColorScheme::Light)));
+    QCOMPARE(controller_->importPreview(), preview);
+    click(item(QStringLiteral("layoutImportConfirmButton")));
+    QTRY_VERIFY(!controller_->importBusy());
+    QCOMPARE(controller_->themePreference(), QStringLiteral("system"));
+    QVERIFY(!controller_->darkTheme());
+    QCOMPARE(service_->snapshot(), replacement);
+    QVERIFY(QMetaObject::invokeMethod(hints, "colorSchemeChanged", Qt::DirectConnection,
+                                      Q_ARG(Qt::ColorScheme, Qt::ColorScheme::Dark)));
+    QVERIFY(controller_->darkTheme());
+    QVERIFY(controller_->flushSave());
+    destroyWindow();
+    createWindow(path, false);
+    QCOMPARE(controller_->themePreference(), QStringLiteral("system"));
 }
 
 void PrototypeWindowTest::keyboardAndMouseSelection() {
@@ -2378,6 +2538,9 @@ void PrototypeWindowTest::futureConfigurationIsReadOnly() {
     destroyWindow();
     createWindow(path);
     QVERIFY(controller_->readOnly());
+    const auto themeBefore = controller_->themePreference();
+    controller_->setThemePreference(QStringLiteral("system"));
+    QCOMPARE(controller_->themePreference(), themeBefore);
     QVERIFY(controller_->persistenceError());
     QTRY_VERIFY(item(QStringLiteral("persistenceStatus"))->isVisible());
     QVERIFY(!item(QStringLiteral("editLayoutButton")));

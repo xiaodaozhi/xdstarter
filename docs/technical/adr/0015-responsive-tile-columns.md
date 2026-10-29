@@ -5,6 +5,8 @@
 - 关联：[Issue #48](https://github.com/xiaodaozhi/xdstarter/issues/48)、PRD-003、PRD-005、PRD-007
 - 延续：[ADR-0011](0011-tile-display-names.md)、[ADR-0013](0013-resident-editable-menu.md)、[ADR-0014](0014-start-click-and-adaptive-taskbar.md)
 
+本 ADR 保留当时的格式4决定。当前格式已升级为 schema5，主题偏好与兼容规则见 [ADR-0018](0018-system-theme-preference.md)；本 ADR 的列数和几何规则继续适用。
+
 ## 背景
 
 原先视口随窗口变化，但每组始终只有10个可用格列，标题与管理按钮的右缘也固定在552 DIP。用户已明确要求可用磁贴列数随窗口宽度变化，仅扩大呈现空白不能满足这一语义。旧schema3严格校验10列和根字段，直接放宽同版本坐标会使旧程序将新布局误判为损坏输入。
