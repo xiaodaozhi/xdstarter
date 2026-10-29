@@ -123,17 +123,17 @@ def main():
             raise ValueError('Current-user autostart entry mismatch')
         unknown = installed / 'user-note.txt'
         unknown.write_bytes(b'unknown file must be preserved')
-        obsolete = installed / 'retired-plugin.dll'
-        obsolete.write_bytes(b'old owned file')
+        obsolete = installed / 'opengl32sw.dll'
+        obsolete.write_bytes(b'old owned software OpenGL fixture')
         old_hash = digest(obsolete)
         manifest = installed / 'install-manifest.txt'
         with manifest.open('a', encoding='utf-8') as stream:
-            stream.write(old_hash + '\tretired-plugin.dll\n')
+            stream.write(old_hash + '\topengl32sw.dll\n')
         obsolete.write_bytes(b'user modification')
         invoke(fixture, 'modified-obsolete-refused', '/DIR=' + str(installed), success=False)
         if obsolete.read_bytes() != b'user modification':
             raise ValueError('Modified obsolete file was deleted')
-        obsolete.write_bytes(b'old owned file')
+        obsolete.write_bytes(b'old owned software OpenGL fixture')
         invoke(fixture, 'upgrade-retire-unchanged', '/DIR=' + str(installed))
         installed_payload_matches()
         if obsolete.exists() or not unknown.is_file() or startup_value() != expected_startup:

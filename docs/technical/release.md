@@ -52,7 +52,7 @@ Qt 运行库许可与应用许可证分别处理，依赖清单、许可证文�
 - VC_redist 只用于提取八个 x64 app-local CRT DLL 与原始协议，不安装运行库，不从 System32 收集 DLL。WiX dark 和 expand 只用于构建。CRT 安全维护通过依赖 PR 更新锁定材料与回归。
 - 当前锁定 v14 14.51.36247.0，以满足 MSVC 2022 runner 的实际工具链；其原始协议由微软包内链接指向 DOCX。原件与带编号的确定性 UTF-8 文本同时交付，分别固定哈希，安装器展示文本且保留原件；没有借用旧版协议。
 - 同版 windeployqt 扫描产品 QML 和构建 imports，固定 Basic；移除其他样式、未使用 Effects、qmltooling 和 `.qmltypes`。保留运行 QML、qmldir、Dialogs 原生及 Quick 回退依赖；Test、offscreen、实验和设计程序不进入产品。
-- 保留 Qt Mesa 的 opengl32sw，以及明确 SDK REDIST 的 D3D／DXC／DXIL，附来源与协议，不从环境搜索替代输入。
+- 默认包排除 `opengl32sw.dll`，递归审计拒绝误带该文件；显式使用软件 OpenGL 时需另行提供兼容实现。保留明确 SDK REDIST 的 D3D／DXC／DXIL，附来源与协议，不从环境搜索替代输入。
 - Qt 翻译兼容 SDK 的 qtbase 和部署合并的 qt 目录名；携带简体中文目录，英文使用源文，不扩展为完整产品双语能力。
 - prepare-package 显式准备 Inno 构建编译器；首次可将该构建工具安装至项目缓存，不安装 XDStarter。仅对应阶段需要网络和打包工具，缓存或下载哈希不符则失败。
 
@@ -70,8 +70,8 @@ Qt 运行库许可与应用许可证分别处理，依赖清单、许可证文�
 
 输出含 ZIP、安装 EXE、应用源码 TAR、materials.tar.xz、SHA256SUMS，以及 deployment-audit、runtime-attribution、size-report、runtime-verification 与 package 报告。ZIP／EXE 来自同一审计目录，逐项核对哈希，体积以实际报告建立基线；生成物只在 build/ 或 CI 工件。
 
-包内携带 Qt、Unicode、CRT、SDK、Mesa／LLVM 和安装器引擎通知，配套固定哈希的 Qt 模块、构建工具及 Mesa／LLVM 原始源码。SDK SPDX 与实际字节用于观察文件归属，未匹配、内嵌组件及源码对应关系明确为 incomplete。保守许可集合不表示所有组件被使用，源码归档存在不证明 SDK 二进制等价，应用许可仍由 [#3](https://github.com/xiaodaozhi/xdstarter/issues/3) 决定。
+包内携带 Qt、Unicode、CRT、SDK 和安装器引擎通知，配套固定哈希的 Qt 模块与构建工具源码。原先随软件 OpenGL 提供的 Mesa 11.2.2／LLVM 3.6.2 材料不再列为该包来源；SDK 自身协议及第三方通知继续保留。SDK SPDX 与实际字节用于观察文件归属，未匹配、内嵌组件及源码对应关系明确为 incomplete。保守许可集合不表示所有组件被使用，源码归档存在不证明 SDK 二进制等价，应用许可仍由 [#3](https://github.com/xiaodaozhi/xdstarter/issues/3) 决定。
 
-审计递归核对普通与延迟 DLL 导入，CRT 必须来自包内，第三方 DLL 不回退到 SDK 或 System32。无 SDK 搜索路径的独立副本验证软件／原生 D3D11 和界面，测试 DLL 只加入副本。
+审计递归核对普通与延迟 DLL 导入，CRT 必须来自包内，第三方 DLL 不回退到 SDK 或 System32。无 SDK 搜索路径和软件 OpenGL DLL 的独立副本验证 Qt Quick 软件、D3D11 及显式选择的 WARP 软件设备；记录实际渲染器和选中适配器，测试 DLL 只加入副本。WARP 验证不模拟硬件故障，不代表自动回退或干净 Windows 11 验收已通过。
 
 普通 CI 不发布 Release。生命周期脚本仅允许一次性 hosted runner，Server 夹具只降低 OS 门槛，验证安装、占用拒绝、升级清理、启动项和卸载且不上传夹具。实际安装器仍要求 Windows 11。Server 夹具、无 SDK 运行和干净 Windows 11 同哈希候选验收分别记录。

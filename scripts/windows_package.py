@@ -24,7 +24,8 @@ REMOVED_DLLS = tuple('Qt6QuickControls2' + name + '.dll' for name in (
     'FluentWinUI3StyleImpl', 'Fusion', 'FusionStyleImpl', 'Imagine', 'ImagineStyleImpl',
     'Material', 'MaterialStyleImpl', 'Universal', 'UniversalStyleImpl', 'WindowsStyleImpl')) + (
     'Qt6QuickEffects.dll', 'vc_redist.x64.exe')
-GRAPHICS = ('opengl32sw.dll', 'd3dcompiler_47.dll', 'dxcompiler.dll', 'dxil.dll')
+GRAPHICS = ('d3dcompiler_47.dll', 'dxcompiler.dll', 'dxil.dll')
+EXCLUDED_RUNTIME_DLLS = {'opengl32sw.dll'}
 SYSTEM_DLLS = set(('kernel32 kernelbase user32 gdi32 gdi32full ole32 oleaut32 advapi32 '
     'ws2_32 shell32 shlwapi comdlg32 comctl32 uxtheme dwmapi dxgi d3d11 d3d12 d3d9 '
     'opengl32 glu32 bcrypt bcryptprimitives crypt32 cryptbase ncrypt netapi32 version '
@@ -292,7 +293,7 @@ def copy_crt(cache, root):
     write_json(notice / 'provenance.json', runtime)
 
 
-def copy_graphics(qt, root):
+def copy_graphics(root):
     sdk = Path(os.environ.get('WindowsSdkDir', ''))
     version = os.environ.get('WindowsSDKVersion', '').strip('\\/')
     if not sdk.is_absolute() or not re.fullmatch(r'\d+\.\d+\.\d+\.\d+', version):
@@ -302,18 +303,14 @@ def copy_graphics(qt, root):
         license_file = sdk / 'license.rtf'
     if not license_file.is_file():
         raise ValueError('Selected SDK license is missing')
-    inputs = {name: sdk / 'Redist/D3D/x64' / name for name in GRAPHICS[1:]}
-    inputs['opengl32sw.dll'] = qt / 'bin/opengl32sw.dll'
-    if digest(inputs['opengl32sw.dll']) != config('sources.json')['mesaBinary']['sha256']:
-        raise ValueError('Unreviewed Qt Mesa binary')
+    inputs = {name: sdk / 'Redist/D3D/x64' / name for name in GRAPHICS}
     result = []
     for name, path in inputs.items():
-        if path.is_symlink() or not path.resolve().is_relative_to(qt if name == 'opengl32sw.dll' else sdk):
+        if path.is_symlink() or not path.resolve().is_relative_to(sdk):
             raise ValueError('Graphics supplier input escapes its SDK')
         shutil.copyfile(path, root / name)
         result.append({'path': name, 'sha256': digest(path),
-            'supplier': 'Qt Mesa' if name == 'opengl32sw.dll' else 'Windows SDK REDIST',
-            'sourceRelative': path.relative_to(qt if name == 'opengl32sw.dll' else sdk).as_posix()})
+            'supplier': 'Windows SDK REDIST', 'sourceRelative': path.relative_to(sdk).as_posix()})
     notice = root / 'share/notices/Windows-SDK-graphics'
     notice.mkdir(parents=True)
     shutil.copyfile(license_file, notice / 'sdk_license.rtf')
@@ -341,18 +338,10 @@ def collect_notices(cache, qt, root):
         shutil.copyfile(source, qt_notice / source.name)
     shutil.copytree(ROOT / 'third_party/unicode', notice / 'Unicode',
                     ignore=shutil.ignore_patterns('*.tsv', '*.inc', '*.zip'))
-    native = notice / 'Mesa-LLVM'
-    native.mkdir()
     for record in config('sources.json')['archives']:
         archive_path = cache / 'sources' / record['file']
         if digest(archive_path) != record['sha256']:
             raise ValueError('Corresponding source archive hash mismatch')
-        if 'notices' not in record:
-            continue
-        with tarfile.open(archive_path, 'r:*') as archive:
-            for wanted in record['notices']:
-                (native / (record['component'] + '-' + wanted.replace('/', '_'))).write_bytes(
-                    source_notice(archive, wanted))
     installer = config('installer-toolchain.json')['inno_setup']
     for record in installer['materials']:
         source = cache / record['file']
@@ -365,17 +354,6 @@ def collect_notices(cache, qt, root):
     for name in ('Windows-runtime-NOTICE.txt', 'Qt-replacement.txt'):
         (notice / name).write_bytes(b'\xef\xbb\xbf' + (CONFIG / name).read_bytes())
     write_json(notice / 'sources.json', config('sources.json'))
-
-
-def source_notice(archive, wanted):
-    # Match within the archive's single source root. A basename suffix would
-    # confuse LLVM's root license with its separate ARM/support licenses.
-    matches = [member for member in archive.getmembers() if member.isfile() and
-               member.name.removeprefix('./').partition('/')[2] == wanted]
-    if len(matches) != 1 or matches[0].size > 2 * 1024 * 1024:
-        raise ValueError('Missing or ambiguous native source notice: ' + wanted)
-    with archive.extractfile(matches[0]) as stream:
-        return stream.read()
 
 
 def binary_info(path):
@@ -411,6 +389,7 @@ def audit(root, identity, import_reader=imports, pe_reader=binary_info):
     for entry in entries:
         rel = entry['path']
         if (rel.endswith('.qmltypes') or rel in REMOVED_DLLS or
+                Path(rel).name.casefold() in EXCLUDED_RUNTIME_DLLS or
                 any(rel.startswith(directory + '/') for directory in REMOVED_DIRS) or
                 Path(rel).name.casefold().startswith(('qt6test', 'qoffscreen', 'xdstarter_ui_tests')) or
                 (rel.lower().endswith('.exe') and rel != 'xdstarter.exe')):
@@ -444,7 +423,9 @@ def audit(root, identity, import_reader=imports, pe_reader=binary_info):
             'limits': ['Native import closure does not establish dynamic plugin or clean-machine coverage.']}
 
 
-def isolated_environment(root, *, software=False):
+def isolated_environment(root, *, software=False, warp=False):
+    if software and warp:
+        raise ValueError('Qt Quick software and D3D11 WARP are distinct backends')
     environment = dict(os.environ)
     system_root = next((value for key, value in environment.items()
                         if key.casefold() == 'systemroot'), None)
@@ -464,7 +445,51 @@ def isolated_environment(root, *, software=False):
         environment['QT_QPA_FONTDIR'] = str(system / 'Fonts')
     else:
         environment['QSG_RHI_BACKEND'] = 'd3d11'
+        if warp:
+            environment['QSG_RHI_PREFER_SOFTWARE_RENDERER'] = '1'
     return environment
+
+
+def d3d11_evidence(output, *, warp=False):
+    """Identify the adapter actually selected by pinned Qt 6.8's QSG_INFO log."""
+    pattern = re.compile(r"Adapter\s+\d+:\s+'(.+)'\s+\(vendor\s+0x([0-9a-f]+)\s+"
+                         r"device\s+0x([0-9a-f]+)\s+flags\s+0x([0-9a-f]+)\)", re.IGNORECASE)
+    selected, attempt = [], None
+    adapter = None
+    for line in output.splitlines():
+        if 'Creating QRhi with backend ' in line:
+            attempt = [] if 'Creating QRhi with backend D3D11' in line else None
+            adapter = None
+            continue
+        if attempt is None:
+            continue
+        match = pattern.search(line)
+        if match:
+            adapter = {'name': match[1], 'vendor': int(match[2], 16),
+                'device': int(match[3], 16), 'flags': int(match[4], 16)}
+        elif adapter and 'using this adapter' in line.lower():
+            attempt.append(adapter)
+            adapter = None
+        elif 'Created QRhi' in line:
+            selected.extend(attempt)
+            attempt = None
+    if not selected:
+        raise ValueError('A created D3D11 scene graph and selected adapter were not observed')
+    # Microsoft documents this render-only DXGI software adapter as WARP.
+    if warp and any(item['vendor'] != 0x1414 or item['device'] != 0x8c or
+                    not item['flags'] & 0x2 for item in selected):
+        raise ValueError('D3D11 WARP did not select the Microsoft software adapter')
+    return {'backend': 'd3d11', 'forcedSoftwareDevice': warp, 'selectedAdapters': selected}
+
+
+def smoke_log(executable, log, env, cwd):
+    result = subprocess.run([str(executable), '--smoke-test'], cwd=cwd, env=env,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        encoding='utf-8', errors='replace', timeout=30)
+    log.write_text(result.stdout, encoding='utf-8')
+    if result.returncode:
+        raise ValueError('Runtime smoke test failed; see ' + str(log))
+    return result.stdout
 
 
 def payload_manifest(entries):
@@ -579,13 +604,13 @@ class Workflow:
             raise ValueError('Use a new package output directory; staging trees are never overlaid')
         self.root.mkdir()
         shutil.copyfile(self.build / 'bin/xdstarter.exe', self.root / 'xdstarter.exe')
-        command(self.qt / 'bin/windeployqt.exe', '--release', '--no-compiler-runtime',
+        command(self.qt / 'bin/windeployqt.exe', '--release', '--no-compiler-runtime', '--no-opengl-sw',
             '--no-system-d3d-compiler', '--no-system-dxc-compiler', '--skip-plugin-types',
             'qmltooling', '--translations', 'zh_CN', '--qmldir', ROOT / 'qml',
             '--qmlimport', self.build / 'qml', self.root / 'xdstarter.exe', timeout=300)
         removed = prune(self.root)
         copy_crt(self.cache, self.root)
-        copy_graphics(self.qt, self.root)
+        copy_graphics(self.root)
         (self.root / 'qt.conf').write_text(
             '[Paths]\nPrefix=.\nPlugins=.\nQmlImports=qml\nTranslations=translations\n', encoding='utf-8')
         collect_notices(self.cache, self.qt, self.root)
@@ -628,18 +653,37 @@ class Workflow:
                 shutil.copyfile(self.build / 'bin' / name, runtime / name)
             shutil.copyfile(self.qt / 'bin/Qt6Test.dll', runtime / 'Qt6Test.dll')
             shutil.copyfile(self.qt / 'plugins/platforms/qoffscreen.dll', runtime / 'platforms/qoffscreen.dll')
-            for software in (True, False):
-                env = isolated_environment(runtime, software=software)
+            environment = isolated_environment(runtime)
+            system = Path(next(value for key, value in environment.items() if key.casefold() == 'systemroot'))
+            for directory in (system / 'System32', system / 'System', system, harness):
+                if (directory / 'opengl32sw.dll').exists():
+                    raise ValueError('Runtime verification requires no system software OpenGL DLL')
+            rendering = {}
+            for name, software, warp in (('software', True, False),
+                                         ('native-d3d11', False, False),
+                                         ('warp-d3d11', False, True)):
+                env = isolated_environment(runtime, software=software, warp=warp)
                 temporary = harness / 'tmp'
                 temporary.mkdir(exist_ok=True)
                 env.update(TEMP=str(temporary), TMP=str(temporary))
                 if json.loads(command(runtime / 'xdstarter.exe', '--build-info', env=env, cwd=harness)) != record['identity']:
                     raise ValueError('Runtime executable and audit identities differ')
-                command(runtime / 'xdstarter.exe', '--smoke-test', env=env, cwd=harness, timeout=30)
+                smoke_env = {**env, 'QSG_INFO': '1'}
+                log = logs / (name + '-smoke.log')
+                diagnostics = smoke_log(runtime / 'xdstarter.exe', log, smoke_env, harness)
+                if software:
+                    if 'Loading backend software' not in diagnostics:
+                        raise ValueError('Qt Quick software backend was not observed')
+                    evidence = {'backend': 'qt-quick-software'}
+                else:
+                    evidence = d3d11_evidence(diagnostics, warp=warp)
+                rendering[name] = {**evidence, 'smokeLog': log.relative_to(self.output).as_posix()}
                 selection = ['prototypeWindowLoads', 'layoutImportPreviewAndRestore',
                              'layoutImportFilePickerOwnership', 'layoutImportDialogThemeAndKeyboard']
+                if warp:
+                    selection = selection[:2]
                 command(runtime / 'xdstarter_ui_tests.exe', *selection, '-o',
-                    str(logs / ('software.log' if software else 'native-d3d11.log')) + ',txt',
+                    str(logs / (name + '.log')) + ',txt',
                     env=env, cwd=harness, timeout=180)
             command(runtime / 'xdstarter_runtime_support_tests.exe', runtime / 'translations',
                     env=isolated_environment(runtime), cwd=harness)
@@ -647,8 +691,10 @@ class Workflow:
             write_json(result_path, {'status': 'passed', 'sdkSearchPaths': False,
                 'auditSha256': digest(self.output / 'deployment-audit.json'),
                 'executableSha256': digest(self.root / 'xdstarter.exe'),
-                'developmentFixture': self.args.development,
-                'limits': ['Windows host supplies OS APIs. This is not a clean Windows 11 installation or manual desktop acceptance.']})
+                'developmentFixture': self.args.development, 'rendering': rendering,
+                'softwareOpenGLAbsent': True, 'automaticFallbackVerified': False,
+                'limits': ['WARP was explicitly requested; hardware failure and automatic fallback were not simulated.',
+                           'Windows host supplies OS APIs. This is not a clean Windows 11 installation or manual desktop acceptance.']})
         finally:
             generated(harness)
             files(harness)

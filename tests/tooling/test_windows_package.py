@@ -1,10 +1,8 @@
 """Behavioral regressions for candidate payload boundaries and dependency failures."""
-import io
 import json
 from pathlib import Path
 import subprocess
 import sys
-import tarfile
 import tempfile
 from types import SimpleNamespace
 import unittest
@@ -95,7 +93,7 @@ class WindowsPackageTests(unittest.TestCase):
 
     def test_audit_does_not_accept_sdk_or_system32_as_fallback_for_third_party(self):
         with self.fixture():
-            for missing in ('Qt6Network.dll', 'vcruntime140.dll', 'libssl-3-x64.dll'):
+            for missing in ('Qt6Network.dll', 'vcruntime140.dll', 'libssl-3-x64.dll', 'opengl32sw.dll'):
                 with self.subTest(missing=missing), self.assertRaisesRegex(ValueError, 'Unresolved'):
                     package.audit(self.directory, {}, lambda _: [missing.casefold()], self.pe)
 
@@ -104,6 +102,37 @@ class WindowsPackageTests(unittest.TestCase):
             self.write('Qt6Test.dll')
             with self.assertRaisesRegex(ValueError, 'development/unused'):
                 package.audit(self.directory, {}, lambda _: [], self.pe)
+
+    def test_audit_refuses_software_opengl_at_any_depth(self):
+        with self.fixture():
+            for name in ('opengl32sw.dll', 'plugins/OPENGL32SW.DLL'):
+                file = self.write(name)
+                with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'development/unused'):
+                    package.audit(self.directory, {}, lambda _: [], self.pe)
+                file.unlink()
+
+    def test_warp_evidence_requires_the_selected_microsoft_software_adapter(self):
+        start = 'qt.scenegraph.general: Creating QRhi with backend D3D11 for window 1\n'
+        gpu = ("qt.rhi.general: Adapter 0: 'GPU's adapter' "
+               "(vendor 0x8086 device 0x9A49 flags 0x0)\n")
+        basic = ("qt.rhi.general: Adapter 1: 'Microsoft Basic Render Driver' "
+                 "(vendor 0x1414 device 0x8C flags 0x2)\n")
+        chosen = 'qt.rhi.general:   using this adapter\n'
+        created = 'qt.scenegraph.general: Created QRhi 0x1 for window 1\n'
+        hardware = start + gpu + 'qt.scenegraph.general: unrelated render-thread message\n' + chosen + basic + created
+        self.assertEqual(package.d3d11_evidence(hardware)['selectedAdapters'][0]['name'], "GPU's adapter")
+        with self.assertRaisesRegex(ValueError, 'WARP'):
+            package.d3d11_evidence(hardware, warp=True)
+        selected_warp = start + gpu + basic + chosen + created
+        evidence = package.d3d11_evidence(selected_warp, warp=True)
+        self.assertEqual(evidence['selectedAdapters'][0]['flags'] & 0x2, 0x2)
+        with self.assertRaisesRegex(ValueError, 'WARP'):
+            package.d3d11_evidence(selected_warp.replace('vendor 0x1414', 'vendor 0x1234'), warp=True)
+        with self.assertRaisesRegex(ValueError, 'scene graph'):
+            package.d3d11_evidence(start + basic + chosen +
+                'qt.scenegraph.general: Creating QRhi with backend OpenGL for window 1\n' + created, warp=True)
+        with self.assertRaisesRegex(ValueError, 'scene graph'):
+            package.d3d11_evidence('no renderer selected', warp=True)
 
     def test_normal_and_delay_load_imports_are_both_audited(self):
         output = ('    Image has the following dependencies:\n        Qt6Core.DLL\n'
@@ -117,21 +146,6 @@ class WindowsPackageTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Cached supplier'):
                 package.fetch({'sha256': 'a' * 64, 'url': 'https://example.invalid'}, source)
             network.assert_not_called()
-
-    def test_native_source_notices_match_root_relative_paths(self):
-        buffer = io.BytesIO()
-        with tarfile.open(fileobj=buffer, mode='w') as archive:
-            for name, text in (('llvm/LICENSE.TXT', b'root terms'),
-                               ('llvm/lib/Target/ARM/LICENSE.TXT', b'ARM terms')):
-                member = tarfile.TarInfo(name)
-                member.size = len(text)
-                archive.addfile(member, io.BytesIO(text))
-        buffer.seek(0)
-        with tarfile.open(fileobj=buffer, mode='r:') as archive:
-            self.assertEqual(package.source_notice(archive, 'LICENSE.TXT'), b'root terms')
-            self.assertEqual(package.source_notice(archive, 'lib/Target/ARM/LICENSE.TXT'), b'ARM terms')
-            with self.assertRaises(ValueError):
-                package.source_notice(archive, 'missing-license')
 
     def test_zip_bytes_must_match_the_original_audited_payload(self):
         root = self.directory / 'runtime'
@@ -193,8 +207,12 @@ class WindowsPackageTests(unittest.TestCase):
                 self.assertNotIn('old-sdk', result['PATH'])
                 self.assertEqual(result['QSG_RHI_BACKEND'], 'd3d11')
                 self.assertEqual(result['QML_IMPORT_PATH'], str(self.directory / 'runtime/qml'))
+                warp = package.isolated_environment(self.directory / 'runtime', warp=True)
+                self.assertEqual(warp['QSG_RHI_PREFER_SOFTWARE_RENDERER'], '1')
                 software = package.isolated_environment(self.directory / 'runtime', software=True)
                 self.assertEqual(software['QT_QPA_FONTDIR'], str(self.directory / 'Fonts'))
+                with self.assertRaises(ValueError):
+                    package.isolated_environment(self.directory / 'runtime', software=True, warp=True)
 
 
 if __name__ == '__main__':

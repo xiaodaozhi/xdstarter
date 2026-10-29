@@ -43,42 +43,7 @@
       "url": "https://download.qt.io/archive/qt/6.8/6.8.2/submodules/qttools-everywhere-src-6.8.2.tar.xz",
       "sha256": "326381b7d43f07913612f291abc298ae79bd95382e2233abce982cff2b53d2c0",
       "source_commit": "8aa2456d4461516f54c98916fcd699557afb41ad"
-    },
-    {
-      "component": "Mesa",
-      "version": "11.2.2",
-      "file": "mesa-11.2.2.tar.xz",
-      "url": "https://archive.mesa3d.org/older-versions/11.x/11.2.2/mesa-11.2.2.tar.xz",
-      "sha256": "40e148812388ec7c6d7b6657d5a16e2e8dabba8b97ddfceea5197947647bdfb4",
-      "platform": "windows",
-      "notices": [
-        "docs/license.html",
-        "docs/COPYING"
-      ]
-    },
-    {
-      "component": "LLVM",
-      "version": "3.6.2",
-      "file": "llvm-3.6.2.src.tar.xz",
-      "url": "https://releases.llvm.org/3.6.2/llvm-3.6.2.src.tar.xz",
-      "sha256": "f60dc158bfda6822de167e87275848969f0558b3134892ff54fced87e4667b94",
-      "platform": "windows",
-      "notices": [
-        "LICENSE.TXT",
-        "lib/Support/COPYRIGHT.regex",
-        "include/llvm/Support/LICENSE.TXT",
-        "lib/Target/ARM/LICENSE.TXT",
-        "lib/Support/MD5.cpp",
-        "include/llvm/Support/MD5.h"
-      ]
     }
   ],
-  "mesaBinary": {
-    "file": "opengl32sw.dll",
-    "sha256": "b04de4541863bc7d8879040a78889c4849c1b1da2784c4630f734c146c2998ce",
-    "url": "https://download.qt.io/development_releases/prebuilt/llvmpipe/windows/opengl32sw-64-mesa_11_2_2-signed_sha256.7z",
-    "archive_sha256": "c61f801c1760aa24b02c7a8354323cddf368b86f8f5c34b50b3b224f7d728afd",
-    "scope": "Exact official Qt prebuilt binary; embedded strings identify Mesa 11.2.2 and LLVM 3.6.2, not complete supplier build history."
-  },
   "qtVersion": "6.8.2"
 }
