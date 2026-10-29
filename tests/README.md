@@ -31,7 +31,7 @@ python3 -m unittest discover -s tests/tooling -v
 | `ui/scene_graph_failure_host_fixture.cpp` | `ui.scene_graph_failure_host` | 图形错误时先停止假托盘及两类假接管，再尝试提示；重复、冒烟及启动前失败 |
 | `ui/` | `ui.prototype` | 真实 Qt Quick 窗口的交互、编辑、保存恢复、只读与像素截图 |
 | `ui/tst_prototype_window.cpp` | `ui.layout-import-native`（仅 hosted Windows） | 原生 D3D11 下确认焦点、提交中按钮状态和按键处理期间快速完成的导入 |
-| `ui/tst_prototype_window.cpp` | `ui.native-picker-immediate`、`ui.native-picker-shown`（仅 hosted Windows） | 对比原生选择器立即关闭与本进程窗口可见后关闭的 Qt 线程日志；警告原因仍由 #88 跟踪 |
+| `ui/tst_prototype_window.cpp` | `ui.native-picker-rapid`、`ui.native-picker-immediate`、`ui.native-picker-shown`（仅 hosted Windows） | 对比快速重开、立即关闭后观察及原生窗口可见后关闭的 Qt 线程日志；警告原因仍由 #88 跟踪 |
 | `ui/tst_desktop_window_host.cpp` | `ui.desktop_window_host` | 假托盘与定位平台上的隐藏阶段定位、待显示取消、过时查询拒绝、关闭后恢复、外部焦点收起、内部临时窗口/快速返回保留、拖拽延后、无托盘/托盘丢失恢复及退出清理 |
 
 产品与 GUI 测试共用 `xdstarter_add_ui` 编译的 QML、controller 与视觉资源；Qt6::Test 只进入测试目标。GUI 测试使用独立临时配置，覆盖鼠标组内/跨组拖拽、冲突与 Esc 取消、三档尺寸菜单、Ctrl+方向键移动、重建窗口恢复布局/主题、失败重试和未来版本只读，另检查两主题下尺寸菜单高亮/按下文字与勾选的对比度，并保留原有名称、导航、主题、最小窗口与磁贴像素几何回归。无边框窗口与共享圆角 token、可键盘收起按钮、`Popup.Item` 内部菜单、呈现清理契约和外部释放取消拖拽预览继续回归；本轮改为透明外窗、自绘边框/阴影与侧栏背景圆角裁切，正文尺寸及共享磁贴几何不变。清理不得改变已提交布局或退出编辑模式。
