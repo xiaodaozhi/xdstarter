@@ -148,7 +148,7 @@ Dialog {
             objectName: "layoutImportCounts"
             Layout.fillWidth: true
             visible: dialog.hasPreview
-            text: qsTr("%1 个分组，%2 枚磁贴，%3 个应用目标\n主题：%4，格式版本：%5").arg(dialog.preview.groups || 0).arg(dialog.preview.tiles || 0).arg(dialog.preview.targets || 0).arg(dialog.preview.theme === "light" ? qsTr("浅色") : qsTr("深色")).arg(dialog.preview.sourceVersion === dialog.preview.currentVersion ? String(dialog.preview.currentVersion || 0) : (dialog.preview.sourceVersion || 0) + " → " + (dialog.preview.currentVersion || 0))
+            text: qsTr("%1 个分组，%2 枚磁贴，%3 个应用目标\n主题：%4，格式版本：%5").arg(dialog.preview.groups || 0).arg(dialog.preview.tiles || 0).arg(dialog.preview.targets || 0).arg(dialog.preview.theme === "system" ? qsTr("跟随系统") : dialog.preview.theme === "light" ? qsTr("浅色") : qsTr("深色")).arg(dialog.preview.sourceVersion === dialog.preview.currentVersion ? String(dialog.preview.currentVersion || 0) : (dialog.preview.sourceVersion || 0) + " → " + (dialog.preview.currentVersion || 0))
             textFormat: Text.PlainText
             wrapMode: Text.WordWrap
             color: dialog.theme.foreground

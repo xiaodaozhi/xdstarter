@@ -9,7 +9,7 @@
 
 表面使用独立的`interactionSurface` tokens：菜单8 DIP圆角、36 DIP行高、统一38 DIP文本起点；勾选与图标均为16 DIP矢量图形。菜单、浮动提示和对话框使用柔和分层投影，tooltip仅4 DIP圆角且无投影。鼠标悬停直接进入中性底色，避免强调色中间态。正常打开应用、固定、刷新和保存不弹浮动提示；错误反馈可关闭。新稿及内置文案不使用中点作分隔符，用户和系统提供的名称不被清洗。
 
-源码为[source/build_surface_proposal_48.py](source/build_surface_proposal_48.py)，[proposal.json](mockups/v2/proposals/issue-48/proposal.json)记录设计验收身份；PNG由现有Qt SVG工具离屏导出，字体仍为系统Microsoft YaHei UI，不分发字体。当前实现采用schema4动态列，数据与吸附取舍见[ADR-0015](../technical/adr/0015-responsive-tile-columns.md)。
+源码为[source/build_surface_proposal_48.py](source/build_surface_proposal_48.py)，[proposal.json](mockups/v2/proposals/issue-48/proposal.json)记录设计验收身份；PNG由现有Qt SVG工具离屏导出，字体仍为系统Microsoft YaHei UI，不分发字体。当前实现采用schema4引入的动态列，数据与吸附取舍见[ADR-0015](../technical/adr/0015-responsive-tile-columns.md)。
 
 运行时样例已通过QtTest与目视核对：[浅色菜单](validation/issue-48/light-menus.png)／[深色菜单](validation/issue-48/dark-menus.png)、[浅色关于](validation/issue-48/light-about.png)／[深色关于](validation/issue-48/dark-about.png)、[浅色必要错误提示](validation/issue-48/light-failure.png)／[深色必要错误提示](validation/issue-48/dark-failure.png)。这些是内存样例的离屏抓帧，主窗口之外的RGB背景不代表Windows透明合成；菜单位置与样例编辑状态可不同，字体、图标位、hover、圆角、模态层、阴影及关闭对齐分别验证。精确程序和检查身份见[测试策略](../technical/testing.md)。
 
