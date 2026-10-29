@@ -13,6 +13,7 @@ Button {
     property bool keyboardNavigation: false
     property bool darkTheme: true
     property bool hintsEnabled: true
+    property bool animationsEnabled: true
     property bool editMode: false
     property bool readOnly: false
     property bool dragging: false
@@ -60,7 +61,8 @@ Button {
     height: tile.height
     padding: 0
     horizontalPadding: 0
-    opacity: dragging ? 0.35 : 1
+    readonly property real targetOpacity: dragging ? 0.35 : 1
+    opacity: targetOpacity
     // Input geometry stays on the untransformed Button. Only its visual layers
     // receive the projective press matrix, independently of pin/reflow motion.
     ParallelAnimation {
@@ -89,11 +91,17 @@ Button {
         }
     }
     Behavior on opacity {
+        enabled: tileButton.animationsEnabled
+        onEnabledChanged: {
+            if (!enabled)
+                tileButton.opacity = Qt.binding(function () { return tileButton.targetOpacity; });
+        }
         NumberAnimation {
             duration: 140
         }
     }
     ParallelAnimation {
+        id: reflowMotion
         running: tileButton.motion.hasPrevious === true
         onFinished: {
             if (tileButton.activeFocus)
@@ -107,7 +115,7 @@ Button {
             property: "x"
             from: tileButton.motion.motionFrom_x ?? tileButton.tile.x
             to: tileButton.tile.x
-            duration: 200
+            duration: tileButton.animationsEnabled ? 200 : 0
             easing.type: Easing.OutCubic
         }
         NumberAnimation {
@@ -115,7 +123,7 @@ Button {
             property: "y"
             from: tileButton.motion.motionFrom_y ?? tileButton.tile.y
             to: tileButton.tile.y
-            duration: 200
+            duration: tileButton.animationsEnabled ? 200 : 0
             easing.type: Easing.OutCubic
         }
         NumberAnimation {
@@ -123,7 +131,7 @@ Button {
             property: "width"
             from: tileButton.motion.motionFrom_width ?? tileButton.tile.width
             to: tileButton.tile.width
-            duration: 200
+            duration: tileButton.animationsEnabled ? 200 : 0
             easing.type: Easing.OutCubic
         }
         NumberAnimation {
@@ -131,7 +139,7 @@ Button {
             property: "height"
             from: tileButton.motion.motionFrom_height ?? tileButton.tile.height
             to: tileButton.tile.height
-            duration: 200
+            duration: tileButton.animationsEnabled ? 200 : 0
             easing.type: Easing.OutCubic
         }
     }
@@ -153,7 +161,7 @@ Button {
     }
     Component.onCompleted: {
         pressComponentReady = true;
-        if (motion.hasPrevious === false)
+        if (animationsEnabled && motion.hasPrevious === false)
             pinAppearMotion.start();
     }
     focusPolicy: Qt.StrongFocus
@@ -185,7 +193,8 @@ Button {
             pressDirectionY = pressPoint.y;
         }
         pointerPressActive = true;
-        animatePointerPress(1, pressTokens.pressMs);
+        if (animationsEnabled)
+            animatePointerPress(1, pressTokens.pressMs);
     }
 
     function animatePointerPress(targetProgress: real, durationMs: int): void {
@@ -258,6 +267,16 @@ Button {
     onDraggingChanged: {
         if (dragging)
             cancelPointerPress(false);
+    }
+    onAnimationsEnabledChanged: {
+        if (animationsEnabled || !pressComponentReady)
+            return;
+        pressMotion.stop();
+        pressProgress = 0;
+        pressDirectionX = 0;
+        pressDirectionY = 0;
+        reflowMotion.complete();
+        pinAppearMotion.complete();
     }
     onEnabledChanged: {
         if (tileButton.pressComponentReady && !tileButton.enabled)

@@ -1,4 +1,5 @@
 add_library(xdstarter_platform STATIC platform_integration.cpp platform_integration.h
+    motion_preference.cpp motion_preference.h
     installation_guard.cpp installation_guard.h
     graphics_failure_notice.h
     application_platform.cpp application_platform.h
@@ -16,6 +17,8 @@ if(WIN32)
         windows/windows_graphics_failure_notice.h
         windows/windows_platform_integration.cpp
         windows/windows_platform_integration.h
+        windows/windows_motion_preference.cpp
+        windows/windows_motion_preference.h
         windows/windows_application_platform.cpp
         windows/windows_application_platform.h
         windows/windows_desktop_platform.cpp

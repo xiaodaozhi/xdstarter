@@ -12,6 +12,7 @@ Item {
     property var tileTransitions: ({})
     property bool keyboardNavigation: false
     property bool hintsEnabled: true
+    property bool animationsEnabled: true
     property bool darkTheme: true
     readonly property var theme: tokens.themes[darkTheme ? "dark" : "light"]
     readonly property real occupiedGridHeight: {
@@ -216,6 +217,7 @@ Item {
 
             delegate: TileButton {
                 hintsEnabled: tileGroup.hintsEnabled
+                animationsEnabled: tileGroup.animationsEnabled
                 required property var modelData
 
                 keyboardNavigation: tileGroup.keyboardNavigation
