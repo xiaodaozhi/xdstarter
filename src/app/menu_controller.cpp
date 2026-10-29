@@ -1,7 +1,9 @@
 #include "menu_controller.h"
 
 #include <QCoreApplication>
+#include <QGuiApplication>
 #include <QKeyEvent>
+#include <QStyleHints>
 
 #include "platform/platform_integration.h"
 #include "services/application_catalog.h"
@@ -32,6 +34,14 @@ struct PendingLayoutImport {
 };
 
 namespace {
+
+QString savedThemePreference(const QJsonObject& snapshot) {
+    const auto preference = snapshot.value(QStringLiteral("preferences"))
+                                .toObject()
+                                .value(QStringLiteral("theme"))
+                                .toString();
+    return preference.isEmpty() ? QStringLiteral("dark") : preference;
+}
 
 QString sizeName(TileSize size) {
     switch (size) {
@@ -101,11 +111,15 @@ MenuController::MenuController(PrototypeService& prototypeService,
         catalog_->refreshApplications();
     readOnly_ = prototypeService.isReadOnly();
     editMode_ = !readOnly_;
-    darkTheme_ = prototypeService.snapshot()
-                     .value(QStringLiteral("preferences"))
-                     .toObject()
-                     .value(QStringLiteral("theme"))
-                     .toString() != QLatin1String("light");
+    if (qobject_cast<QGuiApplication*>(QCoreApplication::instance())) {
+        auto* hints = QGuiApplication::styleHints();
+        systemColorScheme_ = hints->colorScheme();
+        connect(hints, &QStyleHints::colorSchemeChanged, this, [this](Qt::ColorScheme scheme) {
+            systemColorScheme_ = scheme;
+            applyThemePreference(themePreference_);
+        });
+    }
+    applyThemePreference(savedThemePreference(prototypeService.snapshot()));
     persistenceError_ = readOnly_ || !prototypeService.loadResult().success ||
                         prototypeService.loadResult().recoveredFromBackup;
     persistenceStatus_ = prototypeService.loadResult().message;
@@ -331,6 +345,7 @@ bool MenuController::setGridColumnsForWidth(qreal availableWidth) {
 }
 bool MenuController::editMode() const { return editMode_; }
 bool MenuController::darkTheme() const { return darkTheme_; }
+QString MenuController::themePreference() const { return themePreference_; }
 bool MenuController::readOnly() const { return readOnly_; }
 bool MenuController::saving() const { return saving_; }
 QString MenuController::operationMessage() const { return operationMessage_; }
@@ -802,12 +817,30 @@ void MenuController::setEditMode(bool enabled) {
     emit editModeChanged();
 }
 
-void MenuController::setDarkTheme(bool enabled) {
-    if (rejectImportMutation() || readOnly_ || darkTheme_ == enabled)
+void MenuController::applyThemePreference(const QString& preference) {
+    const bool preferenceChanged = themePreference_ != preference;
+    const bool effectiveDark = preference == QLatin1String("dark") ||
+        (preference == QLatin1String("system") && systemColorScheme_ != Qt::ColorScheme::Light);
+    const bool effectiveChanged = darkTheme_ != effectiveDark;
+    themePreference_ = preference;
+    darkTheme_ = effectiveDark;
+    if (preferenceChanged)
+        emit themePreferenceChanged();
+    if (effectiveChanged)
+        emit darkThemeChanged();
+}
+
+void MenuController::setThemePreference(const QString& preference) {
+    if ((preference != QLatin1String("dark") && preference != QLatin1String("light") &&
+         preference != QLatin1String("system")) ||
+        readOnly_ || preference == themePreference_ || rejectImportMutation())
         return;
-    darkTheme_ = enabled;
-    emit darkThemeChanged();
+    applyThemePreference(preference);
     scheduleSave();
+}
+
+void MenuController::setDarkTheme(bool enabled) {
+    setThemePreference(enabled ? QStringLiteral("dark") : QStringLiteral("light"));
 }
 
 void MenuController::setOperationMessage(QString message, bool error) {
@@ -912,8 +945,7 @@ bool MenuController::resizeTile(const QString& tileId, const QString& sizeNameVa
 QJsonObject MenuController::currentSnapshot() const {
     auto snapshot = prototypeService_.snapshot();
     auto preferences = snapshot.value(QStringLiteral("preferences")).toObject();
-    preferences.insert(QStringLiteral("theme"),
-                       darkTheme_ ? QStringLiteral("dark") : QStringLiteral("light"));
+    preferences.insert(QStringLiteral("theme"), themePreference_);
     snapshot.insert(QStringLiteral("preferences"), preferences);
     return snapshot;
 }
@@ -1189,17 +1221,13 @@ void MenuController::completeLayoutImport(const std::shared_ptr<PendingLayoutImp
         // This immutable snapshot was strictly validated before either disk write.
         const auto restored = prototypeService_.restoreSnapshot(pending->replacement);
         Q_ASSERT(restored.success);
-        darkTheme_ = pending->replacement.value(QStringLiteral("preferences"))
-                         .toObject()
-                         .value(QStringLiteral("theme"))
-                         .toString() != QLatin1String("light");
+        applyThemePreference(savedThemePreference(pending->replacement));
         ++revision_;
         savedRevision_ = revision_;
         diskRevision_->store(revision_, std::memory_order_release);
         setEditMode(true);
         setSearchQuery({});
         refreshGroups();
-        emit darkThemeChanged();
         setPersistenceStatus(QStringLiteral("布局已替换并保存。"));
         emit importStateChanged();
         emit layoutImportSucceeded();

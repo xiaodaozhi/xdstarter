@@ -926,10 +926,10 @@ ApplicationWindow {
         moreMenu.open();
     }
 
-    function toggleTheme(): void {
+    function selectTheme(preference: string): void {
         moreMenu.close();
         if (!controller.readOnly)
-            controller.darkTheme = !controller.darkTheme;
+            controller.themePreference = preference;
     }
 
     function saveLayout(): void {
@@ -2485,18 +2485,28 @@ ApplicationWindow {
             width: 204
             enabled: !window.controller.readOnly && !window.controller.importCommitting
             ActionMenuItem {
+                objectName: "appearanceSystemItem"
+                text: qsTr("跟随系统")
+                checkable: true
+                autoExclusive: true
+                checked: window.controller.themePreference === "system"
+                onTriggered: window.selectTheme("system")
+            }
+            ActionMenuItem {
                 objectName: "appearanceLightItem"
                 text: qsTr("浅色")
                 checkable: true
-                checked: !window.darkTheme
-                onTriggered: { if (window.darkTheme) window.toggleTheme(); }
+                autoExclusive: true
+                checked: window.controller.themePreference === "light"
+                onTriggered: window.selectTheme("light")
             }
             ActionMenuItem {
                 objectName: "appearanceDarkItem"
                 text: qsTr("深色")
                 checkable: true
-                checked: window.darkTheme
-                onTriggered: { if (!window.darkTheme) window.toggleTheme(); }
+                autoExclusive: true
+                checked: window.controller.themePreference === "dark"
+                onTriggered: window.selectTheme("dark")
             }
         }
 

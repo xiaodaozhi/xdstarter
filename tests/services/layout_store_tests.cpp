@@ -84,19 +84,21 @@ int main() {
     const TileGrid grid;
     PrototypeService prototype(grid);
     const auto defaults = prototype.snapshot();
+    auto schemaFour = defaults;
+    schemaFour.insert(QStringLiteral("schemaVersion"), 4);
     for (const auto& columns : {QJsonValue{}, QJsonValue(3), QJsonValue(65), QJsonValue(4.5),
                                 QJsonValue(QStringLiteral("12"))}) {
-        auto invalid = defaults;
+        auto invalid = schemaFour;
         invalid.insert(QStringLiteral("gridColumns"), columns);
         test.expect(!LayoutStore::validate(invalid).success,
                     "schema four requires a bounded integer grid column budget");
     }
-    auto missingColumns = defaults;
+    auto missingColumns = schemaFour;
     missingColumns.remove(QStringLiteral("gridColumns"));
     test.expect(!LayoutStore::validate(missingColumns).success,
                 "schema four does not guess a missing column budget");
     auto expanded =
-        changeTile(changeTile(defaults, QStringLiteral("column"), 10), QStringLiteral("row"), 4);
+        changeTile(changeTile(schemaFour, QStringLiteral("column"), 10), QStringLiteral("row"), 4);
     expanded.insert(QStringLiteral("gridColumns"), 12);
     test.expect(LayoutStore::validate(expanded).success,
                 "schema four validates real columns beyond the legacy grid");
@@ -325,7 +327,7 @@ int main() {
                     versionTwoService.renameTile(QStringLiteral("work-standard-1"), QStringLiteral("新名称")).success &&
                     LayoutStore(versionTwoPath).save(versionTwoService.snapshot()).success &&
                     readBytes(versionTwoPath + QStringLiteral(".bak")) == versionTwoBytes,
-                "version two load stays read-only on disk and first version three write backs up exact bytes");
+                "version two load stays read-only on disk and first current write backs up exact bytes");
     PrototypeService renamedRestart(grid, versionTwoPath);
     test.expect(renamedRestart.snapshot() == versionTwoService.snapshot(),
                 "version three display overrides survive an independent service restart");
@@ -342,7 +344,51 @@ int main() {
                     versionThreeService.setGridColumns(12).success &&
                     LayoutStore(versionThreePath).save(versionThreeService.snapshot()).success &&
                     readBytes(versionThreePath + QStringLiteral(".bak")) == versionThreeBytes,
-                "schema three migrates in memory and first schema four save preserves exact bytes");
+                "schema three migrates in memory and first current save preserves exact bytes");
+    for (const auto& theme : {QStringLiteral("dark"), QStringLiteral("light"), QString{}}) {
+        auto versionFour = schemaFour;
+        versionFour.insert(QStringLiteral("gridColumns"), 12);
+        versionFour.insert(QStringLiteral("preferences"),
+                           theme.isEmpty() ? QJsonObject{}
+                                           : QJsonObject{{QStringLiteral("theme"), theme}});
+        const auto name = theme.isEmpty() ? QStringLiteral("missing") : theme;
+        const auto oldPath = directory.filePath(QStringLiteral("version-four-%1.json").arg(name));
+        const auto oldBytes = QByteArray(" \n") + QJsonDocument(versionFour).toJson() + QByteArray("\n ");
+        test.expect(writeBytes(oldPath, oldBytes) && LayoutStore::validate(versionFour).success,
+                    "schema four theme fixture is valid");
+        PrototypeService oldService(grid, oldPath);
+        auto expected = versionFour;
+        expected.insert(QStringLiteral("schemaVersion"), LayoutStore::schemaVersion);
+        test.expect(oldService.loadResult().success && oldService.snapshot() == expected &&
+                        readBytes(oldPath) == oldBytes &&
+                        LayoutStore(oldPath).save(oldService.snapshot()).success &&
+                        readBytes(oldPath + QStringLiteral(".bak")) == oldBytes,
+                    "schema four theme and columns migrate in memory and preserve exact backup bytes");
+    }
+    auto systemTheme = defaults;
+    systemTheme.insert(QStringLiteral("preferences"),
+                       QJsonObject{{QStringLiteral("theme"), QStringLiteral("system")}});
+    const auto systemPath = directory.filePath(QStringLiteral("system-theme.json"));
+    test.expect(LayoutStore::validate(systemTheme).success &&
+                    LayoutStore(systemPath).save(systemTheme).success &&
+                    PrototypeService(grid, systemPath).snapshot() == systemTheme,
+                "current system theme survives save and independent reload");
+    for (const int oldVersion : {1, 2, 3, 4}) {
+        auto oldSystem = systemTheme;
+        oldSystem.insert(QStringLiteral("schemaVersion"), oldVersion);
+        if (oldVersion < 4)
+            oldSystem.remove(QStringLiteral("gridColumns"));
+        test.expect(!LayoutStore::validate(oldSystem).success,
+                    "old schemas reject system instead of silently extending theme values");
+    }
+    for (const auto& invalidTheme : {QJsonValue(QJsonValue::Null), QJsonValue(7), QJsonValue(false),
+                                     QJsonValue(QString{}), QJsonValue(QStringLiteral("automatic"))}) {
+        auto invalid = defaults;
+        invalid.insert(QStringLiteral("preferences"),
+                       QJsonObject{{QStringLiteral("theme"), invalidTheme}});
+        test.expect(!LayoutStore::validate(invalid).success,
+                    "theme rejects null, non-string, empty and unknown values");
+    }
     const auto expandedPath = directory.filePath(QStringLiteral("expanded.json"));
     test.expect(LayoutStore(expandedPath).save(expanded).success &&
                     LayoutStore(expandedPath).load(defaults).snapshot == expanded,
