@@ -21,7 +21,7 @@
 | --- | --- |
 | `xdstarter_core` | 纯 C++ 三档逻辑矩形、范围与溢出校验；由共享 JSON 生成几何常量 |
 | `xdstarter_services` | `PrototypeService` 提供邻接、布局事务、固定/取消固定及分组管理；`LayoutStore` 校验、原子保存及恢复 schema 1/2/3/4/5；`ApplicationCatalog` 后台读取目录、图标、可用性及启动；`DesktopShellService` 在另一专用 worker 执行受控桌面动作与工作区查询；`SearchIndex` / `SearchService` 使用 Qt Core 值类型、独立 worker 与离线字音表完成有界搜索 |
-| `xdstarter_platform` | `PlatformIntegration` 提供集成状态；`ApplicationPlatform` 封装应用目录、图标及启动；`DesktopPlatform` 封装受控 Shell 动作、工作区/UIA 查询、面板物理定位与原生装饰抑制；`DesktopTray` 封装 `Shell_NotifyIcon` 与文字菜单；`WinKeyCapture` 封装默认关闭的单独 Win 键接管及纯 C++ 状态机。Windows Hook 仅显式启用后安装，非支持平台返回明确的不支持结果 |
+| `xdstarter_platform` | `PlatformIntegration` 提供集成状态；`MotionPreference` 只读系统动画偏好并排队刷新；`ApplicationPlatform` 封装应用目录、图标及启动；`DesktopPlatform` 封装受控 Shell 动作、工作区/UIA 查询、面板物理定位与原生装饰抑制；`DesktopTray` 封装 `Shell_NotifyIcon` 与文字菜单；`WinKeyCapture` 封装默认关闭的单独 Win 键接管及纯 C++ 状态机。Windows Hook 仅显式启用后安装，非支持平台返回明确的不支持结果 |
 | `xdstarter` | `QGuiApplication`、依赖组装、`MenuController`、缓存图像 provider、`DesktopWindowHost` 与 QML；支持应用与磁贴操作、快捷栏、无边框呈现、延后焦点复核及可恢复的托盘收起/显示生命周期 |
 | `xdstarter_core_tests` | 独立核心行为测试，Debug 和 Release 均执行真实检查 |
 | `xdstarter_prototype_service_tests` | 样例布局、稳定标识、方向键邻接、移动/尺寸、分组事务与非法操作不变性测试 |

@@ -14,6 +14,7 @@
 #include "platform/graphics_failure_notice.h"
 #include "platform/installation_guard.h"
 #include "platform/platform_integration.h"
+#include "platform/motion_preference.h"
 #include "platform/start_button_capture.h"
 #include "platform/win_key_capture.h"
 #include "services/application_catalog.h"
@@ -251,8 +252,9 @@ int main(int argc, char* argv[]) {
             std::make_unique<xdstarter::DesktopShellService>(xdstarter::createDesktopPlatform());
     }
     const auto platform = xdstarter::createPlatformIntegration();
+    const auto motionPreference = xdstarter::createMotionPreference();
     xdstarter::MenuController controller(prototypeService, *platform, *visualTokens, nullptr,
-                                         catalog.get(), desktopShell.get());
+                                         catalog.get(), desktopShell.get(), motionPreference.get());
     QObject::connect(&controller, &xdstarter::MenuController::exitRequested, &application,
                      [&application] { application.quit(); });
     bool smokeHadWarnings = false;
@@ -281,6 +283,11 @@ int main(int argc, char* argv[]) {
         qCritical() << "Root QML object is not a Qt Quick window";
         return EXIT_FAILURE;
     }
+    QObject::connect(window, &QWindow::visibleChanged, motionPreference.get(),
+                     [source = motionPreference.get()](bool visible) {
+                         if (visible)
+                             source->refresh();
+                     });
     xdstarter::SceneGraphFailureGuard graphicsFailure(*window, application);
     window->setIcon(applicationIcon);
     std::unique_ptr<xdstarter::DesktopPlatform> placement;

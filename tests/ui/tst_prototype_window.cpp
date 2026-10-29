@@ -8,6 +8,7 @@
 #include "platform/application_platform.h"
 #include "platform/desktop_platform.h"
 #include "platform/platform_integration.h"
+#include "platform/motion_preference.h"
 #include "services/application_catalog.h"
 #include "services/desktop_shell_service.h"
 #include "services/prototype_service.h"
@@ -58,6 +59,12 @@
 #include <memory>
 
 namespace {
+
+class ManualMotionPreference final : public xdstarter::MotionPreference {
+  public:
+    explicit ManualMotionPreference(bool enabled) : MotionPreference(enabled) {}
+    void setEnabled(bool enabled) { publishAnimationsEnabled(enabled); }
+};
 
 xdstarter::LaunchTarget catalogTarget(const QString& name, const QString& identity,
                                      const QString& type = QStringLiteral("shortcut")) {
@@ -365,6 +372,8 @@ class PrototypeWindowTest : public QObject {
     void themeSwitchRetainsGeometry();
     void systemThemePreferenceTracksAndPersists();
     void layoutImportPreservesSystemTheme();
+    void reducedMotionFollowsPreference();
+    void reducedMotionCompletesFolderNavigation();
     void keyboardAndMouseSelection();
     void tilePressPerspective_data();
     void tilePressPerspective();
@@ -443,7 +452,8 @@ class PrototypeWindowTest : public QObject {
     void settleMenus();
     void createWindow(const QString& path = {}, bool sampleMode = true,
                       std::shared_ptr<CatalogTestState> catalogState = {},
-                      std::shared_ptr<DesktopTestState> desktopState = {});
+                      std::shared_ptr<DesktopTestState> desktopState = {},
+                      xdstarter::MotionPreference* motionPreference = nullptr);
     void destroyWindow();
     void beginMouseDrag(const QString& tileId);
     void moveMouseToGrid(const QString& groupId, const QPointF& position);
@@ -810,7 +820,8 @@ void PrototypeWindowTest::init() {
 
 void PrototypeWindowTest::createWindow(const QString& path, bool sampleMode,
                                       std::shared_ptr<CatalogTestState> catalogState,
-                                      std::shared_ptr<DesktopTestState> desktopState) {
+                                      std::shared_ptr<DesktopTestState> desktopState,
+                                      xdstarter::MotionPreference* motionPreference) {
     service_ = std::make_unique<xdstarter::PrototypeService>(grid_, path, sampleMode);
     platform_ = xdstarter::createPlatformIntegration();
     if (catalogState) {
@@ -822,7 +833,8 @@ void PrototypeWindowTest::createWindow(const QString& path, bool sampleMode,
             std::make_unique<DesktopTestPlatform>(std::move(desktopState)));
     }
     controller_ = std::make_unique<xdstarter::MenuController>(
-        *service_, *platform_, visualTokens_, nullptr, catalog_.get(), desktopShell_.get());
+        *service_, *platform_, visualTokens_, nullptr, catalog_.get(), desktopShell_.get(),
+        motionPreference);
     engine_ = std::make_unique<QQmlApplicationEngine>();
     if (catalog_) {
         engine_->addImageProvider(QStringLiteral("application-icons"),
@@ -1141,6 +1153,157 @@ void PrototypeWindowTest::layoutImportPreservesSystemTheme() {
     destroyWindow();
     createWindow(path, false);
     QCOMPARE(controller_->themePreference(), QStringLiteral("system"));
+}
+
+void PrototypeWindowTest::reducedMotionFollowsPreference() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = directory.filePath(QStringLiteral("motion-layout.json"));
+    ManualMotionPreference motion(false);
+    destroyWindow();
+    createWindow(path, true, {}, {}, &motion);
+    QVERIFY(!controller_->animationsEnabled());
+    QCOMPARE(window_->property("dismissAnimationDuration").toInt(), 0);
+    auto* tile = item(QStringLiteral("tile-work-standard-1"));
+    QVERIFY(tile);
+    QVERIFY(!tile->property("animationsEnabled").toBool());
+    const auto geometry = tileGeometries();
+    controller_->setDarkTheme(false);
+    QVERIFY(controller_->flushSave());
+    QFile saved(path);
+    QVERIFY(saved.open(QIODevice::ReadOnly));
+    const auto original = saved.readAll();
+    saved.close();
+
+    QSignalSpy changed(controller_.get(), &xdstarter::MenuController::animationsEnabledChanged);
+    motion.setEnabled(true);
+    QVERIFY(controller_->animationsEnabled());
+    QCOMPARE(window_->property("dismissAnimationDuration").toInt(), 120);
+    QVERIFY(QMetaObject::invokeMethod(window_, "stagePresentation"));
+    QVERIFY(QMetaObject::invokeMethod(window_, "prepareForPresentation"));
+    motion.setEnabled(false);
+    QCOMPARE(window_->property("revealProgress").toReal(), qreal(1));
+    QCOMPARE(window_->property("dismissAnimationDuration").toInt(), 0);
+    QCOMPARE(changed.count(), 2);
+    QCOMPARE(tileGeometries(), geometry);
+    QTest::qWait(650);
+    QVERIFY(saved.open(QIODevice::ReadOnly));
+    QCOMPARE(saved.readAll(), original);
+    saved.close();
+
+    tile = item(QStringLiteral("tile-work-standard-1"));
+    QVERIFY(tile);
+    const auto position = tile->mapToScene(tile->boundingRect().center()).toPoint();
+    const auto unpressedColor = tile->property("fillTopColor").value<QColor>();
+    QTest::mousePress(window_, Qt::LeftButton, Qt::NoModifier, position);
+    QVERIFY(tile->property("pointerPressActive").toBool());
+    QVERIFY(tile->property("visualPressed").toBool());
+    QVERIFY(tile->property("fillTopColor").value<QColor>() != unpressedColor);
+    QVERIFY(!tile->property("pressAnimating").toBool());
+    QCOMPARE(tile->property("pressProgress").toReal(), qreal(0));
+    QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, position);
+    QVERIFY(!tile->property("pointerPressActive").toBool());
+
+    motion.setEnabled(true);
+    QTest::mousePress(window_, Qt::LeftButton, Qt::NoModifier, position);
+    QVERIFY(tile->property("pressAnimating").toBool());
+    motion.setEnabled(false);
+    QVERIFY(!tile->property("pressAnimating").toBool());
+    QCOMPARE(tile->property("pressProgress").toReal(), qreal(0));
+    QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, position);
+    motion.setEnabled(true);
+    QVERIFY(tile->setProperty("dragging", true));
+    QTest::qWait(20);
+    motion.setEnabled(false);
+    QCOMPARE(tile->opacity(), qreal(0.35));
+    QVERIFY(tile->setProperty("dragging", false));
+    QCOMPARE(tile->opacity(), qreal(1));
+    motion.setEnabled(true);
+    QVERIFY(controller_->moveTile(QStringLiteral("work-standard-1"), QStringLiteral("work"), 0, 2));
+    QCoreApplication::processEvents();
+    motion.setEnabled(false);
+    QTRY_COMPARE(item(QStringLiteral("tile-work-standard-1"))->y(), qreal(112));
+    destroyWindow();
+}
+
+void PrototypeWindowTest::reducedMotionCompletesFolderNavigation() {
+    const auto state = std::make_shared<CatalogTestState>();
+    xdstarter::LaunchTarget folder;
+    folder.type = QStringLiteral("folder");
+    folder.name = QStringLiteral("工具");
+    folder.shortcutPath = QStringLiteral("C:/Fixture/Tools");
+    folder.id = xdstarter::applicationTargetId(folder.type, folder.shortcutPath);
+    folder.iconKey = folder.id;
+    auto child = catalogTarget(QStringLiteral("画图"), QStringLiteral("C:/Fixture/Tools/Paint.lnk"));
+    child.parentFolderId = folder.id;
+    state->applications.append(folder);
+    state->applications.append(child);
+    ManualMotionPreference motion(true);
+    destroyWindow();
+    createWindow({}, true, state, {}, &motion);
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 3);
+    auto* browser = qobject_cast<xdstarter::ApplicationBrowserModel*>(controller_->applications());
+    QVERIFY(browser);
+    auto* folderButton = item(QStringLiteral("applicationLaunch-") + folder.id);
+    QVERIFY(folderButton);
+    click(folderButton);
+    QVERIFY(!browser->inFolder()); // Animated mode initially waits for the fade-out.
+    motion.setEnabled(false);
+    QVERIFY(browser->inFolder()); // An in-flight transition completes immediately.
+    auto* back = item(QStringLiteral("folderBackButton"));
+    QVERIFY(back);
+    click(back);
+    QVERIFY(!browser->inFolder()); // New navigation is immediate while reduced motion is active.
+    motion.setEnabled(true);
+    auto* section = item(QStringLiteral("sectionButton-A"));
+    QVERIFY(section);
+    click(section);
+    QVERIFY(window_->property("alphabetOpen").toBool());
+    auto* alphabet = item(QStringLiteral("alphabetSelector"));
+    QVERIFY(alphabet);
+    QTest::qWait(20);
+    motion.setEnabled(false);
+    QCOMPARE(alphabet->opacity(), qreal(1));
+    QCOMPARE(alphabet->scale(), qreal(1));
+    QVERIFY(window_->setProperty("alphabetOpen", false));
+    QCOMPARE(alphabet->opacity(), qreal(0));
+    motion.setEnabled(true);
+    QVERIFY(window_->setProperty("selectionStatus", QStringLiteral("测试错误")));
+    QVERIFY(window_->setProperty("selectionStatusError", true));
+    auto* feedback = item(QStringLiteral("feedbackPanel"));
+    QVERIFY(feedback);
+    QTest::qWait(20);
+    motion.setEnabled(false);
+    QCOMPARE(feedback->opacity(), qreal(1));
+    QVERIFY(window_->setProperty("selectionStatus", QString{}));
+    QCOMPARE(feedback->opacity(), qreal(0));
+    auto* dragPreview = item(QStringLiteral("dragPlacementPreview"));
+    QVERIFY(dragPreview);
+    motion.setEnabled(true);
+    QVERIFY(window_->setProperty("previewX", 120.0));
+    QTest::qWait(20);
+    motion.setEnabled(false);
+    QCOMPARE(dragPreview->x(), qreal(120));
+    QVERIFY(window_->setProperty("previewX", 80.0));
+    QCOMPARE(dragPreview->x(), qreal(80));
+    motion.setEnabled(true);
+    QVERIFY(QMetaObject::invokeMethod(window_, "openMoreMenu"));
+    auto* menu = window_->findChild<QObject*>(QStringLiteral("moreMenu"));
+    QVERIFY(menu && menu->property("visible").toBool());
+    motion.setEnabled(false);
+    // A popup already entering may complete its existing bounded transition.
+    QTRY_VERIFY_WITH_TIMEOUT(menu->property("opened").toBool(), 1000);
+    QCOMPARE(menu->property("opacity").toReal(), qreal(1));
+    QCOMPARE(menu->property("scale").toReal(), qreal(1));
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY_WITH_TIMEOUT(!menu->property("visible").toBool(), 1000);
+    QVERIFY(QMetaObject::invokeMethod(window_, "openMoreMenu"));
+    QTRY_VERIFY_WITH_TIMEOUT(menu->property("opened").toBool(), 1000);
+    QCOMPARE(menu->property("opacity").toReal(), qreal(1));
+    QCOMPARE(menu->property("scale").toReal(), qreal(1));
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY_WITH_TIMEOUT(!menu->property("visible").toBool(), 1000);
+    destroyWindow();
 }
 
 void PrototypeWindowTest::keyboardAndMouseSelection() {
