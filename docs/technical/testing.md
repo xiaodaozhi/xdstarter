@@ -618,9 +618,23 @@ PR 初次 head `72d13d4` 的[附加 MSVC 2022 检查](https://github.com/xiaodao
 python scripts/benchmark_search.py --executable build/app-release/xdstarter_search_service_tests.exe --output build/validation/issue-35/search-service.json
 ```
 
-输出路径必须是新文件，脚本不会覆盖已有证据。可通过 `--entries` 显式选择 0 至 8192 个不同规模；每组仍为 100 个查询。托管 Windows CI 另对 0 和 1000 项运行实际采样并上传独立证据，不将性能数值作为不稳定机器上的通过阈值。本采样在索引就绪后测量，包含服务 worker 排队，但不启动产品常驻进程、不加载 QML、不扫描真实目录或安装输入 Hook。空目录不等于空布局，服务结果接收不等于屏幕呈现；冷／热唤起、100 磁贴界面、帧耗时及常驻资源仍需另行采集，不能用这份报告关闭 #35 或宣称端到端目标通过。
+输出路径必须是新文件，脚本不会覆盖已有证据。可通过 `--entries` 显式选择 0 至 8192 个不同规模；每组仍为 100 个查询。托管 Windows CI 另对 0 和 1000 项运行实际采样并上传独立证据，不将性能数值作为不稳定机器上的通过阈值。本采样在索引就绪后测量，包含服务 worker 排队，但不启动产品常驻进程、不加载 QML、不扫描真实目录或安装输入 Hook。空目录不等于空布局，服务结果接收不等于屏幕呈现；冷／热唤起、真实目录与系统输入、动画帧耗时及常驻资源仍需另行采集，不能用这份报告关闭 #35 或宣称端到端目标通过。
 
 2026-10-29 一次本机受控采样的[全部原始数据](validation/issue-35/search-service.json)保留三个规模各 100 条记录。环境为 Windows 11 26300.9711、Intel Core i7-11370H、约 31.8 GiB 内存、Qt 6.8.2，Release 使用附加 v142 编译器 19.29.30159 / SDK 19041；不同于声明的精确编译器基线。1000 项的服务 P95 / 最大值为 7.77 / 8.29 ms，4096 项为 30.36 / 33.60 ms。测试程序 SHA-256 为 `f1b2d8d7d37405a4d944a066ef50a6dc7a18bd0aca39f653d714945ffd00a7f9`；该次编译的 `search_service_tests.cpp` SHA-256 为 `3fd07351f9637ecb9ee2f1bbfa810c474a51cf9eebd30f24594c5b8ae0e3c531`，其余源码以 `3821b4e1fb24311f80acc4a376b6295898b2f211` 为基础。系统负载未隔离，最大值和全部样本均予保留，不能把单次服务层结果推广为所有设备或端到端体验。
+
+### 合成数据的 QML 搜索采样（#35）
+
+`scripts/benchmark_ui_search.py` 只运行测试进程中的 QML 与 controller：假平台返回 1000 个固定应用和内存图标，内存布局含 100 枚小磁贴，不读取真实应用目录或用户布局、不启动目标、不注册托盘或输入 Hook。5 个独立预热查询后，100 个不同的单结果查询通过 Qt Test 向本进程窗口逐键发送。每次确认 controller 返回预期身份且 QML 结果行已创建并可见，随后显式请求更新，记录确认后同步并发出 `frameSwapped` 的一帧；轮询使用 1 ms sleep。原始数据保留每条输入、匿名目标身份、结果行就绪和同步帧的耗时。脚本独立核验目标哈希、时序、样本、P50/P95/最大值、程序散列及 Release 标识。
+
+```powershell
+python scripts/benchmark_ui_search.py --executable build/app-release/bin/xdstarter_ui_tests.exe --output build/validation/issue-35/ui-search.json
+```
+
+输出目录须已存在，文件不能已存在。默认强制离屏软件渲染，不修改系统显示或主题。仅一次性 GitHub-hosted runner 可显式使用 `--hosted-native`；CI 要求 Windows QPA 和 D3D11 RHI 并上传独立工件，但 RHI 名称不证明硬件或 WARP 适配器身份。这是受控单结果搜索，不含真实键盘、输入法、实际图标加载或系统桌面；`frameSwapped` 不证明物理屏幕已经显示，也不能视为最早可交互首帧。没有冷／热进程唤起、可见动画帧耗时、隐藏 CPU／内存或采样开销基线，不以该夹具判定 PRD 端到端目标是否达标。
+
+2026-10-29 一次[离屏原始数据](validation/issue-35/ui-search-offscreen.json)：同上 Windows 11 26300.9711 / i7-11370H / 约 31.8 GiB，Qt 6.8.2、Release v142 19.29.30159，QPA offscreen、软件渲染并使用 Windows 字体目录。结果行就绪 P95 / 最大为 102.32 / 160.66 ms；确认后的同步帧 P95 / 最大为 104.61 / 161.92 ms，负载未隔离且不作为 CI 性能阈值。程序 SHA-256 为 `99a4cd7c0cb92ad327e62180aab73a934af523d2e9db58958f982d20e36cd9cc`，本次夹具源码 SHA-256 为 `0bf861a6f40f6bcfef869a373b1901566222df5d22ecfc7807ceb10df5757395`；其余源码以 `21eb022af4ac6f01eec67e2602add56f0e52c9f5` 为基础，并包含该夹具入口与构建配置。不得将其解释为真实设备屏幕呈现的结论。
+
+2026-10-29 [托管 Windows 原始数据](validation/issue-35/ui-search-windows-ci.json)来自 [CI 40868948279](https://github.com/xiaodaozhi/xdstarter/actions/runs/40868948279)，PR head `88bccddc6521e66a5df2f2301fee5294f3479926` 的测试合并提交 `8922f12e426b496d749b2c4b8509b1e6106e4cef`；Windows Server 内核 10.0.20348、Qt 6.8.2、MSVC 19.44、Windows QPA / D3D11 RHI，程序 SHA-256 `21282f737895020235b50a3180be38190d48c6d4dd17439ccb5249c21a80ac2d`。100 条结果行就绪 P95 / 最大为 155.31 / 204.81 ms，确认后的同步帧 P95 / 最大为 169.30 / 206.21 ms。采样会轮询并检查 QML 对象，包含模拟逐键输入，当前未量化其扰动；需继续调查这些值，不能直接判断真实端到端目标。
 
 ### 本轮 Windows 真机证据
 

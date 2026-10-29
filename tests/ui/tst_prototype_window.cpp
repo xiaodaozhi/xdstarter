@@ -1,5 +1,6 @@
 #include "native_chrome_probe.h"
 #include "visual_acceptance_probe.h"
+#include "ui_search_benchmark.h"
 
 #include "app/application_icon_provider.h"
 #include "app/interface_font.h"
@@ -6078,6 +6079,8 @@ int main(int argc, char* argv[]) {
         return runNativeScreenTransitionProbe();
     if (QCoreApplication::arguments().contains(QStringLiteral("--visual-acceptance-probe")))
         return runVisualAcceptanceProbe();
+    if (QCoreApplication::arguments().contains(QStringLiteral("--ui-search-benchmark")))
+        return runUiSearchBenchmark();
     PrototypeWindowTest test;
     return QTest::qExec(&test, argc, argv);
 }

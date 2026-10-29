@@ -1,0 +1,630 @@
+{
+    "binarySha256": "21282f737895020235b50a3180be38190d48c6d4dd17439ccb5249c21a80ac2d",
+    "boundary": "first simulated key to expected visible QML row; then explicitly requested synchronized frameSwapped; not physical presentation or first interactive frame",
+    "capturedAtUtc": "2026-10-29T12:03:34.256Z",
+    "compiler": "MSVC 194435229",
+    "entries": 1000,
+    "graphicsApi": "Direct3D11",
+    "kernelVersion": "10.0.20348",
+    "measuredQueries": 100,
+    "modelReady": {
+        "maximumMilliseconds": 204.8059,
+        "p50Milliseconds": 116.5305,
+        "p95Milliseconds": 155.3124
+    },
+    "qpa": "windows",
+    "qtVersion": "6.8.2",
+    "releaseNdebug": true,
+    "samples": [
+        {
+            "expectedAppId": "shortcut-2503df7a2b162682af4a011b803e2757083dd8ac0973c9a8e7efedd4617f2daa",
+            "modelReadyMilliseconds": 131.4569,
+            "query": "item0100",
+            "synchronizedFrameMilliseconds": 137.9549
+        },
+        {
+            "expectedAppId": "shortcut-d7a6de60c7d1bccf48ae4e849d4f7995ee51e81f63e170a81c34a98c35a9840d",
+            "modelReadyMilliseconds": 111.2069,
+            "query": "item0101",
+            "synchronizedFrameMilliseconds": 124.8722
+        },
+        {
+            "expectedAppId": "shortcut-595803ec2c30ca82963d087ef6b1abdf5c0033405cad12706eddcac81dc504c5",
+            "modelReadyMilliseconds": 135.6278,
+            "query": "item0102",
+            "synchronizedFrameMilliseconds": 146.4676
+        },
+        {
+            "expectedAppId": "shortcut-9cab4ebb5e12b6411f400fd242225bb4e8c4b1db366d11f3fd25c7e78fc5ea8a",
+            "modelReadyMilliseconds": 136.5853,
+            "query": "item0103",
+            "synchronizedFrameMilliseconds": 147.2521
+        },
+        {
+            "expectedAppId": "shortcut-6fffe34409a760f473cd4f0a22536d5633f20797109b00d2accf6accca32eacb",
+            "modelReadyMilliseconds": 138.0046,
+            "query": "item0104",
+            "synchronizedFrameMilliseconds": 147.934
+        },
+        {
+            "expectedAppId": "shortcut-47b193f6e2ebb2fab8dd4e266b9389cccfdd426f464ab90150be12f6b32e9eef",
+            "modelReadyMilliseconds": 137.8516,
+            "query": "item0105",
+            "synchronizedFrameMilliseconds": 148.4577
+        },
+        {
+            "expectedAppId": "shortcut-52f2639356a03ae451d30012d6187cebaad031b40fa0a7451f07baf9ce2351da",
+            "modelReadyMilliseconds": 153.1709,
+            "query": "item0106",
+            "synchronizedFrameMilliseconds": 162.879
+        },
+        {
+            "expectedAppId": "shortcut-0e0ed13934d8dc5aea2ffc261b21121fa655af8b5f373905ca0635b27d2c317b",
+            "modelReadyMilliseconds": 138.599,
+            "query": "item0107",
+            "synchronizedFrameMilliseconds": 148.3824
+        },
+        {
+            "expectedAppId": "shortcut-74e885bf9aced1d22142655cbe2255909a80f16bb053ce1bfad37fe52bc30c3b",
+            "modelReadyMilliseconds": 163.1983,
+            "query": "item0108",
+            "synchronizedFrameMilliseconds": 169.7662
+        },
+        {
+            "expectedAppId": "shortcut-2cbc8c387b00e566b75b9bd35da38970fa893f31b73faff5cdc29f43fe1ffff6",
+            "modelReadyMilliseconds": 106.5426,
+            "query": "item0109",
+            "synchronizedFrameMilliseconds": 132.3204
+        },
+        {
+            "expectedAppId": "shortcut-07c0f50463388356f43d1162a715830ee63d0b221ae21967b486424ed7e18e3c",
+            "modelReadyMilliseconds": 100.1077,
+            "query": "item0110",
+            "synchronizedFrameMilliseconds": 109.7627
+        },
+        {
+            "expectedAppId": "shortcut-de338c6c023e3f266d43c2ca59855ae295ba0aec94d57f468422294834043dc6",
+            "modelReadyMilliseconds": 138.6951,
+            "query": "item0111",
+            "synchronizedFrameMilliseconds": 148.4946
+        },
+        {
+            "expectedAppId": "shortcut-1c9cdde802d63137829905b8bd0da40ff301420ea09c8975f11260c67e6c7ebc",
+            "modelReadyMilliseconds": 136.87,
+            "query": "item0112",
+            "synchronizedFrameMilliseconds": 147.7073
+        },
+        {
+            "expectedAppId": "shortcut-4ca2948c72f10201d6ab61f9ac608ee55c5f364b97d0496262f7f23e6acecb89",
+            "modelReadyMilliseconds": 137.5505,
+            "query": "item0113",
+            "synchronizedFrameMilliseconds": 147.3323
+        },
+        {
+            "expectedAppId": "shortcut-a77dfb86d0370bd389883c9e6aac13c4d409a5c77a12770e88b5c5f29ca70fea",
+            "modelReadyMilliseconds": 155.3124,
+            "query": "item0114",
+            "synchronizedFrameMilliseconds": 164.0094
+        },
+        {
+            "expectedAppId": "shortcut-788aceb3836c64d0c8b89c4dada51446cecb09eb4aeb24ebfcbee61c69d44309",
+            "modelReadyMilliseconds": 153.8113,
+            "query": "item0115",
+            "synchronizedFrameMilliseconds": 164.6771
+        },
+        {
+            "expectedAppId": "shortcut-5e26897610bdc3d97222472c0e0cffd0542db8afee11465bbaaef5685bb81071",
+            "modelReadyMilliseconds": 153.0673,
+            "query": "item0116",
+            "synchronizedFrameMilliseconds": 162.8552
+        },
+        {
+            "expectedAppId": "shortcut-c0fc3d96d0e13d24971d2319cc6fbc1fefe21710653a717cec630ee0e6801fb2",
+            "modelReadyMilliseconds": 138.8812,
+            "query": "item0117",
+            "synchronizedFrameMilliseconds": 148.752
+        },
+        {
+            "expectedAppId": "shortcut-33a2bbfef3eeec3e72d4f6ceeefcec6dda0812f935087f6bcdcccfbd50694e8d",
+            "modelReadyMilliseconds": 138.2945,
+            "query": "item0118",
+            "synchronizedFrameMilliseconds": 148.1772
+        },
+        {
+            "expectedAppId": "shortcut-1dfd0fcab4c536a2a4dcd0bec54714aaa772d05733c4cb22c5d2ab1f6e0878ac",
+            "modelReadyMilliseconds": 136.9496,
+            "query": "item0119",
+            "synchronizedFrameMilliseconds": 146.7682
+        },
+        {
+            "expectedAppId": "shortcut-1a249662aec1de4adc7efef7733e50d8bad23394f72968cb29f392466087ab59",
+            "modelReadyMilliseconds": 125.0445,
+            "query": "item0120",
+            "synchronizedFrameMilliseconds": 134.8536
+        },
+        {
+            "expectedAppId": "shortcut-a4286a29b5ee100c293e32d3ea968994ce190184ea090dc304acff4a5358bd9c",
+            "modelReadyMilliseconds": 124.6612,
+            "query": "item0121",
+            "synchronizedFrameMilliseconds": 134.5402
+        },
+        {
+            "expectedAppId": "shortcut-456944674d98dc6fca3d5ea8024e5c4d39a9df8344b2549ee53b0c03f4ef6f6e",
+            "modelReadyMilliseconds": 125.5095,
+            "query": "item0122",
+            "synchronizedFrameMilliseconds": 135.3296
+        },
+        {
+            "expectedAppId": "shortcut-2052c00ea77ad8a9544fb2d9b0b602941db5cb2a648b36be68f687af86f64913",
+            "modelReadyMilliseconds": 124.4799,
+            "query": "item0123",
+            "synchronizedFrameMilliseconds": 133.2339
+        },
+        {
+            "expectedAppId": "shortcut-fdbccadbb90095d3e5abbfa0af598c24d5ddc298d570eba46dd0456b57e37812",
+            "modelReadyMilliseconds": 125.7376,
+            "query": "item0124",
+            "synchronizedFrameMilliseconds": 134.5259
+        },
+        {
+            "expectedAppId": "shortcut-f4706412aa3386ad1c06a90aca7219910a0207b78b8a66b68b9aa7147363a43a",
+            "modelReadyMilliseconds": 177.7179,
+            "query": "item0125",
+            "synchronizedFrameMilliseconds": 185.2393
+        },
+        {
+            "expectedAppId": "shortcut-0bd2427a39547c59d320ac06d9f7b0146c0c3cf1feb339f71b58224a7c4a7ddd",
+            "modelReadyMilliseconds": 109.037,
+            "query": "item0126",
+            "synchronizedFrameMilliseconds": 132.3235
+        },
+        {
+            "expectedAppId": "shortcut-681c2324159a0c5ea60c1d5a4a83ffdb8d6f3e6eb5a346e65a0e47268dae827b",
+            "modelReadyMilliseconds": 139.3798,
+            "query": "item0127",
+            "synchronizedFrameMilliseconds": 148.1877
+        },
+        {
+            "expectedAppId": "shortcut-58c5ff1b885c85d0405ab977a7f309b83aad1ae6c7a074070f00393973a38576",
+            "modelReadyMilliseconds": 145.0176,
+            "query": "item0128",
+            "synchronizedFrameMilliseconds": 169.2984
+        },
+        {
+            "expectedAppId": "shortcut-67ee871728d1cbdfdd8ae7340e5d62f637550754843833a2048cccb1b3027511",
+            "modelReadyMilliseconds": 139.6612,
+            "query": "item0129",
+            "synchronizedFrameMilliseconds": 148.492
+        },
+        {
+            "expectedAppId": "shortcut-6c289417198c368dffc24f2e7ef99b494baf0e6d5d43f00617205abf917c1d9d",
+            "modelReadyMilliseconds": 123.2573,
+            "query": "item0130",
+            "synchronizedFrameMilliseconds": 131.9641
+        },
+        {
+            "expectedAppId": "shortcut-016b628d17fd54ec9361fd8ae3332f3ed00f98b718972f0ad244410b396accb9",
+            "modelReadyMilliseconds": 104.8415,
+            "query": "item0131",
+            "synchronizedFrameMilliseconds": 130.104
+        },
+        {
+            "expectedAppId": "shortcut-c6ef909783d8d20c3bff6d7685ac1137f81e6d855abd52630e28b43d3ea7924c",
+            "modelReadyMilliseconds": 105.8019,
+            "query": "item0132",
+            "synchronizedFrameMilliseconds": 130.4434
+        },
+        {
+            "expectedAppId": "shortcut-7b8019004f511bbb2e6fa3f194b77ec31a3ccae21882244404baacbbe1a8e512",
+            "modelReadyMilliseconds": 107.4602,
+            "query": "item0133",
+            "synchronizedFrameMilliseconds": 108.8671
+        },
+        {
+            "expectedAppId": "shortcut-131c6e24e2213f51777ae33004cf6e73e064d7b6eda8e69fa56fa2aba21586a1",
+            "modelReadyMilliseconds": 101.8507,
+            "query": "item0134",
+            "synchronizedFrameMilliseconds": 110.6426
+        },
+        {
+            "expectedAppId": "shortcut-7c567e4ed60b708eaf616d502886a55558c65dde8d5ccbcc3baf5f09370d50ce",
+            "modelReadyMilliseconds": 140.7906,
+            "query": "item0135",
+            "synchronizedFrameMilliseconds": 148.4242
+        },
+        {
+            "expectedAppId": "shortcut-2f8e513ee6427705fb0cf0f91873072294a0eb031cf103349aead5a8a7e44191",
+            "modelReadyMilliseconds": 109.8457,
+            "query": "item0136",
+            "synchronizedFrameMilliseconds": 111.1955
+        },
+        {
+            "expectedAppId": "shortcut-968ac370104d642266bdaa716fc6513e18be3b7effea97a0139ba54996d56794",
+            "modelReadyMilliseconds": 108.5101,
+            "query": "item0137",
+            "synchronizedFrameMilliseconds": 109.8224
+        },
+        {
+            "expectedAppId": "shortcut-9254d31be06612e31f51567ffdb36337474ed05672c975bea9c9f083d9c854d4",
+            "modelReadyMilliseconds": 162.2657,
+            "query": "item0138",
+            "synchronizedFrameMilliseconds": 163.5819
+        },
+        {
+            "expectedAppId": "shortcut-0923802bbc23c5760f15cc732d5ba696b0f0fcc8dd0c148c11695bd653927c23",
+            "modelReadyMilliseconds": 108.1257,
+            "query": "item0139",
+            "synchronizedFrameMilliseconds": 109.5165
+        },
+        {
+            "expectedAppId": "shortcut-28fd6a716ac73c9298eb7622ddde44b7c83c872fdde975996a9154589583ec0a",
+            "modelReadyMilliseconds": 108.6659,
+            "query": "item0140",
+            "synchronizedFrameMilliseconds": 109.9804
+        },
+        {
+            "expectedAppId": "shortcut-6bb3e7fc01d995b3875ab14f60c155077ef546efd8b0f240158a7d9f9328ec8e",
+            "modelReadyMilliseconds": 109.6686,
+            "query": "item0141",
+            "synchronizedFrameMilliseconds": 136.7981
+        },
+        {
+            "expectedAppId": "shortcut-f7590716c0072ed45742b1fa85d579929d2fde388d4addf18d88878edf0ad6d6",
+            "modelReadyMilliseconds": 145.0822,
+            "query": "item0142",
+            "synchronizedFrameMilliseconds": 169.8386
+        },
+        {
+            "expectedAppId": "shortcut-af9faea22f8d70aca3f8eeda6eab72a5223e019b233e9e2fdf92630202d3699b",
+            "modelReadyMilliseconds": 144.8457,
+            "query": "item0143",
+            "synchronizedFrameMilliseconds": 149.3737
+        },
+        {
+            "expectedAppId": "shortcut-05734a0823c44f3440ed57b9bf837844f70d0c020e0a7f05580ab203a84adccb",
+            "modelReadyMilliseconds": 107.8129,
+            "query": "item0144",
+            "synchronizedFrameMilliseconds": 109.136
+        },
+        {
+            "expectedAppId": "shortcut-e94f739edd538a1304bce0305dac5429bbe8f9a5846cb493dba588c20ffeb483",
+            "modelReadyMilliseconds": 106.5583,
+            "query": "item0145",
+            "synchronizedFrameMilliseconds": 107.9842
+        },
+        {
+            "expectedAppId": "shortcut-cfbb555397fa80aff3c3190cbe8781cc642a8a4c085065b38629a9acec66e29e",
+            "modelReadyMilliseconds": 115.7103,
+            "query": "item0146",
+            "synchronizedFrameMilliseconds": 117.0342
+        },
+        {
+            "expectedAppId": "shortcut-55d16ae0d0301a0c1710c2e9d65619860170c12b6fd211c9cb950f60772cfa08",
+            "modelReadyMilliseconds": 204.8059,
+            "query": "item0147",
+            "synchronizedFrameMilliseconds": 206.2056
+        },
+        {
+            "expectedAppId": "shortcut-821eeed5e8cf60405e95d19f31761888b998fc08d67dfd13fbd92d50d09d26f6",
+            "modelReadyMilliseconds": 110.61,
+            "query": "item0148",
+            "synchronizedFrameMilliseconds": 111.999
+        },
+        {
+            "expectedAppId": "shortcut-c39f84f1ca479dd7169659adb654b1bc4d26a69a67401e7e8c61ebaf047e26a9",
+            "modelReadyMilliseconds": 109.0518,
+            "query": "item0149",
+            "synchronizedFrameMilliseconds": 110.4175
+        },
+        {
+            "expectedAppId": "shortcut-a490cc61bde79e00c7c327418b942db6ce8e345173823767591c1567125bdcfa",
+            "modelReadyMilliseconds": 115.9202,
+            "query": "item0150",
+            "synchronizedFrameMilliseconds": 120.6464
+        },
+        {
+            "expectedAppId": "shortcut-15045737770029731ecb006d507beb64c57bc1cbe47d19d020e2ce380edc3d77",
+            "modelReadyMilliseconds": 143.4309,
+            "query": "item0151",
+            "synchronizedFrameMilliseconds": 145.0825
+        },
+        {
+            "expectedAppId": "shortcut-41f62649849705567345224ec63529789d184e85467e8349aaaa650c786e9757",
+            "modelReadyMilliseconds": 104.5451,
+            "query": "item0152",
+            "synchronizedFrameMilliseconds": 106.1299
+        },
+        {
+            "expectedAppId": "shortcut-585e560cfa0d98cdb65f5fba84bf0042a3492a4e0249c1c377a35d1fa39ccd4c",
+            "modelReadyMilliseconds": 120.5027,
+            "query": "item0153",
+            "synchronizedFrameMilliseconds": 125.2068
+        },
+        {
+            "expectedAppId": "shortcut-8b3c87d36d4373960e616786e52feff0f4e76a34c8cd0a7eeafcbed654aa3ff3",
+            "modelReadyMilliseconds": 111.3623,
+            "query": "item0154",
+            "synchronizedFrameMilliseconds": 112.6008
+        },
+        {
+            "expectedAppId": "shortcut-2285cb29035b1f2ba5c1a317d2b6c4e7a3c9637ca3685632588b28a7472214d8",
+            "modelReadyMilliseconds": 111.6985,
+            "query": "item0155",
+            "synchronizedFrameMilliseconds": 113.0432
+        },
+        {
+            "expectedAppId": "shortcut-12c61bfd1e771f4dca414d6aad0a93838bf616820ade045b0252c6e24d7c13c7",
+            "modelReadyMilliseconds": 108.8382,
+            "query": "item0156",
+            "synchronizedFrameMilliseconds": 110.2208
+        },
+        {
+            "expectedAppId": "shortcut-a49b46b4c46366dbaaf308cdee7884727e3411e206a5a80c5b9179dfcd6e363e",
+            "modelReadyMilliseconds": 111.3844,
+            "query": "item0157",
+            "synchronizedFrameMilliseconds": 112.7368
+        },
+        {
+            "expectedAppId": "shortcut-e0a8e0012121963c571c096d2b94cdddef238b314e4ff49744a82c54ee84af3d",
+            "modelReadyMilliseconds": 114.4992,
+            "query": "item0158",
+            "synchronizedFrameMilliseconds": 115.9058
+        },
+        {
+            "expectedAppId": "shortcut-52bec7ed1eb446c571718ca46f66e0314c05a04db830e0d98b0852adabadb82c",
+            "modelReadyMilliseconds": 112.5412,
+            "query": "item0159",
+            "synchronizedFrameMilliseconds": 113.8503
+        },
+        {
+            "expectedAppId": "shortcut-452f7959acf80895525eb606de52b96e1d6b1602dd5099ea21785c39ca611c0c",
+            "modelReadyMilliseconds": 112.3707,
+            "query": "item0160",
+            "synchronizedFrameMilliseconds": 113.7323
+        },
+        {
+            "expectedAppId": "shortcut-1724a22b87cab8187cbe9d0305a5a884724ffe84ce03205f957114740898c7e1",
+            "modelReadyMilliseconds": 110.124,
+            "query": "item0161",
+            "synchronizedFrameMilliseconds": 111.2695
+        },
+        {
+            "expectedAppId": "shortcut-36cabf78312dadbb2043dc1b4f3b0fc1dc85a8a194e0e9dcb3df86c2d685b4a6",
+            "modelReadyMilliseconds": 114.4074,
+            "query": "item0162",
+            "synchronizedFrameMilliseconds": 115.9475
+        },
+        {
+            "expectedAppId": "shortcut-5550a2ccdab0734bad312c320236aad3fd259b93a13a51d72f8471303c321f87",
+            "modelReadyMilliseconds": 113.9719,
+            "query": "item0163",
+            "synchronizedFrameMilliseconds": 115.2409
+        },
+        {
+            "expectedAppId": "shortcut-0506c1fcb43d47145c36764da4e87c9d21b6f1507bc9c0b6452969077183a4bd",
+            "modelReadyMilliseconds": 115.2969,
+            "query": "item0164",
+            "synchronizedFrameMilliseconds": 116.7403
+        },
+        {
+            "expectedAppId": "shortcut-11a3cdd77bb4855739af315b4ce550a8966a39e6c948c119c937fcdad3222903",
+            "modelReadyMilliseconds": 115.6959,
+            "query": "item0165",
+            "synchronizedFrameMilliseconds": 118.053
+        },
+        {
+            "expectedAppId": "shortcut-94fb8ffcf178bd1935946b658dfcc1074bb90c83c87ea2b6dc38a603d0920617",
+            "modelReadyMilliseconds": 115.117,
+            "query": "item0166",
+            "synchronizedFrameMilliseconds": 116.4744
+        },
+        {
+            "expectedAppId": "shortcut-b402369adaca11327f0df51f427767836409272dc506b4f568166eabb9e91a65",
+            "modelReadyMilliseconds": 41.1061,
+            "query": "item0167",
+            "synchronizedFrameMilliseconds": 42.3872
+        },
+        {
+            "expectedAppId": "shortcut-7d73082074632cfd0a952495d82fe2e4d3657176d4d7bb71c470bf5409b8dfe0",
+            "modelReadyMilliseconds": 113.6502,
+            "query": "item0168",
+            "synchronizedFrameMilliseconds": 115.7953
+        },
+        {
+            "expectedAppId": "shortcut-687f930c60c6e3087ebee02efd91494bf4f4f6b72cfdc81e4e6f6fb1581b424c",
+            "modelReadyMilliseconds": 113.494,
+            "query": "item0169",
+            "synchronizedFrameMilliseconds": 114.8565
+        },
+        {
+            "expectedAppId": "shortcut-3eda0276fe609c0144a97c0cdf34306fd0ea0375c88e825ecd743d88f82cb0ae",
+            "modelReadyMilliseconds": 107.7749,
+            "query": "item0170",
+            "synchronizedFrameMilliseconds": 108.9384
+        },
+        {
+            "expectedAppId": "shortcut-52d3689d6eb0c7ddb26baf7de98109e8970d9d350001844d2e5088da7868069a",
+            "modelReadyMilliseconds": 112.4468,
+            "query": "item0171",
+            "synchronizedFrameMilliseconds": 113.6246
+        },
+        {
+            "expectedAppId": "shortcut-5ed332fd2c4a203febfd621b24f88ec5d6967e0c0713fc87c15f5f0eb36ea0ec",
+            "modelReadyMilliseconds": 28.3588,
+            "query": "item0172",
+            "synchronizedFrameMilliseconds": 43.66
+        },
+        {
+            "expectedAppId": "shortcut-d5cdac696e3f4f501fa2c00c375919b43a2376ae83511399d9ce8d1a0316e250",
+            "modelReadyMilliseconds": 146.644,
+            "query": "item0173",
+            "synchronizedFrameMilliseconds": 148.0156
+        },
+        {
+            "expectedAppId": "shortcut-d5636975c65e361808fefd269f7e5c470ad1b4bc58970f195ce1e267896032e6",
+            "modelReadyMilliseconds": 29.8683,
+            "query": "item0174",
+            "synchronizedFrameMilliseconds": 44.3768
+        },
+        {
+            "expectedAppId": "shortcut-add309d8d971c3ab969d30fbed1be62941e7855fc14252d1bc01f7c5ece5703f",
+            "modelReadyMilliseconds": 113.88,
+            "query": "item0175",
+            "synchronizedFrameMilliseconds": 115.2654
+        },
+        {
+            "expectedAppId": "shortcut-e1da6bddfcff9528f85b5a84f47b5d1f1bf24dd147a3c0e11e8612f48a283c4e",
+            "modelReadyMilliseconds": 180.0489,
+            "query": "item0176",
+            "synchronizedFrameMilliseconds": 181.3132
+        },
+        {
+            "expectedAppId": "shortcut-4b72be07caba26f6c909356808711baab85034623edd985da7177f9d7bbb3da6",
+            "modelReadyMilliseconds": 116.731,
+            "query": "item0177",
+            "synchronizedFrameMilliseconds": 118.2116
+        },
+        {
+            "expectedAppId": "shortcut-c85efb07c9008bd13836533003fbb068537eaf3ccb8be6639824520cf96651f7",
+            "modelReadyMilliseconds": 113.8316,
+            "query": "item0178",
+            "synchronizedFrameMilliseconds": 115.1008
+        },
+        {
+            "expectedAppId": "shortcut-5abcef8be8db82bdaecb5712050991847672e1b6c08601cf05e99baec95dcdd9",
+            "modelReadyMilliseconds": 114.5434,
+            "query": "item0179",
+            "synchronizedFrameMilliseconds": 115.988
+        },
+        {
+            "expectedAppId": "shortcut-e673064d4304bb8ae9cfb5730b7cacf9d9c0fcc10bec37b295fccfa305f24ea3",
+            "modelReadyMilliseconds": 118.6939,
+            "query": "item0180",
+            "synchronizedFrameMilliseconds": 120.0226
+        },
+        {
+            "expectedAppId": "shortcut-79474c1554de79e182d1d70290f2c82311ecffe47cf3c260320f2fffc31ed347",
+            "modelReadyMilliseconds": 117.2081,
+            "query": "item0181",
+            "synchronizedFrameMilliseconds": 118.5376
+        },
+        {
+            "expectedAppId": "shortcut-50ea7307699e095c17c7612220bd83bb53c071c29d91dd312caa2c4f68c8d725",
+            "modelReadyMilliseconds": 116.5305,
+            "query": "item0182",
+            "synchronizedFrameMilliseconds": 117.8382
+        },
+        {
+            "expectedAppId": "shortcut-7dd5a76e068f8a2d7406848b831dfff1792d0c19c12e6413fbd06e3cdd20eb44",
+            "modelReadyMilliseconds": 113.6454,
+            "query": "item0183",
+            "synchronizedFrameMilliseconds": 114.7304
+        },
+        {
+            "expectedAppId": "shortcut-d152fd264e7ac29acb0ec11fd47f6b4c6e04befad022cb0a125a3ea94135fd5b",
+            "modelReadyMilliseconds": 115.811,
+            "query": "item0184",
+            "synchronizedFrameMilliseconds": 117.0495
+        },
+        {
+            "expectedAppId": "shortcut-1c0f824715431df36acd3e4dc4d17c3f42d0639f05b16cf997c755babecd4cfe",
+            "modelReadyMilliseconds": 114.4859,
+            "query": "item0185",
+            "synchronizedFrameMilliseconds": 115.6251
+        },
+        {
+            "expectedAppId": "shortcut-0ec37aecf584fc26844f8f0a375deab5d38ba5c666f66de8979b29db94b7a51d",
+            "modelReadyMilliseconds": 115.4908,
+            "query": "item0186",
+            "synchronizedFrameMilliseconds": 116.7475
+        },
+        {
+            "expectedAppId": "shortcut-cf4ebe91def676a155ef3cd9f46aa46f2f78089652a34f5ae58368e072b187cf",
+            "modelReadyMilliseconds": 120.0622,
+            "query": "item0187",
+            "synchronizedFrameMilliseconds": 121.4674
+        },
+        {
+            "expectedAppId": "shortcut-393cf74ffe75197b76efb8d472cfbf6110098247949ef678315c485d8c2f81c6",
+            "modelReadyMilliseconds": 126.6099,
+            "query": "item0188",
+            "synchronizedFrameMilliseconds": 128.0288
+        },
+        {
+            "expectedAppId": "shortcut-61a4493e4be1a2cf9f3d4aaea54ea1402417dda8e565872eebb53d8823767a8c",
+            "modelReadyMilliseconds": 117.8745,
+            "query": "item0189",
+            "synchronizedFrameMilliseconds": 120.6435
+        },
+        {
+            "expectedAppId": "shortcut-241cef2fd93ba16366514588c379476732f964ff5e923012fe471d7a957d399e",
+            "modelReadyMilliseconds": 117.1856,
+            "query": "item0190",
+            "synchronizedFrameMilliseconds": 123.7187
+        },
+        {
+            "expectedAppId": "shortcut-5104278b70fd30ff58b66f975ef6e87ae2801a5a649b280682c0d68d4ee1a978",
+            "modelReadyMilliseconds": 119.1816,
+            "query": "item0191",
+            "synchronizedFrameMilliseconds": 120.584
+        },
+        {
+            "expectedAppId": "shortcut-2ca1e97e731ca28e9ee546b66a8c947aa37713c691d45381cb61a40c5e516689",
+            "modelReadyMilliseconds": 115.8241,
+            "query": "item0192",
+            "synchronizedFrameMilliseconds": 117.9653
+        },
+        {
+            "expectedAppId": "shortcut-bbd91721084f7fb98253a8f143d05cf203f88973ffdb86d9853692205f6019dd",
+            "modelReadyMilliseconds": 120.2092,
+            "query": "item0193",
+            "synchronizedFrameMilliseconds": 121.5359
+        },
+        {
+            "expectedAppId": "shortcut-640cfdaae13bfc99636661776df79c238b8de203cc18cb0b081cdb0b38819746",
+            "modelReadyMilliseconds": 120.0034,
+            "query": "item0194",
+            "synchronizedFrameMilliseconds": 122.7654
+        },
+        {
+            "expectedAppId": "shortcut-66d9301fa1758d317ead27beb695d0e7a54e2e05a7e652aa89825bfc93c3e023",
+            "modelReadyMilliseconds": 47.1113,
+            "query": "item0195",
+            "synchronizedFrameMilliseconds": 48.3053
+        },
+        {
+            "expectedAppId": "shortcut-d7622adb74f556d183a6fb7bc137b361dd05bcb6cf6d5d819a1b139caa0664cb",
+            "modelReadyMilliseconds": 121.0702,
+            "query": "item0196",
+            "synchronizedFrameMilliseconds": 122.4683
+        },
+        {
+            "expectedAppId": "shortcut-d613dddc915be7ae839a250c7383f33886074503135115faaab98208cc99d747",
+            "modelReadyMilliseconds": 123.1941,
+            "query": "item0197",
+            "synchronizedFrameMilliseconds": 124.5751
+        },
+        {
+            "expectedAppId": "shortcut-b70a021978662ddc22f6243d289ac780e42bad5e20fb1e5191e833cc2cea70e5",
+            "modelReadyMilliseconds": 124.7711,
+            "query": "item0198",
+            "synchronizedFrameMilliseconds": 126.1614
+        },
+        {
+            "expectedAppId": "shortcut-f5dbf2189b08a550fc53def627807a92aa5d2339680864a9b74743e60b858c98",
+            "modelReadyMilliseconds": 120.072,
+            "query": "item0199",
+            "synchronizedFrameMilliseconds": 121.397
+        }
+    ],
+    "schemaVersion": 1,
+    "scope": "synthetic catalog and layout; in-process Qt key events; no real input, desktop integration, application launch or user layout",
+    "steadyClock": true,
+    "synchronizedFrame": {
+        "maximumMilliseconds": 206.2056,
+        "p50Milliseconds": 121.397,
+        "p95Milliseconds": 169.2984
+    },
+    "tiles": 100,
+    "warmups": 5
+}
