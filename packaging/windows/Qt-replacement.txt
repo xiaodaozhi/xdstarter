@@ -2,7 +2,7 @@ Qt 动态库与配套源码
 
 本候选使用动态 Qt 6.8.2。Qt 原始许可和 SDK SPDX 声明在本目录；所收集许可正文是保守参考集合，不代表每个模块或许可均被本产品使用。
 
-同版本 materials.tar.xz 包含固定哈希的 Qt 模块、构建工具及 Mesa/LLVM 原始源码归档与来源清单。SDK 二进制的实际构建补丁、配置和完整对应关系仍需发行审查，源码归档存在不等于二进制等价证明。
+同版本 materials.tar.xz 包含固定哈希的 Qt 模块、构建工具原始源码归档与来源清单。SDK 二进制的实际构建补丁、配置和完整对应关系仍需发行审查，源码归档存在不等于二进制等价证明。
 
 在备份的独立目录中，可用 ABI 兼容的动态 Qt 构建替换 DLL 和匹配的 QML／插件文件，再运行 --smoke-test 验证。替换应维持 Qt 版本、x64 架构、模块和编译器运行库兼容性。产品不对开源 Qt 组件增加禁止替换或修改的技术限制。
 
@@ -14,6 +14,6 @@ Qt dynamic runtime and source materials
 
 This candidate dynamically uses Qt 6.8.2. Original licenses and SDK SPDX declarations accompany it. The conservative license-text collection is not a claim that every referenced component is used.
 
-The matching materials archive includes hash-pinned original Qt, build-tool and Mesa/LLVM source archives. Their presence does not establish SDK build equivalence or resolve missing supplier patches/configuration. ABI-compatible dynamic libraries and matching QML/plugins may be replaced in a backed-up copy and checked using --smoke-test. The application imposes no additional technical restriction on modification or replacement of open-source Qt components.
+The matching materials archive includes hash-pinned original Qt and build-tool source archives. Their presence does not establish SDK build equivalence or resolve missing supplier patches/configuration. ABI-compatible dynamic libraries and matching QML/plugins may be replaced in a backed-up copy and checked using --smoke-test. The application imposes no additional technical restriction on modification or replacement of open-source Qt components.
 
 The matching application source archive contains CMake, the toolchain manifest and build scripts. No custom Qt source trimming or static Qt linking is used. Public distribution approval and unresolved source correspondence remain explicit review gates.

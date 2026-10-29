@@ -4,7 +4,7 @@
 
 [#64](https://github.com/xiaodaozhi/xdstarter/issues/64) 增加路径／清单、供应方哈希、普通与延迟 DLL 导入、插件依赖、缺失 CRT、测试依赖隔离及 ZIP 字节回归。installation-guard 原生测试用独立进程验证安装／运行互斥及正常释放；Qt 翻译测试分别加载 SDK 与实际部署目录。入口与工件见[发行流程](release.md)。
 
-CI 清除副本的 SDK 搜索路径，验证软件和 Windows D3D11；Test／offscreen 只加入副本。一次性 hosted Server 夹具与实际产品分别记录哈希，夹具只降低 OS 门槛，不计作干净 Windows 11 验收。运行结果、失败和剩余项在 #64／#36 与 CI 工件登记；本节不宣称尚未运行的检查通过。
+[#66](https://github.com/xiaodaozhi/xdstarter/issues/66) 排除软件 OpenGL DLL，CI 清除副本的 SDK 搜索路径并确认宿主系统目录也不含该 DLL，再验证 Qt Quick 软件、Windows D3D11 与显式选择的 WARP 软件设备；记录选中适配器，Test／offscreen 只加入副本。强制 WARP 不模拟硬件故障，也不证明自动回退。一次性 hosted Server 夹具与实际产品分别记录哈希，夹具只降低 OS 门槛，不计作干净 Windows 11 验收。运行结果、失败和剩余项在 #66／#36 与 CI 工件登记；本节不宣称尚未运行的检查通过。
 
 ## 当前自动检查
 

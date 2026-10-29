@@ -4,7 +4,7 @@ XDStarter 代码、文档及原创资产的最终许可仍由项目所有者决�
 
 本包携带 Microsoft Visual C++ x64 正式运行库。安装器许可页展示微软原始协议，仅适用于该运行库。便携包用户也应阅读 Microsoft-VC-runtime/license.docx / license.txt 并遵守适用条款。
 
-d3dcompiler_47.dll、dxcompiler.dll 和 dxil.dll 来自所选 Windows SDK REDIST，面向 Classic Windows 应用，其协议及通知在 Windows-SDK-graphics。opengl32sw.dll 的 Mesa／LLVM 通知位于 Mesa-LLVM。
+d3dcompiler_47.dll、dxcompiler.dll 和 dxil.dll 来自所选 Windows SDK REDIST，面向 Classic Windows 应用，其协议及通知在 Windows-SDK-graphics。默认包不包含软件 OpenGL 库 opengl32sw.dll；显式选择软件 OpenGL 时需自行提供兼容实现。
 
 Microsoft 组件的再分发受适用开发工具／SDK 协议及可分发清单约束；来源哈希不是再分发资格的认定。普通用户运行本产品无需安装 Visual Studio。
 
@@ -17,6 +17,6 @@ The owner has not selected the final license for XDStarter code, documentation o
 
 This package includes release Microsoft Visual C++ x64 runtime DLLs. Setup displays the original Microsoft agreement, applicable only to those DLLs. Portable users must also read Microsoft-VC-runtime/license.docx / license.txt and comply with applicable terms.
 
-d3dcompiler_47.dll, dxcompiler.dll and dxil.dll are Windows SDK REDIST components for Classic Windows applications. Their terms are in Windows-SDK-graphics. Mesa/LLVM notices for opengl32sw.dll are in Mesa-LLVM.
+d3dcompiler_47.dll, dxcompiler.dll and dxil.dll are Windows SDK REDIST components for Classic Windows applications. Their terms are in Windows-SDK-graphics. The default package does not include opengl32sw.dll; explicitly selected software OpenGL requires a compatible implementation supplied separately.
 
 Redistribution requires compliance with applicable developer-tool/SDK agreements and REDIST lists. File provenance alone does not certify redistribution eligibility. End users do not need Visual Studio.
