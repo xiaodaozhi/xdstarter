@@ -186,6 +186,17 @@
           }
         },
         {
+          "name": "Upload native picker diagnostic evidence",
+          "if": "always()",
+          "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "with": {
+            "name": "xdstarter-native-picker-${{ github.sha }}",
+            "path": "build/app-release/native-picker-evidence/*.log",
+            "if-no-files-found": "warn",
+            "retention-days": 7
+          }
+        },
+        {
           "name": "Upload hosted high contrast evidence",
           "if": "always()",
           "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
