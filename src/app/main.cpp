@@ -1,17 +1,26 @@
 #include "application_icon_provider.h"
+#include "build_identity.h"
 #include "desktop_window_host.h"
 #include "interface_font.h"
 #include "menu_controller.h"
+#include "runtime_support.h"
+#include "scene_graph_failure_guard.h"
+#include "scene_graph_failure_notice.h"
 
 #include "core/tile_grid.h"
 #include "platform/application_platform.h"
 #include "platform/desktop_platform.h"
 #include "platform/desktop_tray.h"
+#include "platform/graphics_failure_notice.h"
+#include "platform/installation_guard.h"
 #include "platform/platform_integration.h"
+#include "platform/motion_preference.h"
+#include "platform/contrast_preference.h"
 #include "platform/start_button_capture.h"
 #include "platform/win_key_capture.h"
 #include "services/application_catalog.h"
 #include "services/desktop_shell_service.h"
+#include "services/layout_store.h"
 #include "services/prototype_service.h"
 #include "services/session_instance.h"
 
@@ -21,6 +30,7 @@
 #include <QCryptographicHash>
 #include <QDebug>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QFont>
@@ -30,6 +40,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QQmlApplicationEngine>
+#include <QProcess>
 #include <QQuickStyle>
 #include <QQuickWindow>
 #include <QSaveFile>
@@ -40,6 +51,7 @@
 
 #include <cstdlib>
 #include <functional>
+#include <iostream>
 #include <optional>
 
 namespace {
@@ -68,12 +80,12 @@ std::optional<QVariantMap> loadVisualTokens() {
                  menuSize.value(QStringLiteral("width")).toDouble() > 0 &&
                  menuSize.value(QStringLiteral("height")).toDouble() > 0 &&
                  object.value(QStringLiteral("tileLabelFontDip")).toDouble() > 0;
-    for (const auto *key : {"blue", "cyan", "ink"}) {
+    for (const auto* key : {"blue", "cyan", "ink"}) {
         valid = valid && QColor(brand.value(QLatin1String(key)).toString()).isValid();
     }
-    for (const auto *themeName : {"dark", "light"}) {
+    for (const auto* themeName : {"dark", "light"}) {
         const auto theme = themes.value(QLatin1String(themeName)).toObject();
-        for (const auto *key : {"foreground", "secondary", "opaqueFallback"}) {
+        for (const auto* key : {"foreground", "secondary", "opaqueFallback", "focusAccent", "focusControl", "focusTileInner"}) {
             valid = valid && QColor(theme.value(QLatin1String(key)).toString()).isValid();
         }
     }
@@ -86,13 +98,49 @@ std::optional<QVariantMap> loadVisualTokens() {
 
 } // namespace
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
+    if (argc == 2 && QString::fromLocal8Bit(argv[1]) ==
+                         QLatin1String(xdstarter::graphicsFailureNoticeArgument)) {
+        return xdstarter::runGraphicsFailureNotice();
+    }
+    // Identity queries neither initialize the platform plugin nor activate a resident instance.
+    if (argc == 2 && (QString::fromLocal8Bit(argv[1]) == QLatin1String("--version") ||
+                      QString::fromLocal8Bit(argv[1]) == QLatin1String("--build-info"))) {
+        if (QString::fromLocal8Bit(argv[1]) == QLatin1String("--version")) {
+            std::cout << "XDStarter " << xdstarter::build::version << " (build "
+                      << xdstarter::build::number << ", " << xdstarter::build::revision
+                      << (xdstarter::build::dirty ? ", dirty" : "") << ")\n";
+        } else {
+            const QJsonObject info{
+                {QStringLiteral("version"), QLatin1String(xdstarter::build::version)},
+                {QStringLiteral("revision"), QLatin1String(xdstarter::build::revision)},
+                {QStringLiteral("build"), xdstarter::build::number},
+                {QStringLiteral("dirty"), xdstarter::build::dirty},
+                {QStringLiteral("distribution"), xdstarter::build::distribution},
+                {QStringLiteral("qt"), QStringLiteral(QT_VERSION_STR)},
+                {QStringLiteral("layoutSchema"), xdstarter::LayoutStore::schemaVersion}};
+            std::cout << QJsonDocument(info).toJson(QJsonDocument::Compact).constData() << '\n';
+        }
+        return EXIT_SUCCESS;
+    }
+    bool traceSmoke = false;
+    for (int index = 1; index < argc; ++index)
+        traceSmoke |= QString::fromLocal8Bit(argv[index]) == QLatin1String("--smoke-test");
+    QElapsedTimer smokeClock;
+    smokeClock.start();
+    const auto smokeStage = [&](const char* stage) {
+        if (traceSmoke)
+            std::cerr << "Smoke stage " << stage << " " << smokeClock.elapsed() << " ms" << std::endl;
+    };
+    smokeStage("before-application");
     QGuiApplication application(argc, argv);
+    smokeStage("application-ready");
     QGuiApplication::setOrganizationName(QStringLiteral("xiaodaozhi"));
     QGuiApplication::setOrganizationDomain(QStringLiteral("github.com/xiaodaozhi"));
     QGuiApplication::setApplicationName(QStringLiteral("XDStarter"));
     QGuiApplication::setApplicationVersion(QStringLiteral(XDSTARTER_VERSION));
     xdstarter::configureInterfaceFont();
+    smokeStage("font-ready");
     QIcon applicationIcon;
     for (const int size : {16, 20, 24, 32, 40, 48, 64, 96, 128, 256, 512, 1024}) {
         const auto resource = QStringLiteral(":/xdstarter/app/xdstarter-app-icon-%1.png").arg(size);
@@ -110,6 +158,7 @@ int main(int argc, char *argv[]) {
     QCommandLineParser parser;
     parser.setApplicationDescription(QStringLiteral("XDStarter Qt Quick 菜单弹层原型"));
     parser.addHelpOption();
+    parser.addVersionOption();
     const QCommandLineOption smokeTestOption(
         QStringLiteral("smoke-test"),
         QStringLiteral("加载界面后短暂运行并退出，用于资源 smoke 检查。"));
@@ -157,6 +206,14 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
 
+    smokeStage("before-installation-guard");
+    auto installationGuard = xdstarter::createInstallationGuard();
+    if (!installationGuard->acquire()) {
+        qCritical() << installationGuard->errorString();
+        return EXIT_FAILURE;
+    }
+    smokeStage("installation-guard-ready");
+    xdstarter::initializeQtTranslation();
     std::unique_ptr<xdstarter::SessionInstance> instance;
     bool pendingActivation = false;
     if (!parser.isSet(smokeTestOption)) {
@@ -211,8 +268,15 @@ int main(int argc, char *argv[]) {
             std::make_unique<xdstarter::DesktopShellService>(xdstarter::createDesktopPlatform());
     }
     const auto platform = xdstarter::createPlatformIntegration();
+    smokeStage("before-motion-preference");
+    const auto motionPreference = xdstarter::createMotionPreference();
+    smokeStage("motion-preference-ready");
+    smokeStage("before-contrast-preference");
+    const auto contrastPreference = xdstarter::createContrastPreference();
+    smokeStage("contrast-preference-ready");
     xdstarter::MenuController controller(prototypeService, *platform, *visualTokens, nullptr,
-                                         catalog.get(), desktopShell.get());
+                                         catalog.get(), desktopShell.get(), motionPreference.get(),
+                                         contrastPreference.get());
     QObject::connect(&controller, &xdstarter::MenuController::exitRequested, &application,
                      [&application] { application.quit(); });
     bool smokeHadWarnings = false;
@@ -223,27 +287,64 @@ int main(int argc, char *argv[]) {
         QObject::connect(&engine, &QQmlEngine::warnings, &application,
                          [&smokeHadWarnings] { smokeHadWarnings = true; });
     }
+    // Connect the scene graph failure handler before either smoke or resident
+    // mode can expose the window. Otherwise Qt may enter a blocking native
+    // error dialog before the application can release its input captures.
     engine.setInitialProperties({{QStringLiteral("controller"), QVariant::fromValue(&controller)},
-                                 {QStringLiteral("visible"), parser.isSet(smokeTestOption)}});
+                                 {QStringLiteral("visible"), false}});
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &application,
         [] { QCoreApplication::exit(EXIT_FAILURE); }, Qt::QueuedConnection);
+    smokeStage("before-qml-load");
     engine.loadFromModule("XDStarter", "Main");
+    smokeStage("qml-loaded");
 
     if (engine.rootObjects().isEmpty()) {
         return EXIT_FAILURE;
     }
-    auto *window = qobject_cast<QWindow *>(engine.rootObjects().first());
+    auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().first());
     if (!window) {
-        qCritical() << "Root QML object is not a window";
+        qCritical() << "Root QML object is not a Qt Quick window";
         return EXIT_FAILURE;
     }
+    QObject::connect(window, &QWindow::visibleChanged, motionPreference.get(),
+                     [source = motionPreference.get(), &smokeStage](bool visible) {
+                         if (visible) {
+                             smokeStage("before-visible-motion-refresh");
+                             source->refresh();
+                             smokeStage("visible-motion-refreshed");
+                         }
+                     });
+    QObject::connect(window, &QWindow::visibleChanged, contrastPreference.get(),
+                     [source = contrastPreference.get(), &smokeStage](bool visible) {
+                         if (visible) {
+                             smokeStage("before-visible-contrast-refresh");
+                             source->refresh();
+                             smokeStage("visible-contrast-refreshed");
+                         }
+                     });
+    xdstarter::SceneGraphFailureGuard graphicsFailure(*window, application);
     window->setIcon(applicationIcon);
     std::unique_ptr<xdstarter::DesktopPlatform> placement;
     std::unique_ptr<xdstarter::DesktopTray> tray;
     std::unique_ptr<xdstarter::WinKeyCapture> winKeyCapture;
     std::unique_ptr<xdstarter::WinKeyCapture> startButtonCapture;
     std::unique_ptr<xdstarter::DesktopWindowHost> desktopHost;
+    xdstarter::SceneGraphFailureNotice graphicsNotice(
+        application, graphicsFailure, !parser.isSet(smokeTestOption),
+        [&desktopHost] {
+            if (desktopHost)
+                desktopHost->shutdown();
+        },
+        [] {
+            qint64 pid = 0;
+            const bool started = QProcess::startDetached(
+                QCoreApplication::applicationFilePath(),
+                {QLatin1String(xdstarter::graphicsFailureNoticeArgument)}, {}, &pid);
+            if (started)
+                qInfo() << "Graphics failure notice launched:" << pid;
+            return started;
+        });
     QTimer captureDiagnosticsTimer;
     quint64 captureDiagnosticsWriteFailures = 0;
     bool captureDiagnosticsFailureReported = false;
@@ -330,10 +431,39 @@ int main(int argc, char *argv[]) {
             qWarning() << "Layout save failed:" << controller.persistenceStatus();
         }
     });
+    bool smokeSceneGraphReady = false;
     if (parser.isSet(smokeTestOption)) {
-        QTimer::singleShot(250, &application, [&smokeHadWarnings] {
-            QCoreApplication::exit(smokeHadWarnings ? EXIT_FAILURE : EXIT_SUCCESS);
+        // The old fixed timer could report success while a slow renderer was
+        // still initializing. Start it only after the scene graph is ready.
+        QObject::connect(window, &QQuickWindow::sceneGraphInitialized, &application,
+                         [&application, &smokeSceneGraphReady, &smokeHadWarnings, &smokeStage] {
+                             if (smokeSceneGraphReady)
+                                 return;
+                             smokeSceneGraphReady = true;
+                             smokeStage("scene-graph-ready");
+                             QTimer::singleShot(250, &application, [&smokeHadWarnings] {
+                                 QCoreApplication::exit(smokeHadWarnings ? EXIT_FAILURE
+                                                                       : EXIT_SUCCESS);
+                             });
+                         }, Qt::QueuedConnection);
+        QTimer::singleShot(10000, &application, [&smokeSceneGraphReady] {
+            if (!smokeSceneGraphReady) {
+                qCritical() << "Graphics initialization did not finish during the smoke test";
+                QCoreApplication::exit(EXIT_FAILURE);
+            }
         });
+        smokeStage("before-window-show");
+        window->setVisible(true);
+        smokeStage("window-show-returned");
     }
-    return application.exec();
+    // exit() has no effect before exec(); also retain a failure if another
+    // exit request is already pending when Qt reports the graphics error.
+    if (graphicsFailure.failed()) {
+        graphicsNotice.dispatch();
+        return EXIT_FAILURE;
+    }
+    const int result = application.exec();
+    smokeStage("event-loop-returned");
+    graphicsNotice.dispatch();
+    return graphicsFailure.failed() ? EXIT_FAILURE : result;
 }

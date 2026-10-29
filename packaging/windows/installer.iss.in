@@ -1,0 +1,416 @@
+[Setup]
+AppId={{C5771F18-616D-49D2-9DBF-5E09C5F8D853}
+AppName=XDStarter
+AppVersion=@VERSION@
+VersionInfoVersion=@VERSION@.@BUILD@
+AppPublisher=xiaodaozhi
+DefaultDirName={localappdata}\Programs\XDStarter
+DefaultGroupName=XDStarter
+DisableProgramGroupPage=yes
+PrivilegesRequired=lowest
+ArchitecturesAllowed=x64os
+ArchitecturesInstallIn64BitMode=x64os
+MinVersion=@MINVERSION@
+OutputDir=@OUTPUT@
+OutputBaseFilename=@PREFIX@-setup
+SetupIconFile=@ICON@
+UninstallDisplayIcon={app}\xdstarter.exe
+Compression=lzma2
+SolidCompression=yes
+CloseApplications=no
+RestartApplications=no
+UninstallLogMode=append
+WizardStyle=modern
+DisableWelcomePage=no
+LicenseFile=@PAYLOAD@\share\notices\Microsoft-VC-runtime\license.txt
+InfoBeforeFile=@PAYLOAD@\share\notices\Windows-runtime-NOTICE.txt
+UsePreviousTasks=yes
+
+[Languages]
+Name: english; MessagesFile: compiler:Default.isl
+Name: chinesesimplified; MessagesFile: @CHINESE@
+
+[Messages]
+english.LicenseLabel3=This agreement applies to the bundled Microsoft VC++ runtime only. Other components retain their own licenses.
+chinesesimplified.LicenseLabel3=以下协议仅适用于随包的 Microsoft VC++ 运行库。其他组件保留各自许可证。
+
+[CustomMessages]
+english.Autostart=Start XDStarter when I sign in
+chinesesimplified.Autostart=登录时启动 XDStarter
+english.Launch=Start XDStarter
+chinesesimplified.Launch=启动 XDStarter
+english.Busy=Exit all XDStarter instances normally from the tray before installing or uninstalling. Another installation may also be running.
+chinesesimplified.Busy=请先从托盘正常退出所有 XDStarter 实例，再安装或卸载。也可能已有安装操作正在进行。
+english.InvalidManifest=The installation path or file manifest is invalid. Installation or uninstallation stopped without deleting files.
+chinesesimplified.InvalidManifest=安装路径或文件清单无效，已停止安装或卸载并保留文件。
+english.ModifiedFile=An obsolete installed file was modified or cannot be verified. Installation stopped to preserve it.
+chinesesimplified.ModifiedFile=过时安装文件已修改或无法核验，已停止安装并保留该文件。
+english.CleanupFailed=Some obsolete files could not be removed. Close programs using the installation directory and run Setup again.
+chinesesimplified.CleanupFailed=部分过时文件未能清理。请关闭占用安装目录的程序后重新运行安装器。
+english.RemoveData=Also remove the default XDStarter layout, backups and caches? Choose No to keep them. Custom layout files are preserved.
+chinesesimplified.RemoveData=是否同时清理 XDStarter 默认布局、备份与缓存？选择“否”保留。自定义布局文件始终保留。
+
+[Tasks]
+Name: autostart; Description: {cm:Autostart}; Flags: unchecked
+
+[Files]
+Source: @MANIFEST@; DestName: package-files.txt; Flags: dontcopy
+Source: @MANIFEST@; DestDir: {app}; DestName: install-manifest.txt; Flags: ignoreversion
+Source: @PAYLOAD@\*; DestDir: {app}; Flags: ignoreversion recursesubdirs createallsubdirs
+
+[Icons]
+Name: {userprograms}\XDStarter; Filename: {app}\xdstarter.exe
+
+[Registry]
+Root: HKCU; Subkey: Software\Microsoft\Windows\CurrentVersion\Run; ValueName: XDStarter; Flags: deletevalue
+Root: HKCU; Subkey: Software\Microsoft\Windows\CurrentVersion\Run; ValueType: string; ValueName: XDStarter; ValueData: """{app}\xdstarter.exe"""; Tasks: autostart; Flags: uninsdeletevalue
+
+[Run]
+Filename: {app}\xdstarter.exe; Description: {cm:Launch}; Flags: nowait postinstall skipifsilent
+
+[Code]
+type
+  { The pinned Inno 6 compiler uses a 32-bit Setup engine, including on x64 OS. }
+  TTokenUserBuffer = record
+    Sid: LongWord;
+    Attributes: LongWord;
+    Extra: array[0..255] of Byte;
+  end;
+
+var
+  InstallGate: THandle;
+  CurrentFiles, RetiredFiles: TArrayOfString;
+  CleanupFailed, RemoveUserData: Boolean;
+
+function NativeProcess(): THandle;
+external 'GetCurrentProcess@kernel32.dll stdcall';
+function NativeOpenToken(Process: THandle; Access: LongWord; var Token: THandle): Boolean;
+external 'OpenProcessToken@advapi32.dll stdcall';
+function NativeTokenInfo(Token: THandle; InfoClass: LongWord; var Buffer: TTokenUserBuffer;
+  Size: LongWord; var Needed: LongWord): Boolean;
+external 'GetTokenInformation@advapi32.dll stdcall';
+function NativeSidText(Sid: LongWord; var Text: LongWord): Boolean;
+external 'ConvertSidToStringSidW@advapi32.dll stdcall';
+function NativeCopyText(Buffer: String; Source: LongWord; Count: Integer): LongWord;
+external 'lstrcpynW@kernel32.dll stdcall';
+function NativeFree(Memory: LongWord): LongWord;
+external 'LocalFree@kernel32.dll stdcall';
+function NativeClose(Handle: THandle): Boolean;
+external 'CloseHandle@kernel32.dll stdcall';
+function NativeCreateMutex(Security: LongWord; Owned: Boolean; Name: String): THandle;
+external 'CreateMutexW@kernel32.dll stdcall';
+function NativeOpenMutex(Access: LongWord; Inherit: Boolean; Name: String): THandle;
+external 'OpenMutexW@kernel32.dll stdcall';
+function NativeWait(Handle: THandle; Milliseconds: LongWord): LongWord;
+external 'WaitForSingleObject@kernel32.dll stdcall';
+function NativeRelease(Handle: THandle): Boolean;
+external 'ReleaseMutex@kernel32.dll stdcall';
+function NativeError(): LongWord;
+external 'GetLastError@kernel32.dll stdcall';
+function NativeAttributes(Name: String): LongWord;
+external 'GetFileAttributesW@kernel32.dll stdcall';
+
+function CurrentSid(): String;
+var Token: THandle; Info: TTokenUserBuffer; Needed, Text: LongWord; Buffer: String;
+begin
+  Result := '';
+  if not NativeOpenToken(NativeProcess(), 8, Token) then exit;
+  try
+    if not NativeTokenInfo(Token, 1, Info, SizeOf(Info), Needed) then exit;
+    if not NativeSidText(Info.Sid, Text) then exit;
+    try
+      Buffer := StringOfChar(#0, 256);
+      NativeCopyText(Buffer, Text, 256);
+      Result := Copy(Buffer, 1, Pos(#0, Buffer) - 1);
+    finally
+      NativeFree(Text);
+    end;
+  finally
+    NativeClose(Token);
+  end;
+end;
+
+procedure ReleaseGate();
+begin
+  if InstallGate <> 0 then begin
+    NativeRelease(InstallGate);
+    NativeClose(InstallGate);
+    InstallGate := 0;
+  end;
+end;
+
+function AcquireGate(): Boolean;
+var Sid, Prefix: String; WaitResult, Error: LongWord; Running: THandle;
+begin
+  Result := False;
+  Sid := CurrentSid();
+  if Sid = '' then exit;
+  Prefix := 'Global\XDStarter.' + Sid;
+  InstallGate := NativeCreateMutex(0, False, Prefix + '.install');
+  if InstallGate = 0 then exit;
+  WaitResult := NativeWait(InstallGate, 0);
+  if (WaitResult <> 0) and (WaitResult <> 128) then begin
+    NativeClose(InstallGate);
+    InstallGate := 0;
+    exit;
+  end;
+  Running := NativeOpenMutex($100000, False, Prefix + '.running');
+  Error := NativeError();
+  if (Running <> 0) or (Error <> 2) then begin
+    if Running <> 0 then NativeClose(Running);
+    ReleaseGate();
+    exit;
+  end;
+  Result := True;
+end;
+
+function SafeName(const Name: String): Boolean;
+var Rest, Part, Device: String; I, Separator: Integer;
+begin
+  Result := False;
+  if (Name = '') or (Length(Name) > 1024) then exit;
+  if (CompareText(Name, 'install-manifest.txt') = 0) or
+     (CompareText(Copy(Name, 1, 5), 'unins') = 0) then exit;
+  for I := 1 to Length(Name) do
+    if (Ord(Name[I]) < 32) or (Pos(Name[I], '/:*?"<>|') > 0) then exit;
+  Rest := Name;
+  repeat
+    Separator := Pos('\', Rest);
+    if Separator = 0 then Part := Rest else Part := Copy(Rest, 1, Separator - 1);
+    if (Part = '') or (Part = '.') or (Part = '..') then exit;
+    if (Part[Length(Part)] = '.') or (Part[Length(Part)] = ' ') then exit;
+    Device := Lowercase(Part);
+    I := Pos('.', Device);
+    if I > 0 then Device := Copy(Device, 1, I - 1);
+    if (Device = 'con') or (Device = 'prn') or (Device = 'aux') or
+       (Device = 'nul') or (Device = 'clock$') then exit;
+    if (Length(Device) = 4) and ((Copy(Device, 1, 3) = 'com') or
+       (Copy(Device, 1, 3) = 'lpt')) and (Pos(Device[4], '123456789') > 0) then exit;
+    if Separator = 0 then break;
+    Delete(Rest, 1, Separator);
+  until False;
+  Result := True;
+end;
+
+function NormalPath(Name, Root: String): Boolean;
+var Parent, Prefix: String; Attributes, Error: LongWord;
+begin
+  Result := False;
+  Root := RemoveBackslashUnlessRoot(Root);
+  Name := RemoveBackslashUnlessRoot(Name);
+  Prefix := AddBackslash(Root);
+  if (CompareText(Name, Root) <> 0) and
+     (CompareText(Copy(Name, 1, Length(Prefix)), Prefix) <> 0) then exit;
+  repeat
+    Attributes := NativeAttributes(Name);
+    if Attributes = $FFFFFFFF then begin
+      Error := NativeError();
+      if (Error <> 2) and (Error <> 3) then exit;
+    end else if (Attributes and FILE_ATTRIBUTE_REPARSE_POINT) <> 0 then exit;
+    Parent := ExtractFileDir(Name);
+    if (Parent = '') or (CompareText(Parent, Name) = 0) then break;
+    Name := Parent;
+  until False;
+  Result := True;
+end;
+
+function EntryName(const Entry: String): String;
+begin
+  Result := Copy(Entry, 66, MaxInt);
+end;
+
+function ReadOwnedFiles(const Name: String; var Entries: TArrayOfString): Boolean;
+var I, J, Size: Integer;
+begin
+  Result := False;
+  if not NormalPath(Name, ExpandConstant('{app}')) then exit;
+  if not FileSize(Name, Size) then exit;
+  if (Size < 1) or (Size > 2097152) then exit;
+  if not LoadStringsFromFile(Name, Entries) then exit;
+  if (GetArrayLength(Entries) < 1) or (GetArrayLength(Entries) > 16385) then exit;
+  if Entries[0] <> 'xdstarter-install-files-v1' then exit;
+  for I := 1 to GetArrayLength(Entries) - 1 do begin
+    if Pos(#9, Entries[I]) <> 65 then exit;
+    for J := 1 to 64 do
+      if Pos(Entries[I][J], '0123456789abcdef') = 0 then exit;
+    if not SafeName(EntryName(Entries[I])) then exit;
+    for J := 1 to I - 1 do
+      if CompareText(EntryName(Entries[I]), EntryName(Entries[J])) = 0 then exit;
+  end;
+  Result := True;
+end;
+
+function IsCurrent(const Name: String): Boolean;
+var I: Integer;
+begin
+  Result := False;
+  for I := 1 to GetArrayLength(CurrentFiles) - 1 do
+    if CompareText(Name, EntryName(CurrentFiles[I])) = 0 then begin
+      Result := True;
+      exit;
+    end;
+end;
+
+function Unchanged(const Entry: String): Boolean;
+var Name: String;
+begin
+  Result := False;
+  Name := ExpandConstant('{app}\') + EntryName(Entry);
+  if not NormalPath(Name, ExpandConstant('{app}')) then exit;
+  try
+    Result := CompareText(GetSHA256OfFile(Name), Copy(Entry, 1, 64)) = 0;
+  except
+    Result := False;
+  end;
+end;
+
+function InitializeSetup(): Boolean;
+begin
+  Result := AcquireGate();
+  if not Result then
+    SuppressibleMsgBox(CustomMessage('Busy'), mbError, MB_OK, IDOK);
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var Previous: TArrayOfString; I, Count: Integer; Name: String;
+begin
+  Result := '';
+  SetArrayLength(RetiredFiles, 0);
+  if not NormalPath(ExpandConstant('{app}'), ExpandConstant('{app}')) then begin
+    Result := CustomMessage('InvalidManifest');
+    exit;
+  end;
+  ExtractTemporaryFile('package-files.txt');
+  if not LoadStringsFromFile(ExpandConstant('{tmp}\package-files.txt'), CurrentFiles) then begin
+    Result := CustomMessage('InvalidManifest');
+    exit;
+  end;
+  for I := 1 to GetArrayLength(CurrentFiles) - 1 do
+    if not NormalPath(ExpandConstant('{app}\') + EntryName(CurrentFiles[I]), ExpandConstant('{app}')) then begin
+      Result := CustomMessage('InvalidManifest');
+      exit;
+    end;
+  Name := ExpandConstant('{app}\install-manifest.txt');
+  if not FileOrDirExists(Name) then exit;
+  if not ReadOwnedFiles(Name, Previous) then begin
+    Result := CustomMessage('InvalidManifest');
+    exit;
+  end;
+  for I := 1 to GetArrayLength(Previous) - 1 do
+    if not IsCurrent(EntryName(Previous[I])) then begin
+      Name := ExpandConstant('{app}\') + EntryName(Previous[I]);
+      if FileOrDirExists(Name) then begin
+        if not Unchanged(Previous[I]) then begin
+          Result := CustomMessage('ModifiedFile');
+          exit;
+        end;
+        Count := GetArrayLength(RetiredFiles);
+        SetArrayLength(RetiredFiles, Count + 1);
+        RetiredFiles[Count] := Previous[I];
+      end;
+    end;
+end;
+
+procedure CurStepChanged(Step: TSetupStep);
+var I, Count: Integer; Name: String;
+begin
+  if Step <> ssDone then exit;
+  for I := 0 to GetArrayLength(RetiredFiles) - 1 do begin
+    Name := ExpandConstant('{app}\') + EntryName(RetiredFiles[I]);
+    if not (Unchanged(RetiredFiles[I]) and DeleteFile(Name)) then begin
+      CleanupFailed := True;
+      Count := GetArrayLength(CurrentFiles);
+      SetArrayLength(CurrentFiles, Count + 1);
+      CurrentFiles[Count] := RetiredFiles[I];
+    end;
+  end;
+  if CleanupFailed then begin
+    SaveStringsToUTF8File(ExpandConstant('{app}\install-manifest.txt'), CurrentFiles, False);
+    SuppressibleMsgBox(CustomMessage('CleanupFailed'), mbError, MB_OK, IDOK);
+  end;
+  { Payload work is complete; Finish-page launch may now enter normally. }
+  ReleaseGate();
+end;
+
+procedure DeinitializeSetup();
+begin
+  ReleaseGate();
+end;
+
+function GetCustomSetupExitCode(): Integer;
+begin
+  Result := 0;
+  if CleanupFailed then Result := 20;
+end;
+
+function InitializeUninstall(): Boolean;
+begin
+  Result := AcquireGate();
+  if not Result then begin
+    SuppressibleMsgBox(CustomMessage('Busy'), mbError, MB_OK, IDOK);
+    exit;
+  end;
+  if not NormalPath(ExpandConstant('{app}'), ExpandConstant('{app}')) then begin
+    ReleaseGate();
+    Result := False;
+    SuppressibleMsgBox(CustomMessage('InvalidManifest'), mbError, MB_OK, IDOK);
+    exit;
+  end;
+  RemoveUserData := ExpandConstant('{param:REMOVEUSERDATA|0}') = '1';
+  if not RemoveUserData and not UninstallSilent then
+    RemoveUserData := MsgBox(CustomMessage('RemoveData'), mbConfirmation,
+                            MB_YESNO or MB_DEFBUTTON2) = IDYES;
+end;
+
+function NormalCacheTree(const Name: String; Depth: Integer): Boolean;
+var Info: TFindRec; Child: String;
+begin
+  Result := False;
+  if Depth > 32 then exit;
+  if not NormalPath(Name, ExpandConstant('{localappdata}\xiaodaozhi\XDStarter')) then exit;
+  if FindFirst(Name + '\*', Info) then begin
+    try
+      repeat
+        if (Info.Name <> '.') and (Info.Name <> '..') then begin
+          Child := Name + '\' + Info.Name;
+          if (Info.Attributes and FILE_ATTRIBUTE_REPARSE_POINT) <> 0 then exit;
+          if (Info.Attributes and FILE_ATTRIBUTE_DIRECTORY) <> 0 then
+            if not NormalCacheTree(Child, Depth + 1) then exit;
+        end;
+      until not FindNext(Info);
+    finally
+      FindClose(Info);
+    end;
+  end;
+  Result := True;
+end;
+
+procedure CurUninstallStepChanged(Step: TUninstallStep);
+var Data, Name: String; Info: TFindRec;
+begin
+  if (Step <> usPostUninstall) or not RemoveUserData then exit;
+  Data := ExpandConstant('{localappdata}\xiaodaozhi\XDStarter');
+  if not NormalPath(Data, Data) then exit;
+  if NormalPath(Data + '\layout.json', Data) then DeleteFile(Data + '\layout.json');
+  if NormalPath(Data + '\layout.json.bak', Data) then DeleteFile(Data + '\layout.json.bak');
+  if FindFirst(Data + '\layout.json.corrupt-*', Info) then begin
+    try
+      repeat
+        Name := Data + '\' + Info.Name;
+        if NormalPath(Name, Data) then DeleteFile(Name);
+      until not FindNext(Info);
+    finally
+      FindClose(Info);
+    end;
+  end;
+  Name := Data + '\cache';
+  if NormalCacheTree(Name, 0) then DelTree(Name, True, True, True);
+  Name := Data + '\qmlcache';
+  if NormalCacheTree(Name, 0) then DelTree(Name, True, True, True);
+  RemoveDir(Data);
+end;
+
+procedure DeinitializeUninstall();
+begin
+  ReleaseGate();
+end;

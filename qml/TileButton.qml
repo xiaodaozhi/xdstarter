@@ -11,7 +11,12 @@ Button {
     required property var tokens
     property var motion: ({})
     property bool keyboardNavigation: false
+    property bool darkTheme: true
+    property var themeOverride: null
+    property bool highContrast: false
+    readonly property var theme: themeOverride || tokens.themes[darkTheme ? "dark" : "light"]
     property bool hintsEnabled: true
+    property bool animationsEnabled: true
     property bool editMode: false
     property bool readOnly: false
     property bool dragging: false
@@ -37,8 +42,8 @@ Button {
     readonly property string paletteIdentity: tile.targetId || tile.id || ""
     readonly property int tokenPaletteIndex: paletteIndex(paletteIdentity)
     readonly property color baseColor: tokens.tilePalette[tokenPaletteIndex]
-    readonly property color fillTopColor: visualPressed ? Qt.darker(baseColor, 1.10) : Qt.lighter(baseColor, pointerHovered ? 1.16 : 1.05)
-    readonly property color fillBottomColor: visualPressed ? Qt.darker(baseColor, 1.16) : (pointerHovered ? Qt.lighter(baseColor, 1.06) : Qt.darker(baseColor, 1.04))
+    readonly property color fillTopColor: highContrast ? theme.opaqueFallback : visualPressed ? Qt.darker(baseColor, 1.10) : Qt.lighter(baseColor, pointerHovered ? 1.16 : 1.05)
+    readonly property color fillBottomColor: highContrast ? theme.opaqueFallback : visualPressed ? Qt.darker(baseColor, 1.16) : (pointerHovered ? Qt.lighter(baseColor, 1.06) : Qt.darker(baseColor, 1.04))
     readonly property int iconSizeDip: tile.small ? 28 : 36
 
     signal selected(string name)
@@ -59,7 +64,8 @@ Button {
     height: tile.height
     padding: 0
     horizontalPadding: 0
-    opacity: dragging ? 0.35 : 1
+    readonly property real targetOpacity: dragging && !highContrast ? 0.35 : 1
+    opacity: targetOpacity
     // Input geometry stays on the untransformed Button. Only its visual layers
     // receive the projective press matrix, independently of pin/reflow motion.
     ParallelAnimation {
@@ -88,11 +94,17 @@ Button {
         }
     }
     Behavior on opacity {
+        enabled: tileButton.animationsEnabled && !tileButton.highContrast
+        onEnabledChanged: {
+            if (!enabled)
+                tileButton.opacity = Qt.binding(function () { return tileButton.targetOpacity; });
+        }
         NumberAnimation {
             duration: 140
         }
     }
     ParallelAnimation {
+        id: reflowMotion
         running: tileButton.motion.hasPrevious === true
         onFinished: {
             if (tileButton.activeFocus)
@@ -106,7 +118,7 @@ Button {
             property: "x"
             from: tileButton.motion.motionFrom_x ?? tileButton.tile.x
             to: tileButton.tile.x
-            duration: 200
+            duration: tileButton.animationsEnabled ? 200 : 0
             easing.type: Easing.OutCubic
         }
         NumberAnimation {
@@ -114,7 +126,7 @@ Button {
             property: "y"
             from: tileButton.motion.motionFrom_y ?? tileButton.tile.y
             to: tileButton.tile.y
-            duration: 200
+            duration: tileButton.animationsEnabled ? 200 : 0
             easing.type: Easing.OutCubic
         }
         NumberAnimation {
@@ -122,7 +134,7 @@ Button {
             property: "width"
             from: tileButton.motion.motionFrom_width ?? tileButton.tile.width
             to: tileButton.tile.width
-            duration: 200
+            duration: tileButton.animationsEnabled ? 200 : 0
             easing.type: Easing.OutCubic
         }
         NumberAnimation {
@@ -130,7 +142,7 @@ Button {
             property: "height"
             from: tileButton.motion.motionFrom_height ?? tileButton.tile.height
             to: tileButton.tile.height
-            duration: 200
+            duration: tileButton.animationsEnabled ? 200 : 0
             easing.type: Easing.OutCubic
         }
     }
@@ -152,7 +164,7 @@ Button {
     }
     Component.onCompleted: {
         pressComponentReady = true;
-        if (motion.hasPrevious === false)
+        if (animationsEnabled && motion.hasPrevious === false)
             pinAppearMotion.start();
     }
     focusPolicy: Qt.StrongFocus
@@ -184,7 +196,8 @@ Button {
             pressDirectionY = pressPoint.y;
         }
         pointerPressActive = true;
-        animatePointerPress(1, pressTokens.pressMs);
+        if (animationsEnabled)
+            animatePointerPress(1, pressTokens.pressMs);
     }
 
     function animatePointerPress(targetProgress: real, durationMs: int): void {
@@ -258,6 +271,16 @@ Button {
         if (dragging)
             cancelPointerPress(false);
     }
+    onAnimationsEnabledChanged: {
+        if (animationsEnabled || !pressComponentReady)
+            return;
+        pressMotion.stop();
+        pressProgress = 0;
+        pressDirectionX = 0;
+        pressDirectionY = 0;
+        reflowMotion.complete();
+        pinAppearMotion.complete();
+    }
     onEnabledChanged: {
         if (tileButton.pressComponentReady && !tileButton.enabled)
             cancelPointerPress(false);
@@ -318,6 +341,7 @@ Button {
 
     Hint {
         id: tileNameTip
+        contrastTheme: tileButton.highContrast ? tileButton.theme : null
         delay: 600
         font.family: tileButton.font.family
 
@@ -330,7 +354,7 @@ Button {
         contentItem: Text {
             text: tileNameTip.text
             textFormat: Text.PlainText
-            color: tileNameTip.palette.toolTipText
+            color: tileNameTip.foregroundColor
             font: tileNameTip.font
             wrapMode: Text.Wrap
         }
@@ -352,8 +376,21 @@ Button {
                 color: tileButton.fillBottomColor
             }
         }
-        border.width: (tileButton.activeFocus && tileButton.keyboardNavigation) ? 2 : 1
-        border.color: (tileButton.activeFocus && tileButton.keyboardNavigation) ? tileButton.tokens.brand.cyan : Qt.lighter(tileButton.baseColor, tileButton.pointerHovered ? 1.36 : 1.12)
+        border.width: tileButton.highContrast && (tileButton.visualPressed || tileButton.dragging) ? 3 : (tileButton.activeFocus && tileButton.keyboardNavigation) || (tileButton.highContrast && tileButton.pointerHovered) ? 2 : 1
+        border.color: tileButton.highContrast || (tileButton.activeFocus && tileButton.keyboardNavigation) ? tileButton.theme.focusAccent : Qt.lighter(tileButton.baseColor, tileButton.pointerHovered ? 1.36 : 1.12)
+
+        // The outer ring contrasts with the panel; the inner ring remains
+        // visible against every tile palette color in either theme.
+        Rectangle {
+            objectName: "tileFocusInner"
+            anchors.fill: parent
+            anchors.margins: tileButton.highContrast ? 4 : 2
+            radius: Math.max(0, tileButton.tokens.cornerRadiusDip.tile - (tileButton.highContrast ? 4 : 2))
+            color: "transparent"
+            border.width: tileButton.highContrast ? 1 : 2
+            border.color: tileButton.highContrast ? tileButton.theme.foreground : tileButton.theme.focusTileInner
+            visible: tileButton.activeFocus && tileButton.keyboardNavigation
+        }
     }
 
     contentItem: Item {
@@ -369,7 +406,7 @@ Button {
             anchors.verticalCenterOffset: tileButton.tile.small ? 0 : -20
             width: tileButton.iconSizeDip
             height: tileButton.iconSizeDip
-            text: tileButton.tile.symbol
+            text: tileButton.highContrast && tileButton.tile.name.length > 0 ? String.fromCodePoint(tileButton.tile.name.codePointAt(0)) : tileButton.tile.symbol
             textFormat: Text.PlainText
             wrapMode: Text.NoWrap
             elide: Text.ElideRight
@@ -377,8 +414,8 @@ Button {
             verticalAlignment: Text.AlignVCenter
             // Eliding already bounds the symbol. A nested clip under the
             // projective matrix drops glyphs on the Direct3D render path.
-            visible: appIcon.status !== Image.Ready
-            color: "#FFFFFF"
+            visible: tileButton.highContrast || appIcon.status !== Image.Ready
+            color: tileButton.highContrast ? tileButton.theme.foreground : "#FFFFFF"
             font.pixelSize: tileButton.tile.small ? 22 : 26
             font.bold: true
         }
@@ -398,7 +435,7 @@ Button {
             fillMode: Image.PreserveAspectFit
             asynchronous: true
             cache: true
-            visible: status === Image.Ready
+            visible: !tileButton.highContrast && status === Image.Ready
             opacity: tileButton.targetAvailable ? 1 : 0.45
         }
 
@@ -411,13 +448,13 @@ Button {
             height: 18
             radius: 9
             visible: !tileButton.targetAvailable
-            color: tileButton.tokens.status.error
+            color: tileButton.highContrast ? tileButton.theme.foreground : tileButton.tokens.status.error
 
             Text {
                 font.family: tileButton.font.family
                 anchors.centerIn: parent
                 text: "!"
-                color: tileButton.tokens.brand.ink
+                color: tileButton.highContrast ? tileButton.theme.opaqueFallback : tileButton.tokens.brand.ink
                 font.bold: true
             }
         }
@@ -432,7 +469,7 @@ Button {
             visible: !tileButton.tile.small
             text: tileButton.tile.name
             textFormat: Text.PlainText
-            color: "#FFFFFF"
+            color: tileButton.highContrast ? tileButton.theme.foreground : "#FFFFFF"
             font.pixelSize: tileButton.tokens.tileLabelFontDip
             elide: Text.ElideRight
         }

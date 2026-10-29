@@ -29,6 +29,7 @@
       "Qml",
       "Quick",
       "QuickControls2",
+      "QuickDialogs2",
       "Svg"
     ],
     "testModules": [

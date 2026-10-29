@@ -8,6 +8,8 @@ import QtQuick.Controls
 ToolTip {
     id: hint
 
+    property var contrastTheme: null
+    readonly property color foregroundColor: contrastTheme ? contrastTheme.foreground : palette.toolTipText
     delay: 600
     timeout: -1
     padding: 7
@@ -20,13 +22,13 @@ ToolTip {
         text: hint.text
         textFormat: Text.PlainText
         font: hint.font
-        color: hint.palette.toolTipText
+        color: hint.foregroundColor
         wrapMode: Text.Wrap
     }
     background: Rectangle {
         radius: 4
-        color: hint.palette.toolTipBase
+        color: hint.contrastTheme ? hint.contrastTheme.opaqueFallback : hint.palette.toolTipBase
         border.width: 1
-        border.color: hint.palette.mid
+        border.color: hint.contrastTheme ? hint.contrastTheme.foreground : hint.palette.mid
     }
 }
