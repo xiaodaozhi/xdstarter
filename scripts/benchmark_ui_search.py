@@ -24,12 +24,15 @@ def file_hash(path):
     return result.hexdigest()
 
 
-def validate_report(report, binary_hash, native=False):
-    expected = {"schemaVersion": 1, "entries": 1000, "tiles": 100,
+def validate_report(report, binary_hash, native=False, allow_legacy=False):
+    expected = {"entries": 1000, "tiles": 100,
                 "warmups": 5, "measuredQueries": 100, "releaseNdebug": True,
                 "steadyClock": True, "binarySha256": binary_hash}
     if not isinstance(report, dict):
         raise ValueError("report must be an object")
+    version = report.get("schemaVersion")
+    if type(version) is not int or (version != 2 and not (allow_legacy and version == 1)):
+        raise ValueError("incorrect schemaVersion")
     for key, value in expected.items():
         if type(report.get(key)) is not type(value) or report.get(key) != value:
             raise ValueError(f"incorrect {key}")
@@ -50,7 +53,11 @@ def validate_report(report, binary_hash, native=False):
     samples = report.get("samples")
     if not isinstance(samples, list) or len(samples) != 100:
         raise ValueError("expected 100 raw samples")
-    times = {"modelReady": [], "synchronizedFrame": []}
+    names = ["modelReady", "synchronizedFrame"]
+    if version == 2:
+        names += ["prefixInput", "inputReturn", "controllerReady", "finalKeyToController",
+                  "finalKeyToRow", "controllerToRow"]
+    times = {name: [] for name in names}
     for index, sample in enumerate(samples, 100):
         if not isinstance(sample, dict):
             raise ValueError("invalid sample")
@@ -59,14 +66,26 @@ def validate_report(report, binary_hash, native=False):
         app_id = "shortcut-" + hashlib.sha256(identity).hexdigest()
         if sample.get("query") != query or sample.get("expectedAppId") != app_id:
             raise ValueError("query or expected synthetic identity differs")
-        for name, key in (("modelReady", "modelReadyMilliseconds"),
-                          ("synchronizedFrame", "synchronizedFrameMilliseconds")):
+        for name in names:
+            key = name + "Milliseconds"
             value = sample.get(key)
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
                 raise ValueError(f"invalid {key}")
             times[name].append(value)
         if times["synchronizedFrame"][-1] < times["modelReady"][-1]:
             raise ValueError("frame precedes model readiness")
+        if version == 2:
+            prefix = times["prefixInput"][-1]
+            returned = times["inputReturn"][-1]
+            controller = times["controllerReady"][-1]
+            row = times["modelReady"][-1]
+            if not (prefix <= returned <= row and prefix <= controller <= row):
+                raise ValueError("invalid phase ordering")
+            for name, actual in (("finalKeyToController", controller - prefix),
+                                 ("finalKeyToRow", row - prefix),
+                                 ("controllerToRow", row - controller)):
+                if not math.isclose(times[name][-1], actual, rel_tol=0, abs_tol=1e-6):
+                    raise ValueError(f"{name} disagrees with phase timestamps")
     for name, values in times.items():
         summary = report.get(name)
         if not isinstance(summary, dict):
