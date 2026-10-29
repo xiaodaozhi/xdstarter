@@ -1365,14 +1365,25 @@ void PrototypeWindowTest::highContrastTracksSystemPalette() {
     QVERIFY(tileAccessible);
     QCOMPARE(tileAccessible->text(QAccessible::Name), QStringLiteral("😀 天气"));
 
+    // An explicit user choice made while contrast is active is retained for
+    // the next normal presentation, without changing the active system colors.
+    controller_->setThemePreference(QStringLiteral("dark"));
+    QVERIFY(controller_->flushSave());
+    QTRY_COMPARE(chrome->property("color").value<QColor>(),
+                 light.value(QStringLiteral("window")).value<QColor>());
+    QVERIFY(saved.open(QIODevice::ReadOnly));
+    const auto userChoice = saved.readAll();
+    saved.close();
+    QVERIFY(userChoice != original);
     preference.setState({});
     QTRY_VERIFY(!window_->property("highContrast").toBool());
     QVERIFY(!railText->isVisible());
     QVERIFY(railIcon->isVisible());
     QCOMPARE(tileGeometries(), geometry);
-    QCOMPARE(controller_->themePreference(), QStringLiteral("light"));
+    QCOMPARE(controller_->themePreference(), QStringLiteral("dark"));
+    QVERIFY(window_->property("darkTheme").toBool());
     QVERIFY(saved.open(QIODevice::ReadOnly));
-    QCOMPARE(saved.readAll(), original);
+    QCOMPARE(saved.readAll(), userChoice);
 }
 
 void PrototypeWindowTest::systemThemePreferenceTracksAndPersists() {
