@@ -16,10 +16,17 @@ def fixture():
     for index in range(100, 200):
         query = f"item{index:04d}"
         identity = f"c:/xdstarterbenchmark/{query}.lnk".encode()
+        elapsed = float(index - 99)
         samples.append({"query": query, "expectedAppId": "shortcut-" + hashlib.sha256(identity).hexdigest(),
-                        "modelReadyMilliseconds": float(index - 99),
-                        "synchronizedFrameMilliseconds": float(index - 98)})
-    return {"schemaVersion": 1, "capturedAtUtc": "2026-10-29T00:00:00Z", "entries": 1000, "tiles": 100, "warmups": 5,
+                        "prefixInputMilliseconds": elapsed * 0.2,
+                        "inputReturnMilliseconds": elapsed * 0.4,
+                        "controllerReadyMilliseconds": elapsed * 0.6,
+                        "finalKeyToControllerMilliseconds": elapsed * 0.4,
+                        "finalKeyToRowMilliseconds": elapsed * 0.8,
+                        "controllerToRowMilliseconds": elapsed * 0.4,
+                        "modelReadyMilliseconds": elapsed,
+                        "synchronizedFrameMilliseconds": elapsed + 1})
+    report = {"schemaVersion": 2, "capturedAtUtc": "2026-10-29T00:00:00Z", "entries": 1000, "tiles": 100, "warmups": 5,
             "measuredQueries": 100, "releaseNdebug": True, "steadyClock": True,
             "binarySha256": "a" * 64, "qpa": "offscreen", "graphicsApi": "Software",
             "qtVersion": "6.8.2", "compiler": "fixture", "kernelVersion": "fixture",
@@ -28,6 +35,12 @@ def fixture():
                            "maximumMilliseconds": 100.0},
             "synchronizedFrame": {"p50Milliseconds": 51.0, "p95Milliseconds": 96.0,
                                    "maximumMilliseconds": 101.0}}
+    for name, fraction in (("prefixInput", .2), ("inputReturn", .4), ("controllerReady", .6),
+                           ("finalKeyToController", .4), ("finalKeyToRow", .8),
+                           ("controllerToRow", .4)):
+        report[name] = {"p50Milliseconds": 50.0 * fraction, "p95Milliseconds": 95.0 * fraction,
+                        "maximumMilliseconds": 100.0 * fraction}
+    return report
 
 
 class UiSearchBenchmarkEvidenceTests(unittest.TestCase):
@@ -39,7 +52,8 @@ class UiSearchBenchmarkEvidenceTests(unittest.TestCase):
 
     def test_incomplete_inconsistent_or_invalid_evidence_is_rejected(self):
         for change in ("missing", "query", "identity", "nan", "ordering", "summary",
-                       "binary", "debug", "count", "timestamp", "wrong_native_backend"):
+                       "binary", "debug", "count", "timestamp", "wrong_native_backend",
+                       "phase_missing", "phase_order", "phase_difference", "phase_summary"):
             report = deepcopy(fixture())
             native = False
             if change == "missing":
@@ -62,11 +76,26 @@ class UiSearchBenchmarkEvidenceTests(unittest.TestCase):
                 report["schemaVersion"] = True
             elif change == "timestamp":
                 report["capturedAtUtc"] = "not-a-timestamp"
+            elif change == "phase_missing":
+                del report["samples"][0]["controllerReadyMilliseconds"]
+            elif change == "phase_order":
+                report["samples"][0]["inputReturnMilliseconds"] = 2
+            elif change == "phase_difference":
+                report["samples"][0]["finalKeyToRowMilliseconds"] += 0.1
+            elif change == "phase_summary":
+                report["controllerToRow"]["p95Milliseconds"] += 1
             else:
                 native = True
                 report.update(qpa="windows", graphicsApi="Software")
             with self.subTest(change=change), self.assertRaises(ValueError):
                 VALIDATE(report, "a" * 64, native=native)
+
+    def test_legacy_requires_explicit_opt_in(self):
+        report = fixture()
+        report["schemaVersion"] = 1
+        with self.assertRaises(ValueError):
+            VALIDATE(report, "a" * 64)
+        VALIDATE(report, "a" * 64, allow_legacy=True)
 
 
 if __name__ == "__main__":

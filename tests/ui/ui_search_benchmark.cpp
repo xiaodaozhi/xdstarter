@@ -246,6 +246,12 @@ int runUiSearchBenchmark() {
     QJsonArray samples;
     std::vector<double> modelTimes;
     std::vector<double> frameTimes;
+    std::vector<double> prefixTimes;
+    std::vector<double> inputReturnTimes;
+    std::vector<double> controllerTimes;
+    std::vector<double> finalKeyToControllerTimes;
+    std::vector<double> finalKeyToRowTimes;
+    std::vector<double> controllerToRowTimes;
     for (int i = -warmupCount; i < sampleCount; ++i) {
         const int index = i < 0 ? 900 + i + warmupCount : 100 + i;
         const auto query = QStringLiteral("item%1").arg(index, 4, 10, QLatin1Char('0'));
@@ -256,9 +262,26 @@ int runUiSearchBenchmark() {
             qCritical() << "Cannot focus or clear synthetic search field.";
             return 1;
         }
+        Clock::time_point controllerReady;
+        bool controllerReadySeen = false;
+        const auto readyConnection = QObject::connect(&controller, &xdstarter::MenuController::searchChanged,
+            &controller, [&] {
+                if (controllerReadySeen || controller.searchQuery() != query || controller.searchBusy())
+                    return;
+                const auto results = controller.searchResults();
+                if (results.size() == 1 && results.first().toMap().value(QStringLiteral("appId")) == expected) {
+                    controllerReady = Clock::now();
+                    controllerReadySeen = true;
+                }
+            });
         const auto started = Clock::now();
-        for (const auto character : query)
-            QTest::keyClick(window, character.toLatin1(), Qt::NoModifier, 0);
+        Clock::time_point finalKeyStarted;
+        for (qsizetype position = 0; position < query.size(); ++position) {
+            if (position == query.size() - 1)
+                finalKeyStarted = Clock::now();
+            QTest::keyClick(window, query.at(position).toLatin1(), Qt::NoModifier, 0);
+        }
+        const auto inputReturned = Clock::now();
         const bool ready = waitUntil([&] {
             const auto results = controller.searchResults();
             auto* row = visualItem(window->contentItem(), QStringLiteral("searchResult-") + expected);
@@ -266,11 +289,20 @@ int runUiSearchBenchmark() {
                    results.size() == 1 && results.first().toMap().value(QStringLiteral("appId")) == expected &&
                    list->property("count").toInt() == 1 && row && row->isVisible();
         });
+        const auto rowReady = Clock::now();
+        QObject::disconnect(readyConnection);
         if (!ready) {
             qCritical() << "Search did not publish the expected visible row for" << query;
             return 1;
         }
-        const double modelMs = std::chrono::duration<double, std::milli>(Clock::now() - started).count();
+        if (!controllerReadySeen) {
+            qCritical() << "No controller readiness signal for" << query;
+            return 1;
+        }
+        const auto elapsedMs = [](Clock::time_point end, Clock::time_point begin) {
+            return std::chrono::duration<double, std::milli>(end - begin).count();
+        };
+        const double modelMs = elapsedMs(rowReady, started);
         // Observe only a frame synchronized after the expected row is ready.
         // frameSwapped is not proof that pixels reached a physical display.
         auto frame = std::make_shared<FrameObservation>();
@@ -295,12 +327,30 @@ int runUiSearchBenchmark() {
         }
         if (i >= 0) {
             const double frameMs = double(frame->elapsedNanoseconds.load()) / 1000000.0;
+            const double prefixMs = elapsedMs(finalKeyStarted, started);
+            const double inputReturnMs = elapsedMs(inputReturned, started);
+            const double controllerMs = elapsedMs(controllerReady, started);
+            const double finalKeyToControllerMs = elapsedMs(controllerReady, finalKeyStarted);
+            const double finalKeyToRowMs = elapsedMs(rowReady, finalKeyStarted);
+            const double controllerToRowMs = elapsedMs(rowReady, controllerReady);
             samples.append(QJsonObject{{QStringLiteral("query"), query},
                                        {QStringLiteral("expectedAppId"), expected},
+                                       {QStringLiteral("prefixInputMilliseconds"), prefixMs},
+                                       {QStringLiteral("inputReturnMilliseconds"), inputReturnMs},
+                                       {QStringLiteral("controllerReadyMilliseconds"), controllerMs},
+                                       {QStringLiteral("finalKeyToControllerMilliseconds"), finalKeyToControllerMs},
+                                       {QStringLiteral("finalKeyToRowMilliseconds"), finalKeyToRowMs},
+                                       {QStringLiteral("controllerToRowMilliseconds"), controllerToRowMs},
                                        {QStringLiteral("modelReadyMilliseconds"), modelMs},
                                        {QStringLiteral("synchronizedFrameMilliseconds"), frameMs}});
             modelTimes.push_back(modelMs);
             frameTimes.push_back(frameMs);
+            prefixTimes.push_back(prefixMs);
+            inputReturnTimes.push_back(inputReturnMs);
+            controllerTimes.push_back(controllerMs);
+            finalKeyToControllerTimes.push_back(finalKeyToControllerMs);
+            finalKeyToRowTimes.push_back(finalKeyToRowMs);
+            controllerToRowTimes.push_back(controllerToRowMs);
         }
     }
     window->close();
@@ -319,10 +369,10 @@ int runUiSearchBenchmark() {
     constexpr bool releaseNdebug = false;
 #endif
     const QJsonObject report{
-        {QStringLiteral("schemaVersion"), 1},
+        {QStringLiteral("schemaVersion"), 2},
         {QStringLiteral("capturedAtUtc"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)},
         {QStringLiteral("scope"), QStringLiteral("synthetic catalog and layout; in-process Qt key events; no real input, desktop integration, application launch or user layout")},
-        {QStringLiteral("boundary"), QStringLiteral("first simulated key to expected visible QML row; then explicitly requested synchronized frameSwapped; not physical presentation or first interactive frame")},
+        {QStringLiteral("boundary"), QStringLiteral("first simulated key, final key start, Qt key loop return, controller readiness signal, expected visible QML row, then explicitly requested synchronized frameSwapped; events and observers add unmeasured overhead; not physical presentation or first interactive frame")},
         {QStringLiteral("qpa"), qpa},
         {QStringLiteral("graphicsApi"), graphicsApi(window->rendererInterface()->graphicsApi())},
         {QStringLiteral("qtVersion"), QString::fromLatin1(qVersion())},
@@ -335,6 +385,12 @@ int runUiSearchBenchmark() {
         {QStringLiteral("tiles"), tileCount},
         {QStringLiteral("warmups"), warmupCount},
         {QStringLiteral("measuredQueries"), sampleCount},
+        {QStringLiteral("prefixInput"), statistics(prefixTimes)},
+        {QStringLiteral("inputReturn"), statistics(inputReturnTimes)},
+        {QStringLiteral("controllerReady"), statistics(controllerTimes)},
+        {QStringLiteral("finalKeyToController"), statistics(finalKeyToControllerTimes)},
+        {QStringLiteral("finalKeyToRow"), statistics(finalKeyToRowTimes)},
+        {QStringLiteral("controllerToRow"), statistics(controllerToRowTimes)},
         {QStringLiteral("modelReady"), statistics(modelTimes)},
         {QStringLiteral("synchronizedFrame"), statistics(frameTimes)},
         {QStringLiteral("samples"), samples}};
