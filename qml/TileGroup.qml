@@ -131,7 +131,7 @@ Item {
                 radius: 6
                 color: groupActions.down ? tileGroup.theme.pressed : (groupActions.hovered ? tileGroup.theme.hover : "transparent")
                 border.width: (groupActions.activeFocus && tileGroup.keyboardNavigation) ? 2 : 0
-                border.color: tileGroup.tokens.brand.cyan
+                border.color: tileGroup.theme.focusAccent
             }
 
             contentItem: Text {
@@ -221,6 +221,7 @@ Item {
                 required property var modelData
 
                 keyboardNavigation: tileGroup.keyboardNavigation
+                darkTheme: tileGroup.darkTheme
                 motion: tileGroup.tileTransitions[modelData.id] || ({})
                 tile: modelData
                 tokens: tileGroup.tokens
