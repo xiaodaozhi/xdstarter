@@ -14,6 +14,10 @@
 
 Windows 平台启动及窗口显示时读取 `SPI_GETCLIENTAREAANIMATION`，在收到 `WM_SETTINGCHANGE` 后排队刷新；读取失败采用减少动画，不设置或广播系统参数。状态通过 controller 注入 QML，不进入布局。测试只向自有隐藏窗口发送定向通知并注入读取结果；真实系统设置切换需独立验收。详见 [ADR-0019](adr/0019-reduced-motion.md)。
 
+## 用户高对比度偏好
+
+Windows 平台只读 `SPI_GETHIGHCONTRAST` 和 `GetSysColor`，在设置、系统色或主题通知后合并刷新，并在窗口显示时重读；失败保留已知有效状态。QML 使用窗口／文字及选中／选中文字配对，不修改系统设置或持久化主题选择。初始化与失败策略、图标替代及尚需真实系统验收的边界见 [ADR-0020](adr/0020-high-contrast.md)。
+
 ## 当前开始按钮与自适应任务栏（Issue #45）
 
 实现见 [ADR-0014](adr/0014-start-click-and-adaptive-taskbar.md)。查询线程以实时 UIA 点身份和完整原生身份／显示器／DPI／代次获取短时资格，输入线程不执行 UIA。托盘丢失或输入桌面失效暂停接管；恢复后需手动重新开启。开始按钮右键、Win+X 与合成输入透传。普通菜单快速定位继续不调用 UIA。真实鼠标首次验收发现窗口显示异常，按失败记录并增加原生 presentation 复核；验证结果按当前程序记录，不能仅以信号已到达视为成功。

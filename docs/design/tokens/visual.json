@@ -113,6 +113,8 @@
     "rowRadiusDip": 4,
     "tooltipRadiusDip": 4,
     "glyphs": {
+      "search": "<circle cx=\"10.5\" cy=\"10.5\" r=\"6.25\"/><path d=\"m15 15 5 5\"/>",
+      "globe": "<circle cx=\"12\" cy=\"12\" r=\"9\"/><ellipse cx=\"12\" cy=\"12\" rx=\"4\" ry=\"9\"/><path d=\"M3 12h18M5 6.5h14M5 17.5h14\"/>",
       "pin": "<path d=\"m9 3.5 7.5 0-1 6 3 3v1.5h-13v-1.5l3-3-1-6ZM12 14v7\"/>",
       "unpin": "<path d=\"M16.5 3.5h-8l1 4M16.5 3.5l-1 6 3 3v1.5h-6M8 10l-2.5 2.5V14h3M12 17v4M3 3l18 18\"/>",
       "add": "<path d=\"M12 5v14M5 12h14\"/>",

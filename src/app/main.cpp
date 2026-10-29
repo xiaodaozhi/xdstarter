@@ -15,6 +15,7 @@
 #include "platform/installation_guard.h"
 #include "platform/platform_integration.h"
 #include "platform/motion_preference.h"
+#include "platform/contrast_preference.h"
 #include "platform/start_button_capture.h"
 #include "platform/win_key_capture.h"
 #include "services/application_catalog.h"
@@ -270,8 +271,12 @@ int main(int argc, char* argv[]) {
     smokeStage("before-motion-preference");
     const auto motionPreference = xdstarter::createMotionPreference();
     smokeStage("motion-preference-ready");
+    smokeStage("before-contrast-preference");
+    const auto contrastPreference = xdstarter::createContrastPreference();
+    smokeStage("contrast-preference-ready");
     xdstarter::MenuController controller(prototypeService, *platform, *visualTokens, nullptr,
-                                         catalog.get(), desktopShell.get(), motionPreference.get());
+                                         catalog.get(), desktopShell.get(), motionPreference.get(),
+                                         contrastPreference.get());
     QObject::connect(&controller, &xdstarter::MenuController::exitRequested, &application,
                      [&application] { application.quit(); });
     bool smokeHadWarnings = false;
@@ -308,6 +313,14 @@ int main(int argc, char* argv[]) {
                              smokeStage("before-visible-motion-refresh");
                              source->refresh();
                              smokeStage("visible-motion-refreshed");
+                         }
+                     });
+    QObject::connect(window, &QWindow::visibleChanged, contrastPreference.get(),
+                     [source = contrastPreference.get(), &smokeStage](bool visible) {
+                         if (visible) {
+                             smokeStage("before-visible-contrast-refresh");
+                             source->refresh();
+                             smokeStage("visible-contrast-refreshed");
                          }
                      });
     xdstarter::SceneGraphFailureGuard graphicsFailure(*window, application);

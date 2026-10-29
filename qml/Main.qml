@@ -12,8 +12,24 @@ ApplicationWindow {
     required property MenuController controller
 
     readonly property var tokens: controller.visualTokens
-    readonly property var theme: tokens.themes[darkTheme ? "dark" : "light"]
-    readonly property var surfaceTheme: tokens.interactionSurface.themes[darkTheme ? "dark" : "light"]
+    readonly property bool highContrast: controller.highContrast
+    // System color pairs are intentionally kept together. Hover and pressed
+    // outlines below provide state without placing normal text on highlight.
+    readonly property var theme: highContrast ? ({
+        foreground: controller.highContrastColors.windowText, secondary: controller.highContrastColors.windowText,
+        errorForeground: controller.highContrastColors.windowText, opaqueFallback: controller.highContrastColors.window,
+        menuBorder: controller.highContrastColors.windowText, surface: controller.highContrastColors.window,
+        searchBackground: controller.highContrastColors.window, hover: controller.highContrastColors.window,
+        pressed: controller.highContrastColors.window, controlBorder: controller.highContrastColors.windowText,
+        separator: controller.highContrastColors.windowText, disabled: controller.highContrastColors.grayText,
+        focusAccent: controller.highContrastColors.windowText,
+        focusControl: controller.highContrastColors.windowText, focusTileInner: controller.highContrastColors.window
+    }) : tokens.themes[darkTheme ? "dark" : "light"]
+    readonly property var surfaceTheme: highContrast ? ({
+        card: controller.highContrastColors.window, hover: controller.highContrastColors.window, pressed: controller.highContrastColors.window,
+        primary: controller.highContrastColors.windowText, onPrimary: controller.highContrastColors.window,
+        disabled: controller.highContrastColors.grayText
+    }) : tokens.interactionSurface.themes[darkTheme ? "dark" : "light"]
     readonly property real shadowInset: tokens.menuChrome.shadowInsetDip
     readonly property real screenGapDip: tokens.menuChrome.screenGapDip
     readonly property real panelWidth: width - 2 * shadowInset
@@ -282,10 +298,11 @@ ApplicationWindow {
         }
         radius: window.tokens.cornerRadiusDip.menu
         color: window.theme.opaqueFallback
-        railColor: Qt.darker(window.theme.opaqueFallback, window.darkTheme ? 1.12 : 1.035)
+        railColor: window.highContrast ? window.theme.opaqueFallback : Qt.darker(window.theme.opaqueFallback, window.darkTheme ? 1.12 : 1.035)
         borderWidth: window.tokens.menuChrome.borderWidthDip
         borderColor: window.theme.menuBorder
         shadowInset: window.shadowInset
+        shadowEnabled: !window.highContrast
     }
 
     palette.window: theme.opaqueFallback
@@ -297,14 +314,15 @@ ApplicationWindow {
     palette.toolTipBase: surfaceTheme.card
     palette.toolTipText: theme.foreground
     palette.mid: theme.controlBorder
-    palette.highlight: tokens.brand.blue
-    palette.highlightedText: tokens.themes.dark.foreground
+    palette.highlight: highContrast ? controller.highContrastColors.highlight : tokens.brand.blue
+    palette.highlightedText: highContrast ? controller.highContrastColors.highlightText : tokens.themes.dark.foreground
 
     font.pixelSize: 14
 
     component CategoryGlyph: Item {
         id: categoryGlyph
         required property string label
+        property bool disabled: false
         implicitWidth: 32
         implicitHeight: 32
         TextMetrics {
@@ -320,16 +338,25 @@ ApplicationWindow {
             text: categoryGlyph.label === "🌐" ? "" : categoryGlyph.label
             font.family: window.font.family
             font.pixelSize: 22
-            color: window.theme.secondary
+            color: categoryGlyph.disabled && window.highContrast ? window.controller.highContrastColors.grayText : window.theme.secondary
         }
         Image {
             anchors.centerIn: parent
             width: 32
             height: 32
-            visible: categoryGlyph.label === "🌐"
+            visible: categoryGlyph.label === "🌐" && !window.highContrast
             source: "qrc:/xdstarter/ui/" + (window.darkTheme ? "dark" : "light") + "/globe.svg"
             sourceSize.width: 64
             sourceSize.height: 64
+        }
+        MenuGlyph {
+            anchors.centerIn: parent
+            width: 32
+            height: 32
+            visible: categoryGlyph.label === "🌐" && window.highContrast
+            paths: window.tokens.interactionSurface.glyphs
+            name: "globe"
+            color: categoryGlyph.disabled && window.highContrast ? window.controller.highContrastColors.grayText : window.theme.foreground
         }
     }
 
@@ -340,11 +367,11 @@ ApplicationWindow {
         leftPadding: 14
         rightPadding: 14
         focusPolicy: Qt.StrongFocus
-        opacity: enabled ? 1 : 0.45
+        opacity: enabled || window.highContrast ? 1 : 0.45
         contentItem: Text {
             text: actionButton.text
             textFormat: Text.PlainText
-            color: window.theme.foreground
+            color: !actionButton.enabled && window.highContrast ? window.controller.highContrastColors.grayText : window.theme.foreground
             font: actionButton.font
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
@@ -353,7 +380,7 @@ ApplicationWindow {
         background: Rectangle {
             radius: 6
             color: actionButton.down ? window.theme.pressed : actionButton.hovered ? window.theme.hover : window.theme.surface
-            border.width: (actionButton.activeFocus && window.controller.keyboardNavigation) ? 2 : 1
+            border.width: window.highContrast && actionButton.down ? 3 : (actionButton.activeFocus && window.controller.keyboardNavigation) || (window.highContrast && actionButton.hovered) ? 2 : 1
             border.color: (actionButton.activeFocus && window.controller.keyboardNavigation) ? window.theme.focusControl : window.theme.controlBorder
         }
     }
@@ -367,18 +394,19 @@ ApplicationWindow {
         implicitHeight: window.tokens.layout.controlSize
         icon.width: 20
         icon.height: 20
-        icon.color: window.theme.foreground
+        icon.color: !enabled && window.highContrast ? window.controller.highContrastColors.grayText : window.theme.foreground
         focusPolicy: Qt.StrongFocus
-        opacity: enabled ? 1 : 0.45
+        opacity: enabled || window.highContrast ? 1 : 0.45
         Hint {
+            contrastTheme: window.highContrast ? window.theme : null
             visible: window.hintsPermitted && iconButton.enabled && (iconButton.hovered || (window.controller.keyboardNavigation && iconButton.activeFocus)) && text.length > 0
             text: iconButton.hintText
         }
         background: Rectangle {
             radius: iconButton.cornerRadius
-            color: iconButton.down ? window.theme.pressed : iconButton.checked ? Qt.alpha(window.tokens.brand.blue, 0.14) : iconButton.hovered ? window.theme.hover : "transparent"
-            border.width: (iconButton.activeFocus && window.controller.keyboardNavigation) || iconButton.checked ? 1 : 0
-            border.color: (iconButton.activeFocus && window.controller.keyboardNavigation) ? window.theme.focusControl : window.tokens.brand.blue
+            color: iconButton.down ? window.theme.pressed : iconButton.checked && !window.highContrast ? Qt.alpha(window.tokens.brand.blue, 0.14) : iconButton.hovered ? window.theme.hover : "transparent"
+            border.width: window.highContrast && iconButton.down ? 2 : (iconButton.activeFocus && window.controller.keyboardNavigation) || iconButton.checked || (window.highContrast && iconButton.hovered) ? 1 : 0
+            border.color: window.highContrast || (iconButton.activeFocus && window.controller.keyboardNavigation) ? window.theme.focusControl : window.tokens.brand.blue
         }
     }
 
@@ -428,6 +456,7 @@ ApplicationWindow {
             color: window.surfaceTheme.card
             borderColor: window.theme.controlBorder
             darkTheme: window.darkTheme
+            shadowEnabled: !window.highContrast
         }
     }
 
@@ -471,7 +500,7 @@ ApplicationWindow {
         background: Rectangle {
             radius: window.tokens.interactionSurface.rowRadiusDip
             color: !menuAction.enabled ? "transparent" : menuAction.down ? window.surfaceTheme.pressed : menuAction.highlighted || menuAction.hovered ? window.surfaceTheme.hover : "transparent"
-            border.width: (menuAction.activeFocus && window.controller.keyboardNavigation) ? 1 : 0
+            border.width: (menuAction.activeFocus && window.controller.keyboardNavigation) || (window.highContrast && menuAction.enabled && (menuAction.hovered || menuAction.highlighted || menuAction.down)) ? 1 : 0
             border.color: window.surfaceTheme.primary
         }
     }
@@ -1474,6 +1503,8 @@ ApplicationWindow {
             Layout.fillHeight: true
             darkTheme: window.darkTheme
             tokens: window.tokens
+            themeOverride: window.theme
+            highContrast: window.highContrast
             keyboardNavigation: window.controller.keyboardNavigation
             busy: window.controller.desktopActionBusy
             onActionRequested: actionId => window.requestShortcutAction(actionId)
@@ -1546,6 +1577,19 @@ ApplicationWindow {
                             source: "qrc:/xdstarter/ui/" + (window.darkTheme ? "dark" : "light") + "/search.svg"
                             sourceSize.width: 36
                             sourceSize.height: 36
+                            visible: !window.highContrast
+                            Accessible.ignored: true
+                        }
+                        MenuGlyph {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 18
+                            height: 18
+                            visible: window.highContrast
+                            paths: window.tokens.interactionSurface.glyphs
+                            name: "search"
+                            color: window.theme.foreground
                             Accessible.ignored: true
                         }
 
@@ -1746,6 +1790,8 @@ ApplicationWindow {
                                         background: Rectangle {
                                             radius: 6
                                             color: sectionButton.hovered ? window.theme.hover : "transparent"
+                                            border.width: window.highContrast && (sectionButton.hovered || sectionButton.activeFocus) ? 1 : 0
+                                            border.color: window.theme.focusControl
                                         }
                                         onClicked: window.alphabetOpen = true
                                     }
@@ -1827,6 +1873,7 @@ ApplicationWindow {
 
                                         Hint {
                                             id: applicationToolTip
+                                            contrastTheme: window.highContrast ? window.theme : null
                                             objectName: "applicationToolTip-" + appRow.appId
                                             delay: 600
                                             font.family: window.font.family
@@ -1838,7 +1885,7 @@ ApplicationWindow {
                                                 text: applicationToolTip.text
                                                 textFormat: Text.PlainText
                                                 font: applicationToolTip.font
-                                                color: applicationToolTip.palette.toolTipText
+                                                color: applicationToolTip.foregroundColor
                                                 wrapMode: Text.Wrap
                                             }
                                         }
@@ -1846,7 +1893,7 @@ ApplicationWindow {
                                         background: Rectangle {
                                             color: appButton.down ? window.theme.pressed : appButton.hovered ? window.theme.hover : "transparent"
                                             radius: 6
-                                            border.width: (appButton.activeFocus && window.controller.keyboardNavigation) ? 2 : 0
+                                            border.width: (appButton.activeFocus && window.controller.keyboardNavigation) || (window.highContrast && appButton.down) ? 2 : window.highContrast && appButton.hovered ? 1 : 0
                                             border.color: window.theme.focusControl
                                         }
 
@@ -1868,16 +1915,18 @@ ApplicationWindow {
                                                     asynchronous: true
                                                     cache: true
                                                     fillMode: Image.PreserveAspectFit
+                                                    visible: !window.highContrast
                                                 }
 
                                                 Label {
+                                                    objectName: "catalogIconFallback"
                                                     anchors.centerIn: parent
-                                                    visible: catalogIcon.status !== Image.Ready
-                                                    text: appRow.displayName.slice(0, 1)
+                                                    visible: window.highContrast || catalogIcon.status !== Image.Ready
+                                                    text: window.highContrast && appRow.displayName.length > 0 ? String.fromCodePoint(appRow.displayName.codePointAt(0)) : appRow.displayName.slice(0, 1)
                                                     textFormat: Text.PlainText
                                                     font.pixelSize: 22
                                                     font.bold: true
-                                                    color: window.theme.foreground
+                                                    color: !appButton.enabled && window.highContrast ? window.controller.highContrastColors.grayText : window.theme.foreground
                                                 }
                                             }
 
@@ -1886,7 +1935,7 @@ ApplicationWindow {
                                                 text: appRow.displayName
                                                 textFormat: Text.PlainText
                                                 font.pixelSize: window.tokens.font.body
-                                                color: window.theme.foreground
+                                                color: !appButton.enabled && window.highContrast ? window.controller.highContrastColors.grayText : window.theme.foreground
                                                 elide: Text.ElideRight
                                             }
                                         }
@@ -2048,11 +2097,14 @@ ApplicationWindow {
                                                 enabled: window.alphabetOpen && window.applicationBrowser && window.applicationBrowser.sections.indexOf(modelData) >= 0
                                                 contentItem: CategoryGlyph {
                                                     label: alphabetButton.text
-                                                    opacity: alphabetButton.enabled ? 1 : 0.25
+                                                    disabled: !alphabetButton.enabled
+                                                    opacity: alphabetButton.enabled || window.highContrast ? 1 : 0.25
                                                 }
                                                 background: Rectangle {
                                                     radius: 7
                                                     color: alphabetButton.down ? window.theme.pressed : alphabetButton.hovered ? window.theme.hover : window.theme.surface
+                                                    border.width: window.highContrast && (alphabetButton.hovered || alphabetButton.activeFocus || alphabetButton.down) ? 1 : 0
+                                                    border.color: window.theme.foreground
                                                 }
                                                 onClicked: {
                                                     const index = window.applicationBrowser.sectionIndex(modelData);
@@ -2157,6 +2209,8 @@ ApplicationWindow {
                                         group: modelData
                                         tokens: window.tokens
                                         darkTheme: window.darkTheme
+                                        themeOverride: window.theme
+                                        highContrast: window.highContrast
                                         titleColor: window.theme.foreground
                                         editMode: window.controller.editMode
                                         readOnly: window.controller.readOnly || window.controller.importCommitting
@@ -2245,7 +2299,7 @@ ApplicationWindow {
                             width: searchResultsList.width
                             height: 56
                             padding: 8
-                            opacity: modelData.available === false ? 0.65 : 1
+                            opacity: modelData.available === false && !window.highContrast ? 0.65 : 1
                             Accessible.name: modelData.displayName
                             Accessible.description: modelData.available === false ? modelData.unavailableReason : qsTr("%1。按 Enter 启动。").arg(displayType)
                             onClicked: {
@@ -2269,6 +2323,7 @@ ApplicationWindow {
 
                             Hint {
                                 id: searchResultToolTip
+                                contrastTheme: window.highContrast ? window.theme : null
                                 delay: 600
                                 font.family: window.font.family
 
@@ -2281,14 +2336,14 @@ ApplicationWindow {
                                     textFormat: Text.PlainText
                                     font: searchResultToolTip.font
                                     wrapMode: Text.Wrap
-                                    color: searchResultToolTip.palette.toolTipText
+                                    color: searchResultToolTip.foregroundColor
                                 }
                             }
 
                             background: Rectangle {
                                 radius: 6
                                 color: searchRow.down ? window.theme.pressed : searchRow.hovered || searchRow.index === searchResultsList.currentIndex ? window.theme.hover : "transparent"
-                                border.width: (searchRow.activeFocus && window.controller.keyboardNavigation) ? 2 : 0
+                                border.width: (searchRow.activeFocus && window.controller.keyboardNavigation) || (window.highContrast && searchRow.down) ? 2 : window.highContrast && (searchRow.hovered || searchRow.index === searchResultsList.currentIndex) ? 1 : 0
                                 border.color: window.theme.focusControl
                             }
 
@@ -2309,12 +2364,14 @@ ApplicationWindow {
                                         sourceSize.height: 64
                                         asynchronous: true
                                         fillMode: Image.PreserveAspectFit
+                                        visible: !window.highContrast
                                     }
 
                                     Label {
+                                        objectName: "searchIconFallback"
                                         anchors.centerIn: parent
-                                        visible: searchIcon.status !== Image.Ready
-                                        text: searchRow.modelData.displayName.slice(0, 1)
+                                        visible: window.highContrast || searchIcon.status !== Image.Ready
+                                        text: window.highContrast && searchRow.modelData.displayName.length > 0 ? String.fromCodePoint(searchRow.modelData.displayName.codePointAt(0)) : searchRow.modelData.displayName.slice(0, 1)
                                         textFormat: Text.PlainText
                                         color: window.theme.foreground
                                         font.pixelSize: 24
@@ -2400,6 +2457,7 @@ ApplicationWindow {
             color: window.surfaceTheme.card
             borderColor: window.theme.controlBorder
             darkTheme: window.darkTheme
+            shadowEnabled: !window.highContrast
             MenuGlyph {
                 x: 16
                 y: 18
@@ -2480,7 +2538,7 @@ ApplicationWindow {
             onClicked: window.dismissFeedback()
             Keys.onReturnPressed: window.dismissFeedback()
             Keys.onEnterPressed: window.dismissFeedback()
-            background: Rectangle { radius: 4; color: feedbackCloseButton.hovered ? window.surfaceTheme.hover : "transparent" }
+            background: Rectangle { radius: 4; color: feedbackCloseButton.hovered ? window.surfaceTheme.hover : "transparent"; border.width: window.highContrast && (feedbackCloseButton.hovered || feedbackCloseButton.activeFocus) ? 1 : 0; border.color: window.theme.foreground }
             contentItem: MenuGlyph { paths: window.tokens.interactionSurface.glyphs; name: "close"; color: window.theme.secondary }
         }
     }
@@ -2500,6 +2558,7 @@ ApplicationWindow {
             color: window.surfaceTheme.card
             borderColor: window.theme.controlBorder
             darkTheme: window.darkTheme
+            shadowEnabled: !window.highContrast
         }
         contentItem: ColumnLayout {
             spacing: 12
@@ -2669,7 +2728,7 @@ ApplicationWindow {
                 width: window.panelWidth
                 height: window.panelHeight
                 radius: window.tokens.cornerRadiusDip.menu
-                color: Qt.rgba(0, 0, 0, 0.4)
+                color: window.highContrast ? "transparent" : Qt.rgba(0, 0, 0, 0.4)
             }
         }
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
@@ -2685,6 +2744,7 @@ ApplicationWindow {
                 spacing: 20
                 Image {
                     source: "qrc:/xdstarter/app/xdstarter-app-icon.svg"
+                    visible: !window.highContrast
                     Layout.preferredWidth: 52
                     Layout.preferredHeight: 52
                     sourceSize.width: 104
@@ -2706,7 +2766,7 @@ ApplicationWindow {
                     padding: 6
                     Accessible.name: qsTr("关闭关于")
                     onClicked: aboutPopup.close()
-                    background: Rectangle { radius: 4; color: aboutDismissButton.down ? window.surfaceTheme.pressed : aboutDismissButton.hovered ? window.surfaceTheme.hover : "transparent" }
+                    background: Rectangle { radius: 4; color: aboutDismissButton.down ? window.surfaceTheme.pressed : aboutDismissButton.hovered ? window.surfaceTheme.hover : "transparent"; border.width: window.highContrast && (aboutDismissButton.hovered || aboutDismissButton.activeFocus) ? 1 : 0; border.color: window.theme.foreground }
                     contentItem: MenuGlyph { paths: window.tokens.interactionSurface.glyphs; name: "close"; color: window.theme.secondary }
                 }
             }
@@ -2769,7 +2829,7 @@ ApplicationWindow {
                     text: qsTr("关闭")
                     palette.buttonText: window.surfaceTheme.onPrimary
                     contentItem: Text { text: aboutCloseButton.text; font: aboutCloseButton.font; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter; color: window.surfaceTheme.onPrimary }
-                    background: Rectangle { radius: 6; color: aboutCloseButton.down ? Qt.darker(window.surfaceTheme.primary, 1.12) : aboutCloseButton.hovered ? Qt.lighter(window.surfaceTheme.primary, 1.06) : window.surfaceTheme.primary }
+                    background: Rectangle { radius: 6; color: window.highContrast ? window.surfaceTheme.primary : aboutCloseButton.down ? Qt.darker(window.surfaceTheme.primary, 1.12) : aboutCloseButton.hovered ? Qt.lighter(window.surfaceTheme.primary, 1.06) : window.surfaceTheme.primary; border.width: window.highContrast && (aboutCloseButton.hovered || aboutCloseButton.activeFocus || aboutCloseButton.down) ? (aboutCloseButton.down ? 3 : 2) : 0; border.color: window.surfaceTheme.onPrimary }
                     onClicked: aboutPopup.close()
                     Keys.onReturnPressed: aboutPopup.close()
                     Keys.onEnterPressed: aboutPopup.close()
@@ -2782,6 +2842,7 @@ ApplicationWindow {
             borderColor: window.theme.controlBorder
             darkTheme: window.darkTheme
             elevation: 2
+            shadowEnabled: !window.highContrast
         }
     }
 
@@ -2868,7 +2929,7 @@ ApplicationWindow {
                 width: window.panelWidth
                 height: window.panelHeight
                 radius: window.tokens.cornerRadiusDip.menu
-                color: Qt.rgba(0, 0, 0, 0.4)
+                color: window.highContrast ? "transparent" : Qt.rgba(0, 0, 0, 0.4)
             }
         }
         width: Math.min(420, window.panelWidth - 40)
@@ -2913,7 +2974,7 @@ ApplicationWindow {
                 width: 3
                 height: Math.max(0, parent.height - 24)
                 radius: 1.5
-                color: window.controller.operationError || window.controller.persistenceError ? window.theme.errorForeground : window.tokens.brand.blue
+                color: window.highContrast || window.controller.operationError || window.controller.persistenceError ? window.theme.errorForeground : window.tokens.brand.blue
             }
         }
 
@@ -3013,7 +3074,7 @@ ApplicationWindow {
                 width: window.panelWidth
                 height: window.panelHeight
                 radius: window.tokens.cornerRadiusDip.menu
-                color: Qt.rgba(0, 0, 0, 0.4)
+                color: window.highContrast ? "transparent" : Qt.rgba(0, 0, 0, 0.4)
             }
         }
         width: Math.min(420, window.panelWidth - 40)
@@ -3059,7 +3120,7 @@ ApplicationWindow {
                 width: 3
                 height: Math.max(0, parent.height - 24)
                 radius: 1.5
-                color: window.controller.operationError || window.controller.persistenceError ? window.theme.errorForeground : window.tokens.brand.blue
+                color: window.highContrast || window.controller.operationError || window.controller.persistenceError ? window.theme.errorForeground : window.tokens.brand.blue
             }
         }
 
@@ -3341,7 +3402,7 @@ ApplicationWindow {
         z: 1000
         visible: window.dragActive
         scale: window.dragActive ? 1.025 : 1
-        readonly property color targetColor: Qt.alpha(window.dragValid ? window.tokens.brand.cyan : window.tokens.status.error, window.dragValid ? 0.2 : 0.27)
+        readonly property color targetColor: window.highContrast ? window.theme.opaqueFallback : Qt.alpha(window.dragValid ? window.tokens.brand.cyan : window.tokens.status.error, window.dragValid ? 0.2 : 0.27)
         Behavior on x {
             enabled: window.animationsEnabled
             onEnabledChanged: {
@@ -3365,7 +3426,7 @@ ApplicationWindow {
             }
         }
         Behavior on color {
-            enabled: window.animationsEnabled
+            enabled: window.animationsEnabled && !window.highContrast
             onEnabledChanged: {
                 if (!enabled)
                     dragPlacementPreview.color = Qt.binding(function () { return dragPlacementPreview.targetColor; });
@@ -3381,7 +3442,15 @@ ApplicationWindow {
         radius: window.tokens.cornerRadiusDip.tile
         color: targetColor
         border.width: 2
-        border.color: window.dragValid ? window.tokens.brand.cyan : window.tokens.status.error
+        border.color: window.highContrast ? window.theme.foreground : window.dragValid ? window.tokens.brand.cyan : window.tokens.status.error
+        Text {
+            objectName: "dragContrastStatus"
+            anchors.centerIn: parent
+            visible: window.highContrast
+            text: window.dragValid ? qsTr("可放") : qsTr("不可放")
+            color: window.theme.foreground
+            font.pixelSize: 12
+        }
     }
 
     onClosing: prepareForDismissal()

@@ -14,6 +14,7 @@ Canvas {
     required property real shadowInset
     required property real borderWidth
     property real railWidth: 64
+    property bool shadowEnabled: true
 
     objectName: "menuSurface"
     antialiasing: true
@@ -43,7 +44,7 @@ Canvas {
 
         // Nested translucent fills form a soft shadow on both the RHI and software
         // renderers. It is painted once per size/theme change, without a live effect.
-        for (let spread = inset - 1; spread > 0; --spread) {
+        for (let spread = shadowEnabled ? inset - 1 : 0; spread > 0; --spread) {
             const strength = 0.012 * Math.pow(1 - spread / inset, 1.2);
             context.fillStyle = Qt.rgba(0, 0, 0, strength);
             roundedPath(context, inset - spread, inset - spread,
@@ -77,6 +78,7 @@ Canvas {
     onColorChanged: requestPaint()
     onRailColorChanged: requestPaint()
     onBorderColorChanged: requestPaint()
+    onShadowEnabledChanged: requestPaint()
     onRadiusChanged: requestPaint()
     onShadowInsetChanged: requestPaint()
     onBorderWidthChanged: requestPaint()

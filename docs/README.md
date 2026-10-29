@@ -53,6 +53,7 @@
 | [ADR-0015：动态磁贴列数](technical/adr/0015-responsive-tile-columns.md) | 格式4、原子缩列重排与工作区内的56 DIP宽度吸附 |
 | [ADR-0018：系统主题偏好](technical/adr/0018-system-theme-preference.md) | 格式5、跟随系统及旧配置兼容 |
 | [ADR-0019：减少动画](technical/adr/0019-reduced-motion.md) | Windows 只读动画偏好、即时状态与验证边界 |
+| [ADR-0020：Windows 高对比度系统色](technical/adr/0020-high-contrast.md) | 只读系统色、主题覆盖与验证边界 |
 | [ADR-0013：单例常驻与默认编辑](technical/adr/0013-resident-editable-menu.md) | 单例 IPC、后台首启、原子挤开、层级目录、任务栏策略及开始按钮排查 |
 | [ADR-0012：导入替换事务](technical/adr/0012-layout-import-transaction.md) | 严格文件预览、修订失效、后台提交及退出屏障 |
 | [ADR-0010：离线应用搜索](technical/adr/0010-local-application-search.md) | Qt Core 后台索引、名称与多音拼音匹配、查询代次及 Unicode 数据许可 |
