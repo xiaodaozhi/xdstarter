@@ -3,10 +3,14 @@
 #include "services/search_service.h"
 
 #include <QCoreApplication>
+#include <QCryptographicHash>
 #include <QElapsedTimer>
 #include <QEventLoop>
+#include <QFile>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QSysInfo>
 #include <QTest>
 #include <QTimer>
 
@@ -32,10 +36,10 @@ QStringList serviceIds(const SearchService& service) {
     return ids;
 }
 
-QVector<SearchEntry> referenceEntries() {
+QVector<SearchEntry> referenceEntries(int count = 4096) {
     QVector<SearchEntry> entries;
-    entries.reserve(4096);
-    for (int index = 0; index < 4096; ++index) {
+    entries.reserve(count);
+    for (int index = 0; index < count; ++index) {
         const auto id = QStringLiteral("fixture-%1").arg(index, 4, 10, QLatin1Char('0'));
         const QStringList names{QStringLiteral("Microsoft Paint %1"),
                                 QStringLiteral("画图工具 %1"), QStringLiteral("重庆银行 %1"),
@@ -101,8 +105,8 @@ bool measureServiceQuery(SearchService& service, const QString& query, double& m
     return complete && !timedOut;
 }
 
-int runReferenceBenchmark() {
-    const auto entries = referenceEntries();
+int runReferenceBenchmark(int entryCount) {
+    const auto entries = referenceEntries(entryCount);
     const auto queries = referenceQueries();
     SearchIndex index;
     QElapsedTimer timer;
@@ -112,11 +116,15 @@ int runReferenceBenchmark() {
     for (int sample = 0; sample < 20; ++sample)
         (void)index.search(queries.at(sample));
     QVector<double> elapsed;
+    QVector<QStringList> expectedIds;
+    QVector<int> expectedCounts;
     int checksum = 0;
     for (const auto& query : queries) {
         timer.restart();
         const auto result = index.search(query);
         elapsed.append(double(timer.nsecsElapsed()) / 1000000.0);
+        expectedIds.append(resultIds(result));
+        expectedCounts.append(result.matchCount);
         checksum += result.matchCount;
     }
     const auto directLookup = latencyStatistics(elapsed, checksum);
@@ -137,8 +145,10 @@ int runReferenceBenchmark() {
         }
     }
     QVector<double> roundTripElapsed;
+    QJsonArray samples;
     int roundTripChecksum = 0;
-    for (const auto& query : queries) {
+    for (int sample = 0; sample < queries.size(); ++sample) {
+        const auto& query = queries.at(sample);
         double milliseconds = 0;
         if (!measureServiceQuery(service, query, milliseconds)) {
             std::fprintf(stderr, "SearchService benchmark timed out during measurement.\n");
@@ -146,16 +156,53 @@ int runReferenceBenchmark() {
         }
         roundTripElapsed.append(milliseconds);
         roundTripChecksum += service.matchCount();
+        if (service.matchCount() != expectedCounts.at(sample) ||
+            serviceIds(service) != expectedIds.at(sample)) {
+            std::fprintf(stderr, "SearchService benchmark disagrees with direct lookup at sample %d.\n",
+                         sample);
+            return 3;
+        }
+        samples.append(QJsonObject{{QStringLiteral("query"), query},
+                                   {QStringLiteral("directMilliseconds"), elapsed.at(sample)},
+                                   {QStringLiteral("serviceMilliseconds"), milliseconds},
+                                   {QStringLiteral("matchCount"), expectedCounts.at(sample)}});
     }
     const auto serviceRoundTrip = latencyStatistics(roundTripElapsed, roundTripChecksum);
     if (roundTripChecksum != checksum) {
         std::fprintf(stderr, "SearchService benchmark disagrees with direct lookup results.\n");
         return 3;
     }
+    QFile executable(QCoreApplication::applicationFilePath());
+    QCryptographicHash binaryHash(QCryptographicHash::Sha256);
+    const bool hashed = executable.open(QIODevice::ReadOnly) && binaryHash.addData(&executable);
+#ifdef _MSC_FULL_VER
+    const QString compiler = QStringLiteral("MSVC %1").arg(_MSC_FULL_VER);
+#elif defined(__clang__)
+    const QString compiler = QStringLiteral("Clang ") + QString::fromLatin1(__clang_version__);
+#elif defined(__GNUC__)
+    const QString compiler = QStringLiteral("GCC ") + QString::fromLatin1(__VERSION__);
+#else
+    const QString compiler = QStringLiteral("unknown");
+#endif
+#ifdef NDEBUG
+    constexpr bool releaseNdebug = true;
+#else
+    constexpr bool releaseNdebug = false;
+#endif
     const QJsonObject report{
+        {QStringLiteral("reportVersion"), 2},
         {QStringLiteral("dataset"), QStringLiteral("synthetic-offline-applications-v1")},
         {QStringLiteral("querySet"), QStringLiteral("ten-families-ten-numbers-v2")},
-        {QStringLiteral("entries"), 4096},
+        {QStringLiteral("entries"), entryCount},
+        {QStringLiteral("binarySha256"), hashed ? QString::fromLatin1(binaryHash.result().toHex())
+                                                : QString()},
+        {QStringLiteral("qtBuildVersion"), QStringLiteral(QT_VERSION_STR)},
+        {QStringLiteral("qtRuntimeVersion"), QString::fromLatin1(qVersion())},
+        {QStringLiteral("compiler"), compiler},
+        {QStringLiteral("buildAbi"), QSysInfo::buildAbi()},
+        {QStringLiteral("kernelVersion"), QSysInfo::kernelVersion()},
+        {QStringLiteral("monotonicClock"), QElapsedTimer::isMonotonic()},
+        {QStringLiteral("releaseNdebug"), releaseNdebug},
         {QStringLiteral("aliasesPerEntry"), 1},
         {QStringLiteral("warmupQueries"), 20},
         {QStringLiteral("measuredQueries"), int(elapsed.size())},
@@ -174,7 +221,9 @@ int runReferenceBenchmark() {
         {QStringLiteral("serviceRoundTrip"), serviceRoundTrip},
         {QStringLiteral("serviceRoundTripBoundary"),
          QStringLiteral("setQuery-to-GUI-results-accepted; includes-worker-queue; excludes-QML")},
-        {QStringLiteral("perQueryTimeoutMilliseconds"), 5000}};
+        {QStringLiteral("perQueryTimeoutMilliseconds"), 5000},
+        {QStringLiteral("perQueryResultsIdentical"), true},
+        {QStringLiteral("samples"), samples}};
     const auto output = QJsonDocument(report).toJson(QJsonDocument::Compact);
     std::fprintf(stdout, "%s\n", output.constData());
     return 0;
@@ -425,8 +474,21 @@ void SearchServiceTests::clearingQueryInvalidatesWorkAndDestructionJoins() {
 
 int main(int argc, char** argv) {
     QCoreApplication application(argc, argv);
-    if (application.arguments().contains(QStringLiteral("--search-benchmark")))
-        return runReferenceBenchmark();
+    const auto arguments = application.arguments();
+    if (arguments.contains(QStringLiteral("--search-benchmark"))) {
+        int entryCount = 4096;
+        if (arguments.size() != 2) {
+            bool validCount = false;
+            if (arguments.size() == 4 && arguments.at(2) == QLatin1String("--entries"))
+                entryCount = arguments.at(3).toInt(&validCount);
+            if (!validCount || entryCount < 0 || entryCount > xdstarter::SearchIndex::maximumEntries) {
+                std::fprintf(stderr, "Use --search-benchmark [--entries 0..%d].\n",
+                             xdstarter::SearchIndex::maximumEntries);
+                return 2;
+            }
+        }
+        return runReferenceBenchmark(entryCount);
+    }
     SearchServiceTests tests;
     return QTest::qExec(&tests, argc, argv);
 }
