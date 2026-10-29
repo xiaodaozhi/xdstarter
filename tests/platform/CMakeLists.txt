@@ -1,6 +1,11 @@
 add_executable(xdstarter_application_platform_tests application_platform_tests.cpp)
 target_link_libraries(xdstarter_application_platform_tests PRIVATE xdstarter_platform)
 if(WIN32)
+    add_executable(xdstarter_graphics_failure_notice_tests graphics_failure_notice_tests.cpp)
+    target_compile_definitions(xdstarter_graphics_failure_notice_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+    target_link_libraries(xdstarter_graphics_failure_notice_tests PRIVATE xdstarter_platform)
+    add_test(NAME platform.graphics-failure-notice COMMAND xdstarter_graphics_failure_notice_tests)
+    set_tests_properties(platform.graphics-failure-notice PROPERTIES TIMEOUT 15)
     add_executable(xdstarter_installation_guard_tests installation_guard_tests.cpp)
     target_link_libraries(xdstarter_installation_guard_tests PRIVATE xdstarter_platform)
     set_target_properties(xdstarter_installation_guard_tests PROPERTIES

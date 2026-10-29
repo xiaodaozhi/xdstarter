@@ -2,6 +2,7 @@ find_package(Qt6 REQUIRED COMPONENTS Test)
 qt_add_executable(xdstarter_scene_graph_failure_host_fixture
     scene_graph_failure_host_fixture.cpp
     "${PROJECT_SOURCE_DIR}/src/app/scene_graph_failure_guard.cpp"
+    "${PROJECT_SOURCE_DIR}/src/app/scene_graph_failure_notice.cpp"
     "${PROJECT_SOURCE_DIR}/src/app/desktop_window_host.h"
     "${PROJECT_SOURCE_DIR}/src/app/desktop_window_host.cpp"
 )
