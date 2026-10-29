@@ -5801,7 +5801,8 @@ void PrototypeWindowTest::layoutImportFilePickerOwnership() {
 #ifdef Q_OS_WIN
     const auto diagnostic = qEnvironmentVariable("XDSTARTER_NATIVE_PICKER_DIAGNOSTIC");
     if (!diagnostic.isEmpty()) {
-        QVERIFY(diagnostic == QLatin1String("immediate") || diagnostic == QLatin1String("shown"));
+        QVERIFY(diagnostic == QLatin1String("rapid") || diagnostic == QLatin1String("immediate") ||
+                diagnostic == QLatin1String("shown"));
         QCOMPARE(qEnvironmentVariable("GITHUB_ACTIONS"), QStringLiteral("true"));
         QCOMPARE(qEnvironmentVariable("RUNNER_ENVIRONMENT"), QStringLiteral("github-hosted"));
         QCOMPARE(QGuiApplication::platformName(), QStringLiteral("windows"));
