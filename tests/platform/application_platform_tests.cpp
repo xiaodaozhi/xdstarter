@@ -965,6 +965,73 @@ int main(int argc, char* argv[]) {
     test.expect(plain.success && physicalFolder,
                 "unconfigured folder keeps its physical name and path identity");
     evidence.insert(QStringLiteral("physicalNameFixturePassed"), plain.success && physicalFolder);
+
+    // Mark only an owned test desktop.ini as originating from the Internet.
+    // Windows decides whether to honor it; the catalog must follow Shell.
+    const auto markedRoot = fixture.filePath(QStringLiteral("marked-name-root"));
+    const auto markedFolder = QDir(markedRoot).filePath(QStringLiteral("MarkedFolder"));
+    const auto nativeMarkedFolder = QDir::toNativeSeparators(markedFolder);
+    const bool markedDirectory = QDir().mkpath(markedFolder) &&
+                                 PathMakeSystemFolderW(reinterpret_cast<LPCWSTR>(nativeMarkedFolder.utf16()));
+    QFile markedIni(QDir(markedFolder).filePath(QStringLiteral("desktop.ini")));
+    const auto markedContent = QStringLiteral("[.ShellClassInfo]\r\nLocalizedResourceName=") +
+                               localizedReference + QStringLiteral("\r\n");
+    const bool markedWritten = markedDirectory && markedIni.open(QIODevice::WriteOnly) &&
+                               markedIni.write(QByteArray("\xff\xfe", 2)) == 2 &&
+                               markedIni.write(reinterpret_cast<const char*>(markedContent.utf16()),
+                                               markedContent.size() * 2) == markedContent.size() * 2;
+    markedIni.close();
+    const auto nativeMarkedIni = QDir::toNativeSeparators(markedIni.fileName());
+    const auto nativeZone = nativeMarkedIni + QStringLiteral(":Zone.Identifier");
+    const auto zoneHandle = CreateFileW(reinterpret_cast<LPCWSTR>(nativeZone.utf16()), GENERIC_WRITE,
+                                        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                        nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    const QByteArray zoneData("[ZoneTransfer]\r\nZoneId=3\r\n");
+    DWORD zoneBytes = 0;
+    const bool zoneWritten = zoneHandle != INVALID_HANDLE_VALUE &&
+                             WriteFile(zoneHandle, zoneData.constData(), DWORD(zoneData.size()),
+                                       &zoneBytes, nullptr) && zoneBytes == DWORD(zoneData.size());
+    if (zoneHandle != INVALID_HANDLE_VALUE)
+        CloseHandle(zoneHandle);
+    const bool markedAttributes =
+        markedWritten && SetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeMarkedIni.utf16()),
+                                            FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_SYSTEM);
+    const auto markedSource = localizationSourceDiagnostics(markedIni.fileName());
+    test.expect(markedDirectory && markedWritten && zoneWritten && markedAttributes &&
+                    markedSource.value(QStringLiteral("zoneIdentifierPresent")).toBool() &&
+                    markedSource.value(QStringLiteral("zoneIdentifier")).toString().contains(
+                        QStringLiteral("ZoneId=3")),
+                "source marker is written only to the owned localization fixture");
+    if (markedAttributes)
+        SHChangeNotify(SHCNE_UPDATEITEM, SHCNF_PATHW | SHCNF_FLUSH,
+                       reinterpret_cast<LPCWSTR>(nativeMarkedFolder.utf16()), nullptr);
+    const auto markedShellName = shellDisplayName(markedFolder);
+    xdstarter::WindowsApplicationPlatform markedPlatform({markedRoot, markedRoot});
+    const auto marked = markedPlatform.scanApplications();
+    QString markedCatalogName;
+    bool markedIdentity = false;
+    for (const auto& entry : marked.applications) {
+        if (entry.type == QLatin1String("folder") && entry.shortcutPath == markedFolder) {
+            markedCatalogName = entry.name;
+            markedIdentity = entry.id ==
+                             xdstarter::applicationTargetId(QStringLiteral("folder"), markedFolder);
+        }
+    }
+    const bool markedKnown = markedShellName == localizedName || markedShellName == QLatin1String("MarkedFolder");
+    const bool markedMatches = marked.success && markedKnown && markedIdentity &&
+                               markedCatalogName == markedShellName;
+    test.expect(markedMatches, "source-marked folder follows Shell display name and path identity");
+    evidence.insert(QStringLiteral("sourceMarkedFixture"),
+                    QJsonObject{{QStringLiteral("source"), markedSource},
+                                {QStringLiteral("shellName"), markedShellName},
+                                {QStringLiteral("catalogName"), markedCatalogName},
+                                {QStringLiteral("matchesNativeShell"), markedMatches},
+                                {QStringLiteral("shellUsedPhysicalName"),
+                                 markedShellName == QLatin1String("MarkedFolder")}});
+    if (markedWritten)
+        SetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeMarkedIni.utf16()), FILE_ATTRIBUTE_NORMAL);
+    if (markedDirectory)
+        SetFileAttributesW(reinterpret_cast<LPCWSTR>(nativeMarkedFolder.utf16()), FILE_ATTRIBUTE_NORMAL);
     const auto target = shortcut(linkPath, QStringLiteral("受控启动"));
     test.expect(platform.checkAvailability(target).success, "valid shortcut availability resolves");
     const auto missing = shortcut(missingPath, QStringLiteral("已删除应用"));
