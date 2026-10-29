@@ -9,6 +9,7 @@ import re
 import shutil
 import struct
 import subprocess
+import sys
 import tarfile
 import time
 import urllib.request
@@ -25,7 +26,7 @@ REMOVED_DLLS = tuple('Qt6QuickControls2' + name + '.dll' for name in (
     'Material', 'MaterialStyleImpl', 'Universal', 'UniversalStyleImpl', 'WindowsStyleImpl')) + (
     'Qt6QuickEffects.dll', 'vc_redist.x64.exe')
 GRAPHICS = ('d3dcompiler_47.dll', 'dxcompiler.dll', 'dxil.dll')
-EXCLUDED_RUNTIME_DLLS = {'opengl32sw.dll'}
+EXCLUDED_RUNTIME_DLLS = {'opengl32sw.dll', 'd3d11.dll', 'xdstarter_d3d11_failure_proxy.dll'}
 SYSTEM_DLLS = set(('kernel32 kernelbase user32 gdi32 gdi32full ole32 oleaut32 advapi32 '
     'ws2_32 shell32 shlwapi comdlg32 comctl32 uxtheme dwmapi dxgi d3d11 d3d12 d3d9 '
     'opengl32 glu32 bcrypt bcryptprimitives crypt32 cryptbase ncrypt netapi32 version '
@@ -687,13 +688,32 @@ class Workflow:
                     env=env, cwd=harness, timeout=180)
             command(runtime / 'xdstarter_runtime_support_tests.exe', runtime / 'translations',
                     env=isolated_environment(runtime), cwd=harness)
+            failure_report = logs / 'graphics-failure.json'
+            failure_command = [sys.executable, ROOT / 'tests/graphics/verify_d3d11_failure.py',
+                               '--runtime', runtime, '--proxy',
+                               self.build / 'test-fixtures/xdstarter_d3d11_failure_proxy.dll',
+                               '--output', failure_report]
+            hosted = (os.environ.get('GITHUB_ACTIONS') == 'true' and
+                      os.environ.get('RUNNER_ENVIRONMENT') == 'github-hosted')
+            if hosted:
+                failure_command.append('--hosted-resident')
+            command(*failure_command, env=environment, cwd=harness, timeout=240)
+            failure_evidence = json.loads(failure_report.read_text(encoding='utf-8'))
+            if (failure_evidence['status'] != 'passed' or failure_evidence['sdkSearchPaths'] or
+                    failure_evidence['executableSha256'] != digest(self.root / 'xdstarter.exe') or
+                    (hosted and 'hosted-resident' not in failure_evidence['results'])):
+                raise ValueError('D3D11 failure evidence does not match the audited executable')
             verify_inventory(self.root, record['files'])
             write_json(result_path, {'status': 'passed', 'sdkSearchPaths': False,
                 'auditSha256': digest(self.output / 'deployment-audit.json'),
                 'executableSha256': digest(self.root / 'xdstarter.exe'),
                 'developmentFixture': self.args.development, 'rendering': rendering,
-                'softwareOpenGLAbsent': True, 'automaticFallbackVerified': False,
-                'limits': ['WARP was explicitly requested; hardware failure and automatic fallback were not simulated.',
+                'softwareOpenGLAbsent': True,
+                'automaticFallbackVerified': 'skipped' not in failure_evidence['results']['hardware-failure'],
+                'graphicsFailureReport': failure_report.relative_to(self.output).as_posix(),
+                'graphicsFailureReportSha256': digest(failure_report),
+                'hostedResidentFailureVerified': hosted,
+                'limits': ['Automatic fallback uses an injected device-creation failure, not actual driver damage or runtime device loss.',
                            'Windows host supplies OS APIs. This is not a clean Windows 11 installation or manual desktop acceptance.']})
         finally:
             generated(harness)

@@ -1,12 +1,12 @@
 # 测试目录
 
-仓库工具的无网络单元测试验证 GitHub 初始化的幂等性、已有 Issue 状态/正文保留与跨仓库写入保护，以及 Windows EXE 图标审计的 PE/ICO 边界。当前共 13 项，其中 9 项检查命名/整数资源、多语言、PE32/PE32+、截断/越界/重叠 RVA、帧元数据与 PNG CRC/负载不一致等情况：
+仓库工具的无网络单元测试验证 GitHub 初始化、Windows 打包与依赖审计、故障边界、验收资料和 EXE 图标等行为。实际数量与结果以本次运行输出为准：
 
 ```sh
 python3 -m unittest discover -s tests/tooling -v
 ```
 
-`core/` 为无 Qt 的 C++20 几何行为测试。`core-debug` 与 `core-release` 验证相同可观察行为，测试不使用会在 Release 中消失的 assert。Windows Qt 应用开启 `BUILD_TESTING` 时共注册十八套 CTest；注册数量不表示本轮已经全部通过，实际结果按程序版本记录：
+`core/` 为无 Qt 的 C++20 几何行为测试。`core-debug` 与 `core-release` 验证相同可观察行为，测试不使用会在 Release 中消失的 assert。Windows Qt 应用开启 `BUILD_TESTING` 时注册 23 套 CTest；注册数量不表示本轮已经全部通过，实际结果按程序版本记录：
 
 | 目录/入口 | CTest | 范围 |
 | --- | --- | --- |
@@ -26,6 +26,8 @@ python3 -m unittest discover -s tests/tooling -v
 | `platform/native_taskbar_probe.cpp` | `platform.native-menu-resize`（仅 Windows） | 自有隐藏 HWND 的 36 项原生消息／窗口策略回归：原 24 项边角、非活动、阶段、最大边界与窗口策略，另加四边各 3 项 region／重新定位与尺寸／Qt mask 清空重套；不发送全局输入 |
 | `services/desktop_shell_service_tests.cpp` | `services.desktop_shell` | 注入平台上的后台动作、成功/失败、重复请求拦截、查询合并/失效与析构等待 |
 | 产品 `--smoke-test` | `app.qml_smoke` | 从资源加载 QML/token 后退出，不读写用户布局 |
+| `graphics/` | `app.d3d11_failure_exit`（仅 Windows） | 隔离副本中的设备创建故障、自动 WARP 与无设备时的有界失败 |
+| `ui/scene_graph_failure_host_fixture.cpp` | `ui.scene_graph_failure_host` | 图形错误退出时假托盘及两类假接管的清理 |
 | `ui/` | `ui.prototype` | 真实 Qt Quick 窗口的交互、编辑、保存恢复、只读与像素截图 |
 | `ui/tst_desktop_window_host.cpp` | `ui.desktop_window_host` | 假托盘与定位平台上的隐藏阶段定位、待显示取消、过时查询拒绝、关闭后恢复、外部焦点收起、内部临时窗口/快速返回保留、拖拽延后、无托盘/托盘丢失恢复及退出清理 |
 

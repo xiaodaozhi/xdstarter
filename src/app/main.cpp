@@ -4,6 +4,7 @@
 #include "interface_font.h"
 #include "menu_controller.h"
 #include "runtime_support.h"
+#include "scene_graph_failure_guard.h"
 
 #include "core/tile_grid.h"
 #include "platform/application_platform.h"
@@ -255,8 +256,11 @@ int main(int argc, char* argv[]) {
         QObject::connect(&engine, &QQmlEngine::warnings, &application,
                          [&smokeHadWarnings] { smokeHadWarnings = true; });
     }
+    // Connect the scene graph failure handler before either smoke or resident
+    // mode can expose the window. Otherwise Qt may enter a blocking native
+    // error dialog before the application can release its input captures.
     engine.setInitialProperties({{QStringLiteral("controller"), QVariant::fromValue(&controller)},
-                                 {QStringLiteral("visible"), parser.isSet(smokeTestOption)}});
+                                 {QStringLiteral("visible"), false}});
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &application,
         [] { QCoreApplication::exit(EXIT_FAILURE); }, Qt::QueuedConnection);
@@ -265,11 +269,12 @@ int main(int argc, char* argv[]) {
     if (engine.rootObjects().isEmpty()) {
         return EXIT_FAILURE;
     }
-    auto* window = qobject_cast<QWindow*>(engine.rootObjects().first());
+    auto* window = qobject_cast<QQuickWindow*>(engine.rootObjects().first());
     if (!window) {
-        qCritical() << "Root QML object is not a window";
+        qCritical() << "Root QML object is not a Qt Quick window";
         return EXIT_FAILURE;
     }
+    xdstarter::SceneGraphFailureGuard graphicsFailure(*window, application);
     window->setIcon(applicationIcon);
     std::unique_ptr<xdstarter::DesktopPlatform> placement;
     std::unique_ptr<xdstarter::DesktopTray> tray;
@@ -362,10 +367,32 @@ int main(int argc, char* argv[]) {
             qWarning() << "Layout save failed:" << controller.persistenceStatus();
         }
     });
+    bool smokeSceneGraphReady = false;
     if (parser.isSet(smokeTestOption)) {
-        QTimer::singleShot(250, &application, [&smokeHadWarnings] {
-            QCoreApplication::exit(smokeHadWarnings ? EXIT_FAILURE : EXIT_SUCCESS);
+        // The old fixed timer could report success while a slow renderer was
+        // still initializing. Start it only after the scene graph is ready.
+        QObject::connect(window, &QQuickWindow::sceneGraphInitialized, &application,
+                         [&application, &smokeSceneGraphReady, &smokeHadWarnings] {
+                             if (smokeSceneGraphReady)
+                                 return;
+                             smokeSceneGraphReady = true;
+                             QTimer::singleShot(250, &application, [&smokeHadWarnings] {
+                                 QCoreApplication::exit(smokeHadWarnings ? EXIT_FAILURE
+                                                                       : EXIT_SUCCESS);
+                             });
+                         }, Qt::QueuedConnection);
+        QTimer::singleShot(10000, &application, [&smokeSceneGraphReady] {
+            if (!smokeSceneGraphReady) {
+                qCritical() << "Graphics initialization did not finish during the smoke test";
+                QCoreApplication::exit(EXIT_FAILURE);
+            }
         });
+        window->setVisible(true);
     }
-    return application.exec();
+    // exit() has no effect before exec(); also retain a failure if another
+    // exit request is already pending when Qt reports the graphics error.
+    if (graphicsFailure.failed())
+        return EXIT_FAILURE;
+    const int result = application.exec();
+    return graphicsFailure.failed() ? EXIT_FAILURE : result;
 }

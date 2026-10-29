@@ -103,9 +103,10 @@ class WindowsPackageTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'development/unused'):
                 package.audit(self.directory, {}, lambda _: [], self.pe)
 
-    def test_audit_refuses_software_opengl_at_any_depth(self):
+    def test_audit_refuses_excluded_graphics_dlls_at_any_depth(self):
         with self.fixture():
-            for name in ('opengl32sw.dll', 'plugins/OPENGL32SW.DLL'):
+            for name in ('opengl32sw.dll', 'plugins/OPENGL32SW.DLL',
+                         'd3d11.dll', 'plugins/XDSTARTER_D3D11_FAILURE_PROXY.DLL'):
                 file = self.write(name)
                 with self.subTest(name=name), self.assertRaisesRegex(ValueError, 'development/unused'):
                     package.audit(self.directory, {}, lambda _: [], self.pe)
