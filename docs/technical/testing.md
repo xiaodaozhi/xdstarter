@@ -618,7 +618,7 @@ PR 初次 head `72d13d4` 的[附加 MSVC 2022 检查](https://github.com/xiaodao
 python scripts/benchmark_search.py --executable build/app-release/xdstarter_search_service_tests.exe --output build/validation/issue-35/search-service.json
 ```
 
-输出路径必须是新文件，脚本不会覆盖已有证据。可通过 `--entries` 显式选择 0 至 8192 个不同规模；每组仍为 100 个查询。本采样在索引就绪后测量，包含服务 worker 排队，但不启动产品常驻进程、不加载 QML、不扫描真实目录或安装输入 Hook。空目录不等于空布局，服务结果接收不等于屏幕呈现；冷／热唤起、100 磁贴界面、帧耗时及常驻资源仍需另行采集，不能用这份报告关闭 #35 或宣称端到端目标通过。
+输出路径必须是新文件，脚本不会覆盖已有证据。可通过 `--entries` 显式选择 0 至 8192 个不同规模；每组仍为 100 个查询。托管 Windows CI 另对 0 和 1000 项运行实际采样并上传独立证据，不将性能数值作为不稳定机器上的通过阈值。本采样在索引就绪后测量，包含服务 worker 排队，但不启动产品常驻进程、不加载 QML、不扫描真实目录或安装输入 Hook。空目录不等于空布局，服务结果接收不等于屏幕呈现；冷／热唤起、100 磁贴界面、帧耗时及常驻资源仍需另行采集，不能用这份报告关闭 #35 或宣称端到端目标通过。
 
 2026-10-29 一次本机受控采样的[全部原始数据](validation/issue-35/search-service.json)保留三个规模各 100 条记录。环境为 Windows 11 26300.9711、Intel Core i7-11370H、约 31.8 GiB 内存、Qt 6.8.2，Release 使用附加 v142 编译器 19.29.30159 / SDK 19041；不同于声明的精确编译器基线。1000 项的服务 P95 / 最大值为 7.77 / 8.29 ms，4096 项为 30.36 / 33.60 ms。测试程序 SHA-256 为 `f1b2d8d7d37405a4d944a066ef50a6dc7a18bd0aca39f653d714945ffd00a7f9`；该次编译的 `search_service_tests.cpp` SHA-256 为 `3fd07351f9637ecb9ee2f1bbfa810c474a51cf9eebd30f24594c5b8ae0e3c531`，其余源码以 `3821b4e1fb24311f80acc4a376b6295898b2f211` 为基础。系统负载未隔离，最大值和全部样本均予保留，不能把单次服务层结果推广为所有设备或端到端体验。
 
