@@ -17,8 +17,32 @@ if(WIN32)
     add_executable(xdstarter_launch_fixture launch_fixture.cpp)
     target_sources(xdstarter_launch_fixture PRIVATE application_catalog_fixture.rc)
     target_link_libraries(xdstarter_launch_fixture PRIVATE Qt6::Core)
-    add_test(NAME platform.applications COMMAND xdstarter_application_platform_tests
-        $<TARGET_FILE:xdstarter_launch_fixture>)
+    if("$ENV{GITHUB_ACTIONS}" STREQUAL "true" AND
+       "$ENV{RUNNER_ENVIRONMENT}" STREQUAL "github-hosted")
+        # The workspace volume can have different Shell metadata policy from
+        # the user profile. Exercise both without changing Windows policy.
+        add_test(NAME platform.applications COMMAND xdstarter_application_platform_tests
+            $<TARGET_FILE:xdstarter_launch_fixture> --compare-shell-display)
+        if("$ENV{LOCALAPPDATA}" STREQUAL "" OR "$ENV{GITHUB_RUN_ID}" STREQUAL "")
+            message(FATAL_ERROR "Hosted Shell localization fixture requires a user profile and run ID")
+        endif()
+        file(TO_CMAKE_PATH
+            "$ENV{LOCALAPPDATA}/Temp/xdstarter-shell-$ENV{GITHUB_RUN_ID}-$ENV{GITHUB_RUN_ATTEMPT}/build/fixture"
+            shell_profile_fixture)
+        file(MAKE_DIRECTORY "${shell_profile_fixture}")
+        add_test(NAME platform.applications.localized COMMAND xdstarter_application_platform_tests
+            $<TARGET_FILE:xdstarter_launch_fixture>)
+        set(shell_evidence "${PROJECT_BINARY_DIR}/shell-localization-evidence")
+        file(MAKE_DIRECTORY "${shell_evidence}/workspace" "${shell_evidence}/profile")
+        set_property(TEST platform.applications APPEND PROPERTY ENVIRONMENT
+            "XDSTARTER_CATALOG_VALIDATION_DIR=${shell_evidence}/workspace")
+        set_tests_properties(platform.applications.localized PROPERTIES
+            ENVIRONMENT "XDSTARTER_CATALOG_VALIDATION_DIR=${shell_evidence}/profile"
+            WORKING_DIRECTORY "${shell_profile_fixture}" TIMEOUT 120)
+    else()
+        add_test(NAME platform.applications COMMAND xdstarter_application_platform_tests
+            $<TARGET_FILE:xdstarter_launch_fixture>)
+    endif()
 else()
     add_test(NAME platform.applications COMMAND xdstarter_application_platform_tests)
 endif()

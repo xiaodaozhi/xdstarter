@@ -99,6 +99,17 @@
           "run": "./scripts/build-windows.ps1 -Toolchain MSVC2022 -Stage package\nif ($LASTEXITCODE) { throw \"Windows candidate packaging failed\" }\n./build/tooling/Scripts/python.exe scripts/verify_windows_installer.py --output-dir build/package\nif ($LASTEXITCODE) { throw \"Isolated installer lifecycle failed\" }"
         },
         {
+          "name": "Upload hosted Shell localization evidence",
+          "if": "always()",
+          "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "with": {
+            "name": "xdstarter-shell-localization-${{ github.sha }}",
+            "path": "build/app-release/shell-localization-evidence/**/*.json",
+            "if-no-files-found": "warn",
+            "retention-days": 7
+          }
+        },
+        {
           "name": "Upload Windows candidate and bounded evidence",
           "if": "always()",
           "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
