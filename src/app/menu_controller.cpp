@@ -6,6 +6,7 @@
 #include <QStyleHints>
 
 #include "platform/platform_integration.h"
+#include "platform/motion_preference.h"
 #include "services/application_catalog.h"
 #include "services/desktop_shell_service.h"
 #include "services/layout_import.h"
@@ -96,11 +97,22 @@ QVariantList tileValues(const QVector<PreviewTile>& tiles) {
 MenuController::MenuController(PrototypeService& prototypeService,
                                const PlatformIntegration& platform, QVariantMap visualTokens,
                                QObject* parent, ApplicationCatalog* catalog,
-                               DesktopShellService* desktopShell)
+                               DesktopShellService* desktopShell, MotionPreference* motionPreference)
     : QObject(parent), prototypeService_(prototypeService), visualTokens_(std::move(visualTokens)),
       platformName_(platform.displayName()), platformStatus_(platform.statusDescription()),
       simulatedPlatform_(platform.isSimulated()), catalog_(catalog), desktopShell_(desktopShell),
       search_(std::make_unique<SearchService>()) {
+    if (motionPreference) {
+        animationsEnabled_ = motionPreference->animationsEnabled();
+        connect(motionPreference, &MotionPreference::animationsEnabledChanged, this,
+                [this, motionPreference] {
+                    const bool enabled = motionPreference->animationsEnabled();
+                    if (animationsEnabled_ != enabled) {
+                        animationsEnabled_ = enabled;
+                        emit animationsEnabledChanged();
+                    }
+                });
+    }
     if (QCoreApplication::instance())
         QCoreApplication::instance()->installEventFilter(this);
     connect(search_.get(), &SearchService::resultsChanged, this,

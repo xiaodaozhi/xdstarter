@@ -19,6 +19,7 @@ ApplicationWindow {
     readonly property real panelWidth: width - 2 * shadowInset
     readonly property real panelHeight: height - 2 * shadowInset
     property bool darkTheme: controller.darkTheme
+    readonly property bool animationsEnabled: controller.animationsEnabled
     property string selectionStatus: ""
     property bool selectionStatusError: false
     property string dismissedSelectionError: ""
@@ -113,22 +114,31 @@ ApplicationWindow {
             return;
         pendingCatalogFolder = id;
         alphabetOpen = false;
+        if (!animationsEnabled) {
+            finishCatalogFolderNavigation();
+            return;
+        }
         folderFadeOut.restart();
         folderTransition.start();
+    }
+
+    function finishCatalogFolderNavigation(): void {
+        if (pendingCatalogFolder === "..")
+            applicationBrowser.back();
+        else
+            applicationBrowser.openFolder(pendingCatalogFolder);
+        applicationsList.positionViewAtBeginning();
+        applicationsList.currentIndex = -1;
+        if (animationsEnabled)
+            folderFadeIn.restart();
+        else
+            applicationsList.opacity = 1;
     }
 
     Timer {
         id: folderTransition
         interval: 100
-        onTriggered: {
-            if (window.pendingCatalogFolder === "..")
-                window.applicationBrowser.back();
-            else
-                window.applicationBrowser.openFolder(window.pendingCatalogFolder);
-            applicationsList.positionViewAtBeginning();
-            applicationsList.currentIndex = -1;
-            folderFadeIn.restart();
-        }
+        onTriggered: window.finishCatalogFolderNavigation()
     }
     NumberAnimation {
         id: folderFadeOut
@@ -192,7 +202,7 @@ ApplicationWindow {
     property real previewHeight: 0
     property string resizeTileId: ""
     property string resizeTileSize: ""
-    readonly property int dismissAnimationDuration: 120
+    readonly property int dismissAnimationDuration: animationsEnabled ? 120 : 0
     property real revealProgress: 0
     property bool presentationStaged: false
     property int presentationGeneration: 0
@@ -206,7 +216,7 @@ ApplicationWindow {
         property: "revealProgress"
         from: 0
         to: 1
-        duration: 180
+        duration: window.animationsEnabled ? 180 : 0
         easing.type: Easing.OutCubic
     }
     NumberAnimation {
@@ -214,12 +224,29 @@ ApplicationWindow {
         target: window
         property: "revealProgress"
         to: 0
-        duration: 120
+        duration: window.animationsEnabled ? 120 : 0
         easing.type: Easing.InCubic
     }
     function animateDismissal(): void {
         revealMotion.stop();
-        dismissMotion.restart();
+        if (animationsEnabled)
+            dismissMotion.restart();
+        else
+            revealProgress = 0;
+    }
+    onAnimationsEnabledChanged: {
+        if (animationsEnabled || !presentationComponentReady)
+            return;
+        revealMotion.complete();
+        dismissMotion.complete();
+        if (folderTransition.running) {
+            folderTransition.stop();
+            folderFadeOut.stop();
+            finishCatalogFolderNavigation();
+        }
+        folderFadeIn.complete();
+        applicationsList.opacity = 1;
+        removalMotion.stop();
     }
     property bool dismissalManaged: false
     property bool presentationSuspended: false
@@ -363,6 +390,7 @@ ApplicationWindow {
         palette.highlightedText: window.theme.foreground
         delegate: ActionMenuItem {}
         enter: Transition {
+            enabled: window.animationsEnabled
             ParallelAnimation {
                 NumberAnimation {
                     property: "opacity"
@@ -381,6 +409,7 @@ ApplicationWindow {
             }
         }
         exit: Transition {
+            enabled: window.animationsEnabled
             ParallelAnimation {
                 NumberAnimation {
                     property: "opacity"
@@ -564,7 +593,7 @@ ApplicationWindow {
         focusedTileId = "";
         if (!controller.unpinTile(tileId)) {
             focusedTileId = tileId;
-        } else {
+        } else if (animationsEnabled) {
             removalMotion.restart();
         }
     }
@@ -1034,7 +1063,10 @@ ApplicationWindow {
         }
         presentationStaged = false;
         presentationSuspended = false;
-        revealMotion.restart();
+        if (animationsEnabled)
+            revealMotion.restart();
+        else
+            revealProgress = 1;
         searchField.forceActiveFocus(Qt.OtherFocusReason);
         presentationFocusPending = true;
         schedulePresentationFocus();
@@ -1954,14 +1986,26 @@ ApplicationWindow {
                                 z: 5
                                 visible: opacity > 0
                                 enabled: window.alphabetOpen
-                                opacity: window.alphabetOpen ? 1 : 0
-                                scale: window.alphabetOpen ? 1 : 0.97
+                                readonly property real targetOpacity: window.alphabetOpen ? 1 : 0
+                                readonly property real targetScale: window.alphabetOpen ? 1 : 0.97
+                                opacity: targetOpacity
+                                scale: targetScale
                                 Behavior on opacity {
+                                    enabled: window.animationsEnabled
+                                    onEnabledChanged: {
+                                        if (!enabled)
+                                            alphabetSelector.opacity = Qt.binding(function () { return alphabetSelector.targetOpacity; });
+                                    }
                                     NumberAnimation {
                                         duration: 130
                                     }
                                 }
                                 Behavior on scale {
+                                    enabled: window.animationsEnabled
+                                    onEnabledChanged: {
+                                        if (!enabled)
+                                            alphabetSelector.scale = Qt.binding(function () { return alphabetSelector.targetScale; });
+                                    }
                                     NumberAnimation {
                                         duration: 170
                                         easing.type: Easing.OutCubic
@@ -2104,6 +2148,7 @@ ApplicationWindow {
 
                                     delegate: TileGroup {
                                         hintsEnabled: window.hintsPermitted
+                                        animationsEnabled: window.animationsEnabled
                                         required property var modelData
 
                                         width: groupsColumn.width
@@ -2336,9 +2381,15 @@ ApplicationWindow {
             if (!feedbackShown && feedbackCloseButton.activeFocus && window.visible && !window.presentationSuspended && !window.internalPopupVisible)
                 searchField.forceActiveFocus(Qt.OtherFocusReason);
         }
-        opacity: feedbackShown ? 1 : 0
+        readonly property real targetOpacity: feedbackShown ? 1 : 0
+        opacity: targetOpacity
         visible: opacity > 0
         Behavior on opacity {
+            enabled: window.animationsEnabled
+            onEnabledChanged: {
+                if (!enabled)
+                    feedbackPanel.opacity = Qt.binding(function () { return feedbackPanel.targetOpacity; });
+            }
             NumberAnimation {
                 duration: 150
                 easing.type: Easing.OutCubic
@@ -3285,23 +3336,40 @@ ApplicationWindow {
     }
 
     Rectangle {
+        id: dragPlacementPreview
         objectName: "dragPlacementPreview"
         z: 1000
         visible: window.dragActive
         scale: window.dragActive ? 1.025 : 1
+        readonly property color targetColor: Qt.alpha(window.dragValid ? window.tokens.brand.cyan : window.tokens.status.error, window.dragValid ? 0.2 : 0.27)
         Behavior on x {
+            enabled: window.animationsEnabled
+            onEnabledChanged: {
+                if (!enabled)
+                    dragPlacementPreview.x = Qt.binding(function () { return window.previewX; });
+            }
             NumberAnimation {
                 duration: 75
                 easing.type: Easing.OutCubic
             }
         }
         Behavior on y {
+            enabled: window.animationsEnabled
+            onEnabledChanged: {
+                if (!enabled)
+                    dragPlacementPreview.y = Qt.binding(function () { return window.previewY; });
+            }
             NumberAnimation {
                 duration: 75
                 easing.type: Easing.OutCubic
             }
         }
         Behavior on color {
+            enabled: window.animationsEnabled
+            onEnabledChanged: {
+                if (!enabled)
+                    dragPlacementPreview.color = Qt.binding(function () { return dragPlacementPreview.targetColor; });
+            }
             ColorAnimation {
                 duration: 100
             }
@@ -3311,7 +3379,7 @@ ApplicationWindow {
         width: window.previewWidth
         height: window.previewHeight
         radius: window.tokens.cornerRadiusDip.tile
-        color: Qt.alpha(window.dragValid ? window.tokens.brand.cyan : window.tokens.status.error, window.dragValid ? 0.2 : 0.27)
+        color: targetColor
         border.width: 2
         border.color: window.dragValid ? window.tokens.brand.cyan : window.tokens.status.error
     }

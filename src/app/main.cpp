@@ -14,6 +14,7 @@
 #include "platform/graphics_failure_notice.h"
 #include "platform/installation_guard.h"
 #include "platform/platform_integration.h"
+#include "platform/motion_preference.h"
 #include "platform/start_button_capture.h"
 #include "platform/win_key_capture.h"
 #include "services/application_catalog.h"
@@ -28,6 +29,7 @@
 #include <QCryptographicHash>
 #include <QDebug>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QFont>
@@ -120,12 +122,24 @@ int main(int argc, char* argv[]) {
         }
         return EXIT_SUCCESS;
     }
+    bool traceSmoke = false;
+    for (int index = 1; index < argc; ++index)
+        traceSmoke |= QString::fromLocal8Bit(argv[index]) == QLatin1String("--smoke-test");
+    QElapsedTimer smokeClock;
+    smokeClock.start();
+    const auto smokeStage = [&](const char* stage) {
+        if (traceSmoke)
+            std::cerr << "Smoke stage " << stage << " " << smokeClock.elapsed() << " ms" << std::endl;
+    };
+    smokeStage("before-application");
     QGuiApplication application(argc, argv);
+    smokeStage("application-ready");
     QGuiApplication::setOrganizationName(QStringLiteral("xiaodaozhi"));
     QGuiApplication::setOrganizationDomain(QStringLiteral("github.com/xiaodaozhi"));
     QGuiApplication::setApplicationName(QStringLiteral("XDStarter"));
     QGuiApplication::setApplicationVersion(QStringLiteral(XDSTARTER_VERSION));
     xdstarter::configureInterfaceFont();
+    smokeStage("font-ready");
     QIcon applicationIcon;
     for (const int size : {16, 20, 24, 32, 40, 48, 64, 96, 128, 256, 512, 1024}) {
         const auto resource = QStringLiteral(":/xdstarter/app/xdstarter-app-icon-%1.png").arg(size);
@@ -191,11 +205,13 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
+    smokeStage("before-installation-guard");
     auto installationGuard = xdstarter::createInstallationGuard();
     if (!installationGuard->acquire()) {
         qCritical() << installationGuard->errorString();
         return EXIT_FAILURE;
     }
+    smokeStage("installation-guard-ready");
     xdstarter::initializeQtTranslation();
     std::unique_ptr<xdstarter::SessionInstance> instance;
     bool pendingActivation = false;
@@ -251,8 +267,11 @@ int main(int argc, char* argv[]) {
             std::make_unique<xdstarter::DesktopShellService>(xdstarter::createDesktopPlatform());
     }
     const auto platform = xdstarter::createPlatformIntegration();
+    smokeStage("before-motion-preference");
+    const auto motionPreference = xdstarter::createMotionPreference();
+    smokeStage("motion-preference-ready");
     xdstarter::MenuController controller(prototypeService, *platform, *visualTokens, nullptr,
-                                         catalog.get(), desktopShell.get());
+                                         catalog.get(), desktopShell.get(), motionPreference.get());
     QObject::connect(&controller, &xdstarter::MenuController::exitRequested, &application,
                      [&application] { application.quit(); });
     bool smokeHadWarnings = false;
@@ -271,7 +290,9 @@ int main(int argc, char* argv[]) {
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &application,
         [] { QCoreApplication::exit(EXIT_FAILURE); }, Qt::QueuedConnection);
+    smokeStage("before-qml-load");
     engine.loadFromModule("XDStarter", "Main");
+    smokeStage("qml-loaded");
 
     if (engine.rootObjects().isEmpty()) {
         return EXIT_FAILURE;
@@ -281,6 +302,14 @@ int main(int argc, char* argv[]) {
         qCritical() << "Root QML object is not a Qt Quick window";
         return EXIT_FAILURE;
     }
+    QObject::connect(window, &QWindow::visibleChanged, motionPreference.get(),
+                     [source = motionPreference.get(), &smokeStage](bool visible) {
+                         if (visible) {
+                             smokeStage("before-visible-motion-refresh");
+                             source->refresh();
+                             smokeStage("visible-motion-refreshed");
+                         }
+                     });
     xdstarter::SceneGraphFailureGuard graphicsFailure(*window, application);
     window->setIcon(applicationIcon);
     std::unique_ptr<xdstarter::DesktopPlatform> placement;
@@ -394,10 +423,11 @@ int main(int argc, char* argv[]) {
         // The old fixed timer could report success while a slow renderer was
         // still initializing. Start it only after the scene graph is ready.
         QObject::connect(window, &QQuickWindow::sceneGraphInitialized, &application,
-                         [&application, &smokeSceneGraphReady, &smokeHadWarnings] {
+                         [&application, &smokeSceneGraphReady, &smokeHadWarnings, &smokeStage] {
                              if (smokeSceneGraphReady)
                                  return;
                              smokeSceneGraphReady = true;
+                             smokeStage("scene-graph-ready");
                              QTimer::singleShot(250, &application, [&smokeHadWarnings] {
                                  QCoreApplication::exit(smokeHadWarnings ? EXIT_FAILURE
                                                                        : EXIT_SUCCESS);
@@ -409,7 +439,9 @@ int main(int argc, char* argv[]) {
                 QCoreApplication::exit(EXIT_FAILURE);
             }
         });
+        smokeStage("before-window-show");
         window->setVisible(true);
+        smokeStage("window-show-returned");
     }
     // exit() has no effect before exec(); also retain a failure if another
     // exit request is already pending when Qt reports the graphics error.
@@ -418,6 +450,7 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
     const int result = application.exec();
+    smokeStage("event-loop-returned");
     graphicsNotice.dispatch();
     return graphicsFailure.failed() ? EXIT_FAILURE : result;
 }
