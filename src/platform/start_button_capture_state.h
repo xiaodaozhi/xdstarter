@@ -4,11 +4,15 @@
 
 #include <QPoint>
 #include <QRect>
+#include <QString>
 #include <QtGlobal>
 
 namespace xdstarter {
 
 enum class StartButtonCaptureMode { Point, ExperimentalAreaCache };
+// Area refreshes use a start-to-start cadence; slow queries must not add a
+// second fixed delay while the preceding qualification lease is expiring.
+[[nodiscard]] quint64 startButtonCaptureQueryDelay(StartButtonCaptureMode mode, quint64 elapsedMs);
 enum class StartButtonCaptureReason {
     None,
     AcceptedDown,
@@ -46,6 +50,19 @@ enum class StartButtonCaptureReason {
     DispatchFailed,
     Count
 };
+struct StartButtonElementObservation {
+    QString automationId;
+    QRect bounds;
+    quint32 processId = 0;
+    bool sameBoundElement = false;
+    bool buttonRole = false;
+    bool offscreen = true;
+};
+// Renew an area observation only from a fresh point read of the same bound
+// element, with its semantic and native properties still matching.
+[[nodiscard]] StartButtonCaptureReason
+startButtonElementFailure(const StartButtonElementObservation& observation,
+                          quint32 expectedProcess, QRect expectedBounds);
 [[nodiscard]] const char* startButtonCaptureReasonName(StartButtonCaptureReason reason);
 
 enum class StartButtonSubscriptionStage { Ready, Root, Structure, Properties };

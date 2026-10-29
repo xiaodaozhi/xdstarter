@@ -81,6 +81,7 @@ class LayoutImportTests final : public QObject {
     void invalidSelectedInput();
     void oldVersionsNormalizeWithoutWriting_data();
     void oldVersionsNormalizeWithoutWriting();
+    void systemThemeIsPreservedInPreviewAndCommit();
     void currentOverridesAndEmptyLayoutsArePreserved();
     void previewSnapshotDoesNotFollowSourceChanges();
     void bothSnapshotsAreValidatedBeforeAnyWrite_data();
@@ -168,6 +169,7 @@ void LayoutImportTests::oldVersionsNormalizeWithoutWriting_data() {
     QTest::newRow("schema-one") << 1;
     QTest::newRow("schema-two") << 2;
     QTest::newRow("schema-three") << 3;
+    QTest::newRow("schema-four") << 4;
 }
 
 void LayoutImportTests::oldVersionsNormalizeWithoutWriting() {
@@ -204,6 +206,35 @@ void LayoutImportTests::oldVersionsNormalizeWithoutWriting() {
              source.value(QStringLiteral("targets")));
     QCOMPARE(readBytes(path), original);
     QVERIFY(!QFile::exists(path + QStringLiteral(".bak")));
+}
+
+void LayoutImportTests::systemThemeIsPreservedInPreviewAndCommit() {
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto path = directory.filePath(QStringLiteral("system-theme.json"));
+    auto source = fixtureSnapshot();
+    source.insert(QStringLiteral("preferences"),
+                  QJsonObject{{QStringLiteral("theme"), QStringLiteral("system")}});
+    const auto original = bytes(source);
+    QVERIFY(writeBytes(path, original));
+    const auto preview = readLayoutImport(path);
+    QVERIFY2(preview.success, qPrintable(preview.message));
+    QCOMPARE(preview.snapshot, source);
+    QCOMPARE(preview.sourceVersion, LayoutStore::schemaVersion);
+    QVector<QJsonObject> writes;
+    const auto committed = commitLayoutImport(fixtureSnapshot(), preview.snapshot,
+                                              [&writes](const QJsonObject& snapshot) {
+                                                  writes.append(snapshot);
+                                                  return LayoutResult{true, {}};
+                                              });
+    QVERIFY(committed.result.success);
+    QVERIFY(!writes.isEmpty());
+    QCOMPARE(writes.last(), source);
+    QCOMPARE(readBytes(path), original);
+    auto oldSystem = source;
+    oldSystem.insert(QStringLiteral("schemaVersion"), 4);
+    QVERIFY(writeBytes(path, bytes(oldSystem)));
+    QVERIFY(!readLayoutImport(path).success);
 }
 
 void LayoutImportTests::currentOverridesAndEmptyLayoutsArePreserved() {
@@ -379,6 +410,8 @@ void LayoutImportTests::unchangedLegacyCurrentPreservesOriginalBackupBytes_data(
     QTest::addColumn<int>("version");
     QTest::newRow("schema-one") << 1;
     QTest::newRow("schema-two") << 2;
+    QTest::newRow("schema-three") << 3;
+    QTest::newRow("schema-four") << 4;
 }
 
 void LayoutImportTests::unchangedLegacyCurrentPreservesOriginalBackupBytes() {

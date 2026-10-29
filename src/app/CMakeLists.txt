@@ -1,3 +1,5 @@
+include("${PROJECT_SOURCE_DIR}/cmake/build_identity.cmake")
+
 function(xdstarter_add_ui target import_root)
     target_sources(${target} PRIVATE
         "${PROJECT_SOURCE_DIR}/src/app/application_icon_provider.h"
@@ -6,6 +8,11 @@ function(xdstarter_add_ui target import_root)
         "${PROJECT_SOURCE_DIR}/src/app/desktop_window_host.cpp"
         "${PROJECT_SOURCE_DIR}/src/app/interface_font.h"
         "${PROJECT_SOURCE_DIR}/src/app/interface_font.cpp"
+        "${PROJECT_SOURCE_DIR}/src/app/scene_graph_failure_guard.h"
+        "${PROJECT_SOURCE_DIR}/src/app/scene_graph_failure_guard.cpp"
+        "${PROJECT_SOURCE_DIR}/src/app/scene_graph_failure_notice.h"
+        "${PROJECT_SOURCE_DIR}/src/app/scene_graph_failure_notice.cpp"
+        "${PROJECT_SOURCE_DIR}/src/app/runtime_support.cpp"
     )
     set(qml_files)
     foreach(component IN ITEMS Main TileButton TileGroup ShortcutRail MenuChrome LayoutImportDialog Hint FloatingSurface MenuGlyph)
@@ -61,6 +68,7 @@ function(xdstarter_add_ui target import_root)
 endfunction()
 
 qt_add_executable(xdstarter main.cpp)
+target_include_directories(xdstarter PRIVATE "${PROJECT_BINARY_DIR}/generated")
 target_compile_definitions(xdstarter PRIVATE XDSTARTER_VERSION="${PROJECT_VERSION}")
 xdstarter_add_ui(xdstarter "${PROJECT_BINARY_DIR}/qml")
 if(WIN32)

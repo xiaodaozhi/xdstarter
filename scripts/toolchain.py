@@ -141,6 +141,8 @@ def environment_value(environment, name):
 
 
 def build(args):
+    from windows_package import digest, source_identity
+    source = source_identity() if not args.core_only else None
     report = check(args)
     prefix = qt_prefix(args.qt_prefix)
     environment = build_environment(None if args.core_only else prefix)
@@ -150,7 +152,14 @@ def build(args):
     configure += ['-DCMAKE_MAKE_PROGRAM=' + tool('ninja').as_posix()]
     if not args.core_only:
         configure.append('-DCMAKE_PREFIX_PATH=' + prefix.as_posix())
+        if WINDOWS:
+            configure.append('-DPython3_EXECUTABLE=' + PYTHON.as_posix())
         configure.append('-DXDSTARTER_ALLOW_ALTERNATE_MSVC=' + ('ON' if args.alternate_msvc else 'OFF'))
+        configure.append('-DXDSTARTER_DISTRIBUTION_BUILD=' + ('ON' if args.distribution else 'OFF'))
+        configure.append('-DXDSTARTER_BUILD_NUMBER=' + str(args.build_number))
+        if args.distribution:
+            configure += ['-DXDSTARTER_BUILD_START_BRIDGE_POC=OFF',
+                          '-DXDSTARTER_BUILD_EXPLORER_ROUTE_PROBE=OFF']
     run(configure, env=environment)
     if WINDOWS and not args.core_only:
         compiler_files = list((ROOT / 'build' / args.preset / 'CMakeFiles').glob('*/CMakeCXXCompiler.cmake'))
@@ -172,6 +181,13 @@ def build(args):
     if not args.core_only:
         run([tool('cmake'), '--build', 'build/' + args.preset, '--target', 'xdstarter_qmllint'], env=environment)
     run([tool('ctest'), '--preset', args.preset], env=environment)
+    if not args.core_only:
+        if source != source_identity():
+            raise ValueError('Source changed during build/test; repeat with stable source.')
+        executable = ROOT / 'build' / args.preset / 'bin/xdstarter.exe'
+        if WINDOWS:
+            report.update(source=source, executableSha256=digest(executable),
+                          identity=json.loads(capture([executable, '--build-info'], env=environment)))
     report.update({'preset': args.preset, 'alternateMsvc': args.alternate_msvc,
                    'compilerToolset': environment_value(environment, 'VCToolsVersion'),
                    'windowsSdk': environment_value(environment, 'WindowsSDKVersion'),
@@ -184,13 +200,19 @@ def build(args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('command', choices=('install', 'check', 'build'))
+    parser.add_argument('command', choices=('install', 'check', 'build', 'prepare-package', 'package', 'verify'))
     parser.add_argument('--qt-prefix', help='Existing SDK cache; the project owns its version declaration.')
     parser.add_argument('--core-only', action='store_true', help='Skip Qt acquisition/discovery.')
     parser.add_argument('--preset', choices=('app-debug', 'app-release', 'core-debug', 'core-release'), default='app-release')
     parser.add_argument('--fresh', action='store_true')
     parser.add_argument('--alternate-msvc', action='store_true', help='Additional compatibility validation, not the declared Windows baseline.')
     parser.add_argument('--parallel', type=int, default=3)
+    parser.add_argument('--distribution', action='store_true', help='Clean MSVC 2022 Release candidate build.')
+    parser.add_argument('--build-number', type=int, default=0)
+    parser.add_argument('--output-dir', default='build/package')
+    parser.add_argument('--package-cache', default='build/package-tools')
+    parser.add_argument('--kind', choices=('runtime', 'installer', 'all'), default='all')
+    parser.add_argument('--development', action='store_true', help='Explicit local fixture; never a distribution candidate.')
     args = parser.parse_args()
     if args.command == 'build':
         args.core_only = args.preset.startswith('core-')
@@ -198,8 +220,11 @@ def main():
         install(args)
     elif args.command == 'build':
         build(args)
-    else:
+    elif args.command == 'check':
         print(json.dumps(check(args), indent=2))
+    else:
+        from windows_package import execute
+        execute(args)
 
 
 if __name__ == '__main__':

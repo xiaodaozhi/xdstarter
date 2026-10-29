@@ -3,6 +3,23 @@
 #include "start_button_capture_state.h"
 
 namespace xdstarter {
+quint64 startButtonCaptureQueryDelay(StartButtonCaptureMode mode, quint64 elapsedMs) {
+    return mode == StartButtonCaptureMode::Point ? 30 : elapsedMs < 30 ? 30 - elapsedMs : 0;
+}
+
+StartButtonCaptureReason startButtonElementFailure(const StartButtonElementObservation& observation,
+                                                   quint32 expectedProcess, QRect expectedBounds) {
+    if (!expectedProcess || !observation.sameBoundElement || !observation.buttonRole ||
+        observation.automationId != QLatin1String("StartButton") ||
+        observation.processId != expectedProcess)
+        return StartButtonCaptureReason::InvalidIdentity;
+    if (!expectedBounds.isValid() || !observation.bounds.isValid())
+        return StartButtonCaptureReason::InvalidGeometry;
+    if (observation.offscreen || observation.bounds != expectedBounds)
+        return StartButtonCaptureReason::NativeTargetChanged;
+    return StartButtonCaptureReason::None;
+}
+
 StartButtonSubscriptionOutcome
 startButtonSubscriptionOutcome(qint32 rootResult, qint32 structureResult, qint32 propertiesResult) {
     if (rootResult < 0)

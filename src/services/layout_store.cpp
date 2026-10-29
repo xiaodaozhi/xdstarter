@@ -219,11 +219,14 @@ LayoutResult LayoutStore::validate(const QJsonObject& snapshot) {
         return failure(QStringLiteral("配置的目标或分组数量超出限制"));
     }
     const auto preferences = snapshot.value(QStringLiteral("preferences")).toObject();
+    const auto theme = preferences.value(QStringLiteral("theme"));
     if (!keys(preferences, {QStringLiteral("theme")}) ||
         (preferences.contains(QStringLiteral("theme")) &&
-         preferences.value(QStringLiteral("theme")) != QJsonValue(QStringLiteral("dark")) &&
-         preferences.value(QStringLiteral("theme")) != QJsonValue(QStringLiteral("light")))) {
-        return failure(QStringLiteral("主题偏好必须为 dark 或 light"));
+         theme != QJsonValue(QStringLiteral("dark")) &&
+         theme != QJsonValue(QStringLiteral("light")) &&
+         !(version >= 5 && theme == QJsonValue(QStringLiteral("system"))))) {
+        return failure(version >= 5 ? QStringLiteral("主题偏好必须为 dark、light 或 system")
+                                    : QStringLiteral("旧版主题偏好必须为 dark 或 light"));
     }
     QSet<QString> targetIds;
     for (const auto& value : targets) {

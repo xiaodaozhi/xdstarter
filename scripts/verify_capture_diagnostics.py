@@ -13,7 +13,7 @@ import sys
 import time
 
 
-def verify(executable, directory):
+def verify(executable, directory, mode="point"):
     root = Path(__file__).resolve().parents[1]
     executable = executable.resolve(strict=True)
     directory = directory.resolve()
@@ -29,7 +29,7 @@ def verify(executable, directory):
     environment["QT_FORCE_STDERR_LOGGING"] = "1"
     with (directory / "stdout.log").open("wb") as output, (directory / "stderr.log").open("wb") as errors:
         process = subprocess.Popen([str(executable), "--layout-file", str(directory / "layout.json"),
-            "--start-capture-mode", "point", "--start-capture-diagnostics", str(snapshot),
+            "--start-capture-mode", mode, "--start-capture-diagnostics", str(snapshot),
             "--start-capture-duration", "10"], env=environment, stdout=output, stderr=errors,
             creationflags=subprocess.CREATE_NO_WINDOW)
         try:
@@ -56,15 +56,17 @@ def verify(executable, directory):
                 raise RuntimeError("diagnostic writer did not recover after reader release")
             collection = subprocess.run([sys.executable, str(root / "scripts/start_capture_acceptance.py"),
                 "collect", "--snapshot", str(snapshot), "--output", str(directory / "events.ndjson"),
-                "--executable", str(executable), "--mode", "point", "--seconds", "2"],
+                "--executable", str(executable), "--mode", mode, "--seconds", "2"],
                 capture_output=True, text=True, timeout=5)
             exit_code = process.wait(timeout=15)
             final = api["read_json"](snapshot)
-            result = {"productExit": exit_code, "collectorExit": collection.returncode,
+            result = {"mode": mode, "productExit": exit_code, "collectorExit": collection.returncode,
                 "recoveredWriteFailures": recovered["diagnosticWriteFailures"],
                 "exportResumed": recovered["exportedAt"] > old["exportedAt"],
                 "finalHookInstalled": final["hookInstalled"],
                 "finalSessionActive": final["sessionActive"], "sha256": digest,
+                "windowEventSequence": final["windowEventSequence"],
+                "exportedWindowEvents": len(final["recentWindowEvents"]),
                 "physicalTrials": 0, "collection": collection.stdout.strip(),
                 "collectionError": collection.stderr.strip()}
             (directory / "result.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
@@ -82,5 +84,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--executable", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--mode", choices=("point", "area-cache"), default="point")
     args = parser.parse_args()
-    verify(args.executable, args.output)
+    verify(args.executable, args.output, args.mode)
