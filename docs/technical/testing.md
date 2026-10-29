@@ -634,6 +634,8 @@ python scripts/benchmark_ui_search.py --executable build/app-release/bin/xdstart
 
 2026-10-29 一次[离屏原始数据](validation/issue-35/ui-search-offscreen.json)：同上 Windows 11 26300.9711 / i7-11370H / 约 31.8 GiB，Qt 6.8.2、Release v142 19.29.30159，QPA offscreen、软件渲染并使用 Windows 字体目录。结果行就绪 P95 / 最大为 102.32 / 160.66 ms；确认后的同步帧 P95 / 最大为 104.61 / 161.92 ms，负载未隔离且不作为 CI 性能阈值。程序 SHA-256 为 `99a4cd7c0cb92ad327e62180aab73a934af523d2e9db58958f982d20e36cd9cc`，本次夹具源码 SHA-256 为 `0bf861a6f40f6bcfef869a373b1901566222df5d22ecfc7807ceb10df5757395`；其余源码以 `21eb022af4ac6f01eec67e2602add56f0e52c9f5` 为基础，并包含该夹具入口与构建配置。不得将其解释为真实设备屏幕呈现的结论。
 
+2026-10-29 [托管 Windows 原始数据](validation/issue-35/ui-search-windows-ci.json)来自 [CI 40868948279](https://github.com/xiaodaozhi/xdstarter/actions/runs/40868948279)，PR head `88bccddc6521e66a5df2f2301fee5294f3479926` 的测试合并提交 `8922f12e426b496d749b2c4b8509b1e6106e4cef`；Windows Server 内核 10.0.20348、Qt 6.8.2、MSVC 19.44、Windows QPA / D3D11 RHI，程序 SHA-256 `21282f737895020235b50a3180be38190d48c6d4dd17439ccb5249c21a80ac2d`。100 条结果行就绪 P95 / 最大为 155.31 / 204.81 ms，确认后的同步帧 P95 / 最大为 169.30 / 206.21 ms。采样会轮询并检查 QML 对象，包含模拟逐键输入，当前未量化其扰动；需继续调查这些值，不能直接判断真实端到端目标。
+
 ### 本轮 Windows 真机证据
 
 用户确认开始桌面验收后，使用同一 GUI hash、Windows QPA 执行 `searchKeyboardAndLaunchLifecycle`，3/3 通过（含初始化／清理，2.617 秒），日志为本地 `build/issue8-render-native.log`。该用例直接导出[原生浅色样例](../design/validation/issue-8/search-light-native.png)和[原生深色样例](../design/validation/issue-8/search-dark-native.png)，均为 1028×728 RGBA、DPR 1，四角 alpha 为 0；已目视核对搜索框、结果名称、图标占位、固定状态、单层边框和主题。[抓帧元数据](../design/validation/issue-8/search-render-native.json)标明 `fixtureOnly: true`，没有读取用户目录或启动真实应用，不以此替代下述产品验收。
