@@ -1,4 +1,21 @@
 find_package(Qt6 REQUIRED COMPONENTS Test)
+qt_add_executable(xdstarter_scene_graph_failure_host_fixture
+    scene_graph_failure_host_fixture.cpp
+    "${PROJECT_SOURCE_DIR}/src/app/scene_graph_failure_guard.cpp"
+    "${PROJECT_SOURCE_DIR}/src/app/desktop_window_host.h"
+    "${PROJECT_SOURCE_DIR}/src/app/desktop_window_host.cpp"
+)
+target_include_directories(xdstarter_scene_graph_failure_host_fixture PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(xdstarter_scene_graph_failure_host_fixture PRIVATE
+    xdstarter_services xdstarter_platform Qt6::Gui Qt6::Quick
+)
+add_test(NAME ui.scene_graph_failure_host COMMAND xdstarter_scene_graph_failure_host_fixture)
+set_tests_properties(ui.scene_graph_failure_host PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_FORCE_STDERR_LOGGING=1"
+    WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
+    TIMEOUT 15
+)
+
 add_executable(xdstarter_runtime_support_tests runtime_support_tests.cpp
     "${PROJECT_SOURCE_DIR}/src/app/runtime_support.cpp")
 target_include_directories(xdstarter_runtime_support_tests PRIVATE "${PROJECT_SOURCE_DIR}/src")

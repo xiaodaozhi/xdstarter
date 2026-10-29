@@ -6,6 +6,8 @@
 
 [#66](https://github.com/xiaodaozhi/xdstarter/issues/66) 排除软件 OpenGL DLL，CI 清除副本的 SDK 搜索路径并确认宿主系统目录也不含该 DLL，再验证 Qt Quick 软件、Windows D3D11 与显式选择的 WARP 软件设备；记录选中适配器，Test／offscreen 只加入副本。强制 WARP 不模拟硬件故障，也不证明自动回退。一次性 hosted Server 夹具与实际产品分别记录哈希，夹具只降低 OS 门槛，不计作干净 Windows 11 验收。运行结果、失败和剩余项在 #66／#36 与 CI 工件登记；本节不宣称尚未运行的检查通过。
 
+[#68](https://github.com/xiaodaozhi/xdstarter/issues/68) 增加两层隔离回归：假托盘和假输入接管在图形错误退出时检查停止顺序；Windows 测试在临时副本中以测试 DLL 模拟 D3D11 设备创建失败，覆盖正常、代理直通、硬件失败后的自动 WARP、硬件与 WARP 均失败及延迟失败。发行运行目录再执行同样检查，不把测试代理或系统 D3D11 副本打入发行包。默认适配器已经是软件设备时，硬件回退用例记录跳过；设备创建故障注入不代表真实驱动损坏、运行中设备丢失或干净 Windows 11 验收。
+
 ## 当前自动检查
 
 `python3 scripts/check_repository.py` 检查本地文档/图片链接、JSON/SVG/PNG 基本有效性、当前设计尺寸、Logo 透明通道及 SVG 网格几何。该检查不运行 Qt，也不代表 Windows 原型通过。

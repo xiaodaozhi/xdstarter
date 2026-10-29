@@ -20,7 +20,7 @@
 
 ## 技术设计
 
-[#64](https://github.com/xiaodaozhi/xdstarter/issues/64) 接入 Windows 分阶段构建、app-local CRT、Qt 裁剪和当前用户安装器；[#66](https://github.com/xiaodaozhi/xdstarter/issues/66) 排除默认软件 OpenGL 并验证 D3D11／WARP，见[发行流程](technical/release.md)与 [ADR-0017](technical/adr/0017-windows-packaging.md)。本机 v142 与 MSVC 2022 CI 交付分别记录；候选、Server 夹具和干净 Windows 11 验收互不替代，公开发行继续由 #36／#3 跟踪。
+[#64](https://github.com/xiaodaozhi/xdstarter/issues/64) 接入 Windows 分阶段构建、app-local CRT、Qt 裁剪和当前用户安装器；[#66](https://github.com/xiaodaozhi/xdstarter/issues/66) 排除默认软件 OpenGL 并验证 D3D11／WARP，[#68](https://github.com/xiaodaozhi/xdstarter/issues/68) 处理图形设备均不可用时的安全退出，见[发行流程](technical/release.md)与 [ADR-0017](technical/adr/0017-windows-packaging.md)。本机 v142 与 MSVC 2022 CI 交付分别记录；候选、Server 夹具和干净 Windows 11 验收互不替代，公开发行继续由 #36／#3 跟踪。
 
 [Issue #53](https://github.com/xiaodaozhi/xdstarter/issues/53) 跟踪公共／用户 Programs 中等价叶子快捷方式的重复展示，目标身份与原文件启动保持独立。[Issue #52](https://github.com/xiaodaozhi/xdstarter/issues/52) 补充开始按钮漏拦截诊断，并比较显式外部区域资格与独立进程内桥接实验；默认产品入口和真实 Windows 验证边界见 [ADR-0016](technical/adr/0016-start-capture-experiments.md)。隔离宿主、模拟输入与物理 Explorer 验收不能相互替代。
 

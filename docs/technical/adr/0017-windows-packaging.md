@@ -26,4 +26,6 @@ app-local 支持普通用户及解压运行，CRT 安全维护随应用升级；
 
 [#66](https://github.com/xiaodaozhi/xdstarter/issues/66) 将 `opengl32sw.dll` 排除在默认包之外，审计拒绝误带。Qt Quick 6.8 在 Windows 默认使用 D3D11；WARP 是 Direct3D 软件设备，与软件 OpenGL 独立。显式选择软件 OpenGL 不再由默认包提供实现。CI 在不包含该 DLL 的副本中记录 D3D11、强制 WARP 和 Qt Quick 软件渲染证据；强制选择不证明真实驱动故障后的自动回退。旧版由清单记录的 DLL 按原哈希升级清理，修改过的文件仍受保护。
 
+[#68](https://github.com/xiaodaozhi/xdstarter/issues/68) 增加仅用于临时副本的 D3D11 创建设备故障注入，验证 Qt 自动 WARP 与双重失败退出；发行审计拒绝 app-local `d3d11.dll` 和测试代理。测试可记录默认适配器已是软件设备而跳过硬件回退，注入不替代真实驱动故障或运行中设备丢失验收。
+
 依据：[xdzip 部署](https://github.com/xiaodaozhi/xdzip/issues/15)、[Qt 部署](https://doc.qt.io/qt-6.8/windows-deployment.html)、[Qt Windows 图形加速](https://doc.qt.io/qt-6.8/windows-graphics.html)、[Microsoft DXGI 软件适配器](https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/d3d10-graphics-programming-guide-dxgi)、[MSVC 兼容要求](https://learn.microsoft.com/en-us/cpp/porting/binary-compat-2015-2017?view=msvc-170)、[Inno 最低权限](https://jrsoftware.org/ishelp/topic_setup_privilegesrequired.htm)。

@@ -152,6 +152,8 @@ def build(args):
     configure += ['-DCMAKE_MAKE_PROGRAM=' + tool('ninja').as_posix()]
     if not args.core_only:
         configure.append('-DCMAKE_PREFIX_PATH=' + prefix.as_posix())
+        if WINDOWS:
+            configure.append('-DPython3_EXECUTABLE=' + PYTHON.as_posix())
         configure.append('-DXDSTARTER_ALLOW_ALTERNATE_MSVC=' + ('ON' if args.alternate_msvc else 'OFF'))
         configure.append('-DXDSTARTER_DISTRIBUTION_BUILD=' + ('ON' if args.distribution else 'OFF'))
         configure.append('-DXDSTARTER_BUILD_NUMBER=' + str(args.build_number))

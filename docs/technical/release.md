@@ -72,6 +72,6 @@ Qt 运行库许可与应用许可证分别处理，依赖清单、许可证文�
 
 包内携带 Qt、Unicode、CRT、SDK 和安装器引擎通知，配套固定哈希的 Qt 模块与构建工具源码。原先随软件 OpenGL 提供的 Mesa 11.2.2／LLVM 3.6.2 材料不再列为该包来源；SDK 自身协议及第三方通知继续保留。SDK SPDX 与实际字节用于观察文件归属，未匹配、内嵌组件及源码对应关系明确为 incomplete。保守许可集合不表示所有组件被使用，源码归档存在不证明 SDK 二进制等价，应用许可仍由 [#3](https://github.com/xiaodaozhi/xdstarter/issues/3) 决定。
 
-审计递归核对普通与延迟 DLL 导入，CRT 必须来自包内，第三方 DLL 不回退到 SDK 或 System32。无 SDK 搜索路径和软件 OpenGL DLL 的独立副本验证 Qt Quick 软件、D3D11 及显式选择的 WARP 软件设备；记录实际渲染器和选中适配器，测试 DLL 只加入副本。WARP 验证不模拟硬件故障，不代表自动回退或干净 Windows 11 验收已通过。
+审计递归核对普通与延迟 DLL 导入，CRT 必须来自包内，第三方 DLL 不回退到 SDK 或 System32；同时拒绝 app-local `d3d11.dll` 与测试代理。无 SDK 搜索路径和软件 OpenGL DLL 的独立副本验证 Qt Quick 软件、D3D11、显式 WARP 及设备创建失败后的处理；测试代理仅存在于临时副本。硬件设备创建失败时检查自动 WARP，硬件与 WARP 均失败时检查非零退出；默认设备已是软件适配器时，硬件回退结果记录跳过。注入 API 失败不代表真实驱动损坏、运行中设备丢失或干净 Windows 11 验收。
 
 普通 CI 不发布 Release。生命周期脚本仅允许一次性 hosted runner，Server 夹具只降低 OS 门槛，验证安装、占用拒绝、升级清理、启动项和卸载且不上传夹具。实际安装器仍要求 Windows 11。Server 夹具、无 SDK 运行和干净 Windows 11 同哈希候选验收分别记录。

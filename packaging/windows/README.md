@@ -8,3 +8,5 @@
 - sources.json：Qt 模块和构建工具的原始归档及哈希，不继承 xdzip 的 Rust、字体或其他平台依赖。默认包不含软件 OpenGL，旧 Mesa／LLVM 材料不再作为它的来源。
 
 源码归档与 SDK SPDX 一同提供，仍需核对补丁、配置和实际组件对应关系。缺口在 runtime-attribution 报告中保留。运行目录中的 Windows-runtime-NOTICE 和 Qt-replacement 分别说明原始条款与动态库替换边界。使用和验收见[发行流程](../../docs/technical/release.md)。
+
+图形故障测试代理仅供隔离副本使用；发行审计拒绝 `d3d11.dll` 和 `xdstarter_d3d11_failure_proxy.dll`，系统 D3D11 始终由 Windows 提供。
