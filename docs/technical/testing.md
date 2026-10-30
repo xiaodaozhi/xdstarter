@@ -666,6 +666,12 @@ python scripts/benchmark_ui_search.py --executable build/app-release/bin/xdstart
 
 2026-10-29 [托管 Windows 原始数据](validation/issue-35/ui-search-windows-ci.json)来自 [CI 40868948279](https://github.com/xiaodaozhi/xdstarter/actions/runs/40868948279)，PR head `88bccddc6521e66a5df2f2301fee5294f3479926` 的测试合并提交 `8922f12e426b496d749b2c4b8509b1e6106e4cef`；Windows Server 内核 10.0.20348、Qt 6.8.2、MSVC 19.44、Windows QPA / D3D11 RHI，程序 SHA-256 `21282f737895020235b50a3180be38190d48c6d4dd17439ccb5249c21a80ac2d`。100 条结果行就绪 P95 / 最大为 155.31 / 204.81 ms，确认后的同步帧 P95 / 最大为 169.30 / 206.21 ms。采样会轮询并检查 QML 对象，包含模拟逐键输入，当前未量化其扰动；需继续调查这些值，不能直接判断真实端到端目标。
 
+### 托管环境常驻资源采样
+
+`scripts/benchmark_resident.py` 仅在 GitHub 标记的一次性 Windows hosted runner 启动自己的限时产品进程，使用 build 内隔离布局和诊断文件，不注入输入。首次诊断快照后等待 2 秒，再以约 1 秒间隔采集 21 次进程 CPU 累计时间、工作集、私有内存、该 PID 可见顶层窗口数量和单次读取耗时；20 个 CPU 区间以一个逻辑核的 100% 为单位。脚本记录程序散列、构建身份、运行与尝试编号，并检查正常退出后的捕获状态；独立校验器重新计算区间值。正常退出超时时仅终止本次启动的进程并保留失败证据。
+
+进程每 250 ms 写入接管诊断，采样又会枚举窗口；已记录单次读取耗时，但没有量化诊断对进程 CPU、内存的影响。可见性只代表采样时刻的顶层窗口，不能证明整个区间均隐藏；这些 Server runner 数据不代表 Windows 11 真机、物理输入或性能目标验收。
+
 ### 本轮 Windows 真机证据
 
 用户确认开始桌面验收后，使用同一 GUI hash、Windows QPA 执行 `searchKeyboardAndLaunchLifecycle`，3/3 通过（含初始化／清理，2.617 秒），日志为本地 `build/issue8-render-native.log`。该用例直接导出[原生浅色样例](../design/validation/issue-8/search-light-native.png)和[原生深色样例](../design/validation/issue-8/search-dark-native.png)，均为 1028×728 RGBA、DPR 1，四角 alpha 为 0；已目视核对搜索框、结果名称、图标占位、固定状态、单层边框和主题。[抓帧元数据](../design/validation/issue-8/search-render-native.json)标明 `fixtureOnly: true`，没有读取用户目录或启动真实应用，不以此替代下述产品验收。
