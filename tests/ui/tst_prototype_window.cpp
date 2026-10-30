@@ -33,6 +33,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJSValue>
 #include <QLineF>
 #include <QLockFile>
 #include <QMap>
@@ -596,6 +597,7 @@ class PrototypeWindowTest : public QObject {
     QRectF viewportScene() const;
     QObject* sizeMenu() const;
     void openSizeMenu(const QString& tileId, bool keyboard);
+    bool queueFocusReplay(const QString& method, const QString& marker);
     void chooseSize(const QString& itemName, bool keyboard = false);
     void pinFirstApplication(const std::shared_ptr<CatalogTestState>& state);
     void openGroupMenu(const QString& groupId);
@@ -3014,10 +3016,25 @@ QObject* PrototypeWindowTest::sizeMenu() const {
 
 void PrototypeWindowTest::openSizeMenu(const QString& tileId, bool keyboard) {
     settleMenus();
+    const auto diagnostics = [this, &tileId, keyboard] {
+        const auto* tile = item(QStringLiteral("tile-") + tileId);
+        const auto* focus = window_->activeFocusItem();
+        const auto* menu = sizeMenu();
+        return QStringLiteral("input=%1 target=%2 targetVisible=%3 targetEnabled=%4 targetFocus=%5 "
+                              "activeFocus=%6 menuVisible=%7 menuOpened=%8 popup=%9 suspended=%10 pending=%11")
+            .arg(keyboard ? QStringLiteral("Shift+F10") : QStringLiteral("right-click"))
+            .arg(tileId)
+            .arg(tile && tile->isVisible()).arg(tile && tile->isEnabled()).arg(tile && tile->hasActiveFocus())
+            .arg(focus ? focus->objectName() : QStringLiteral("none"))
+            .arg(menu && menu->property("visible").toBool()).arg(menu && menu->property("opened").toBool())
+            .arg(window_->property("internalPopupVisible").toBool())
+            .arg(window_->property("presentationSuspended").toBool())
+            .arg(window_->property("presentationFocusPending").toBool());
+    };
     auto* tile = item(QStringLiteral("tile-") + tileId);
     QVERIFY(tile);
     tile->forceActiveFocus(Qt::TabFocusReason);
-    QTRY_VERIFY(tile->hasActiveFocus());
+    QTRY_VERIFY2(tile->hasActiveFocus(), qPrintable(diagnostics()));
     if (keyboard) {
         QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
     } else {
@@ -3025,8 +3042,23 @@ void PrototypeWindowTest::openSizeMenu(const QString& tileId, bool keyboard) {
                           tile->mapToScene(tile->boundingRect().center()).toPoint());
     }
     QTRY_VERIFY(sizeMenu());
-    QTRY_VERIFY(sizeMenu()->property("visible").toBool());
-    QTRY_VERIFY(sizeMenu()->property("opened").toBool());
+    QTRY_VERIFY2(sizeMenu()->property("visible").toBool(), qPrintable(diagnostics()));
+    QTRY_VERIFY2(sizeMenu()->property("opened").toBool(), qPrintable(diagnostics()));
+}
+
+bool PrototypeWindowTest::queueFocusReplay(const QString& method, const QString& marker) {
+    auto root = engine_->newQObject(window_);
+    engine_->globalObject().setProperty(QStringLiteral("__focusReplayWindow"), root);
+    const auto action = engine_->evaluate(
+        QStringLiteral("(function() { __focusReplayWindow.%1(); __focusReplayWindow.objectName = '%2'; })")
+            .arg(method, marker));
+    auto queue = root.property(QStringLiteral("queuePopupFocusRestore"));
+    if (!action.isCallable() || !queue.isCallable())
+        return false;
+    const auto result = queue.callWithInstance(root, {action});
+    if (result.isError())
+        qWarning() << "Cannot queue focus replay:" << result.toString();
+    return !result.isError();
 }
 
 void PrototypeWindowTest::chooseSize(const QString& itemName, bool keyboard) {
@@ -3468,6 +3500,25 @@ void PrototypeWindowTest::lateApplicationMenuClosePreservesTileFocus() {
     QTRY_VERIFY(tile->hasActiveFocus());
     QVERIFY(QMetaObject::invokeMethod(window_, "restoreApplicationMenuFocus"));
     QVERIFY2(tile->hasActiveFocus(), "A stale application-menu close stole tile focus");
+
+    // Repeat the same interleaving through the real Qt.callLater queue and
+    // require a marker from the callback before checking the new focus.
+    QTRY_VERIFY(!window_->property("internalPopupVisible").toBool());
+    QTRY_VERIFY(!window_->property("presentationFocusPending").toBool());
+    QVERIFY(!window_->property("presentationSuspended").toBool());
+    application->forceActiveFocus(Qt::OtherFocusReason);
+    QVERIFY(application->hasActiveFocus());
+    QVERIFY(window_->setProperty("pinMenuReturnTarget", QVariant::fromValue(application)));
+    const auto originalName = window_->objectName();
+    const auto marker = QStringLiteral("applicationCallbackExecuted");
+    QVERIFY(queueFocusReplay(QStringLiteral("restoreApplicationMenuFocus"), marker));
+    QCOMPARE(window_->objectName(), originalName); // The action is actually deferred.
+    tile->forceActiveFocus(Qt::TabFocusReason); // Before processing the queued callback.
+    QVERIFY(tile->hasActiveFocus());
+    QTRY_COMPARE(window_->objectName(), marker);
+    QVERIFY2(tile->hasActiveFocus(), "A queued application-menu close stole tile focus");
+    QVERIFY(window_->property("pinMenuReturnTarget").isNull());
+    window_->setObjectName(originalName);
     QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
     QTRY_VERIFY(sizeMenu()->property("opened").toBool());
 }
@@ -3530,6 +3581,7 @@ void PrototypeWindowTest::applicationDirectoryAndPinning() {
     QVERIFY(tileIcon);
     QTRY_COMPARE(tileIcon->property("status").toInt(), 1);
     openSizeMenu(tileId, true);
+    QVERIFY(!QTest::currentTestFailed()); // Avoid reporting downstream failures from a closed menu.
     chooseSize(QStringLiteral("unpinTileItem"), true);
     QTRY_COMPARE(tileGeometries().size(), 0);
     QVERIFY(!item(QStringLiteral("pinButton-") + applicationId));
@@ -4128,6 +4180,24 @@ void PrototypeWindowTest::lateMoreMenuClosePreservesGroupFocus() {
     // already taken focus. Invoke its exact decision at that controlled point.
     QVERIFY(QMetaObject::invokeMethod(window_, "restoreMoreMenuFocus"));
     QVERIFY2(actions->hasActiveFocus(), "A stale menu close stole focus from the new group");
+    QVERIFY(actions->isVisible() && actions->isEnabled());
+    QTRY_VERIFY(!window_->property("groupFocusPending").toBool());
+    QTRY_VERIFY(!window_->property("internalPopupVisible").toBool());
+    QTRY_VERIFY(!window_->property("presentationFocusPending").toBool());
+    QVERIFY(!window_->property("presentationSuspended").toBool());
+    auto* moreButton = item(QStringLiteral("moreMenuButton"));
+    QVERIFY(moreButton);
+    moreButton->forceActiveFocus(Qt::OtherFocusReason);
+    QVERIFY(moreButton->hasActiveFocus());
+    const auto originalName = window_->objectName();
+    const auto marker = QStringLiteral("moreCallbackExecuted");
+    QVERIFY(queueFocusReplay(QStringLiteral("restoreMoreMenuFocus"), marker));
+    QCOMPARE(window_->objectName(), originalName);
+    actions->forceActiveFocus(Qt::OtherFocusReason);
+    QVERIFY(actions->hasActiveFocus());
+    QTRY_COMPARE(window_->objectName(), marker);
+    QVERIFY2(actions->hasActiveFocus(), "A queued more-menu close stole new group focus");
+    window_->setObjectName(originalName);
 }
 
 void PrototypeWindowTest::groupManagementLifecycle() {
