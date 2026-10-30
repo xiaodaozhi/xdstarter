@@ -181,6 +181,8 @@ def validate_role(directory, role, expected):
             resident_sample.inspect(directory / 'resident-sample', expected['GITHUB_SHA'])
         except (OSError, ValueError, KeyError, TypeError) as error:
             raise ValueError('incomplete-resident-sample') from error
+        resident = json.loads((directory / 'resident-sample/resident-sample.json').read_text(encoding='utf-8'))
+        require({key: resident['ci'].get(key) for key in expected} == expected, 'resident-identity-mismatch')
         for mode, (qpa, graphics_api) in FRAME_MODES.items():
             try:
                 frame_trace.inspect(directory / f'frame-{mode}', qpa, graphics_api)

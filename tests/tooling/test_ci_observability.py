@@ -395,6 +395,19 @@ class EvidenceTests(TemporaryRepository):
         with self.assertRaisesRegex(ValueError, 'incomplete-resident-sample'):
             ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
 
+    def test_resident_sample_from_another_attempt_is_not_same_run(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'resident-sample/resident-sample.json'
+        data = json.loads(path.read_text(encoding='utf-8'))
+        data['ci']['GITHUB_RUN_ATTEMPT'] = '2'
+        path.write_text(json.dumps(data), encoding='utf-8')
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        report['files']['resident-sample/resident-sample.json'] = ci_evidence.checksum(path)
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'resident-identity-mismatch'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
 
 if __name__ == '__main__':
     unittest.main()
