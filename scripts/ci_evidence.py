@@ -236,10 +236,12 @@ def validate_role(directory, role, expected):
             for run in ('initial', 'repeat'):
                 shell = json.loads((directory / f'shell-{fixture}-{run}.json').read_text(encoding='utf-8'))
                 display = shell.get('shellDisplay', {})
+                localized = display.get('strictLocalizedDistinctPaths')
                 require(shell.get('passed') is True and shell.get('fixtureCleaned') is True and
                         shell.get('allFixtureDaclsRestored') is True and
                         display.get('displayAssertionPassed') is True and
-                        display.get('strictLocalizedDistinctPaths') is True and
+                        display.get('matchesNativeShell') is True and
+                        type(localized) is bool and (fixture == 'workspace' or localized is True) and
                         display.get('mode') == ('system' if fixture == 'workspace' else 'strict-localized'),
                         'incomplete-or-misattributed-shell-evidence')
     return report
