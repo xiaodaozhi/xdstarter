@@ -1004,6 +1004,8 @@ $env:XDSTARTER_QT_ROOT = "$PWD/build/Qt/6.8.2/msvc2022_64"
 
 [#92](https://github.com/xiaodaozhi/xdstarter/issues/92) 保留仓库检查、Linux 核心和 Windows Server 应用作业的既有测试与名称。工具获取、Qt 下载、配置、编译、QML lint 和 CTest 的阶段耗时与退出码关联到运行 ID、尝试次数和提交；Windows 打包只缓存固定来源、哈希锁定的原始输入，规则见[工程依赖](dependencies.md)。不缓存 SDK、测试结果或构建产物。仓库检查仅取消同一 PR 的旧运行；应用作业包含独立实验，故不启用自动取消。`main` 推送、手动运行及项目初始化的既有入口保持原样。
 
+PR 的 Windows runner 仓库检出设置 5 分钟上限，超时即失败，不跳过后续测试或记为通过；主分支、手动运行以及其余构建和测试的超时不变。该限制用于留下异常卡住的检出结果，不代表已经确定 [PR #94](https://github.com/xiaodaozhi/xdstarter/pull/94) 首轮 runner 卡住的原因。
+
 分类作业当前只观察完整 Git 对比中仅修改 `docs/README.md` 的情况；字体、QML、视觉 JSON、接口与安装或发行契约以及其他未知路径均按全量处理。无基线、手动触发、标签、fork、提交身份不匹配或读取失败也按全量处理。无论观察结果如何，所有既有作业照常运行；不能据此声称已启用文档跳过。
 
 影子汇总要求同一提交、运行与尝试次数的 Linux 和 Windows 作业成功，核验原始 CTest、Shell 两种夹具的初次及重复记录、原生 Qt 日志、阶段记录及 Windows Server 安装生命周期证据。原生 Qt 日志还须与用例、文件选择器诊断模式及深浅两轮对应；即便报告测试通过，出现 `QCRITICAL` 或 `QFATAL` 也不能作为通过证据。缺文件、失败、跳过、取消或身份不一致同样不能记为通过。失败时仍保留原有诊断工件；新增观察工件沿用 7 天保留期。它不替代原始作业、仓库检查，也不能把 Server 夹具或离屏测试当作 Windows 11 真机验收。原生文件选择器清理超时仍由 [#88](https://github.com/xiaodaozhi/xdstarter/issues/88) 跟踪。
