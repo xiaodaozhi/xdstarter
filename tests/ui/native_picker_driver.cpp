@@ -38,15 +38,33 @@ HRESULT findById(IUIAutomation* automation, IUIAutomationElement* root,
     VariantInit(&value);
     value.vt = VT_BSTR;
     value.bstrVal = SysAllocString(id);
-    Com<IUIAutomationCondition> condition;
+    Com<IUIAutomationCondition> idCondition, pidCondition, typeCondition, idAndPid, all;
+    Com<IUIAutomationElementArray> matches;
     HRESULT hr = value.bstrVal ? automation->CreatePropertyCondition(
-        UIA_AutomationIdPropertyId, value, &condition.value) : E_OUTOFMEMORY;
-    if (SUCCEEDED(hr)) hr = root->FindFirst(TreeScope_Descendants, condition.value, result);
+        UIA_AutomationIdPropertyId, value, &idCondition.value) : E_OUTOFMEMORY;
+    VARIANT numeric;
+    VariantInit(&numeric);
+    numeric.vt = VT_I4;
+    numeric.lVal = static_cast<LONG>(pid);
+    if (SUCCEEDED(hr)) hr = automation->CreatePropertyCondition(UIA_ProcessIdPropertyId, numeric, &pidCondition.value);
+    if (SUCCEEDED(hr)) hr = automation->CreateAndCondition(idCondition.value, pidCondition.value, &idAndPid.value);
+    IUIAutomationCondition* filter = idAndPid.value;
+    if (SUCCEEDED(hr) && expected) {
+        numeric.lVal = expected;
+        hr = automation->CreatePropertyCondition(UIA_ControlTypePropertyId, numeric, &typeCondition.value);
+        if (SUCCEEDED(hr)) hr = automation->CreateAndCondition(idAndPid.value, typeCondition.value, &all.value);
+        filter = all.value;
+    }
+    if (SUCCEEDED(hr)) hr = root->FindAll(TreeScope_Descendants, filter, &matches.value);
+    int count = 0;
+    if (SUCCEEDED(hr) && matches.value) hr = matches.value->get_Length(&count);
+    if (SUCCEEDED(hr) && (!matches.value || count != 1)) hr = E_FAIL;
+    if (SUCCEEDED(hr)) hr = matches.value->GetElement(0, result);
     int actualPid = 0;
     CONTROLTYPEID actualType = 0;
     if (SUCCEEDED(hr) && *result) hr = (*result)->get_CurrentProcessId(&actualPid);
     if (SUCCEEDED(hr) && *result) hr = (*result)->get_CurrentControlType(&actualType);
-    std::cout << "find id=" << printableId(id) << " found=" << bool(*result) << " pid=" << actualPid
+    std::cout << "find id=" << printableId(id) << " count=" << count << " found=" << bool(*result) << " pid=" << actualPid
               << " type=" << actualType << " hr=0x" << std::hex << static_cast<unsigned long>(hr)
               << std::dec << std::endl;
     if (SUCCEEDED(hr) && (!*result || actualPid != static_cast<int>(pid) ||
@@ -89,8 +107,13 @@ HRESULT findChildEdit(IUIAutomation* automation, IUIAutomationElement* parent,
     value.vt = VT_I4;
     value.lVal = UIA_EditControlTypeId;
     Com<IUIAutomationCondition> condition;
+    Com<IUIAutomationElementArray> matches;
     HRESULT hr = automation->CreatePropertyCondition(UIA_ControlTypePropertyId, value, &condition.value);
-    if (SUCCEEDED(hr)) hr = parent->FindFirst(TreeScope_Descendants, condition.value, result);
+    if (SUCCEEDED(hr)) hr = parent->FindAll(TreeScope_Descendants, condition.value, &matches.value);
+    int count = 0;
+    if (SUCCEEDED(hr) && matches.value) hr = matches.value->get_Length(&count);
+    if (SUCCEEDED(hr) && (!matches.value || count != 1)) hr = E_FAIL;
+    if (SUCCEEDED(hr)) hr = matches.value->GetElement(0, result);
     int actualPid = 0;
     if (SUCCEEDED(hr) && *result) hr = (*result)->get_CurrentProcessId(&actualPid);
     if (SUCCEEDED(hr) && (!*result || actualPid != static_cast<int>(pid))) hr = E_FAIL;
@@ -138,13 +161,19 @@ int wmain(int argc, wchar_t** argv) {
         if (SUCCEEDED(hr)) hr = automation.value->ElementFromHandle(dialog, &root.value);
         if (SUCCEEDED(hr) && !root.value) hr = E_FAIL;
         if (SUCCEEDED(hr)) stage = "filename-control";
-        if (SUCCEEDED(hr)) hr = findById(automation.value, root.value, L"1148", pid,
-                                         0, &fileName.value);
+        if (SUCCEEDED(hr)) {
+            hr = findById(automation.value, root.value, L"1148", pid, UIA_EditControlTypeId, &fileName.value);
+            if (FAILED(hr)) {
+                if (fileName.value) { fileName.value->Release(); fileName.value = nullptr; }
+                hr = findById(automation.value, root.value, L"1148", pid, UIA_ComboBoxControlTypeId, &fileName.value);
+            }
+        }
         if (SUCCEEDED(hr)) stage = "filename-value-pattern";
         if (SUCCEEDED(hr)) {
             hr = fileName.value->GetCurrentPatternAs(UIA_ValuePatternId, IID_PPV_ARGS(&value.value));
             if (SUCCEEDED(hr) && !value.value) hr = E_FAIL;
             if (FAILED(hr)) {
+                if (value.value) { value.value->Release(); value.value = nullptr; }
                 hr = findChildEdit(automation.value, fileName.value, pid, &edit.value);
                 if (SUCCEEDED(hr)) hr = edit.value->GetCurrentPatternAs(UIA_ValuePatternId, IID_PPV_ARGS(&value.value));
                 if (SUCCEEDED(hr) && !value.value) hr = E_FAIL;
