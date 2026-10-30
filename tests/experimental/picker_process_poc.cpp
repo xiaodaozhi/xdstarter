@@ -315,19 +315,19 @@ struct AutomationChild {
         if (process.hThread) CloseHandle(process.hThread);
         if (process.hProcess) CloseHandle(process.hProcess);
     }
-    void finishAfterSelection() {
+    bool finishAfterSelection() {
         if (!wait(process.hProcess, 1000)) {
             // UIA providers can remain blocked while the target closes. The
             // fixture never lets that auxiliary call block the tested parent.
             require(TerminateJobObject(job, 0x90) != FALSE && wait(process.hProcess, 5000),
                     "terminate blocked fixture automation");
             std::cout << "automation-timeout-after-selection pid=" << process.dwProcessId << std::endl;
-            return;
+            return false;
         }
         DWORD code = 0;
-        require(GetExitCodeProcess(process.hProcess, &code) != FALSE && code == 0,
-                "fixture automation return status");
+        require(GetExitCodeProcess(process.hProcess, &code) != FALSE, "read fixture automation status");
         std::cout << "automation-returned pid=" << process.dwProcessId << " exit=" << code << std::endl;
+        return code == 0;
     }
 };
 
@@ -497,6 +497,8 @@ int wmain(int argc, wchar_t** argv) {
     const bool ownerAInitiallyEnabled = IsWindowEnabled(ownerA) != FALSE;
     const bool ownerBInitiallyEnabled = IsWindowEnabled(ownerB) != FALSE;
     require(ownerAInitiallyEnabled && ownerBInitiallyEnabled, "owners initially enabled");
+    bool selectionPassed = false;
+    bool automationPassed = false;
     HWINEVENTHOOK hook = nullptr;
     const auto watch = [&](DWORD pid) {
         if (hook) UnhookWinEvent(hook);
@@ -566,17 +568,24 @@ int wmain(int argc, wchar_t** argv) {
             std::cerr << "selection-timeout childPid=" << accepted.pid << " phase=" << accepted.shared->phase
                       << " automationPid=" << automation.process.dwProcessId
                       << " automationExit=" << automationExit << std::endl;
-            fail("normal selection returns within fixture bound");
+            accepted.terminate("selection-timeout-cleanup");
+        } else {
+            DWORD code = 0;
+            require(GetExitCodeProcess(accepted.process, &code) != FALSE, "read normal selection result");
+            selectionPassed = code == 0 && accepted.shared->phase == 3 &&
+                              accepted.shared->showResult == S_OK && accepted.shared->selectedMatched == 1;
+            std::cout << "normal-select pid=" << accepted.pid << " exit=" << code
+                      << " showResult=0x" << std::hex << accepted.shared->showResult << std::dec
+                      << " selectedMatched=" << accepted.shared->selectedMatched << std::endl;
         }
-        automation.finishAfterSelection();
-        DWORD code = 0;
-        require(GetExitCodeProcess(accepted.process, &code) != FALSE && code == 0 &&
-                accepted.shared->phase == 3 && accepted.shared->showResult == S_OK &&
-                accepted.shared->selectedMatched == 1, "normal selection returns the chosen file");
+        automationPassed = automation.finishAfterSelection();
+        if (!IsWindowEnabled(ownerA) && ownerAInitiallyEnabled) {
+            selectionPassed = false;
+            EnableWindow(ownerA, TRUE);
+            std::cout << "fixture restored owner after incomplete normal selection" << std::endl;
+        }
+        require(IsWindowEnabled(ownerA), "selection owner recoverable");
         require(DeleteFileW(selected) != FALSE, "remove only the selectable fixture file");
-        std::cout << "normal-select pid=" << accepted.pid << " exit=" << code
-                  << " showResult=0x" << std::hex << accepted.shared->showResult << std::dec
-                  << " selectedMatched=" << accepted.shared->selectedMatched << std::endl;
     }
     {
         Child raced(ownerA, 3);
@@ -639,6 +648,7 @@ int wmain(int argc, wchar_t** argv) {
         std::cout << "job-close pid=" << blocked.pid << " elapsedMs=" << GetTickCount64() - started << std::endl;
     }
     probeLauncherExit();
+    require(selectionPassed && automationPassed, "normal selection and fixture automation both completed");
     watchedPid = 0;
     UnhookWinEvent(hook);
     DestroyWindow(ownerB);
