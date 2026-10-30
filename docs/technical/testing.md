@@ -12,7 +12,7 @@
 
 [#72](https://github.com/xiaodaozhi/xdstarter/issues/72) 的布局导入键盘测试在状态变化时记录提交中、确认按钮禁用与透明度，并在按键前检查焦点；快速完成的测试行强制后台提交在按键函数返回前完成，仍要求观察到提交中状态及最终布局。Windows hosted CTest 单独运行原生 D3D11 版本并上传日志，发行目录仍保留原有验证；Qt 系统文件选择器线程清理警告的原因及真实 Windows 11 行为另行跟踪，不能以该测试代替。
 
-[#88](https://github.com/xiaodaozhi/xdstarter/issues/88) 的诊断只在一次性 GitHub-hosted Windows 上运行三个独立 QtTest 进程：QML 可见后立即关闭并快速重开、立即关闭后观察、以及等待进程内 owner 和标题匹配的原生窗口可见后关闭。日志保留 Qt 对话框线程编号、事件和时间点；观察模式在关闭后观察最多 1.2 秒，若同一测试进程的匹配窗口迟到，仅向该 HWND 发送关闭消息并等待其不可见。诊断检查窗口操作的完成，不把 QtTest 返回成功或有限观察当成线程清理成功；Qt 警告是否消失、根因及真实 Windows 11 行为以 Issue 证据为准。
+[#88](https://github.com/xiaodaozhi/xdstarter/issues/88) 的产品诊断只在一次性 GitHub-hosted Windows 上运行独立 QtTest 进程：快速取消及重开、原生窗口出现前取消、窗口出现后取消，以及通过独立的有界 UI Automation 进程选择实际测试文件。夹具持有辅助进程句柄，核对 PID、owner、进程退出和 owner 恢复；不按标题关闭其他进程。日志保留取消耗时和原始 Qt 严重消息。有限轮询只报告实际观察，不能证明从未闪现；夹具通过也不代表真实 Windows 11 通过。此前 Qt 线程诊断和失败记录保留于 Issue，不能用本次结果覆盖。
 
 另有默认不构建的 `XDSTARTER_BUILD_PICKER_CANCEL_POC`：一次性 hosted Windows 自有进程使用各自独立 owner 的 COM 文件对话框，受控比较进入 Show 前取消、检查之后／Show 之前取消、窗口显示后取消与并发下一请求。事件回调尝试按文档关闭，辅助观察只对本进程、请求 owner 和标题均匹配的窗口投递关闭；超时只结束该夹具进程。此实验不是产品实现，轮询可能漏过瞬时窗口，不能证明任何运行条件下无闪现、无泄漏或安全退出；不在本机托管外运行系统对话框。
 

@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Dialogs as FileDialogs
 import XDStarter
 
 ApplicationWindow {
@@ -2677,25 +2676,23 @@ ApplicationWindow {
         }
     }
 
-    FileDialogs.FileDialog {
+    LayoutFilePicker {
         id: layoutFileDialog
 
         objectName: "layoutFileDialog"
         title: qsTr("选择布局文件")
         parentWindow: window
-        modality: Qt.WindowModal
-        fileMode: FileDialogs.FileDialog.OpenFile
-        // Keep Qt's native platform dialog preference; only request read-only file selection.
-        // Qt 6.8.2 qmltypes omit the public FileDialogOptions flags; runtime tests verify ReadOnly.
-        // qmllint disable missing-type missing-property
-        options: FileDialogs.FileDialog.ReadOnly
-        // qmllint enable missing-type missing-property
-        nameFilters: [qsTr("JSON 布局 (*.json)"), qsTr("所有文件 (*)")]
         onAccepted: {
             if (window.controller.stageLayoutImport(selectedFile))
                 layoutImportDialog.open();
         }
         onRejected: window.controller.cancelLayoutImport()
+        onFailed: {
+            window.controller.cancelLayoutImport();
+            window.dismissedSelectionError = "";
+            window.selectionStatus = qsTr("无法打开布局文件选择窗口，请重试。");
+            window.selectionStatusError = true;
+        }
     }
 
     LayoutImportDialog {
