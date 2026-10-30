@@ -100,6 +100,8 @@ void DelayedAssetTests::loadingFrameAndLaterReadyFrame() {
     }
     QTRY_VERIFY_WITH_TIMEOUT(gate->entered.load(std::memory_order_acquire), 5000);
     QTRY_COMPARE_WITH_TIMEOUT(item->property("status").toInt(), 2, 5000); // Image.Loading
+    // The initial frame can precede signal observation on a fast renderer.
+    window->requestUpdate();
     QTRY_VERIFY_WITH_TIMEOUT(swaps.count() > 0, 2000);
     QCOMPARE(item->property("status").toInt(), 2);
     const auto early = window->grabWindow();
