@@ -40,7 +40,7 @@ configure_file(
     @ONLY
 )
 
-add_library(xdstarter_core STATIC tile_grid.cpp tile_grid.h)
+add_library(xdstarter_core STATIC tile_grid.cpp tile_grid.h picker_request_state.cpp picker_request_state.h)
 target_include_directories(xdstarter_core PUBLIC
     "${PROJECT_SOURCE_DIR}/src"
     "${PROJECT_BINARY_DIR}/generated"

@@ -15,7 +15,7 @@ function(xdstarter_add_ui target import_root)
         "${PROJECT_SOURCE_DIR}/src/app/runtime_support.cpp"
     )
     set(qml_files)
-    foreach(component IN ITEMS Main TileButton TileGroup ShortcutRail MenuChrome LayoutImportDialog Hint FloatingSurface MenuGlyph)
+    foreach(component IN ITEMS Main TileButton TileGroup ShortcutRail MenuChrome LayoutImportDialog LayoutFilePicker Hint FloatingSurface MenuGlyph)
         set(qml_file "${PROJECT_SOURCE_DIR}/qml/${component}.qml")
         set_source_files_properties("${qml_file}" PROPERTIES QT_RESOURCE_ALIAS "${component}.qml")
         list(APPEND qml_files "${qml_file}")
@@ -30,6 +30,8 @@ function(xdstarter_add_ui target import_root)
         SOURCES
             "${PROJECT_SOURCE_DIR}/src/app/menu_controller.h"
             "${PROJECT_SOURCE_DIR}/src/app/menu_controller.cpp"
+            "${PROJECT_SOURCE_DIR}/src/app/native_layout_picker.h"
+            "${PROJECT_SOURCE_DIR}/src/app/native_layout_picker.cpp"
     )
 
     set(visual_tokens "${PROJECT_SOURCE_DIR}/docs/design/tokens/visual.json")

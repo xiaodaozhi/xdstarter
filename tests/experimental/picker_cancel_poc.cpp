@@ -26,6 +26,8 @@ struct Request {
     std::atomic<HRESULT> showResult{E_PENDING};
     std::atomic<HRESULT> setupResult{E_PENDING};
     std::atomic_bool skipped{false};
+    std::atomic_bool abortBeforeShow{false};
+    std::atomic<DWORD> threadId{0};
     std::thread worker;
 
     explicit Request(HWND hwnd, std::wstring requestTitle)
@@ -121,6 +123,7 @@ void require(bool condition, const char* message) { if (!condition) fail(message
 void start(Request& request, bool skipIfCancelled) {
     require(request.checked && request.proceed && request.finished, "event creation");
     request.worker = std::thread([&request, skipIfCancelled] {
+        request.threadId = GetCurrentThreadId();
         const HRESULT init = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
         if (FAILED(init)) { request.setupResult = init; SetEvent(request.finished); return; }
         IFileOpenDialog* dialog = nullptr;
@@ -143,9 +146,14 @@ void start(Request& request, bool skipIfCancelled) {
                 // The fixture deliberately pauses after the cancel check to
                 // create the race between that check and IFileDialog::Show.
                 SetEvent(request.checked);
-                if (WaitForSingleObject(request.proceed, 10000) == WAIT_OBJECT_0)
-                    request.showResult = dialog->Show(request.owner);
-                else
+                if (WaitForSingleObject(request.proceed, 10000) == WAIT_OBJECT_0) {
+                    if (request.abortBeforeShow.load()) {
+                        request.skipped = true;
+                        request.showResult = HRESULT_FROM_WIN32(ERROR_CANCELLED);
+                    } else {
+                        request.showResult = dialog->Show(request.owner);
+                    }
+                } else
                     request.showResult = HRESULT_FROM_WIN32(ERROR_TIMEOUT);
             }
             dialog->Unadvise(cookie);
@@ -215,6 +223,106 @@ bool hosted() {
     return std::wstring(actions) == L"true" && std::wstring(runner) == L"github-hosted";
 }
 
+struct ThreadDialogLookup {
+    DWORD threadId;
+    const std::wstring* title;
+    HWND found = nullptr;
+};
+BOOL CALLBACK findThreadDialog(HWND window, LPARAM raw) {
+    auto& lookup = *reinterpret_cast<ThreadDialogLookup*>(raw);
+    DWORD pid = 0;
+    const DWORD thread = GetWindowThreadProcessId(window, &pid);
+    if (pid != GetCurrentProcessId() || thread != lookup.threadId || !IsWindowVisible(window))
+        return TRUE;
+    wchar_t title[160]{};
+    GetWindowTextW(window, title, int(sizeof(title) / sizeof(title[0])));
+    if (*lookup.title != title) return TRUE;
+    lookup.found = window;
+    return FALSE;
+}
+
+std::atomic_int observedShows{0};
+std::atomic<DWORD> watchedThread{0};
+std::wstring watchedTitle;
+void CALLBACK onShow(HWINEVENTHOOK, DWORD event, HWND window, LONG object, LONG child,
+                     DWORD thread, DWORD timestamp) {
+    if (event != EVENT_OBJECT_SHOW || object != OBJID_WINDOW || child != CHILDID_SELF ||
+        thread != watchedThread.load())
+        return;
+    DWORD pid = 0;
+    GetWindowThreadProcessId(window, &pid);
+    if (pid != GetCurrentProcessId()) return;
+    wchar_t title[160]{};
+    GetWindowTextW(window, title, int(sizeof(title) / sizeof(title[0])));
+    if (watchedTitle != title) return;
+    ++observedShows;
+    std::cout << "owner-destroy event=show thread=" << thread << " time=" << timestamp
+              << " hwnd=" << window << " owner=" << GetWindow(window, GW_OWNER) << std::endl;
+}
+
+void probeDestroyedOwner() {
+    HWND oldOwner = ownerWindow();
+    require(oldOwner, "owner-destroy owner creation");
+    Request old(oldOwner, L"XDStarter owner-destroy-before-show");
+    start(old, false);
+    require(waitEvent(old.checked, 10000) && SUCCEEDED(old.setupResult.load()) && old.threadId.load(),
+            "owner-destroy setup and thread identity");
+    watchedThread = old.threadId.load();
+    watchedTitle = old.title;
+    observedShows = 0;
+    HWINEVENTHOOK hook = SetWinEventHook(EVENT_OBJECT_SHOW, EVENT_OBJECT_SHOW, nullptr, onShow,
+                                         GetCurrentProcessId(), old.threadId.load(), WINEVENT_OUTOFCONTEXT);
+    require(hook, "owner-destroy event observation");
+    const auto destroyedAt = GetTickCount64();
+    require(DestroyWindow(oldOwner) != FALSE && !IsWindow(oldOwner), "destroy original owner");
+    HWND replacement = ownerWindow();
+    require(replacement, "owner-destroy replacement creation");
+    const bool reused = replacement == oldOwner;
+    std::cout << "owner-destroy process=" << GetCurrentProcessId() << " thread=" << old.threadId.load()
+              << " oldOwner=" << oldOwner << " replacement=" << replacement
+              << " reused=" << reused << " destroyedAt=" << destroyedAt << std::endl;
+    if (reused) {
+        // A recycled HWND could make the old request target the new owner. Do
+        // not release the test barrier into that ambiguous and unsafe case.
+        old.abortBeforeShow = true;
+        SetEvent(old.proceed);
+        require(waitEvent(old.finished, 10000), "reused-owner fixture completion");
+    } else {
+        // Deliberately allow Show after the owner is destroyed, without setting
+        // the event callback's cancel flag: this isolates owner destruction.
+        SetEvent(old.proceed);
+        const auto started = GetTickCount64();
+        bool observed = false;
+        while (GetTickCount64() - started < 10000 &&
+               WaitForSingleObject(old.finished, 0) != WAIT_OBJECT_0) {
+            pump();
+            ThreadDialogLookup lookup{old.threadId.load(), &old.title};
+            EnumWindows(findThreadDialog, reinterpret_cast<LPARAM>(&lookup));
+            if (lookup.found) {
+                observed = true;
+                // The fixture verifies process, thread and unique title again;
+                // it never closes another process or a later request's window.
+                DWORD pid = 0;
+                const DWORD tid = GetWindowThreadProcessId(lookup.found, &pid);
+                if (pid == GetCurrentProcessId() && tid == old.threadId.load())
+                    PostMessageW(lookup.found, WM_CLOSE, 0, 0);
+            }
+            Sleep(10);
+        }
+        pump();
+        std::cout << "owner-destroy showResult=0x" << std::hex
+                  << static_cast<unsigned long>(old.showResult.load()) << std::dec
+                  << " finished=" << (WaitForSingleObject(old.finished, 0) == WAIT_OBJECT_0)
+                  << " eventShows=" << observedShows.load() << " polledVisible=" << observed
+                  << " elapsedMs=" << GetTickCount64() - started << std::endl;
+        require(WaitForSingleObject(old.finished, 0) == WAIT_OBJECT_0,
+                "destroyed-owner Show did not finish within fixture bound");
+    }
+    UnhookWinEvent(hook);
+    watchedThread = 0;
+    DestroyWindow(replacement);
+}
+
 } // namespace
 
 int wmain(int argc, wchar_t** argv) {
@@ -263,6 +371,7 @@ int wmain(int argc, wchar_t** argv) {
         require(!visible(next), "cancelled next window disappears");
         printResult("visible-cancel", next, nextObserved);
     }
+    probeDestroyedOwner();
     DestroyWindow(ownerB);
     DestroyWindow(ownerA);
     std::cout << "PASS hosted cancellation fixture; no product integration or physical input tested" << std::endl;
