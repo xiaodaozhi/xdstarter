@@ -12,6 +12,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
 import windows_package as package
+import verify_windows_installer as lifecycle
 
 
 class WindowsPackageTests(unittest.TestCase):
@@ -56,6 +57,37 @@ class WindowsPackageTests(unittest.TestCase):
         self.write('unexpected.dll')
         with self.assertRaises(ValueError):
             package.verify_inventory(self.directory, record)
+
+    def test_versioned_lifecycle_fixtures_are_distinct_and_preserve_source(self):
+        root = self.directory / 'candidate'
+        root.mkdir()
+        (root / 'xdstarter.exe').write_bytes(b'unchanged application')
+        audit = {'identity': {'version': '1.2.3', 'build': 9}, 'files': package.inventory(root)}
+        original = json.loads(json.dumps(audit))
+        work = self.directory / 'work'
+        work.mkdir()
+        seen = []
+
+        def compile_fixture(payload, record, output, cache, prefix, *, qa):
+            self.assertTrue(qa)
+            package.verify_inventory(payload, record['files'])
+            seen.append((prefix, record['identity']['version'],
+                         {row['path'] for row in record['files']}, package.digest(payload / 'xdstarter.exe')))
+            result = output / (prefix + '-setup.exe')
+            result.write_bytes(prefix.encode('ascii'))
+            return result
+
+        with patch.object(lifecycle, 'compile_installer', side_effect=compile_fixture):
+            records = lifecycle.versioned_fixtures(root, audit, work, self.directory)
+        self.assertEqual(audit, original)
+        package.verify_inventory(root, original['files'])
+        self.assertEqual([row[:2] for row in seen], [('older', '0.0.1'), ('newer', '0.0.2')])
+        self.assertEqual(seen[0][3], seen[1][3])
+        self.assertIn('share/ci-installer-version.txt', seen[0][2])
+        self.assertNotIn('share/ci-installer-newer-only.txt', seen[0][2])
+        self.assertIn('share/ci-installer-newer-only.txt', seen[1][2])
+        self.assertNotEqual(records['older']['markerSha256'], records['newer']['markerSha256'])
+        self.assertNotEqual(records['older']['setupSha256'], records['newer']['setupSha256'])
 
     def test_basic_dialogs_and_graphics_survive_style_pruning(self):
         retained = ['qml/QtQuick/Controls/Basic/qmldir', 'qml/QtQuick/Dialogs/qmldir',

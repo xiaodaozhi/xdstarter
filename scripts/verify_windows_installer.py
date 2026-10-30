@@ -1,19 +1,56 @@
 """Exercise a Server-compatible installer fixture only on disposable hosted CI.
 
-The product installer still requires Windows 11. This fixture changes only its
-minimum OS check and is never shipped or treated as clean Windows 11 evidence.
+The product installer still requires Windows 11. The baseline fixture lowers
+its OS check; separate version fixtures also change version labels and marker
+files. None are shipped or treated as clean Windows 11 evidence.
 """
 import argparse
+import copy
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
 import uuid
 
-from windows_package import ROOT, Workflow, digest, generated, write_json
+from windows_package import ROOT, Workflow, digest, generated, inventory, verify_inventory, write_json
 from windows_installer import compile_installer
+
+
+def versioned_fixtures(root, audit, work, cache):
+    """Build two synthetic installer versions from one audited executable.
+
+    The marker distinguishes the installed payloads; these are not historical
+    application builds. The compiler's qa gate still restricts execution to CI.
+    """
+    verify_inventory(root, audit['files'])
+    payload = generated(work / 'versioned-payload')
+    shutil.copytree(root, payload)
+    marker = payload / 'share/ci-installer-version.txt'
+    high_only = payload / 'share/ci-installer-newer-only.txt'
+    if marker.exists() or high_only.exists():
+        raise ValueError('Fixture marker collides with candidate payload')
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    records = {}
+    for name, version in (('older', '0.0.1'), ('newer', '0.0.2')):
+        marker.write_bytes(('synthetic installer ' + version + '\n').encode('ascii'))
+        if name == 'newer':
+            high_only.write_bytes(b'owned only by the newer installer fixture\n')
+        fixture_audit = copy.deepcopy(audit)
+        fixture_audit['identity']['version'] = version
+        fixture_audit['identity']['build'] = 1
+        fixture_audit['files'] = inventory(payload)
+        output = generated(work / ('versioned-' + name))
+        output.mkdir()
+        setup = compile_installer(payload, fixture_audit, output, cache, name, qa=True)
+        records[name] = {'setup': setup, 'audit': fixture_audit,
+                         'setupSha256': digest(setup), 'markerSha256': digest(marker),
+                         'version': version}
+    if records['older']['setupSha256'] == records['newer']['setupSha256']:
+        raise ValueError('Versioned installers must differ')
+    return records
 
 
 def main():
@@ -35,6 +72,7 @@ def main():
     work.mkdir()
     fixture = compile_installer(workflow.root, audit, work, workflow.cache,
                                 'server-lifecycle-fixture', qa=True)
+    versions = versioned_fixtures(workflow.root, audit, work, workflow.cache)
     installed = work / 'application/installed'
     uninstall_key = r'Software\Microsoft\Windows\CurrentVersion\Uninstall\{C5771F18-616D-49D2-9DBF-5E09C5F8D853}_is1'
     try:
@@ -83,8 +121,8 @@ def main():
             outcome['installationGateWaitMs'] = wait_for_uninstaller()
         outcomes.append(outcome)
 
-    def installed_payload_matches():
-        for item in audit['files']:
+    def installed_payload_matches(expected_audit=audit):
+        for item in expected_audit['files']:
             if digest(installed / item['path']) != item['sha256']:
                 raise ValueError('Installed payload differs from audit: ' + item['path'])
         if layout.read_bytes() != original or custom.read_bytes() != original:
@@ -96,6 +134,10 @@ def main():
                 return winreg.QueryValueEx(key, 'XDStarter')[0]
         except FileNotFoundError:
             return None
+
+    def installed_version():
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, uninstall_key) as key:
+            return winreg.QueryValueEx(key, 'DisplayVersion')[0]
 
     def create_junction(link, target):
         generated(link)
@@ -178,6 +220,25 @@ def main():
             if linked:
                 container.rmdir()
             generated(relocated).rename(generated(container))
+        invoke(versions['newer']['setup'], 'install-newer-fixture', '/DIR=' + str(installed))
+        installed_payload_matches(versions['newer']['audit'])
+        marker = installed / 'share/ci-installer-version.txt'
+        newer_only = installed / 'share/ci-installer-newer-only.txt'
+        if (installed_version() != versions['newer']['version'] or not newer_only.is_file() or
+                digest(marker) != versions['newer']['markerSha256'] or startup_value() != expected_startup):
+            raise ValueError('Newer synthetic installer identity or payload did not install')
+        invoke(versions['older']['setup'], 'downgrade-older-fixture', '/DIR=' + str(installed))
+        installed_payload_matches(versions['older']['audit'])
+        if (installed_version() != versions['older']['version'] or newer_only.exists() or
+                digest(marker) != versions['older']['markerSha256'] or not unknown.is_file() or
+                startup_value() != expected_startup):
+            raise ValueError('Downgrade did not restore older payload or preserve unknown files/startup')
+        subprocess.run([str(installed / 'xdstarter.exe'), '--layout-file', str(custom),
+            '--start-capture-diagnostics', str(evidence / 'downgrade-future-schema-runtime.json'),
+            '--start-capture-duration', '1'], check=True, timeout=30)
+        if layout.read_bytes() != original or custom.read_bytes() != original:
+            raise ValueError('Downgrade or future-schema runtime modified user data')
+        outcomes.append({'case': 'downgrade-future-schema-runtime', 'exitCode': 0, 'passed': True})
         invoke(installed / 'unins000.exe', 'uninstall-keep-data')
         if layout.read_bytes() != original or not unknown.is_file() or startup_value() is not None:
             raise ValueError('Uninstall did not preserve data/unknown files or remove startup entry')
@@ -198,8 +259,12 @@ def main():
         write_json(evidence / 'result.json', {'status': 'passed' if success else 'failed',
             'cases': outcomes, 'sourceIdentity': audit['identity'], 'fixtureSha256': digest(fixture),
             'candidateInstallerSha256': json.loads((workflow.output / 'installer.json').read_text())['sha256'],
+            'versionedFixtures': {'synthetic': True, 'commonExecutableSha256': digest(workflow.root / 'xdstarter.exe'),
+                **{name: {key: record[key] for key in ('version', 'setupSha256', 'markerSha256')}
+                   for name, record in versions.items()}},
             'serverLifecycleFixture': True, 'cleanWindows11Accepted': False,
-            'limits': ['Fixture lowers only the OS version gate for hosted Server engineering tests.',
+            'limits': ['Baseline fixture lowers only the OS gate for hosted Server engineering tests.',
+                       'Versioned installers use the same executable; they are not historical builds.',
                        'The exact Windows 11 candidate still needs #36 clean-machine/manual acceptance.']})
     if not success:
         raise ValueError('Installer lifecycle incomplete')

@@ -216,6 +216,9 @@ class EvidenceTests(TemporaryRepository):
                     (self.root / ci_evidence.COPIES[name]).write_text('\n'.join(rows) + '\n', encoding='utf-8')
                 lifecycle = {'status': 'passed', 'serverLifecycleFixture': True, 'cleanWindows11Accepted': False,
                              'sourceIdentity': {'revision': self.env['GITHUB_SHA']},
+                             'versionedFixtures': {'synthetic': True, 'commonExecutableSha256': 'a' * 64,
+                                 'older': {'version': '0.0.1', 'setupSha256': 'b' * 64, 'markerSha256': 'c' * 64},
+                                 'newer': {'version': '0.0.2', 'setupSha256': 'd' * 64, 'markerSha256': 'e' * 64}},
                              'cases': [{'case': case, 'passed': True} for case in ci_evidence.LIFECYCLE_CASES]}
                 (self.root / ci_evidence.COPIES['lifecycle.json']).write_text(json.dumps(lifecycle), encoding='utf-8')
                 smoke_raw = b'Smoke stage before-application 0 ms\nSmoke stage event-loop-returned 7 ms\n'
@@ -282,6 +285,29 @@ class EvidenceTests(TemporaryRepository):
             report['files']['smoke-startup.json'] = ci_evidence.checksum(path)
             manifest.write_text(json.dumps(report), encoding='utf-8')
             with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, 'smoke-startup'):
+                ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_downgrade_requires_distinct_synthetic_versions_and_cases(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'lifecycle.json'
+        original = json.loads(path.read_text(encoding='utf-8'))
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        for mutation in ('same-setup', 'same-marker', 'not-synthetic', 'missing-runtime'):
+            data = json.loads(json.dumps(original))
+            versions = data['versionedFixtures']
+            if mutation == 'same-setup':
+                versions['older']['setupSha256'] = versions['newer']['setupSha256']
+            elif mutation == 'same-marker':
+                versions['older']['markerSha256'] = versions['newer']['markerSha256']
+            elif mutation == 'not-synthetic':
+                versions['synthetic'] = False
+            else:
+                data['cases'] = [row for row in data['cases'] if row['case'] != 'downgrade-future-schema-runtime']
+            path.write_text(json.dumps(data), encoding='utf-8')
+            report['files']['lifecycle.json'] = ci_evidence.checksum(path)
+            manifest.write_text(json.dumps(report), encoding='utf-8')
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
                 ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
 
     def test_failed_case_cannot_be_hidden_by_a_passing_total(self):

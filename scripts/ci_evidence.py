@@ -42,6 +42,9 @@ LOGS = {
 COPIES = {
     'lifecycle.json': 'build/package/lifecycle-evidence/result.json',
     'install.log': 'build/package/lifecycle-evidence/install.log',
+    'install-newer-fixture.log': 'build/package/lifecycle-evidence/install-newer-fixture.log',
+    'downgrade-older-fixture.log': 'build/package/lifecycle-evidence/downgrade-older-fixture.log',
+    'downgrade-future-schema-runtime.json': 'build/package/lifecycle-evidence/downgrade-future-schema-runtime.json',
     'uninstall.log': 'build/package/lifecycle-evidence/uninstall-keep-data.log',
     'smoke-startup.json': 'build/validation/smoke-startup-ci/result.json',
     'smoke-startup.log': 'build/validation/smoke-startup-ci/smoke.log',
@@ -75,7 +78,8 @@ EMPTY_ALLOWED_FILES = {'resident-sample/stdout.log', 'resident-sample/stderr.log
 LIFECYCLE_CASES = {'junction-parent-refused', 'install', 'modified-obsolete-refused',
                    'upgrade-retire-unchanged', 'upgrade-disable-autostart', 'upgrade-retain-disabled-autostart',
                    'upgrade-enable-autostart', 'running-install-refused', 'running-uninstall-refused',
-                   'junction-parent-uninstall-refused', 'uninstall-keep-data', 'reinstall-no-autostart',
+                   'junction-parent-uninstall-refused', 'install-newer-fixture', 'downgrade-older-fixture',
+                   'downgrade-future-schema-runtime', 'uninstall-keep-data', 'reinstall-no-autostart',
                    'uninstall-explicit-data-cleanup'}
 QT_LOGS = {
     'layout-import.log': ('layoutImportDialogThemeAndKeyboard(normal)',
@@ -245,6 +249,15 @@ def validate_role(directory, role, expected):
                 len(lifecycle['cases']) == len(LIFECYCLE_CASES) and
                 all(case.get('passed') is True for case in lifecycle['cases']),
                 'incomplete-lifecycle-evidence')
+        versions = lifecycle.get('versionedFixtures', {})
+        older, newer = versions.get('older', {}), versions.get('newer', {})
+        hashes = [versions.get('commonExecutableSha256', ''), older.get('setupSha256', ''),
+                  older.get('markerSha256', ''), newer.get('setupSha256', ''), newer.get('markerSha256', '')]
+        require(versions.get('synthetic') is True and older.get('version') == '0.0.1' and
+                newer.get('version') == '0.0.2' and
+                all(isinstance(h, str) and re.fullmatch(r'[0-9a-f]{64}', h) for h in hashes) and
+                older['setupSha256'] != newer['setupSha256'] and older['markerSha256'] != newer['markerSha256'],
+                'incomplete-downgrade-fixture-evidence')
         graphics = json.loads((directory / 'graphics.json').read_text(encoding='utf-8'))
         require(graphics.get('status') == 'passed' and graphics.get('softwareOpenGLAbsent') is True and
                 {'normal', 'hardware-failure', 'all-failure', 'delayed-all-failure', 'hosted-resident'} <=
