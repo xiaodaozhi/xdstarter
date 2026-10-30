@@ -47,13 +47,22 @@
           "id": "build"
         },
         {
-          "name": "Upload core phase timings and CTest logs",
+          "name": "Collect core raw CI evidence",
+          "if": "always() && !cancelled()",
+          "env": {
+            "XDSTARTER_JOB_STATUS": "${{ job.status }}",
+            "XDSTARTER_STEP_BUILD": "${{ steps.build.outcome }}"
+          },
+          "run": "python3 scripts/ci_evidence.py collect --role core"
+        },
+        {
+          "name": "Upload core raw CI evidence",
           "if": "always() && !cancelled()",
           "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
           "with": {
-            "name": "xdstarter-phase-core-${{ github.sha }}-${{ github.run_attempt }}",
+            "name": "xdstarter-ci-core-${{ github.run_id }}-${{ github.run_attempt }}",
             "path": "build/ci-evidence/core/",
-            "if-no-files-found": "warn",
+            "if-no-files-found": "error",
             "retention-days": 7
           }
         }
@@ -319,13 +328,33 @@
           }
         },
         {
-          "name": "Upload windows phase timings and CTest logs",
+          "name": "Collect Windows raw CI evidence",
+          "if": "always() && !cancelled()",
+          "shell": "pwsh",
+          "env": {
+            "XDSTARTER_JOB_STATUS": "${{ job.status }}",
+            "XDSTARTER_STEP_BUILD": "${{ steps.build.outcome }}",
+            "XDSTARTER_STEP_PICKER_AUDIT": "${{ steps.picker_audit.outcome }}",
+            "XDSTARTER_STEP_CONTRAST_TRACE": "${{ steps.contrast_trace.outcome }}",
+            "XDSTARTER_STEP_SMOKE": "${{ steps.smoke.outcome }}",
+            "XDSTARTER_STEP_SHELL": "${{ steps.shell.outcome }}",
+            "XDSTARTER_STEP_SEARCH": "${{ steps.search.outcome }}",
+            "XDSTARTER_STEP_UI_SEARCH": "${{ steps.ui_search.outcome }}",
+            "XDSTARTER_STEP_EXPERIMENTS": "${{ steps.experiments.outcome }}",
+            "XDSTARTER_STEP_RESIDENT_SAMPLE": "${{ steps.resident_sample.outcome }}",
+            "XDSTARTER_STEP_PREPARE": "${{ steps.prepare.outcome }}",
+            "XDSTARTER_STEP_PACKAGE": "${{ steps.package.outcome }}"
+          },
+          "run": "$python = './build/tooling/Scripts/python.exe'\nif (!(Test-Path -LiteralPath $python)) { $python = 'python' }\n& $python scripts/ci_evidence.py collect --role windows\nif ($LASTEXITCODE -ne 0) { throw 'Could not collect raw Windows CI evidence.' }"
+        },
+        {
+          "name": "Upload Windows raw CI evidence",
           "if": "always() && !cancelled()",
           "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
           "with": {
-            "name": "xdstarter-phase-windows-${{ github.sha }}-${{ github.run_attempt }}",
+            "name": "xdstarter-ci-windows-${{ github.run_id }}-${{ github.run_attempt }}",
             "path": "build/ci-evidence/windows/",
-            "if-no-files-found": "warn",
+            "if-no-files-found": "error",
             "retention-days": 7
           }
         }
@@ -334,6 +363,90 @@
       "env": {
         "XDSTARTER_CI_EVIDENCE": "build/ci-evidence/windows"
       }
+    },
+    "plan": {
+      "name": "CI shadow classification",
+      "runs-on": "ubuntu-24.04",
+      "timeout-minutes": 10,
+      "outputs": {
+        "classification": "${{ steps.plan.outputs.classification }}",
+        "would_skip": "${{ steps.plan.outputs.would_skip }}"
+      },
+      "steps": [
+        {
+          "name": "Checkout complete history",
+          "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "with": {
+            "fetch-depth": 0,
+            "persist-credentials": false
+          }
+        },
+        {
+          "name": "Classify without skipping checks",
+          "id": "plan",
+          "run": "python3 scripts/ci_classify.py"
+        },
+        {
+          "name": "Upload shadow classification",
+          "if": "always() && !cancelled()",
+          "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "with": {
+            "name": "xdstarter-ci-plan-${{ github.run_id }}-${{ github.run_attempt }}",
+            "path": "build/ci-evidence/plan.json",
+            "if-no-files-found": "warn",
+            "retention-days": 7
+          }
+        }
+      ]
+    },
+    "shadow-gate": {
+      "name": "CI full evidence gate (shadow)",
+      "needs": [
+        "plan",
+        "core",
+        "windows"
+      ],
+      "if": "always() && !cancelled()",
+      "runs-on": "ubuntu-24.04",
+      "timeout-minutes": 10,
+      "steps": [
+        {
+          "name": "Checkout",
+          "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "with": {
+            "persist-credentials": false
+          }
+        },
+        {
+          "name": "Download core raw evidence",
+          "continue-on-error": true,
+          "uses": "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
+          "with": {
+            "name": "xdstarter-ci-core-${{ github.run_id }}-${{ github.run_attempt }}",
+            "path": "build/ci-gate/core"
+          }
+        },
+        {
+          "name": "Download windows raw evidence",
+          "continue-on-error": true,
+          "uses": "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
+          "with": {
+            "name": "xdstarter-ci-windows-${{ github.run_id }}-${{ github.run_attempt }}",
+            "path": "build/ci-gate/windows"
+          }
+        },
+        {
+          "name": "Validate all platform evidence",
+          "env": {
+            "XDSTARTER_NEEDS_CORE": "${{ needs.core.result }}",
+            "XDSTARTER_NEEDS_WINDOWS": "${{ needs.windows.result }}",
+            "XDSTARTER_PLAN_RESULT": "${{ needs.plan.result }}",
+            "XDSTARTER_PLAN_CLASSIFICATION": "${{ needs.plan.outputs.classification }}",
+            "XDSTARTER_PLAN_WOULD_SKIP": "${{ needs.plan.outputs.would_skip }}"
+          },
+          "run": "python3 scripts/ci_evidence.py validate"
+        }
+      ]
     }
   }
 }
