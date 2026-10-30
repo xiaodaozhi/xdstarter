@@ -1004,4 +1004,6 @@ $env:XDSTARTER_QT_ROOT = "$PWD/build/Qt/6.8.2/msvc2022_64"
 
 [#92](https://github.com/xiaodaozhi/xdstarter/issues/92) 的第一步保留仓库检查、Linux 核心和 Windows Server 应用作业及其现有测试。工具获取、Qt 下载、配置、编译、QML lint 和 CTest 的阶段耗时与退出码关联运行、尝试次数及提交，并与原始 CTest 输出作为工件保留 7 天。仓库检查仅取消同一 PR 的旧运行；应用作业包含独立实验，不启用自动取消。主分支推送、手动运行与项目初始化的既有入口保持原样。
 
+PR 的 Windows runner 仓库检出设置 5 分钟上限，超时即失败，不跳过后续测试或记为通过；主分支、手动运行以及其余构建和测试的超时不变。该限制用于留下异常卡住的检出结果，不代表已经确定 [PR #94](https://github.com/xiaodaozhi/xdstarter/pull/94) 首轮 runner 卡住的原因。
+
 Windows 打包仅缓存有固定供应商来源和 SHA-256 的原始下载，恢复后逐项核验；不缓存 SDK、构建产物或测试结果。详情见[工程依赖](dependencies.md)。变更分类及严格证据汇总仍在 #92 的后续 PR 中验证，当前未启用文档跳过。原生文件选择器的线程清理 QCRITICAL 仍由 [#88](https://github.com/xiaodaozhi/xdstarter/issues/88) 跟踪；现有 QtTest 通过不能证明该问题消失。Server 夹具不替代 Windows 11 真机验收。
