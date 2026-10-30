@@ -166,10 +166,14 @@ int runUiSearchBenchmark() {
     const auto qpa = QGuiApplication::platformName();
     const bool hosted = qEnvironmentVariable("GITHUB_ACTIONS") == QLatin1String("true") &&
                         qEnvironmentVariable("RUNNER_ENVIRONMENT") == QLatin1String("github-hosted");
-    if (qpa != QLatin1String("offscreen") && !(qpa == QLatin1String("windows") && hosted)) {
-        qCritical() << "Native benchmark windows are permitted only on a disposable hosted runner.";
+    const bool localNative = qEnvironmentVariable("XDSTARTER_UI_BENCHMARK_LOCAL_NATIVE") == QLatin1String("1");
+    if (qpa != QLatin1String("offscreen") &&
+        !(qpa == QLatin1String("windows") && (hosted || localNative))) {
+        qCritical() << "Native benchmark windows require a hosted runner or explicit local opt-in.";
         return 1;
     }
+    const auto executionMode = qpa == QLatin1String("offscreen") ? QStringLiteral("offscreen")
+        : hosted ? QStringLiteral("hosted-native") : QStringLiteral("local-native");
     const auto outputPath = qEnvironmentVariable("XDSTARTER_UI_BENCHMARK_OUTPUT");
     if (outputPath.isEmpty() || !QFileInfo(outputPath).isAbsolute() || QFile::exists(outputPath)) {
         qCritical() << "Set XDSTARTER_UI_BENCHMARK_OUTPUT to a new absolute file path.";
@@ -370,6 +374,7 @@ int runUiSearchBenchmark() {
 #endif
     const QJsonObject report{
         {QStringLiteral("schemaVersion"), 2},
+        {QStringLiteral("executionMode"), executionMode},
         {QStringLiteral("capturedAtUtc"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)},
         {QStringLiteral("scope"), QStringLiteral("synthetic catalog and layout; in-process Qt key events; no real input, desktop integration, application launch or user layout")},
         {QStringLiteral("boundary"), QStringLiteral("first simulated key, final key start, Qt key loop return, controller readiness signal, expected visible QML row, then explicitly requested synchronized frameSwapped; events and observers add unmeasured overhead; not physical presentation or first interactive frame")},
