@@ -1,0 +1,2465 @@
+{
+    "captures": [
+        {
+            "dpr": 1,
+            "file": "contrast-dark-early.png",
+            "height": 728,
+            "ns": 44198700,
+            "scene": "contrast-dark",
+            "sha256": "f8c491dd68bb56e96ce1ab7c95ee6169e2fc58f90b180747faeaad0f8afbdd92",
+            "stage": "early",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#ff101020",
+                "highContrast": true,
+                "labelColor": "#ffffff00",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": true,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 2,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "valid": true,
+            "width": 1028
+        },
+        {
+            "dpr": 1,
+            "file": "contrast-dark-ready.png",
+            "height": 728,
+            "ns": 80290600,
+            "scene": "contrast-dark",
+            "sha256": "f26a1fbf60e6667d11210d42f3c843b72ebe9a2f68ab58b2e70ac24cdc4fc42f",
+            "stage": "ready",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#ff101020",
+                "highContrast": true,
+                "labelColor": "#ffffff00",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": true,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "valid": true,
+            "width": 1028
+        },
+        {
+            "dpr": 1,
+            "file": "contrast-dark-first.png",
+            "height": 728,
+            "ns": 416878000,
+            "scene": "contrast-dark",
+            "sha256": "eb7c0ac1c8586b3454ed6e6c1cfb550c14310e7740dea1df42205c58457b28b7",
+            "stage": "first",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#ff101020",
+                "highContrast": true,
+                "labelColor": "#ffffff00",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": true,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "valid": true,
+            "width": 1028
+        },
+        {
+            "dpr": 1,
+            "file": "contrast-dark-later.png",
+            "height": 728,
+            "ns": 857960500,
+            "scene": "contrast-dark",
+            "sha256": "f26a1fbf60e6667d11210d42f3c843b72ebe9a2f68ab58b2e70ac24cdc4fc42f",
+            "stage": "later",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#ff101020",
+                "highContrast": true,
+                "labelColor": "#ffffff00",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": true,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "valid": true,
+            "width": 1028
+        },
+        {
+            "dpr": 1,
+            "file": "contrast-light-focus-early.png",
+            "height": 728,
+            "ns": 1539249500,
+            "scene": "contrast-light-focus",
+            "sha256": "01d1c52a64f89c3c6b2fbef627fd1b58fd90b33082f407b8981a098f10fae756",
+            "stage": "early",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#fffffdd0",
+                "highContrast": true,
+                "labelColor": "#ff202040",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": false,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "valid": true,
+            "width": 1028
+        },
+        {
+            "dpr": 1,
+            "file": "contrast-light-focus-ready.png",
+            "height": 728,
+            "ns": 1579306600,
+            "scene": "contrast-light-focus",
+            "sha256": "01d1c52a64f89c3c6b2fbef627fd1b58fd90b33082f407b8981a098f10fae756",
+            "stage": "ready",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#fffffdd0",
+                "highContrast": true,
+                "labelColor": "#ff202040",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": false,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "valid": true,
+            "width": 1028
+        },
+        {
+            "dpr": 1,
+            "file": "contrast-light-focus-first.png",
+            "height": 728,
+            "ns": 1913197700,
+            "scene": "contrast-light-focus",
+            "sha256": "01d1c52a64f89c3c6b2fbef627fd1b58fd90b33082f407b8981a098f10fae756",
+            "stage": "first",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#fffffdd0",
+                "highContrast": true,
+                "labelColor": "#ff202040",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": false,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "valid": true,
+            "width": 1028
+        },
+        {
+            "dpr": 1,
+            "file": "contrast-light-focus-later.png",
+            "height": 728,
+            "ns": 2343114100,
+            "scene": "contrast-light-focus",
+            "sha256": "01d1c52a64f89c3c6b2fbef627fd1b58fd90b33082f407b8981a098f10fae756",
+            "stage": "later",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#fffffdd0",
+                "highContrast": true,
+                "labelColor": "#ff202040",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": false,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "valid": true,
+            "width": 1028
+        },
+        {
+            "dpr": 1,
+            "file": "contrast-light-menu-early.png",
+            "height": 728,
+            "ns": 2559290300,
+            "scene": "contrast-light-menu",
+            "sha256": "48ff4f1ba9ae7abf91c9d22b58bee6935fb4f1c69a484d52766cc192a2b63c5f",
+            "stage": "early",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#fffffdd0",
+                "highContrast": true,
+                "labelColor": "#ff202040",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": false,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "valid": true,
+            "width": 1028
+        },
+        {
+            "dpr": 1,
+            "file": "contrast-light-menu-ready.png",
+            "height": 728,
+            "ns": 2595903700,
+            "scene": "contrast-light-menu",
+            "sha256": "48ff4f1ba9ae7abf91c9d22b58bee6935fb4f1c69a484d52766cc192a2b63c5f",
+            "stage": "ready",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#fffffdd0",
+                "highContrast": true,
+                "labelColor": "#ff202040",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": false,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "valid": true,
+            "width": 1028
+        },
+        {
+            "dpr": 1,
+            "file": "contrast-light-menu-first.png",
+            "height": 728,
+            "ns": 2926092400,
+            "scene": "contrast-light-menu",
+            "sha256": "48ff4f1ba9ae7abf91c9d22b58bee6935fb4f1c69a484d52766cc192a2b63c5f",
+            "stage": "first",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#fffffdd0",
+                "highContrast": true,
+                "labelColor": "#ff202040",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": false,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "valid": true,
+            "width": 1028
+        },
+        {
+            "dpr": 1,
+            "file": "contrast-light-menu-later.png",
+            "height": 728,
+            "ns": 3365093100,
+            "scene": "contrast-light-menu",
+            "sha256": "48ff4f1ba9ae7abf91c9d22b58bee6935fb4f1c69a484d52766cc192a2b63c5f",
+            "stage": "later",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#fffffdd0",
+                "highContrast": true,
+                "labelColor": "#ff202040",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": false,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "valid": true,
+            "width": 1028
+        }
+    ],
+    "eventLimitReached": false,
+    "events": [
+        {
+            "event": "trace-start",
+            "ns": 11300,
+            "phase": "setup",
+            "thread": "10248"
+        },
+        {
+            "event": "gui-state",
+            "ns": 31032600,
+            "phase": "contrast-dark:request-update",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#ff101020",
+                "highContrast": true,
+                "labelColor": "#ffffff00",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": true,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 2,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "thread": "10248"
+        },
+        {
+            "event": "gui-state",
+            "ns": 31479600,
+            "phase": "contrast-dark:before-early-grab",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#ff101020",
+                "highContrast": true,
+                "labelColor": "#ffffff00",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": true,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 2,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 39561000,
+            "phase": "contrast-dark:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 41741600,
+            "phase": "contrast-dark:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 41760400,
+            "phase": "contrast-dark:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 43063200,
+            "phase": "contrast-dark:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 43080000,
+            "phase": "contrast-dark:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 43084500,
+            "phase": "contrast-dark:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "grab-returned",
+            "ns": 76528100,
+            "phase": "contrast-dark:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 76595200,
+            "phase": "contrast-dark:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 76602100,
+            "phase": "contrast-dark:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 76607500,
+            "phase": "contrast-dark:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 76668500,
+            "phase": "contrast-dark:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 76677400,
+            "phase": "contrast-dark:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 76681300,
+            "phase": "contrast-dark:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "gui-state",
+            "ns": 77854600,
+            "phase": "contrast-dark:before-ready-grab",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#ff101020",
+                "highContrast": true,
+                "labelColor": "#ffffff00",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": true,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 77967600,
+            "phase": "contrast-dark:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 78075100,
+            "phase": "contrast-dark:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 78085000,
+            "phase": "contrast-dark:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 78203000,
+            "phase": "contrast-dark:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 78279500,
+            "phase": "contrast-dark:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 78287900,
+            "phase": "contrast-dark:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "grab-returned",
+            "ns": 113049400,
+            "phase": "contrast-dark:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 117075100,
+            "phase": "contrast-dark:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 117086900,
+            "phase": "contrast-dark:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 117092600,
+            "phase": "contrast-dark:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 117154100,
+            "phase": "contrast-dark:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 117159600,
+            "phase": "contrast-dark:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 249841000,
+            "phase": "contrast-dark:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 249887600,
+            "phase": "contrast-dark:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 249895500,
+            "phase": "contrast-dark:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 250000500,
+            "phase": "contrast-dark:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 250010300,
+            "phase": "contrast-dark:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 250014400,
+            "phase": "contrast-dark:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "gui-state",
+            "ns": 382064800,
+            "phase": "contrast-dark:before-first-grab",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#ff101020",
+                "highContrast": true,
+                "labelColor": "#ffffff00",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": true,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 382086400,
+            "phase": "contrast-dark:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 382092800,
+            "phase": "contrast-dark:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 382098100,
+            "phase": "contrast-dark:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 382154900,
+            "phase": "contrast-dark:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 382161900,
+            "phase": "contrast-dark:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "grab-returned",
+            "ns": 452909600,
+            "phase": "contrast-dark:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 735158000,
+            "phase": "contrast-dark:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 735211800,
+            "phase": "contrast-dark:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 735218500,
+            "phase": "contrast-dark:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 735309800,
+            "phase": "contrast-dark:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 735318600,
+            "phase": "contrast-dark:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 735322800,
+            "phase": "contrast-dark:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "gui-state",
+            "ns": 817782400,
+            "phase": "contrast-dark:before-later-grab",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#ff101020",
+                "highContrast": true,
+                "labelColor": "#ffffff00",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": true,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 817803500,
+            "phase": "contrast-dark:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 817809900,
+            "phase": "contrast-dark:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 817815000,
+            "phase": "contrast-dark:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 817874300,
+            "phase": "contrast-dark:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 817879900,
+            "phase": "contrast-dark:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "grab-returned",
+            "ns": 897103900,
+            "phase": "contrast-dark:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 929823900,
+            "phase": "contrast-dark:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 931584200,
+            "phase": "contrast-dark:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 931603700,
+            "phase": "contrast-dark:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 933057700,
+            "phase": "contrast-dark:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 933077800,
+            "phase": "contrast-dark:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 933083100,
+            "phase": "contrast-dark:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 945275700,
+            "phase": "contrast-dark:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 945823500,
+            "phase": "contrast-dark:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 945846300,
+            "phase": "contrast-dark:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 946163500,
+            "phase": "contrast-dark:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 946180800,
+            "phase": "contrast-dark:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 946185900,
+            "phase": "contrast-dark:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "gui-state",
+            "ns": 1535650600,
+            "phase": "contrast-light-focus:request-update",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#fffffdd0",
+                "highContrast": true,
+                "labelColor": "#ff202040",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": false,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "thread": "10248"
+        },
+        {
+            "event": "gui-state",
+            "ns": 1536800900,
+            "phase": "contrast-light-focus:before-early-grab",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#fffffdd0",
+                "highContrast": true,
+                "labelColor": "#ff202040",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": false,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 1536988500,
+            "phase": "contrast-light-focus:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 1537858500,
+            "phase": "contrast-light-focus:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 1537874300,
+            "phase": "contrast-light-focus:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 1537994100,
+            "phase": "contrast-light-focus:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 1538004900,
+            "phase": "contrast-light-focus:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 1538009400,
+            "phase": "contrast-light-focus:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "grab-returned",
+            "ns": 1576329700,
+            "phase": "contrast-light-focus:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "gui-state",
+            "ns": 1576967500,
+            "phase": "contrast-light-focus:before-ready-grab",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#fffffdd0",
+                "highContrast": true,
+                "labelColor": "#ff202040",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": false,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 1576988100,
+            "phase": "contrast-light-focus:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 1576994800,
+            "phase": "contrast-light-focus:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 1577000100,
+            "phase": "contrast-light-focus:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 1577057900,
+            "phase": "contrast-light-focus:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 1577064000,
+            "phase": "contrast-light-focus:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "grab-returned",
+            "ns": 1613106900,
+            "phase": "contrast-light-focus:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 1616887600,
+            "phase": "contrast-light-focus:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 1616901500,
+            "phase": "contrast-light-focus:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 1616908100,
+            "phase": "contrast-light-focus:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 1616972900,
+            "phase": "contrast-light-focus:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 1616977700,
+            "phase": "contrast-light-focus:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "gui-state",
+            "ns": 1874717400,
+            "phase": "contrast-light-focus:before-first-grab",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#fffffdd0",
+                "highContrast": true,
+                "labelColor": "#ff202040",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": false,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 1874746000,
+            "phase": "contrast-light-focus:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 1874754500,
+            "phase": "contrast-light-focus:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 1874760200,
+            "phase": "contrast-light-focus:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 1874821500,
+            "phase": "contrast-light-focus:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 1874827100,
+            "phase": "contrast-light-focus:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "grab-returned",
+            "ns": 1950951800,
+            "phase": "contrast-light-focus:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "gui-state",
+            "ns": 2309198000,
+            "phase": "contrast-light-focus:before-later-grab",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#fffffdd0",
+                "highContrast": true,
+                "labelColor": "#ff202040",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": false,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 2309219400,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 2309225700,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 2309231500,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 2309296300,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 2309301900,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "grab-returned",
+            "ns": 2381359200,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 2404830500,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 2405460500,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 2405470700,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 2405874100,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 2405889900,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 2405895600,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 2416745600,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 2416849800,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 2416857900,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 2418277600,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 2418294300,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 2418300000,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 2440541700,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 2440608500,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 2440615600,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 2442414000,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 2442437300,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 2442445200,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 2455500700,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 2455575100,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 2455582500,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 2457654300,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 2457678700,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 2457684500,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 2469356600,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 2469594000,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 2469614100,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 2472462400,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 2472487400,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 2472493800,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 2483709600,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 2483783100,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 2483789800,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 2485092400,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 2485111200,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 2485118000,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 2492048700,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 2492121900,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 2492128800,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 2493434900,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 2493451400,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 2493457100,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 2515689600,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 2515796400,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 2515821100,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 2517618000,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 2517643300,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 2517651700,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 2528849100,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 2529006500,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 2529015800,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 2529551800,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 2529571100,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 2529577700,
+            "phase": "contrast-light-focus:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "gui-state",
+            "ns": 2557548200,
+            "phase": "contrast-light-menu:request-update",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#fffffdd0",
+                "highContrast": true,
+                "labelColor": "#ff202040",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": false,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "thread": "10248"
+        },
+        {
+            "event": "gui-state",
+            "ns": 2558015700,
+            "phase": "contrast-light-menu:before-early-grab",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#fffffdd0",
+                "highContrast": true,
+                "labelColor": "#ff202040",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": false,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 2558033100,
+            "phase": "contrast-light-menu:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 2558039600,
+            "phase": "contrast-light-menu:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 2558046400,
+            "phase": "contrast-light-menu:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 2558112300,
+            "phase": "contrast-light-menu:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 2558117900,
+            "phase": "contrast-light-menu:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "grab-returned",
+            "ns": 2593055100,
+            "phase": "contrast-light-menu:before-early-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "gui-state",
+            "ns": 2593698900,
+            "phase": "contrast-light-menu:before-ready-grab",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#fffffdd0",
+                "highContrast": true,
+                "labelColor": "#ff202040",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": false,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 2593716900,
+            "phase": "contrast-light-menu:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 2593722800,
+            "phase": "contrast-light-menu:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 2593728200,
+            "phase": "contrast-light-menu:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 2593793300,
+            "phase": "contrast-light-menu:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 2593798400,
+            "phase": "contrast-light-menu:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "grab-returned",
+            "ns": 2630432900,
+            "phase": "contrast-light-menu:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 2634477100,
+            "phase": "contrast-light-menu:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 2634498400,
+            "phase": "contrast-light-menu:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 2634506900,
+            "phase": "contrast-light-menu:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 2634610500,
+            "phase": "contrast-light-menu:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 2634615700,
+            "phase": "contrast-light-menu:before-ready-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "gui-state",
+            "ns": 2891982000,
+            "phase": "contrast-light-menu:before-first-grab",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#fffffdd0",
+                "highContrast": true,
+                "labelColor": "#ff202040",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": false,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 2892003600,
+            "phase": "contrast-light-menu:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 2892010300,
+            "phase": "contrast-light-menu:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 2892015800,
+            "phase": "contrast-light-menu:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 2892085400,
+            "phase": "contrast-light-menu:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 2892091000,
+            "phase": "contrast-light-menu:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "grab-returned",
+            "ns": 2960861200,
+            "phase": "contrast-light-menu:before-first-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "gui-state",
+            "ns": 3330838600,
+            "phase": "contrast-light-menu:before-later-grab",
+            "state": {
+                "catalogRows": 2,
+                "chromeColor": "#fffffdd0",
+                "highContrast": true,
+                "labelColor": "#ff202040",
+                "sceneGraphInitialized": true,
+                "searchCursorVisible": false,
+                "searchGlyphSceneRect": {
+                    "height": 18,
+                    "width": 18,
+                    "x": 126,
+                    "y": 59
+                },
+                "searchGlyphStatus": 1,
+                "searchGlyphVisible": true,
+                "tileCount": 15,
+                "tileGeometry": {
+                    "height": 104,
+                    "width": 104,
+                    "x": 0,
+                    "y": 0
+                },
+                "tileLabelVisible": true,
+                "tileSymbolVisible": true,
+                "tileVisible": true,
+                "windowExposed": true,
+                "windowVisible": true
+            },
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 3330860800,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 3330867800,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 3330873000,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 3330940500,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 3330946800,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "grab-returned",
+            "ns": 3399338900,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 3412541600,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 3412790000,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 3412798300,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 3413092200,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 3413108100,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 3413113300,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 3424173600,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 3424196000,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 3424202600,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 3424278100,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 3424287200,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 3424291400,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 3435522900,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 3435597300,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 3435605700,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 3438550100,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 3438577700,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 3438585800,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 3449493500,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 3449575500,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 3449582500,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 3451044100,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 3451064900,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 3451070400,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 3475599800,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 3475700500,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 3475712700,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 3477222800,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 3477240400,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 3477246200,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 3488235800,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 3488315900,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 3488323100,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 3489777800,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 3489796300,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 3489802200,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 3500534600,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 3500606900,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 3500615700,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 3502061800,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 3502077700,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 3502084000,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 3515324400,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 3515410300,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 3515425200,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 3515719800,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 3515740400,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 3515746500,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeSynchronizing",
+            "ns": 3566371400,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterSynchronizing",
+            "ns": 3568103100,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "beforeRendering",
+            "ns": 3568117500,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterRendering",
+            "ns": 3569834900,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "frameSwapped",
+            "ns": 3569908000,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        },
+        {
+            "event": "afterFrameEnd",
+            "ns": 3569920900,
+            "phase": "contrast-light-menu:before-later-grab",
+            "thread": "10248"
+        }
+    ],
+    "graphicsApi": 1,
+    "observerIsInstrumented": true,
+    "pixelComparisons": [
+        {
+            "bounds": {
+                "height": 14,
+                "width": 14,
+                "x": 128,
+                "y": 61
+            },
+            "changedPixels": 89,
+            "comparable": true,
+            "from": "early",
+            "glyphChangedPixels": 89,
+            "glyphComparable": true,
+            "scene": "contrast-dark",
+            "to": "ready"
+        },
+        {
+            "bounds": {
+                "height": 18,
+                "width": 1,
+                "x": 152,
+                "y": 59
+            },
+            "changedPixels": 18,
+            "comparable": true,
+            "from": "ready",
+            "glyphChangedPixels": 0,
+            "glyphComparable": true,
+            "scene": "contrast-dark",
+            "to": "first"
+        },
+        {
+            "bounds": {
+                "height": 18,
+                "width": 1,
+                "x": 152,
+                "y": 59
+            },
+            "changedPixels": 18,
+            "comparable": true,
+            "from": "first",
+            "glyphChangedPixels": 0,
+            "glyphComparable": true,
+            "scene": "contrast-dark",
+            "to": "later"
+        },
+        {
+            "changedPixels": 0,
+            "comparable": true,
+            "from": "early",
+            "glyphChangedPixels": 0,
+            "glyphComparable": true,
+            "scene": "contrast-light-focus",
+            "to": "ready"
+        },
+        {
+            "changedPixels": 0,
+            "comparable": true,
+            "from": "ready",
+            "glyphChangedPixels": 0,
+            "glyphComparable": true,
+            "scene": "contrast-light-focus",
+            "to": "first"
+        },
+        {
+            "changedPixels": 0,
+            "comparable": true,
+            "from": "first",
+            "glyphChangedPixels": 0,
+            "glyphComparable": true,
+            "scene": "contrast-light-focus",
+            "to": "later"
+        },
+        {
+            "changedPixels": 0,
+            "comparable": true,
+            "from": "early",
+            "glyphChangedPixels": 0,
+            "glyphComparable": true,
+            "scene": "contrast-light-menu",
+            "to": "ready"
+        },
+        {
+            "changedPixels": 0,
+            "comparable": true,
+            "from": "ready",
+            "glyphChangedPixels": 0,
+            "glyphComparable": true,
+            "scene": "contrast-light-menu",
+            "to": "first"
+        },
+        {
+            "changedPixels": 0,
+            "comparable": true,
+            "from": "first",
+            "glyphChangedPixels": 0,
+            "glyphComparable": true,
+            "scene": "contrast-light-menu",
+            "to": "later"
+        }
+    ],
+    "qpa": "offscreen",
+    "qtVersion": "6.8.2",
+    "schemaVersion": 1
+}
