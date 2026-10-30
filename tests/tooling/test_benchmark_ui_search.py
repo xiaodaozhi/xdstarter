@@ -9,6 +9,7 @@ import unittest
 
 API = runpy.run_path(str(Path(__file__).resolve().parents[2] / "scripts/benchmark_ui_search.py"))
 VALIDATE = API["validate_report"]
+ENVIRONMENT = API["benchmark_environment"]
 
 
 def fixture():
@@ -49,6 +50,38 @@ class UiSearchBenchmarkEvidenceTests(unittest.TestCase):
         VALIDATE(report, "a" * 64)
         report.update(qpa="windows", graphicsApi="Direct3D11")
         VALIDATE(report, "a" * 64, native=True)
+
+    def test_run_identity_is_verified_when_required(self):
+        report = fixture()
+        report.update(qpa="windows", graphicsApi="Direct3D11", executionMode="local-native")
+        VALIDATE(report, "a" * 64, native=True, execution_mode="local-native")
+        with self.assertRaisesRegex(ValueError, "executionMode"):
+            VALIDATE(report, "a" * 64, native=True, execution_mode="hosted-native")
+        del report["executionMode"]
+        with self.assertRaisesRegex(ValueError, "executionMode"):
+            VALIDATE(report, "a" * 64, native=True, execution_mode="local-native")
+
+    def test_native_opt_in_is_explicit_and_hosted_guard_is_preserved(self):
+        inherited = {"XDSTARTER_UI_BENCHMARK_LOCAL_NATIVE": "1", "QT_QUICK_BACKEND": "software"}
+        offscreen = ENVIRONMENT(inherited, "offscreen", "nt")
+        self.assertNotIn("XDSTARTER_UI_BENCHMARK_LOCAL_NATIVE", offscreen)
+        self.assertEqual(offscreen["QT_QPA_PLATFORM"], "offscreen")
+        local = ENVIRONMENT({}, "local-native", "nt")
+        self.assertEqual(local["XDSTARTER_UI_BENCHMARK_LOCAL_NATIVE"], "1")
+        self.assertEqual(local["QT_QPA_PLATFORM"], "windows")
+        self.assertEqual(local["QSG_RHI_BACKEND"], "d3d11")
+        self.assertNotIn("QT_QUICK_BACKEND", local)
+        hosted_markers = {"GITHUB_ACTIONS": "true", "RUNNER_ENVIRONMENT": "github-hosted"}
+        hosted = ENVIRONMENT(hosted_markers, "hosted-native", "nt")
+        self.assertNotIn("XDSTARTER_UI_BENCHMARK_LOCAL_NATIVE", hosted)
+        for env, mode, system in (({}, "local-native", "posix"),
+                                  (hosted_markers, "local-native", "nt"),
+                                  ({}, "hosted-native", "nt"),
+                                  ({"GITHUB_ACTIONS": "true", "RUNNER_ENVIRONMENT": "self-hosted"},
+                                   "hosted-native", "nt"),
+                                  ({}, "other", "nt")):
+            with self.subTest(env=env, mode=mode, system=system), self.assertRaises(ValueError):
+                ENVIRONMENT(env, mode, system)
 
     def test_incomplete_inconsistent_or_invalid_evidence_is_rejected(self):
         for change in ("missing", "query", "identity", "nan", "ordering", "summary",

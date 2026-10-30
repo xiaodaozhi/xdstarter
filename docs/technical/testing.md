@@ -652,9 +652,11 @@ python scripts/benchmark_search.py --executable build/app-release/xdstarter_sear
 python scripts/benchmark_ui_search.py --executable build/app-release/bin/xdstarter_ui_tests.exe --output build/validation/issue-35/ui-search.json
 ```
 
-输出目录须已存在，文件不能已存在。默认强制离屏软件渲染，不修改系统显示或主题。仅一次性 GitHub-hosted runner 可显式使用 `--hosted-native`；CI 要求 Windows QPA 和 D3D11 RHI 并上传独立工件，但 RHI 名称不证明硬件或 WARP 适配器身份。这是受控单结果搜索，不含真实键盘、输入法、实际图标加载或系统桌面；`frameSwapped` 不证明物理屏幕已经显示，也不能视为最早可交互首帧。没有冷／热进程唤起、可见动画帧耗时、隐藏 CPU／内存或采样开销基线，不以该夹具判定 PRD 端到端目标是否达标。
+输出目录须已存在，文件不能已存在。默认强制离屏软件渲染，不修改系统显示或主题。一次性 GitHub-hosted runner 可显式使用 `--hosted-native`；本机 Windows 会话可显式使用 `--local-native`，后者会短暂显示测试窗口，但只向该进程窗口发送 Qt 测试事件。两种原生模式均要求 Windows QPA 和 D3D11 RHI，报告分别记录运行模式；RHI 名称不证明硬件或 WARP 适配器身份。未经显式选择的本机原生运行仍被拒绝，产品常驻采样及全局 Hook 的托管环境限制保持不变。这是受控单结果搜索，不含真实键盘、输入法、实际图标加载或系统桌面；`frameSwapped` 不证明物理屏幕已经显示，也不能视为最早可交互首帧。没有冷／热进程唤起、可见动画帧耗时、隐藏 CPU／内存或采样开销基线，不以该夹具判定 PRD 端到端目标是否达标。
 
 版本 2 额外记录最后一个模拟键开始、整段模拟输入返回、controller 首次通知预期结果就绪、QML 行就绪，以及各阶段之间的耗时；独立校验阶段顺序、差值和逐项统计。Qt Test 向 `QWindow` 发送每次按下和释放后都会处理事件，所以前缀时间包含中间查询及事件循环，并非纯输入注入成本；最终键至 controller 和行就绪也包含事件投递与观察成本，controller 到行就绪不能直接解释为纯渲染耗时。新增观察器本身的开销尚未量化。先前版本 1 的原始记录保持原样，可在独立校验函数中显式启用 `allow_legacy`；常规采样要求版本 2，不能把两个版本样本混成同一组统计。
+
+2026-10-30 的[本机原生分段样本](validation/issue-35/ui-search-local-native-2026-10-30.json)来自 Windows 11 26300.9711、Qt 6.8.2、附加 MSVC v142 19.29.30159、Windows QPA 和 Intel Iris Xe D3D11；系统负载未隔离。测试程序 SHA-256 为 `beb2c0264326c02c8418b154ae62efc6dacc1ffb1e02a6b7749978fdbbf55de9`，原始样本 SHA-256 为 `540a776c9d84798c4408f2d6cf67b3212b8fde7cc84928a04886220250739cbd`。100 次前缀 P95 / 最大为 692.06 / 821.88 ms，最后模拟键到结果行 P95 / 最大为 97.26 / 142.83 ms，首键到结果行 P95 / 最大为 752.59 / 919.14 ms，额外同步帧 P95 / 最大为 760.77 / 923.05 ms。各阶段 P95 不能相减；偏高的样本保留，不将这轮或不同程序／负载的样本差异直接归因于产品或作为性能门槛结论。
 
 2026-10-29 的[本机离屏分段原始样本](validation/issue-35/ui-search-phases-offscreen.json)包含 100 次查询：前缀阶段 P95 / 最大为 68.84 / 103.48 ms，最后模拟键开始到行就绪为 25.75 / 42.91 ms，首键到行就绪为 91.22 / 132.29 ms。各 P95 分别由各自原始样本统计，不能相减或相加推导另一个 P95。该次使用 Qt 6.8.2、软件渲染、Windows 11 26300、附加 v142 19.29.30159 编译器、固定 Python 3.12.13；系统负载未隔离。测试程序 SHA-256 为 `c97f582e2ce70fb559ac457075acc3b705e711b9b888900e94406203c1c588a1`，采样源文件 SHA-256 为 `40bdf466d6847499a726bcba9bd9cefec1f19ebfb764780feaf771fc4e040c9b`，以 `fbfe91a23a6116572c258766c7114ae5253150b4` 为基线。一次离屏结果不能替代不同后端、真实目录与实际输入的性能验收。
 
