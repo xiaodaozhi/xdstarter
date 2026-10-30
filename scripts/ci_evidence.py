@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import hashlib
 import json
 import os
@@ -37,6 +38,10 @@ COPIES = {
     'uninstall.log': 'build/package/lifecycle-evidence/uninstall-keep-data.log',
     'search.json': 'build/app-release/search-benchmark-ci.json',
     'ui-search.json': 'build/app-release/ui-search-benchmark-ci.json',
+    'shell-workspace-initial.json': 'build/app-release/shell-localization-history/workspace-initial.json',
+    'shell-workspace-repeat.json': 'build/app-release/shell-localization-history/workspace-repeat.json',
+    'shell-profile-initial.json': 'build/app-release/shell-localization-history/profile-initial.json',
+    'shell-profile-repeat.json': 'build/app-release/shell-localization-history/profile-repeat.json',
     'layout-import.log': 'build/app-release/layout-import-native-evidence/native-d3d11.log',
     'high-contrast.log': 'build/app-release/high-contrast-native-evidence/native-d3d11.log',
     'picker-rapid.log': 'build/app-release/native-picker-evidence/rapid.log',
@@ -52,8 +57,14 @@ LIFECYCLE_CASES = {'junction-parent-refused', 'install', 'modified-obsolete-refu
                    'upgrade-enable-autostart', 'running-install-refused', 'running-uninstall-refused',
                    'junction-parent-uninstall-refused', 'uninstall-keep-data', 'reinstall-no-autostart',
                    'uninstall-explicit-data-cleanup'}
-QT_LOGS = ('layout-import.log', 'high-contrast.log', 'picker-rapid.log',
-           'picker-immediate.log', 'picker-shown.log')
+QT_LOGS = {
+    'layout-import.log': ('layoutImportDialogThemeAndKeyboard(normal)',
+                          'layoutImportDialogThemeAndKeyboard(completion-during-key-click)'),
+    'high-contrast.log': ('highContrastTracksSystemPalette()',),
+    'picker-rapid.log': ('layoutImportFilePickerOwnership()',),
+    'picker-immediate.log': ('layoutImportFilePickerOwnership()',),
+    'picker-shown.log': ('layoutImportFilePickerOwnership()',),
+}
 PHASES = {'core': {'python-packages', 'configure', 'compile', 'ctest'},
           'windows': {'python-packages', 'configure', 'compile', 'qml-lint', 'ctest'}}
 STEPS = {'core': ('build',),
@@ -134,11 +145,19 @@ def validate_role(directory, role, expected):
                 all(row[1] == 'Passed' for row in rows) and set(tests) <= set(names),
                 'incomplete-or-failed-test-log')
     if role == 'windows':
-        for name in QT_LOGS:
+        for name, functions in QT_LOGS.items():
             text = (directory / name).read_text(encoding='utf-8', errors='replace')
             totals = re.findall(r'Totals:\s+([1-9][0-9]*) passed,\s+0 failed,\s+0 skipped,\s+0 blacklisted', text)
-            require(len(totals) == 1 and not re.search(r'\bQ(?:CRITICAL|FATAL)\s*:|FAIL\s*!', text),
+            passes = re.findall(r'(?m)^PASS\s*:\s*PrototypeWindowTest::([^\r\n]+)', text)
+            expected_passes = ('initTestCase()', *functions, 'cleanupTestCase()')
+            require(len(totals) == 1 and int(totals[0]) == len(expected_passes) and
+                    Counter(passes) == Counter(expected_passes) and
+                    not re.search(r'\bQ(?:CRITICAL|FATAL)\s*:|FAIL\s*!', text),
                     'failed-or-incomplete-native-qt-log:' + name)
+            if name.startswith('picker-'):
+                mode = name.removeprefix('picker-').removesuffix('.log')
+                require(all(f'Native picker before close: "{mode}" dark= {dark}' in text
+                            for dark in ('true', 'false')), 'ambiguous-native-picker-log:' + name)
         lifecycle = json.loads((directory / 'lifecycle.json').read_text(encoding='utf-8'))
         require(lifecycle.get('status') == 'passed' and lifecycle.get('serverLifecycleFixture') is True and
                 lifecycle.get('cleanWindows11Accepted') is False and
@@ -151,6 +170,16 @@ def validate_role(directory, role, expected):
         require(graphics.get('status') == 'passed' and graphics.get('softwareOpenGLAbsent') is True and
                 {'normal', 'hardware-failure', 'all-failure', 'delayed-all-failure', 'hosted-resident'} <=
                 set(graphics.get('results', {})), 'incomplete-graphics-evidence')
+        for fixture in ('workspace', 'profile'):
+            for run in ('initial', 'repeat'):
+                shell = json.loads((directory / f'shell-{fixture}-{run}.json').read_text(encoding='utf-8'))
+                display = shell.get('shellDisplay', {})
+                require(shell.get('passed') is True and shell.get('fixtureCleaned') is True and
+                        shell.get('allFixtureDaclsRestored') is True and
+                        display.get('displayAssertionPassed') is True and
+                        display.get('strictLocalizedDistinctPaths') is True and
+                        display.get('mode') == ('system' if fixture == 'workspace' else 'strict-localized'),
+                        'incomplete-or-misattributed-shell-evidence')
     return report
 
 

@@ -156,10 +156,14 @@ class EvidenceTests(TemporaryRepository):
                     path = self.root / source
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text('{}', encoding='utf-8')
-                for name in ci_evidence.QT_LOGS:
-                    (self.root / ci_evidence.COPIES[name]).write_text(
-                        'PASS : Test::complete()\nTotals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 10ms\n',
-                        encoding='utf-8')
+                for name, functions in ci_evidence.QT_LOGS.items():
+                    cases = ('initTestCase()', *functions, 'cleanupTestCase()')
+                    rows = [f'PASS : PrototypeWindowTest::{case}' for case in cases]
+                    if name.startswith('picker-'):
+                        mode = name.removeprefix('picker-').removesuffix('.log')
+                        rows += [f'Native picker before close: "{mode}" dark= {dark}' for dark in ('true', 'false')]
+                    rows.append(f'Totals: {len(cases)} passed, 0 failed, 0 skipped, 0 blacklisted, 10ms')
+                    (self.root / ci_evidence.COPIES[name]).write_text('\n'.join(rows) + '\n', encoding='utf-8')
                 lifecycle = {'status': 'passed', 'serverLifecycleFixture': True, 'cleanWindows11Accepted': False,
                              'sourceIdentity': {'revision': self.env['GITHUB_SHA']},
                              'cases': [{'case': case, 'passed': True} for case in ci_evidence.LIFECYCLE_CASES]}
@@ -168,6 +172,13 @@ class EvidenceTests(TemporaryRepository):
                             'results': {name: {} for name in ('normal', 'hardware-failure', 'all-failure',
                                         'delayed-all-failure', 'hosted-resident')}}
                 (self.root / ci_evidence.COPIES['graphics.json']).write_text(json.dumps(graphics), encoding='utf-8')
+                for fixture in ('workspace', 'profile'):
+                    for run in ('initial', 'repeat'):
+                        shell = {'passed': True, 'fixtureCleaned': True, 'allFixtureDaclsRestored': True,
+                                 'shellDisplay': {'displayAssertionPassed': True, 'strictLocalizedDistinctPaths': True,
+                                                  'mode': 'system' if fixture == 'workspace' else 'strict-localized'}}
+                        path = self.root / ci_evidence.COPIES[f'shell-{fixture}-{run}.json']
+                        path.write_text(json.dumps(shell), encoding='utf-8')
             env = {**self.env, 'RUNNER_OS': platform, 'RUNNER_ARCH': 'X64', 'XDSTARTER_JOB_STATUS': 'success'}
             env.update({'XDSTARTER_STEP_' + name.upper().replace('-', '_'): 'success'
                         for name in ci_evidence.STEPS[role]})
@@ -231,6 +242,28 @@ class EvidenceTests(TemporaryRepository):
         report['files']['picker-rapid.log'] = ci_evidence.checksum(path)
         manifest.write_text(json.dumps(report), encoding='utf-8')
         with self.assertRaisesRegex(ValueError, 'failed-or-incomplete-native-qt-log'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_native_picker_log_cannot_be_misattributed_to_another_mode(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'picker-shown.log'
+        path.write_bytes((directory / 'picker-rapid.log').read_bytes())
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        report['files']['picker-shown.log'] = ci_evidence.checksum(path)
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'ambiguous-native-picker-log'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_shell_fixture_evidence_cannot_be_misattributed(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'shell-profile-repeat.json'
+        path.write_bytes((directory / 'shell-workspace-repeat.json').read_bytes())
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        report['files']['shell-profile-repeat.json'] = ci_evidence.checksum(path)
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'misattributed-shell-evidence'):
             ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
 
 

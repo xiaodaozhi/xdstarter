@@ -1006,4 +1006,4 @@ $env:XDSTARTER_QT_ROOT = "$PWD/build/Qt/6.8.2/msvc2022_64"
 
 分类作业当前只观察完整 Git 对比中仅修改 `docs/README.md` 的情况；字体、QML、视觉 JSON、接口与安装或发行契约以及其他未知路径均按全量处理。无基线、手动触发、标签、fork、提交身份不匹配或读取失败也按全量处理。无论观察结果如何，所有既有作业照常运行；不能据此声称已启用文档跳过。
 
-影子汇总要求同一提交、运行与尝试次数的 Linux 和 Windows 作业成功，核验原始 CTest、原生 Qt 日志、阶段记录及 Windows Server 安装生命周期证据。原生 Qt 日志即便报告测试通过，出现 `QCRITICAL` 或 `QFATAL` 也不能作为通过证据；缺文件、失败、跳过、取消或身份不一致同样不能记为通过。失败时仍保留原有诊断工件；新增观察工件沿用 7 天保留期。它不替代原始作业、仓库检查，也不能把 Server 夹具或离屏测试当作 Windows 11 真机验收。原生文件选择器清理超时仍由 [#88](https://github.com/xiaodaozhi/xdstarter/issues/88) 跟踪。
+影子汇总要求同一提交、运行与尝试次数的 Linux 和 Windows 作业成功，核验原始 CTest、Shell 两种夹具的初次及重复记录、原生 Qt 日志、阶段记录及 Windows Server 安装生命周期证据。原生 Qt 日志还须与用例、文件选择器诊断模式及深浅两轮对应；即便报告测试通过，出现 `QCRITICAL` 或 `QFATAL` 也不能作为通过证据。缺文件、失败、跳过、取消或身份不一致同样不能记为通过。失败时仍保留原有诊断工件；新增观察工件沿用 7 天保留期。它不替代原始作业、仓库检查，也不能把 Server 夹具或离屏测试当作 Windows 11 真机验收。原生文件选择器清理超时仍由 [#88](https://github.com/xiaodaozhi/xdstarter/issues/88) 跟踪。
