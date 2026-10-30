@@ -46,6 +46,7 @@ def verify(directory: Path) -> None:
         elif name == 'selection.log':
             markers = ('Native picker selection driver:', 'finished= true',
                        'Native picker selected file and opened import preview:',
+                       'Native picker external focus preserved:', 'otherForeground= true',
                        'Native picker launch failure visibly reported and retry canceled:')
         else:
             markers = ('Native picker shutdown:', 'fakeWinCaptureStopped= true',

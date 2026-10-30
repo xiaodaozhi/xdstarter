@@ -24,6 +24,14 @@ template <typename T> struct Com {
     ~Com() { if (value) value->Release(); }
 };
 
+std::string printableId(const wchar_t* text) {
+    std::string result;
+    if (!text) return result;
+    for (std::size_t index = 0; text[index] && index < 128; ++index)
+        result.push_back(text[index] >= 32 && text[index] < 127 ? static_cast<char>(text[index]) : '?');
+    return result;
+}
+
 HRESULT findById(IUIAutomation* automation, IUIAutomationElement* root,
                  const wchar_t* id, DWORD pid, CONTROLTYPEID expected, IUIAutomationElement** result) {
     VARIANT value;
@@ -38,9 +46,54 @@ HRESULT findById(IUIAutomation* automation, IUIAutomationElement* root,
     CONTROLTYPEID actualType = 0;
     if (SUCCEEDED(hr) && *result) hr = (*result)->get_CurrentProcessId(&actualPid);
     if (SUCCEEDED(hr) && *result) hr = (*result)->get_CurrentControlType(&actualType);
-    if (SUCCEEDED(hr) && (!*result || actualPid != static_cast<int>(pid) || actualType != expected))
+    std::cout << "find id=" << printableId(id) << " found=" << bool(*result) << " pid=" << actualPid
+              << " type=" << actualType << " hr=0x" << std::hex << static_cast<unsigned long>(hr)
+              << std::dec << std::endl;
+    if (SUCCEEDED(hr) && (!*result || actualPid != static_cast<int>(pid) ||
+                          (expected && actualType != expected)))
         hr = E_FAIL;
     VariantClear(&value);
+    return hr;
+}
+
+void describeDescendants(IUIAutomation* automation, IUIAutomationElement* root) {
+    Com<IUIAutomationCondition> all;
+    Com<IUIAutomationElementArray> elements;
+    if (FAILED(automation->CreateTrueCondition(&all.value)) ||
+        FAILED(root->FindAll(TreeScope_Descendants, all.value, &elements.value)) || !elements.value)
+        return;
+    int count = 0;
+    if (FAILED(elements.value->get_Length(&count))) return;
+    std::cout << "uia-descendant-count=" << count << std::endl;
+    for (int index = 0; index < count && index < 200; ++index) {
+        Com<IUIAutomationElement> element;
+        if (FAILED(elements.value->GetElement(index, &element.value)) || !element.value) continue;
+        BSTR id = nullptr, className = nullptr;
+        int pid = 0;
+        CONTROLTYPEID type = 0;
+        element.value->get_CurrentAutomationId(&id);
+        element.value->get_CurrentClassName(&className);
+        element.value->get_CurrentProcessId(&pid);
+        element.value->get_CurrentControlType(&type);
+        std::cout << "uia id=" << printableId(id) << " class=" << printableId(className)
+                  << " pid=" << pid << " type=" << type << std::endl;
+        if (id) SysFreeString(id);
+        if (className) SysFreeString(className);
+    }
+}
+
+HRESULT findChildEdit(IUIAutomation* automation, IUIAutomationElement* parent,
+                      DWORD pid, IUIAutomationElement** result) {
+    VARIANT value;
+    VariantInit(&value);
+    value.vt = VT_I4;
+    value.lVal = UIA_EditControlTypeId;
+    Com<IUIAutomationCondition> condition;
+    HRESULT hr = automation->CreatePropertyCondition(UIA_ControlTypePropertyId, value, &condition.value);
+    if (SUCCEEDED(hr)) hr = parent->FindFirst(TreeScope_Descendants, condition.value, result);
+    int actualPid = 0;
+    if (SUCCEEDED(hr) && *result) hr = (*result)->get_CurrentProcessId(&actualPid);
+    if (SUCCEEDED(hr) && (!*result || actualPid != static_cast<int>(pid))) hr = E_FAIL;
     return hr;
 }
 } // namespace
@@ -75,19 +128,42 @@ int wmain(int argc, wchar_t** argv) {
     HRESULT hr = E_FAIL;
     {
         Com<IUIAutomation> automation;
-        Com<IUIAutomationElement> root, fileName, open;
+        Com<IUIAutomationElement> root, fileName, edit, open;
         Com<IUIAutomationValuePattern> value;
         Com<IUIAutomationInvokePattern> invoke;
+        const char* stage = "create-automation";
         hr = CoCreateInstance(CLSID_CUIAutomation, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&automation.value));
+        if (SUCCEEDED(hr) && !automation.value) hr = E_FAIL;
+        if (SUCCEEDED(hr)) stage = "dialog-root";
         if (SUCCEEDED(hr)) hr = automation.value->ElementFromHandle(dialog, &root.value);
+        if (SUCCEEDED(hr) && !root.value) hr = E_FAIL;
+        if (SUCCEEDED(hr)) stage = "filename-control";
         if (SUCCEEDED(hr)) hr = findById(automation.value, root.value, L"1148", pid,
-                                         UIA_EditControlTypeId, &fileName.value);
-        if (SUCCEEDED(hr)) hr = fileName.value->GetCurrentPatternAs(UIA_ValuePatternId, IID_PPV_ARGS(&value.value));
+                                         0, &fileName.value);
+        if (SUCCEEDED(hr)) stage = "filename-value-pattern";
+        if (SUCCEEDED(hr)) {
+            hr = fileName.value->GetCurrentPatternAs(UIA_ValuePatternId, IID_PPV_ARGS(&value.value));
+            if (SUCCEEDED(hr) && !value.value) hr = E_FAIL;
+            if (FAILED(hr)) {
+                hr = findChildEdit(automation.value, fileName.value, pid, &edit.value);
+                if (SUCCEEDED(hr)) hr = edit.value->GetCurrentPatternAs(UIA_ValuePatternId, IID_PPV_ARGS(&value.value));
+                if (SUCCEEDED(hr) && !value.value) hr = E_FAIL;
+            }
+        }
+        if (SUCCEEDED(hr)) stage = "set-filename";
         if (SUCCEEDED(hr)) hr = value.value->SetValue(argv[5]);
+        if (SUCCEEDED(hr)) stage = "open-control";
         if (SUCCEEDED(hr)) hr = findById(automation.value, root.value, L"1", pid,
                                          UIA_ButtonControlTypeId, &open.value);
+        if (SUCCEEDED(hr)) stage = "open-invoke-pattern";
         if (SUCCEEDED(hr)) hr = open.value->GetCurrentPatternAs(UIA_InvokePatternId, IID_PPV_ARGS(&invoke.value));
+        if (SUCCEEDED(hr) && !invoke.value) hr = E_FAIL;
+        if (SUCCEEDED(hr)) stage = "invoke-open";
         if (SUCCEEDED(hr)) hr = invoke.value->Invoke();
+        std::cout << "automation-stage=" << stage << " hr=0x" << std::hex
+                  << static_cast<unsigned long>(hr) << std::dec << std::endl;
+        if (FAILED(hr) && automation.value && root.value)
+            describeDescendants(automation.value, root.value);
     }
     std::cout << "automation dialog=" << dialog << " pid=" << pid << " owner=" << owner
               << " result=0x" << std::hex << static_cast<unsigned long>(hr) << std::endl;

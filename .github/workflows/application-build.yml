@@ -47,11 +47,6 @@
           "id": "build"
         },
         {
-          "name": "Verify raw native picker evidence",
-          "shell": "pwsh",
-          "run": "& ./build/tooling/Scripts/python.exe scripts/verify_native_picker_evidence.py build/app-release/native-picker-evidence\nif ($LASTEXITCODE -ne 0) { throw 'Native picker evidence is incomplete or contains a severe Qt message.' }"
-        },
-        {
           "name": "Upload core phase timings and CTest logs",
           "if": "always() && !cancelled()",
           "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
@@ -107,6 +102,12 @@
             "XDSTARTER_DECLARED_PYTHON": "${{ steps.python.outputs.path }}"
           },
           "id": "build"
+        },
+        {
+          "name": "Verify raw native picker evidence",
+          "id": "picker_audit",
+          "shell": "pwsh",
+          "run": "& ./build/tooling/Scripts/python.exe scripts/verify_native_picker_evidence.py build/app-release/native-picker-evidence\nif ($LASTEXITCODE -ne 0) { throw 'Native picker evidence is incomplete or contains a severe Qt message.' }"
         },
         {
           "name": "Record smoke startup phases",

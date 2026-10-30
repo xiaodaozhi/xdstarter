@@ -6,6 +6,7 @@
 #include "app/desktop_window_host.h"
 #include "app/interface_font.h"
 #include "app/menu_controller.h"
+#include "app/native_layout_picker.h"
 #include "core/tile_grid.h"
 #include "platform/application_platform.h"
 #include "platform/desktop_platform.h"
@@ -109,6 +110,10 @@ struct TestProcessHandle {
     explicit TestProcessHandle(DWORD pid)
         : value(pid ? OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid) : nullptr) {}
     ~TestProcessHandle() { if (value) CloseHandle(value); }
+};
+struct TestWindowHandle {
+    HWND value = nullptr;
+    ~TestWindowHandle() { if (value && IsWindow(value)) DestroyWindow(value); }
 };
 #endif
 
@@ -5872,6 +5877,7 @@ void PrototypeWindowTest::layoutImportFilePickerOwnership() {
         click(item(QStringLiteral("importLayoutButton")));
         auto* picker = window_->findChild<QObject*>(QStringLiteral("layoutFileDialog"));
         QVERIFY(picker);
+        QVERIFY(picker->property("nativePicker").value<xdstarter::NativeLayoutPicker*>());
         QTRY_VERIFY(picker->property("visible").toBool());
         // The wrapper retains the public read-only and window-modal contract.
         QCOMPARE(picker->property("options").toInt(), 0x10);
@@ -5936,7 +5942,7 @@ void PrototypeWindowTest::layoutImportFilePickerOwnership() {
             QCOMPARE(WaitForSingleObject(process.value, 0), DWORD(WAIT_OBJECT_0));
             QVERIFY(!visibleNativeDialog(window_, picker->property("title").toString(), processId));
             QTRY_VERIFY_WITH_TIMEOUT(IsWindowEnabled(reinterpret_cast<HWND>(window_->winId())), 5000);
-            if (diagnostic == QLatin1String("shown")) {
+            if (diagnostic == QLatin1String("shown") && dark) {
                 QTRY_COMPARE_WITH_TIMEOUT(GetForegroundWindow(), reinterpret_cast<HWND>(window_->winId()), 3000);
                 qInfo() << "Native picker owner focus restored: pid=" << processId << "ownerForeground=" << true;
             }
@@ -6061,21 +6067,35 @@ void PrototypeWindowTest::layoutImportNativeLaunchFailure() {
     QVERIFY(picker);
     QSignalSpy failure(picker, SIGNAL(failed()));
     QVERIFY(failure.isValid());
-    QVERIFY(picker->setProperty("parentWindow", QVariant::fromValue<QWindow*>(nullptr)));
+    auto* native = picker->property("nativePicker").value<xdstarter::NativeLayoutPicker*>();
+    QVERIFY(native);
+    native->setTitle(QString{}); // Invalid bounded request, without modifying the real owner.
     QVERIFY(QMetaObject::invokeMethod(picker, "open"));
     QCOMPARE(failure.count(), 1);
     QVERIFY(!picker->property("visible").toBool());
     QVERIFY(window_->property("showSelectionFeedback").toBool());
     QVERIFY(window_->property("selectionStatus").toString().contains(QStringLiteral("无法打开")));
-    QVERIFY(picker->setProperty("parentWindow", QVariant::fromValue<QWindow*>(window_)));
+    native->setTitle(picker->property("title").toString());
     QVERIFY(QMetaObject::invokeMethod(picker, "open"));
     QTRY_VERIFY(picker->property("visible").toBool());
     const DWORD pid = picker->property("currentProcessId").toUInt();
     TestProcessHandle process(pid);
     QVERIFY(pid && process.value);
+    QTRY_VERIFY_WITH_TIMEOUT(visibleNativeDialog(window_, picker->property("title").toString(), pid), 5000);
+    TestWindowHandle unrelated;
+    unrelated.value = CreateWindowExW(WS_EX_TOOLWINDOW, L"STATIC", L"XDStarter focus fixture",
+                                      WS_OVERLAPPEDWINDOW | WS_VISIBLE, 20, 20, 200, 120,
+                                      nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
+    QVERIFY(unrelated.value);
+    QVERIFY(SetForegroundWindow(unrelated.value));
+    QTRY_COMPARE_WITH_TIMEOUT(GetForegroundWindow(), unrelated.value, 3000);
+    auto placement = xdstarter::createDesktopPlatform();
+    QVERIFY(!placement->hasOwnedForegroundWindow(window_->winId()));
     QVERIFY(QMetaObject::invokeMethod(picker, "reject"));
     QTRY_COMPARE_WITH_TIMEOUT(WaitForSingleObject(process.value, 0), DWORD(WAIT_OBJECT_0), 5000);
     QTRY_VERIFY_WITH_TIMEOUT(IsWindowEnabled(reinterpret_cast<HWND>(window_->winId())), 5000);
+    QCOMPARE(GetForegroundWindow(), unrelated.value);
+    qInfo() << "Native picker external focus preserved: pid=" << pid << "otherForeground=" << true;
     qInfo() << "Native picker launch failure visibly reported and retry canceled: pid=" << pid;
 #else
     QSKIP("Native failure automation requires Windows");

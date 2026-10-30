@@ -191,6 +191,28 @@ class NativeLayoutPickerPrivate {
             EnableWindow(request.hwnd, TRUE);
     }
 
+    static void restoreForegroundBeforeCancel(const Request& request) {
+        if (!request.ownerWasEnabled || !request.owner || !request.owner->isVisible() ||
+            request.owner->property("presentationSuspended").toBool() || !IsWindow(request.hwnd) ||
+            reinterpret_cast<HWND>(request.owner->winId()) != request.hwnd)
+            return;
+        const HWND foreground = GetForegroundWindow();
+        if (!foreground || !IsWindowVisible(foreground) ||
+            !native_picker::isTrustedForeground(request.hwnd, foreground))
+            return;
+        DWORD pid = 0;
+        if (GetWindowThreadProcessId(request.hwnd, &pid) != GetCurrentThreadId() ||
+            pid != GetCurrentProcessId())
+            return;
+        // A user dismissing the currently foreground picker is returning to
+        // its own menu. Restore before terminating the helper: afterwards
+        // Windows may choose an unrelated foreground window because the owner
+        // was disabled. Never activate if focus has already moved elsewhere.
+        if (!IsWindowEnabled(request.hwnd)) EnableWindow(request.hwnd, TRUE);
+        if (GetForegroundWindow() == foreground)
+            SetForegroundWindow(request.hwnd);
+    }
+
     void finished() {
         if (!active) return;
         auto request = std::move(active);
@@ -251,6 +273,7 @@ class NativeLayoutPickerPrivate {
         setVisible(false);
 #ifdef Q_OS_WIN
         if (active && active->id == *id) {
+            restoreForegroundBeforeCancel(*active);
             if (active->registered) {
                 native_picker::unregisterForegroundOwner(active->hwnd, active->process);
                 active->registered = false;
