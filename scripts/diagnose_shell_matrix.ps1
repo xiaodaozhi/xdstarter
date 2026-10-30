@@ -56,7 +56,7 @@ function Get-FileFacts([string]$Path) {
     $acl = Get-Acl -LiteralPath $Path
     $sddlBytes = [Text.Encoding]::UTF8.GetBytes($acl.Sddl)
     $aclHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($sddlBytes)).ToLowerInvariant()
-    $zones = @(Get-Item -LiteralPath $Path -Stream '*' -ErrorAction Stop | Where-Object Stream -eq 'Zone.Identifier')
+    $zones = @(Get-Item -LiteralPath $Path -Stream '*' -Force -ErrorAction Stop | Where-Object Stream -eq 'Zone.Identifier')
     return @{ attributes = [int]$item.Attributes; aclSha256 = $aclHash;
               aclProtected = [bool]$acl.AreAccessRulesProtected; zonePresent = ($zones.Count -gt 0) }
 }
