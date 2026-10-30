@@ -168,6 +168,63 @@ HWND makeOwner(const wchar_t* label) {
     return CreateWindowExW(WS_EX_TOOLWINDOW, L"STATIC", label, WS_OVERLAPPEDWINDOW | WS_VISIBLE,
                            10, 10, 240, 160, nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
 }
+HWND makeProxyOwner(HWND owner) {
+    RECT bounds{};
+    if (!GetWindowRect(owner, &bounds)) return nullptr;
+    return CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE, L"STATIC", L"XDStarter request owner",
+                           WS_POPUP, (bounds.left + bounds.right) / 2, (bounds.top + bounds.bottom) / 2,
+                           1, 1, owner, nullptr, GetModuleHandleW(nullptr), nullptr);
+}
+
+HANDLE privateJob() {
+    HANDLE job = CreateJobObjectW(nullptr, nullptr);
+    require(job, "create private job");
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
+    limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+    require(SetInformationJobObject(job, JobObjectExtendedLimitInformation, &limits, sizeof(limits)) != FALSE,
+            "configure kill-on-close job");
+    return job;
+}
+
+PROCESS_INFORMATION startInJob(HANDLE job, const std::wstring& arguments) {
+    wchar_t executable[32768]{};
+    const DWORD size = GetModuleFileNameW(nullptr, executable, DWORD(sizeof(executable) / sizeof(executable[0])));
+    require(size > 0 && size < sizeof(executable) / sizeof(executable[0]), "own executable path");
+    const std::wstring command = L"\"" + std::wstring(executable) + L"\" " + arguments;
+    std::vector<wchar_t> mutableCommand(command.begin(), command.end());
+    mutableCommand.push_back(L'\0');
+    SIZE_T attributeBytes = 0;
+    InitializeProcThreadAttributeList(nullptr, 1, 0, &attributeBytes);
+    require(attributeBytes > 0, "size process attribute list");
+    std::vector<unsigned char> attributeStorage(attributeBytes);
+    auto* attributes = reinterpret_cast<PPROC_THREAD_ATTRIBUTE_LIST>(attributeStorage.data());
+    require(InitializeProcThreadAttributeList(attributes, 1, 0, &attributeBytes) != FALSE,
+            "initialize process attribute list");
+    HANDLE jobs[] = {job};
+    require(UpdateProcThreadAttribute(attributes, 0, PROC_THREAD_ATTRIBUTE_JOB_LIST, jobs,
+                                      sizeof(jobs), nullptr, nullptr) != FALSE,
+            "bind private job during process creation");
+    STARTUPINFOEXW startup{};
+    startup.StartupInfo.cb = sizeof(startup);
+    startup.lpAttributeList = attributes;
+    PROCESS_INFORMATION created{};
+    const BOOL createdOk = CreateProcessW(executable, mutableCommand.data(), nullptr, nullptr, FALSE,
+                                         CREATE_SUSPENDED | CREATE_NO_WINDOW | EXTENDED_STARTUPINFO_PRESENT,
+                                         nullptr, nullptr, &startup.StartupInfo, &created);
+    const DWORD createError = GetLastError();
+    DeleteProcThreadAttributeList(attributes);
+    if (!createdOk) {
+        SetLastError(createError);
+        fail("start suspended child in private job");
+    }
+    if (ResumeThread(created.hThread) == DWORD(-1)) {
+        const DWORD resumeError = GetLastError();
+        TerminateJobObject(job, 0x89);
+        SetLastError(resumeError);
+        fail("resume child");
+    }
+    return created;
+}
 
 struct Child {
     HANDLE ready = nullptr;
@@ -202,58 +259,19 @@ struct Child {
         shared = static_cast<Shared*>(MapViewOfFile(mapping, FILE_MAP_ALL_ACCESS, 0, 0, sizeof(Shared)));
         require(shared, "map shared fixture state");
         ZeroMemory(shared, sizeof(Shared));
-        job = CreateJobObjectW(nullptr, nullptr);
-        require(job, "create private job");
-        JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
-        limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-        require(SetInformationJobObject(job, JobObjectExtendedLimitInformation, &limits, sizeof(limits)) != FALSE,
-                "configure kill-on-close job");
-        wchar_t executable[32768]{};
-        const DWORD size = GetModuleFileNameW(nullptr, executable, DWORD(sizeof(executable) / sizeof(executable[0])));
-        require(size > 0 && size < sizeof(executable) / sizeof(executable[0]), "own executable path");
-        std::wstring command = L"\"" + std::wstring(executable) + L"\" --child " +
+        job = privateJob();
+        std::wstring arguments = L"--child " +
                                std::to_wstring(reinterpret_cast<std::uintptr_t>(owner)) + L" " +
                                readyName + L" " + goName + L" " + mappingName;
         if (!selectedFile.empty()) {
             require(selectedFile.find(L'"') == std::wstring::npos, "safe fixture filename");
-            command += L" --file \"" + selectedFile + L"\"";
+            arguments += L" --file \"" + selectedFile + L"\"";
         }
-        std::vector<wchar_t> mutableCommand(command.begin(), command.end());
-        mutableCommand.push_back(L'\0');
-        SIZE_T attributeBytes = 0;
-        InitializeProcThreadAttributeList(nullptr, 1, 0, &attributeBytes);
-        require(attributeBytes > 0, "size process attribute list");
-        std::vector<unsigned char> attributeStorage(attributeBytes);
-        auto* attributes = reinterpret_cast<PPROC_THREAD_ATTRIBUTE_LIST>(attributeStorage.data());
-        require(InitializeProcThreadAttributeList(attributes, 1, 0, &attributeBytes) != FALSE,
-                "initialize process attribute list");
-        HANDLE jobs[] = {job};
-        require(UpdateProcThreadAttribute(attributes, 0, PROC_THREAD_ATTRIBUTE_JOB_LIST, jobs,
-                                          sizeof(jobs), nullptr, nullptr) != FALSE,
-                "bind private job during process creation");
-        STARTUPINFOEXW startup{};
-        startup.StartupInfo.cb = sizeof(startup);
-        startup.lpAttributeList = attributes;
-        PROCESS_INFORMATION created{};
-        const BOOL createdOk = CreateProcessW(executable, mutableCommand.data(), nullptr, nullptr, FALSE,
-                                             CREATE_SUSPENDED | CREATE_NO_WINDOW | EXTENDED_STARTUPINFO_PRESENT,
-                                             nullptr, nullptr, &startup.StartupInfo, &created);
-        const DWORD createError = GetLastError();
-        DeleteProcThreadAttributeList(attributes);
-        if (!createdOk) {
-            SetLastError(createError);
-            fail("start suspended child in private job");
-        }
+        const PROCESS_INFORMATION created = startInJob(job, arguments);
         process = created.hProcess;
         thread = created.hThread;
         pid = created.dwProcessId;
         mainThread = created.dwThreadId;
-        if (ResumeThread(thread) == DWORD(-1)) {
-            const DWORD resumeError = GetLastError();
-            TerminateJobObject(job, 0x89);
-            SetLastError(resumeError);
-            fail("resume child");
-        }
         std::cout << "child-created pid=" << pid << " thread=" << mainThread << " owner=" << owner << std::endl;
     }
 
@@ -281,6 +299,55 @@ struct Child {
                   << " ownerEnabled=" << bool(IsWindowEnabled(owner)) << std::endl;
     }
 };
+
+struct AutomationChild {
+    HANDLE job = nullptr;
+    PROCESS_INFORMATION process{};
+    AutomationChild(HWND window, DWORD targetPid) {
+        job = privateJob();
+        process = startInJob(job, L"--invoke " + std::to_wstring(reinterpret_cast<std::uintptr_t>(window)) +
+                                  L" " + std::to_wstring(targetPid));
+        std::cout << "automation-created pid=" << process.dwProcessId << " targetPid=" << targetPid
+                  << " hwnd=" << window << std::endl;
+    }
+    ~AutomationChild() {
+        if (job) CloseHandle(job);
+        if (process.hThread) CloseHandle(process.hThread);
+        if (process.hProcess) CloseHandle(process.hProcess);
+    }
+    void finishAfterSelection() {
+        if (!wait(process.hProcess, 1000)) {
+            // UIA providers can remain blocked while the target closes. The
+            // fixture never lets that auxiliary call block the tested parent.
+            require(TerminateJobObject(job, 0x90) != FALSE && wait(process.hProcess, 5000),
+                    "terminate blocked fixture automation");
+            std::cout << "automation-timeout-after-selection pid=" << process.dwProcessId << std::endl;
+            return;
+        }
+        DWORD code = 0;
+        require(GetExitCodeProcess(process.hProcess, &code) != FALSE && code == 0,
+                "fixture automation return status");
+        std::cout << "automation-returned pid=" << process.dwProcessId << " exit=" << code << std::endl;
+    }
+};
+
+int invokeMain(int argc, wchar_t** argv) {
+    if (argc != 4) return 2;
+    wchar_t* end = nullptr;
+    const auto rawWindow = _wcstoui64(argv[2], &end, 10);
+    if (!end || *end || !rawWindow) return 2;
+    const auto expectedPid = wcstoul(argv[3], &end, 10);
+    if (!end || *end || !expectedPid) return 2;
+    const HWND window = reinterpret_cast<HWND>(static_cast<std::uintptr_t>(rawWindow));
+    DWORD actualPid = 0;
+    if (!IsWindow(window) || !GetWindowThreadProcessId(window, &actualPid) || actualPid != expectedPid)
+        return 3;
+    const HRESULT initialized = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+    if (FAILED(initialized)) return 4;
+    const bool invoked = invokeOpen(window, actualPid);
+    CoUninitialize();
+    return invoked ? 0 : 5;
+}
 
 int childMain(int argc, wchar_t** argv) {
     if (argc != 6 && argc != 8) return 2;
@@ -420,6 +487,7 @@ int wmain(int argc, wchar_t** argv) {
     }
     if (argc >= 2 && std::wstring(argv[1]) == L"--child") return childMain(argc, argv);
     if (argc >= 2 && std::wstring(argv[1]) == L"--launcher") return launcherMain(argc, argv);
+    if (argc >= 2 && std::wstring(argv[1]) == L"--invoke") return invokeMain(argc, argv);
     if (argc != 2 || std::wstring(argv[1]) != L"--hosted-test") return 2;
     const HRESULT initialized = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
     require(SUCCEEDED(initialized), "initialize fixture COM");
@@ -490,8 +558,17 @@ int wmain(int argc, wchar_t** argv) {
         require(wait(accepted.ready, 10000) && SetEvent(accepted.go) != FALSE &&
                 waitVisible(accepted.pid, ownerA, 10000), "normal selection dialog visible");
         const Lookup visible = lookup(accepted.pid, ownerA);
-        require(visible.found && invokeOpen(visible.found, accepted.pid), "invoke the exact child Open button");
-        require(wait(accepted.process, 10000), "normal selection returns");
+        require(visible.found, "find exact child selection dialog");
+        AutomationChild automation(visible.found, accepted.pid);
+        if (!wait(accepted.process, 10000)) {
+            DWORD automationExit = STILL_ACTIVE;
+            GetExitCodeProcess(automation.process.hProcess, &automationExit);
+            std::cerr << "selection-timeout childPid=" << accepted.pid << " phase=" << accepted.shared->phase
+                      << " automationPid=" << automation.process.dwProcessId
+                      << " automationExit=" << automationExit << std::endl;
+            fail("normal selection returns within fixture bound");
+        }
+        automation.finishAfterSelection();
         DWORD code = 0;
         require(GetExitCodeProcess(accepted.process, &code) != FALSE && code == 0 &&
                 accepted.shared->phase == 3 && accepted.shared->showResult == S_OK &&
@@ -526,6 +603,31 @@ int wmain(int argc, wchar_t** argv) {
             std::cout << "fixture restored originally enabled owner after child termination" << std::endl;
         }
         require(IsWindowEnabled(ownerB), "visible-cancel owner recoverable");
+    }
+    {
+        HWND proxy = makeProxyOwner(ownerA);
+        require(proxy && GetWindow(proxy, GW_OWNER) == ownerA && !IsWindowVisible(proxy),
+                "hidden request owner has exact menu owner");
+        Child proxied(proxy, 7);
+        require(wait(proxied.ready, 10000), "proxy child ready");
+        const bool rootWasForeground = SetForegroundWindow(ownerA) != FALSE &&
+                                       waitForeground(GetCurrentProcessId(), ownerA, 1000);
+        EnableWindow(ownerA, FALSE); // Only this fixture's own root; model a modal lease.
+        require(!IsWindowEnabled(ownerA), "fixture root modal lease");
+        require(SetEvent(proxied.go) != FALSE && waitVisible(proxied.pid, proxy, 10000),
+                "dialog visible with hidden per-request owner");
+        const bool childForeground = waitForeground(proxied.pid, nullptr, 3000);
+        const Lookup visible = lookup(proxied.pid, proxy);
+        require(visible.found && GetWindow(visible.found, GW_OWNER) == proxy &&
+                GetWindow(proxy, GW_OWNER) == ownerA, "dialog owner chain reaches fixture root");
+        std::cout << "proxy-shown pid=" << proxied.pid << " thread=" << visible.thread
+                  << " hwnd=" << visible.found << " proxy=" << proxy << " root=" << ownerA
+                  << " rootWasForeground=" << rootWasForeground << " childForeground=" << childForeground
+                  << " rootEnabled=" << bool(IsWindowEnabled(ownerA)) << std::endl;
+        proxied.terminate("proxy-cancel");
+        EnableWindow(ownerA, TRUE);
+        require(IsWindowEnabled(ownerA), "modal lease restores originally enabled root");
+        require(DestroyWindow(proxy) != FALSE, "destroy only completed request owner");
     }
     {
         Child blocked(ownerA, 5);
