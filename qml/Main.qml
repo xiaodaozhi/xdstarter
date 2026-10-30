@@ -555,6 +555,11 @@ ApplicationWindow {
         pinMenuReturnTarget = null;
         if (!visible || presentationSuspended || internalPopupVisible || dragActive)
             return;
+        const focused = activeFocusItem;
+        // A delayed close must not undo focus explicitly moved after the menu closed.
+        if (target && target.visible && target.enabled && focused && focused !== contentItem &&
+                focused !== target && focused.visible && focused.enabled)
+            return;
         if (target && target.visible && target.enabled)
             target.forceActiveFocus(Qt.OtherFocusReason);
         else
