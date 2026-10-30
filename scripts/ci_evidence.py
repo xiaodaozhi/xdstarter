@@ -52,6 +52,8 @@ LIFECYCLE_CASES = {'junction-parent-refused', 'install', 'modified-obsolete-refu
                    'upgrade-enable-autostart', 'running-install-refused', 'running-uninstall-refused',
                    'junction-parent-uninstall-refused', 'uninstall-keep-data', 'reinstall-no-autostart',
                    'uninstall-explicit-data-cleanup'}
+QT_LOGS = ('layout-import.log', 'high-contrast.log', 'picker-rapid.log',
+           'picker-immediate.log', 'picker-shown.log')
 PHASES = {'core': {'python-packages', 'configure', 'compile', 'ctest'},
           'windows': {'python-packages', 'configure', 'compile', 'qml-lint', 'ctest'}}
 STEPS = {'core': ('build',),
@@ -67,7 +69,8 @@ def identity(env):
     result = {key: env.get(key, '') for key in
               ('GITHUB_SHA', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'RUNNER_OS', 'RUNNER_ARCH')}
     require(bool(re.fullmatch(r'[0-9a-f]{40}', result['GITHUB_SHA'])) and
-            result['GITHUB_RUN_ID'].isdigit() and result['GITHUB_RUN_ATTEMPT'].isdigit() and
+            re.fullmatch(r'[1-9][0-9]*', result['GITHUB_RUN_ID']) and
+            re.fullmatch(r'[1-9][0-9]*', result['GITHUB_RUN_ATTEMPT']) and
             result['RUNNER_OS'] in ('Linux', 'Windows') and result['RUNNER_ARCH'] == 'X64', 'invalid-identity')
     return result
 
@@ -118,7 +121,8 @@ def validate_role(directory, role, expected):
     timing = json.loads((directory / 'timings.json').read_text(encoding='utf-8'))
     require(timing.get('identity') == report['identity'], 'timing-identity-mismatch')
     commands = timing.get('commands', [])
-    require(commands and all(row.get('exit_code') == 0 and isinstance(row.get('elapsed_ms'), (float, int))
+    require(commands and all(type(row.get('exit_code')) is int and row['exit_code'] == 0
+                             and type(row.get('elapsed_ms')) in (float, int)
                              and 0 <= row['elapsed_ms'] < 86400000 for row in commands), 'failed-timed-command')
     require(PHASES[role] <= {row.get('phase') for row in commands}, 'missing-timed-phase')
     for name, tests in LOGS[role].items():
@@ -130,6 +134,11 @@ def validate_role(directory, role, expected):
                 all(row[1] == 'Passed' for row in rows) and set(tests) <= set(names),
                 'incomplete-or-failed-test-log')
     if role == 'windows':
+        for name in QT_LOGS:
+            text = (directory / name).read_text(encoding='utf-8', errors='replace')
+            totals = re.findall(r'Totals:\s+([1-9][0-9]*) passed,\s+0 failed,\s+0 skipped,\s+0 blacklisted', text)
+            require(len(totals) == 1 and not re.search(r'\bQ(?:CRITICAL|FATAL)\s*:|FAIL\s*!', text),
+                    'failed-or-incomplete-native-qt-log:' + name)
         lifecycle = json.loads((directory / 'lifecycle.json').read_text(encoding='utf-8'))
         require(lifecycle.get('status') == 'passed' and lifecycle.get('serverLifecycleFixture') is True and
                 lifecycle.get('cleanWindows11Accepted') is False and

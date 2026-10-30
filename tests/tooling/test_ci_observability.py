@@ -64,6 +64,21 @@ class ClassificationTests(TemporaryRepository):
         self.env['GITHUB_EVENT_NAME'] = 'workflow_dispatch'
         self.assertEqual(ci_classify.classify(self.root, self.env, {})['classification'], 'full')
 
+    def test_visual_interface_and_release_inputs_are_never_plain_docs(self):
+        for index, name in enumerate(('resources/fonts/sample.ttf', 'src/sample.qml',
+                                      'docs/design/tokens/tile-grid.json', 'include/api.h',
+                                      'packaging/windows/runtime.json', 'docs/technical/release.md')):
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('fixture\n', encoding='utf-8')
+            before = self.git('rev-parse', 'HEAD')
+            revision = self.commit('contract ' + str(index))
+            env = {**self.env, 'GITHUB_SHA': revision}
+            result = ci_classify.classify(self.root, env, {'before': before, 'after': revision})
+            with self.subTest(path=name):
+                self.assertEqual(result['classification'], 'full')
+                self.assertTrue(result['run_heavy'])
+
     def test_pr_merge_must_match_both_parents(self):
         self.git('checkout', '-b', 'feature', self.base)
         (self.root / 'docs/README.md').write_text('feature navigation\n', encoding='utf-8')
@@ -141,6 +156,10 @@ class EvidenceTests(TemporaryRepository):
                     path = self.root / source
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text('{}', encoding='utf-8')
+                for name in ci_evidence.QT_LOGS:
+                    (self.root / ci_evidence.COPIES[name]).write_text(
+                        'PASS : Test::complete()\nTotals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 10ms\n',
+                        encoding='utf-8')
                 lifecycle = {'status': 'passed', 'serverLifecycleFixture': True, 'cleanWindows11Accepted': False,
                              'sourceIdentity': {'revision': self.env['GITHUB_SHA']},
                              'cases': [{'case': case, 'passed': True} for case in ci_evidence.LIFECYCLE_CASES]}
@@ -182,6 +201,36 @@ class EvidenceTests(TemporaryRepository):
         report['files']['experiments.log'] = ci_evidence.checksum(path)
         manifest.write_text(json.dumps(report), encoding='utf-8')
         with self.assertRaisesRegex(ValueError, 'failed-test-log'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_missing_phase_and_timed_failure_are_not_green(self):
+        directory = self.root / 'build/ci-evidence/core'
+        path = directory / 'timings.json'
+        original = json.loads(path.read_text(encoding='utf-8'))
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        for mutation in ('missing', 'failed'):
+            data = json.loads(json.dumps(original))
+            if mutation == 'missing':
+                data['commands'] = [row for row in data['commands'] if row['phase'] != 'ctest']
+            else:
+                data['commands'][0]['exit_code'] = 1
+            path.write_text(json.dumps(data), encoding='utf-8')
+            report['files']['timings.json'] = ci_evidence.checksum(path)
+            manifest.write_text(json.dumps(report), encoding='utf-8')
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_native_qcritical_is_not_hidden_by_passing_qttest(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'picker-rapid.log'
+        text = path.read_text(encoding='utf-8')
+        path.write_text('QCRITICAL: cleanupThread Thread failed to finish.\n' + text, encoding='utf-8')
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        report['files']['picker-rapid.log'] = ci_evidence.checksum(path)
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'failed-or-incomplete-native-qt-log'):
             ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
 
 
