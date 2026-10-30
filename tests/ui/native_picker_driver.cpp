@@ -181,6 +181,14 @@ int wmain(int argc, wchar_t** argv) {
         }
         if (SUCCEEDED(hr)) stage = "set-filename";
         if (SUCCEEDED(hr)) hr = value.value->SetValue(argv[5]);
+        if (SUCCEEDED(hr)) {
+            BSTR actual = nullptr;
+            hr = value.value->get_CurrentValue(&actual);
+            const bool matched = SUCCEEDED(hr) && actual && _wcsicmp(actual, argv[5]) == 0;
+            std::cout << "filename-readback-matched=" << matched << std::endl;
+            if (actual) SysFreeString(actual);
+            if (SUCCEEDED(hr) && !matched) hr = E_FAIL;
+        }
         if (SUCCEEDED(hr)) stage = "open-control";
         if (SUCCEEDED(hr)) hr = findById(automation.value, root.value, L"1", pid,
                                          UIA_ButtonControlTypeId, &open.value);
@@ -195,7 +203,8 @@ int wmain(int argc, wchar_t** argv) {
             describeDescendants(automation.value, root.value);
     }
     std::cout << "automation dialog=" << dialog << " pid=" << pid << " owner=" << owner
-              << " result=0x" << std::hex << static_cast<unsigned long>(hr) << std::endl;
+              << " result=0x" << std::hex << static_cast<unsigned long>(hr) << std::dec
+              << " targetRunning=" << (WaitForSingleObject(process, 0) == WAIT_TIMEOUT) << std::endl;
     CoUninitialize();
     CloseHandle(process);
     return SUCCEEDED(hr) ? 0 : 5;

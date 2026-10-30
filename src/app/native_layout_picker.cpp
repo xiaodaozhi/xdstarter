@@ -3,6 +3,7 @@
 #include "core/picker_request_state.h"
 
 #include <QCoreApplication>
+#include <QDebug>
 #include <QGuiApplication>
 #include <QPointer>
 #include <QTimer>
@@ -225,6 +226,7 @@ class NativeLayoutPickerPrivate {
         }
         DWORD exitCode = 1;
         GetExitCodeProcess(request->process, &exitCode);
+        const LONG nativeError = request->shared->error;
         auto result = PickerRequestState::Result::Failed;
         QString path;
         if (exitCode == 0 && request->shared->result == static_cast<LONG>(native_picker::Result::Rejected)) {
@@ -249,6 +251,8 @@ class NativeLayoutPickerPrivate {
             } else if (delivery == PickerRequestState::Delivery::Rejected) {
                 emit q->rejected();
             } else {
+                qWarning().nospace() << "Native layout picker failed: processExit=" << exitCode
+                                     << " nativeError=0x" << Qt::hex << quint32(nativeError) << Qt::dec;
                 emit q->failed();
             }
         }

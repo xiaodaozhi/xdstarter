@@ -115,6 +115,20 @@ struct TestWindowHandle {
     HWND value = nullptr;
     ~TestWindowHandle() { if (value && IsWindow(value)) DestroyWindow(value); }
 };
+BOOL CALLBACK reportPickerWindow(HWND candidate, LPARAM parameter) {
+    const DWORD expectedPid = static_cast<DWORD>(parameter);
+    DWORD pid = 0;
+    const DWORD thread = GetWindowThreadProcessId(candidate, &pid);
+    if (pid != expectedPid) return TRUE;
+    wchar_t className[128]{}, title[256]{};
+    GetClassNameW(candidate, className, int(std::size(className)));
+    GetWindowTextW(candidate, title, int(std::size(title)));
+    qInfo() << "Native picker remaining window: pid=" << pid << "thread=" << thread
+            << "hwnd=" << quintptr(candidate) << "owner=" << quintptr(GetWindow(candidate, GW_OWNER))
+            << "visible=" << bool(IsWindowVisible(candidate))
+            << "class=" << QString::fromWCharArray(className) << "title=" << QString::fromWCharArray(title);
+    return TRUE;
+}
 #endif
 
 QColor compositeOver(const QColor& foreground, const QColor& background) {
@@ -6009,7 +6023,9 @@ void PrototypeWindowTest::layoutImportNativeSelection() {
     auto* picker = window_->findChild<QObject*>(QStringLiteral("layoutFileDialog"));
     QVERIFY(picker);
     QSignalSpy accepted(picker, SIGNAL(accepted()));
-    QVERIFY(accepted.isValid());
+    QSignalSpy rejected(picker, SIGNAL(rejected()));
+    QSignalSpy failure(picker, SIGNAL(failed()));
+    QVERIFY(accepted.isValid() && rejected.isValid() && failure.isValid());
     QVERIFY(QMetaObject::invokeMethod(window_, "openLayoutImport"));
     QTRY_VERIFY(picker->property("visible").toBool());
     const DWORD pid = picker->property("currentProcessId").toUInt();
@@ -6021,7 +6037,8 @@ void PrototypeWindowTest::layoutImportNativeSelection() {
     QProcess driver;
     driver.start(QCoreApplication::applicationDirPath() + QStringLiteral("/xdstarter_native_picker_driver.exe"),
                  {QString::number(reinterpret_cast<quintptr>(dialog)), QString::number(pid),
-                  QString::number(reinterpret_cast<quintptr>(owner)), QString::number(GetCurrentProcessId()), source});
+                  QString::number(reinterpret_cast<quintptr>(owner)), QString::number(GetCurrentProcessId()),
+                  QDir::toNativeSeparators(source)});
     QVERIFY(driver.waitForStarted(5000));
     QElapsedTimer driverClock;
     driverClock.start();
@@ -6038,7 +6055,17 @@ void PrototypeWindowTest::layoutImportNativeSelection() {
             << driver.readAllStandardError();
     QVERIFY2(driverFinished && driver.exitStatus() == QProcess::NormalExit && driver.exitCode() == 0,
              "The bounded native selection driver did not complete successfully");
-    QTRY_COMPARE_WITH_TIMEOUT(accepted.count(), 1, 5000);
+    QElapsedTimer selectionClock;
+    selectionClock.start();
+    while (!accepted.count() && !failure.count() && !rejected.count() && selectionClock.elapsed() < 5000)
+        QTest::qWait(20);
+    DWORD processExit = STILL_ACTIVE;
+    QVERIFY(GetExitCodeProcess(process.value, &processExit));
+    qInfo() << "Native picker result observation: pid=" << pid << "elapsedMs=" << selectionClock.elapsed()
+            << "processExit=" << processExit << "visible=" << picker->property("visible").toBool()
+            << "accepted=" << accepted.count() << "rejected=" << rejected.count() << "failed=" << failure.count();
+    if (!accepted.count()) EnumWindows(reportPickerWindow, static_cast<LPARAM>(pid));
+    QCOMPARE(accepted.count(), 1);
     QCOMPARE(picker->property("selectedFile").toUrl(), QUrl::fromLocalFile(source));
     QTRY_COMPARE_WITH_TIMEOUT(WaitForSingleObject(process.value, 0), DWORD(WAIT_OBJECT_0), 5000);
     QTRY_VERIFY_WITH_TIMEOUT(!controller_->importBusy(), 5000);
