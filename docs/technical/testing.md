@@ -12,9 +12,15 @@
 
 [#72](https://github.com/xiaodaozhi/xdstarter/issues/72) 的布局导入键盘测试在状态变化时记录提交中、确认按钮禁用与透明度，并在按键前检查焦点；快速完成的测试行强制后台提交在按键函数返回前完成，仍要求观察到提交中状态及最终布局。Windows hosted CTest 单独运行原生 D3D11 版本并上传日志，发行目录仍保留原有验证；Qt 系统文件选择器线程清理警告的原因及真实 Windows 11 行为另行跟踪，不能以该测试代替。
 
-[#88](https://github.com/xiaodaozhi/xdstarter/issues/88) 的诊断只在一次性 GitHub-hosted Windows 上运行三个独立 QtTest 进程：QML 可见后立即关闭并快速重开、立即关闭后观察、以及等待进程内 owner 和标题匹配的原生窗口可见后关闭。日志保留 Qt 对话框线程编号、事件和时间点；观察模式在关闭后观察最多 1.2 秒，若同一测试进程的匹配窗口迟到，仅向该 HWND 发送关闭消息并等待其不可见。诊断检查窗口操作的完成，不把 QtTest 返回成功或有限观察当成线程清理成功；Qt 警告是否消失、根因及真实 Windows 11 行为以 Issue 证据为准。
+[#96](https://github.com/xiaodaozhi/xdstarter/issues/96) 保留新建分组后焦点回归，并额外在分组按钮已获得焦点时调用旧更多菜单的关闭恢复决策，检查它不会抢走新焦点；普通菜单关闭与外部收起仍由原有交互用例覆盖。受控 QtTest 不代替真实 Windows 桌面焦点验收。
+
+[#88](https://github.com/xiaodaozhi/xdstarter/issues/88) 的产品诊断只在一次性 GitHub-hosted Windows 上运行独立 QtTest 进程：快速取消及重开、原生窗口出现前取消、窗口出现后取消，以及通过独立的有界 UI Automation 进程选择实际测试文件。夹具持有辅助进程句柄，核对 PID、owner、进程退出和 owner 恢复；不按标题关闭其他进程。日志保留取消耗时和原始 Qt 严重消息。有限轮询只报告实际观察，不能证明从未闪现；夹具通过也不代表真实 Windows 11 通过。此前 Qt 线程诊断和失败记录保留于 Issue，不能用本次结果覆盖。
 
 另有默认不构建的 `XDSTARTER_BUILD_PICKER_CANCEL_POC`：一次性 hosted Windows 自有进程使用各自独立 owner 的 COM 文件对话框，受控比较进入 Show 前取消、检查之后／Show 之前取消、窗口显示后取消与并发下一请求。事件回调尝试按文档关闭，辅助观察只对本进程、请求 owner 和标题均匹配的窗口投递关闭；超时只结束该夹具进程。此实验不是产品实现，轮询可能漏过瞬时窗口，不能证明任何运行条件下无闪现、无泄漏或安全退出；不在本机托管外运行系统对话框。
+
+后续增加独立 owner 销毁探针：在受控屏障处确认工作线程身份，销毁旧 owner 并建立新 owner，再放行旧请求进入 `Show`；若句柄已复用则中止旧请求，避免错误归属。探针同时记录同进程／线程的窗口显示事件、有限轮询、返回码和耗时，只对验证过进程、线程及唯一标题的夹具窗口发关闭消息。结果用于判断候选可行性，不将一次未观察到窗口解释为无闪现或修复，也不将该实验当作产品焦点和系统入口验收。
+
+同一开关还构建隔离进程对照：每次请求在创建挂起子进程时原子指定仅属于该请求、关闭即结束子进程的 Windows Job，之后才放行；比较正常选择／取消、`Show` 前取消、`Show` 竞态、可见后取消、相同标题的独立 owner、关闭 Job 时受控阻塞子进程的退出，以及启动进程直接退出后的子进程清理。仅在一次性 hosted runner 操作这些自有进程和窗口，记录进程／线程、owner、显示事件、退出码及耗时。该夹具不证明产品进程间焦点、辅助功能或真实 Windows 11 行为，也不把有限事件观察当作无闪现保证。
 
 ## 当前自动检查
 
@@ -25,6 +31,10 @@
 平台测试还只读比较正式读取器与当前系统参数；查询不可用或测试期间状态改变时记录跳过，不切换系统设置。仅一次性 GitHub-hosted Windows runner 启用 `ui.high-contrast-native`，要求 Windows QPA 和 Direct3D11 RHI，上传模拟色的日志和抓帧；RHI 名称不证明具体适配器，运行结果以该次 CI 为准。
 
 首轮模拟切换暴露颜色与启用状态通知顺序导致 QML 未定义颜色警告，调整绑定与保留有效配色后定向测试通过；先前一次短等待抓帧出现局部绘制不完整，offscreen/software 中等待两次 `frameSwapped` 未达到要求，后续分时抓帧完整，但未定位该次画面异常原因。真实 Windows 主题切换、屏幕阅读器及更多系统组合仍未完成，不能以模拟结果宣称通过。
+
+[#85](https://github.com/xiaodaozhi/xdstarter/issues/85) 增加仅用于研究的显式帧跟踪：在相同匿名高对比度场景中记录单调时间、同步／渲染／提交事件、测试线程、布局和搜索图标 `Image.status`；保存状态检查后立即、该图标 Ready 后立即及原有两个时间点的图像。证据脚本核对事件顺序、场景、图像尺寸与哈希，并仅对该图标区域检查 Ready 后抓帧的稳定性。一次性 hosted Windows 另收集 offscreen/software 与 Windows QPA/D3D11 两组原始日志、事件和截图。额外的抓帧、像素比较与事件观察会改变时序；特定图标 Ready 和某次 frameSwapped 都不构成整个界面已完整或实际屏幕已呈现的保证。具体结果与未复现情况保留在 Issue。
+
+本机三次 offscreen/software 对照中，早期抓帧时搜索图标仍在加载，之前每次已有一次 frameSwapped；图标 Ready 后的抓帧在该图标区域与后续抓帧一致。一个样本的[环境与源码哈希](validation/issue-85/offscreen/context.json)、[帧事件及状态](validation/issue-85/offscreen/frame-trace.json)、[早期截图](validation/issue-85/offscreen/contrast-dark-early.png)与[图标就绪截图](validation/issue-85/offscreen/contrast-dark-ready.png)保留在仓库，完整图像可由 `scripts/inspect_contrast_frame_trace.py` 复核。该观察不能证明先前未复现的整块内容缺失具有相同原因，也不能代替 Windows 原生或真实显示验收。
 
 `python3 scripts/check_repository.py` 检查本地文档/图片链接、JSON/SVG/PNG 基本有效性、当前设计尺寸、Logo 透明通道及 SVG 网格几何。该检查不运行 Qt，也不代表 Windows 原型通过。
 

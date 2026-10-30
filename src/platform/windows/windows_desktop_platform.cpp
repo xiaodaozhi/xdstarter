@@ -1,4 +1,5 @@
 #include "windows_desktop_platform.h"
+#include "native_picker_focus.h"
 
 #include "platform/desktop_width_snap.h"
 
@@ -1368,6 +1369,11 @@ bool WindowsDesktopPlatform::hasOwnedForegroundWindow(quintptr menuHandle) {
     // visibility is required for our menu, not for the OS-owned foreground.
     if (!foreground || !IsWindow(foreground))
         return false;
+    // The layout picker is the only foreign process accepted here. Its live
+    // process handle and exact owner chain are registered by the request that
+    // created it; a matching title or a recycled PID is never sufficient.
+    if (native_picker::isTrustedForeground(menu, foreground))
+        return true;
     HWND candidate = GetAncestor(foreground, GA_ROOT);
     for (int depth = 0; candidate && depth < 16; ++depth) {
         DWORD process = 0;

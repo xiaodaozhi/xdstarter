@@ -1,16 +1,21 @@
 #include "native_chrome_probe.h"
+#include "contrast_frame_trace.h"
 #include "visual_acceptance_probe.h"
 #include "ui_search_benchmark.h"
 
 #include "app/application_icon_provider.h"
+#include "app/desktop_window_host.h"
 #include "app/interface_font.h"
 #include "app/menu_controller.h"
+#include "app/native_layout_picker.h"
 #include "core/tile_grid.h"
 #include "platform/application_platform.h"
 #include "platform/desktop_platform.h"
+#include "platform/desktop_tray.h"
 #include "platform/platform_integration.h"
 #include "platform/motion_preference.h"
 #include "platform/contrast_preference.h"
+#include "platform/win_key_capture.h"
 #include "services/application_catalog.h"
 #include "services/desktop_shell_service.h"
 #include "services/prototype_service.h"
@@ -34,6 +39,7 @@
 #include <QMatrix4x4>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QProcess>
 #include <QQmlApplicationEngine>
 #include <QQmlComponent>
 #include <QQmlError>
@@ -93,10 +99,36 @@ BOOL CALLBACK findNativeDialogWindow(HWND candidate, LPARAM parameter) {
     return FALSE;
 }
 
-HWND visibleNativeDialog(QWindow* owner, const QString& title) {
-    NativeDialogLookup lookup{GetCurrentProcessId(), reinterpret_cast<HWND>(owner->winId()), title};
+HWND visibleNativeDialog(QWindow* owner, const QString& title, DWORD processId) {
+    if (!processId) return nullptr;
+    NativeDialogLookup lookup{processId, reinterpret_cast<HWND>(owner->winId()), title};
     EnumWindows(findNativeDialogWindow, reinterpret_cast<LPARAM>(&lookup));
     return lookup.result;
+}
+
+struct TestProcessHandle {
+    HANDLE value = nullptr;
+    explicit TestProcessHandle(DWORD pid)
+        : value(pid ? OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid) : nullptr) {}
+    ~TestProcessHandle() { if (value) CloseHandle(value); }
+};
+struct TestWindowHandle {
+    HWND value = nullptr;
+    ~TestWindowHandle() { if (value && IsWindow(value)) DestroyWindow(value); }
+};
+BOOL CALLBACK reportPickerWindow(HWND candidate, LPARAM parameter) {
+    const DWORD expectedPid = static_cast<DWORD>(parameter);
+    DWORD pid = 0;
+    const DWORD thread = GetWindowThreadProcessId(candidate, &pid);
+    if (pid != expectedPid) return TRUE;
+    wchar_t className[128]{}, title[256]{};
+    GetClassNameW(candidate, className, int(std::size(className)));
+    GetWindowTextW(candidate, title, int(std::size(title)));
+    qInfo() << "Native picker remaining window: pid=" << pid << "thread=" << thread
+            << "hwnd=" << quintptr(candidate) << "owner=" << quintptr(GetWindow(candidate, GW_OWNER))
+            << "visible=" << bool(IsWindowVisible(candidate))
+            << "class=" << QString::fromWCharArray(className) << "title=" << QString::fromWCharArray(title);
+    return TRUE;
 }
 #endif
 
@@ -229,6 +261,30 @@ class DesktopTestPlatform final : public xdstarter::DesktopPlatform {
     std::shared_ptr<DesktopTestState> state_;
 };
 
+#ifdef Q_OS_WIN
+class PickerShutdownTray final : public xdstarter::DesktopTray {
+  public:
+    xdstarter::DesktopActionResult start(const QImage&) override { active = true; return {true, {}, {}}; }
+    void stop() override { active = false; ++stops; }
+    bool isAvailable() const override { return active; }
+    void showContextMenu() override {}
+    bool active = false;
+    int stops = 0;
+};
+class PickerShutdownCapture final : public xdstarter::WinKeyCapture {
+  public:
+    void setEnabled(bool enabled) override {
+        active = enabled;
+        emit statusChanged(active, QStringLiteral("fixture"), {});
+    }
+    void stop() override { active = false; ++stops; }
+    bool isActive() const override { return active; }
+    bool isSupported() const override { return true; }
+    bool active = false;
+    int stops = 0;
+};
+#endif
+
 QQuickItem* visualItem(QQuickItem* parent, const QString& name) {
     if (!parent) {
         return nullptr;
@@ -242,6 +298,15 @@ QQuickItem* visualItem(QQuickItem* parent, const QString& name) {
             return found;
         }
     }
+    return nullptr;
+}
+
+QQuickItem* namedGlyph(QQuickItem* parent, const QString& name) {
+    if (!parent) return nullptr;
+    if (parent->property("name").toString() == name && parent->property("status").isValid())
+        return parent;
+    for (auto* child : parent->childItems())
+        if (auto* found = namedGlyph(child, name)) return found;
     return nullptr;
 }
 
@@ -464,6 +529,10 @@ class PrototypeWindowTest : public QObject {
     void searchKeyboardAndLaunchLifecycle();
     void searchRefreshAliasesAndRestart();
     void groupManagementLifecycle();
+    void lateMoreMenuClosePreservesGroupFocus();
+    void explicitGroupFocusSurvivesLateMenuClose();
+    void explicitSearchFocusSurvivesLateMenuClose();
+    void moreMenuCloseReturnsFocus();
     void groupNameCompositionAndCancellation();
     void groupCatalogMoveAndRestart();
     void groupChangesPreserveSearchFocus();
@@ -492,6 +561,9 @@ class PrototypeWindowTest : public QObject {
     void layoutImportCancellationAndProtection();
     void layoutImportFailureAndExitFence();
     void layoutImportFilePickerOwnership();
+    void layoutImportNativeSelection();
+    void layoutImportNativeLaunchFailure();
+    void layoutImportNativeShutdown();
     void layoutImportDialogThemeAndKeyboard_data();
     void layoutImportDialogThemeAndKeyboard();
     void layoutImportMinimumPanel();
@@ -1197,6 +1269,35 @@ void PrototypeWindowTest::highContrastTracksSystemPalette() {
     auto* tileSymbol = visualItem(tile, QStringLiteral("tileSymbol"));
     auto* tileIcon = visualItem(tile, QStringLiteral("tileIcon"));
     QVERIFY(tileLabel && tileSymbol && tileIcon);
+    const auto traceDirectory = qEnvironmentVariable("XDSTARTER_FRAME_TRACE_DIR");
+    std::unique_ptr<ContrastFrameTrace> frameTrace;
+    auto* traceSearchField = item(QStringLiteral("searchField"));
+    QQuickItem* traceSearchGlyph = nullptr;
+    if (!traceDirectory.isEmpty()) {
+        QVERIFY(QDir().mkpath(traceDirectory));
+        traceSearchGlyph = namedGlyph(traceSearchField, QStringLiteral("search"));
+        QVERIFY(traceSearchField && traceSearchGlyph);
+        frameTrace = std::make_unique<ContrastFrameTrace>(window_, traceDirectory);
+    }
+    const auto frameState = [&]() -> QJsonObject {
+        return {{QStringLiteral("highContrast"), window_->property("highContrast").toBool()},
+                {QStringLiteral("sceneGraphInitialized"), window_->isSceneGraphInitialized()},
+                {QStringLiteral("windowVisible"), window_->isVisible()},
+                {QStringLiteral("windowExposed"), window_->isExposed()},
+                {QStringLiteral("catalogRows"), catalog_->applicationsModel()->rowCount()},
+                {QStringLiteral("tileCount"), int(tileGeometries().size())},
+                {QStringLiteral("tileGeometry"), rectangleJson(itemGeometry(tile))},
+                {QStringLiteral("tileVisible"), tile->isVisible()},
+                {QStringLiteral("tileLabelVisible"), tileLabel->isVisible()},
+                {QStringLiteral("tileSymbolVisible"), tileSymbol->isVisible()},
+                {QStringLiteral("searchGlyphStatus"), traceSearchGlyph ? traceSearchGlyph->property("status").toInt() : -1},
+                {QStringLiteral("searchGlyphVisible"), traceSearchGlyph && traceSearchGlyph->isVisible()},
+                {QStringLiteral("searchGlyphSceneRect"), traceSearchGlyph
+                     ? rectangleJson(traceSearchGlyph->mapRectToScene(traceSearchGlyph->boundingRect())) : QJsonObject{}},
+                {QStringLiteral("searchCursorVisible"), traceSearchField && traceSearchField->property("cursorVisible").toBool()},
+                {QStringLiteral("chromeColor"), chrome->property("color").value<QColor>().name(QColor::HexArgb)},
+                {QStringLiteral("labelColor"), tileLabel->property("color").value<QColor>().name(QColor::HexArgb)}};
+    };
     const QVariantMap dark{{QStringLiteral("window"), QColor(QStringLiteral("#101020"))},
                            {QStringLiteral("windowText"), QColor(QStringLiteral("#FFFF00"))},
                            {QStringLiteral("highlight"), QColor(QStringLiteral("#003399"))},
@@ -1207,20 +1308,38 @@ void PrototypeWindowTest::highContrastTracksSystemPalette() {
                             {QStringLiteral("highlight"), QColor(QStringLiteral("#800020"))},
                             {QStringLiteral("highlightText"), QColor(Qt::white)},
                             {QStringLiteral("grayText"), QColor(QStringLiteral("#555555"))}};
-    const auto capture = [this](const QString& name) {
+    const auto capture = [this, &frameTrace, &frameState, &traceSearchGlyph](const QString& name) {
         const auto destination = qEnvironmentVariable("XDSTARTER_CONTRAST_CAPTURE_DIR");
         if (destination.isEmpty())
             return;
         QVERIFY(QDir().mkpath(destination));
+        const QString scene = name.endsWith(QLatin1String(".png")) ? name.chopped(4) : name;
+        if (frameTrace) frameTrace->mark(scene + QStringLiteral(":request-update"), frameState());
         window_->requestUpdate();
+        if (frameTrace) {
+            frameTrace->mark(scene + QStringLiteral(":before-early-grab"), frameState());
+            const auto early = window_->grabWindow();
+            QVERIFY(frameTrace->capture(scene, QStringLiteral("early"), early, frameState()));
+            // This waits for one specifically identified glyph, not for every
+            // resource or for a universal scene-rendering completion signal.
+            QTRY_COMPARE_WITH_TIMEOUT(traceSearchGlyph->property("status").toInt(), 1, 5000);
+            frameTrace->mark(scene + QStringLiteral(":before-ready-grab"), frameState());
+            window_->requestUpdate();
+            const auto ready = window_->grabWindow();
+            QVERIFY(frameTrace->capture(scene, QStringLiteral("ready"), ready, frameState()));
+        }
         QTest::qWait(250);
+        if (frameTrace) frameTrace->mark(scene + QStringLiteral(":before-first-grab"), frameState());
         const auto initial = window_->grabWindow();
         QVERIFY(!initial.isNull());
         QVERIFY(initial.save(QDir(destination).filePath(QStringLiteral("first-") + name)));
+        if (frameTrace) QVERIFY(frameTrace->capture(scene, QStringLiteral("first"), initial, frameState()));
         QTest::qWait(350);
+        if (frameTrace) frameTrace->mark(scene + QStringLiteral(":before-later-grab"), frameState());
         const auto frame = window_->grabWindow();
         QVERIFY(!frame.isNull());
         QVERIFY(frame.save(QDir(destination).filePath(name)));
+        if (frameTrace) QVERIFY(frameTrace->capture(scene, QStringLiteral("later"), frame, frameState()));
     };
     QSignalSpy changes(controller_.get(), &xdstarter::MenuController::highContrastChanged);
     const auto check = [&](const QVariantMap& colors) {
@@ -1422,6 +1541,7 @@ void PrototypeWindowTest::highContrastTracksSystemPalette() {
     QVERIFY(window_->property("darkTheme").toBool());
     QVERIFY(saved.open(QIODevice::ReadOnly));
     QCOMPARE(saved.readAll(), userChoice);
+    if (frameTrace) QVERIFY(frameTrace->finish());
 }
 
 void PrototypeWindowTest::systemThemePreferenceTracksAndPersists() {
@@ -3916,6 +4036,64 @@ void PrototypeWindowTest::submitGroupName(const QString& name) {
     QTRY_VERIFY(!dialog->property("visible").toBool());
 }
 
+void PrototypeWindowTest::moreMenuCloseReturnsFocus() {
+    auto* button = item(QStringLiteral("moreMenuButton"));
+    QVERIFY(button);
+    button->forceActiveFocus(Qt::OtherFocusReason);
+    QVERIFY(button->hasActiveFocus());
+    openMoreMenu();
+    auto* menu = window_->findChild<QObject*>(QStringLiteral("moreMenu"));
+    QVERIFY(menu);
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!menu->property("visible").toBool());
+    QTRY_VERIFY(button->hasActiveFocus());
+}
+
+void PrototypeWindowTest::explicitSearchFocusSurvivesLateMenuClose() {
+    auto* search = item(QStringLiteral("searchField"));
+    QVERIFY(search);
+    search->forceActiveFocus(Qt::OtherFocusReason);
+    QVERIFY(search->hasActiveFocus());
+    QVERIFY(!window_->property("internalPopupVisible").toBool());
+    QVERIFY(QMetaObject::invokeMethod(window_, "restoreMoreMenuFocus"));
+    QVERIFY2(search->hasActiveFocus(), "A stale menu close stole focus from search");
+}
+
+void PrototypeWindowTest::explicitGroupFocusSurvivesLateMenuClose() {
+    controller_->setEditMode(true);
+    const auto id = controller_->createGroup(QStringLiteral("焦点回归"));
+    QVERIFY(!id.isEmpty());
+    QTRY_VERIFY(item(QStringLiteral("groupActions-") + id));
+    auto* actions = item(QStringLiteral("groupActions-") + id);
+    QVERIFY(actions->isVisible());
+    actions->forceActiveFocus(Qt::OtherFocusReason);
+    QVERIFY(actions->hasActiveFocus());
+    QVERIFY(!window_->property("groupFocusPending").toBool());
+    QVERIFY(QMetaObject::invokeMethod(window_, "restoreMoreMenuFocus"));
+    QVERIFY2(actions->hasActiveFocus(), "A stale menu close stole focus from an already focused group");
+}
+
+void PrototypeWindowTest::lateMoreMenuClosePreservesGroupFocus() {
+    controller_->setEditMode(true);
+    openMoreMenu();
+    auto* create = item(QStringLiteral("newGroupButton"));
+    QVERIFY(create && create->isEnabled());
+    create->forceActiveFocus(Qt::TabFocusReason);
+    QTest::keyClick(window_, Qt::Key_Return);
+    submitGroupName(QStringLiteral("焦点回归"));
+    QTRY_COMPARE(controller_->groups().size(), 4);
+    const auto id = controller_->groups().last().toMap().value(QStringLiteral("id")).toString();
+    auto* actions = item(QStringLiteral("groupActions-") + id);
+    QVERIFY(actions);
+    QTRY_VERIFY(actions->hasActiveFocus());
+    QVERIFY(!window_->property("groupFocusPending").toBool());
+    QVERIFY(!window_->property("internalPopupVisible").toBool());
+    // A previously queued more-menu close may run after the new delegate has
+    // already taken focus. Invoke its exact decision at that controlled point.
+    QVERIFY(QMetaObject::invokeMethod(window_, "restoreMoreMenuFocus"));
+    QVERIFY2(actions->hasActiveFocus(), "A stale menu close stole focus from the new group");
+}
+
 void PrototypeWindowTest::groupManagementLifecycle() {
     const auto geometry = tileGeometries();
     QVERIFY(!item(QStringLiteral("newGroupButton"))->isVisible());
@@ -5823,12 +6001,19 @@ void PrototypeWindowTest::layoutImportFilePickerOwnership() {
         controller_->setDarkTheme(dark);
         openMoreMenu();
         QVERIFY(item(QStringLiteral("importLayoutButton"))->isEnabled());
+#ifdef Q_OS_WIN
+        if (diagnostic == QLatin1String("shown")) {
+            const HWND owner = reinterpret_cast<HWND>(window_->winId());
+            QVERIFY(SetForegroundWindow(owner));
+            QTRY_COMPARE_WITH_TIMEOUT(GetForegroundWindow(), owner, 3000);
+        }
+#endif
         click(item(QStringLiteral("importLayoutButton")));
         auto* picker = window_->findChild<QObject*>(QStringLiteral("layoutFileDialog"));
         QVERIFY(picker);
+        QVERIFY(picker->property("nativePicker").value<xdstarter::NativeLayoutPicker*>());
         QTRY_VERIFY(picker->property("visible").toBool());
-        // ReadOnly (0x10) is the only requested option. Let Qt use the native
-        // platform dialog instead of requiring any particular Quick implementation.
+        // The wrapper retains the public read-only and window-modal contract.
         QCOMPARE(picker->property("options").toInt(), 0x10);
         QCOMPARE(picker->property("parentWindow").value<QWindow*>(),
                  static_cast<QWindow*>(window_));
@@ -5836,17 +6021,34 @@ void PrototypeWindowTest::layoutImportFilePickerOwnership() {
         QVERIFY(window_->property("internalPopupVisible").toBool());
         QVERIFY(window_->property("dismissalBlocked").toBool());
 #ifdef Q_OS_WIN
+        const DWORD processId = picker->property("currentProcessId").toUInt();
+        TestProcessHandle process(processId);
+        bool nativeVisibleBefore = false;
         if (!diagnostic.isEmpty()) {
+            QVERIFY(processId && process.value);
+            QCOMPARE(GetProcessId(process.value), processId);
             if (diagnostic == QLatin1String("shown")) {
                 QTRY_VERIFY_WITH_TIMEOUT(
-                    visibleNativeDialog(window_, picker->property("title").toString()), 5000);
+                    visibleNativeDialog(window_, picker->property("title").toString(), processId), 5000);
+                const HWND native = visibleNativeDialog(window_, picker->property("title").toString(), processId);
+                QVERIFY(native);
+                QCOMPARE(GetWindow(native, GW_OWNER), reinterpret_cast<HWND>(window_->winId()));
+                QVERIFY(!IsWindowEnabled(reinterpret_cast<HWND>(window_->winId())));
+                QTRY_COMPARE_WITH_TIMEOUT(GetForegroundWindow(), native, 3000);
+                auto placement = xdstarter::createDesktopPlatform();
+                QVERIFY(placement->hasOwnedForegroundWindow(window_->winId()));
+                QVERIFY(placement->hasOwnedForegroundDialog(window_->winId()));
+                qInfo() << "Native picker foreground verified: pid=" << processId << "foreground=" << true;
             }
+            nativeVisibleBefore = bool(visibleNativeDialog(window_, picker->property("title").toString(), processId));
             qInfo() << "Native picker before close:" << diagnostic << "dark=" << dark
+                    << "pid=" << processId
                     << "elapsedMs=" << pickerClock.elapsed()
                     << "qmlVisible=" << picker->property("visible").toBool()
-                    << "nativeVisible=" << bool(visibleNativeDialog(
-                           window_, picker->property("title").toString()));
+                    << "nativeVisible=" << nativeVisibleBefore;
         }
+        QElapsedTimer closeClock;
+        closeClock.start();
 #endif
         // The offscreen backend may use a fallback. Native HWND ownership and
         // focus handoffs require a separate Windows product-window acceptance.
@@ -5854,48 +6056,246 @@ void PrototypeWindowTest::layoutImportFilePickerOwnership() {
             QVERIFY(QMetaObject::invokeMethod(picker, "reject"));
         else
             QVERIFY(QMetaObject::invokeMethod(window_, "prepareForDismissal"));
+#ifdef Q_OS_WIN
+        const qint64 closeDuration = closeClock.elapsed();
+#endif
         QTRY_VERIFY(!picker->property("visible").toBool());
         QTRY_VERIFY(!window_->property("internalPopupVisible").toBool());
         QVERIFY(!window_->property("dismissalBlocked").toBool());
         QVERIFY(window_->isVisible());
 #ifdef Q_OS_WIN
         if (!diagnostic.isEmpty()) {
-            if (diagnostic == QLatin1String("shown")) {
-                QTRY_VERIFY_WITH_TIMEOUT(
-                    !visibleNativeDialog(window_, picker->property("title").toString()), 5000);
+            QVERIFY2(closeDuration < 1500, "Cancellation must not wait for the native dialog thread");
+            bool lateObserved = false;
+            QElapsedTimer observation;
+            observation.start();
+            while (WaitForSingleObject(process.value, 0) == WAIT_TIMEOUT && observation.elapsed() < 5000) {
+                lateObserved |= bool(visibleNativeDialog(window_, picker->property("title").toString(), processId));
+                QTest::qWait(10);
+            }
+            QCOMPARE(WaitForSingleObject(process.value, 0), DWORD(WAIT_OBJECT_0));
+            QVERIFY(!visibleNativeDialog(window_, picker->property("title").toString(), processId));
+            QTRY_VERIFY_WITH_TIMEOUT(IsWindowEnabled(reinterpret_cast<HWND>(window_->winId())), 5000);
+            if (diagnostic == QLatin1String("shown") && dark) {
+                QTRY_COMPARE_WITH_TIMEOUT(GetForegroundWindow(), reinterpret_cast<HWND>(window_->winId()), 3000);
+                qInfo() << "Native picker owner focus restored: pid=" << processId << "ownerForeground=" << true;
             }
             qInfo() << "Native picker after close:" << diagnostic << "dark=" << dark
+                    << "pid=" << processId << "closeMs=" << closeDuration
                     << "elapsedMs=" << pickerClock.elapsed()
                     << "qmlVisible=" << picker->property("visible").toBool()
-                    << "nativeVisible=" << bool(visibleNativeDialog(
-                           window_, picker->property("title").toString()));
+                    << "nativeVisible=" << false;
             if (diagnostic == QLatin1String("immediate")) {
-                QElapsedTimer observation;
-                observation.start();
-                HWND lateWindow = nullptr;
-                while (observation.elapsed() < 1200 && !lateWindow) {
-                    lateWindow = visibleNativeDialog(window_, picker->property("title").toString());
-                    if (!lateWindow)
-                        QTest::qWait(20);
-                }
                 qInfo() << "Native picker after-close observation:" << "dark=" << dark
                         << "durationMs=" << observation.elapsed()
-                        << "lateNativeVisible=" << bool(lateWindow);
-                if (lateWindow) {
-                    // The diagnostic owns this process, owner, title and HWND. Close
-                    // only a late fixture dialog, never another process's window. It
-                    // may also close by itself between observation and the post.
-                    const bool posted = visibleNativeDialog(
-                        window_, picker->property("title").toString()) == lateWindow &&
-                        PostMessageW(lateWindow, WM_CLOSE, 0, 0);
-                    qInfo() << "Native picker fixture cleanup posted=" << posted;
-                    QTRY_VERIFY_WITH_TIMEOUT(
-                        !visibleNativeDialog(window_, picker->property("title").toString()), 5000);
-                }
+                        << "lateNativeVisible=" << lateObserved
+                        << "processExited=" << true;
+                QVERIFY2(nativeVisibleBefore || !lateObserved,
+                         "A previously unseen picker appeared during cancellation");
             }
         }
 #endif
     }
+#ifdef Q_OS_WIN
+    if (diagnostic == QLatin1String("rapid")) {
+        QVERIFY(QMetaObject::invokeMethod(window_, "prepareForPresentation"));
+        auto* picker = window_->findChild<QObject*>(QStringLiteral("layoutFileDialog"));
+        QVERIFY(picker);
+        QVERIFY(QMetaObject::invokeMethod(window_, "openLayoutImport"));
+        QTRY_VERIFY(picker->property("visible").toBool());
+        const DWORD oldPid = picker->property("currentProcessId").toUInt();
+        TestProcessHandle oldProcess(oldPid);
+        QVERIFY(oldPid && oldProcess.value);
+        QVERIFY(QMetaObject::invokeMethod(picker, "reject"));
+        QVERIFY(QMetaObject::invokeMethod(window_, "openLayoutImport"));
+        QTRY_VERIFY(picker->property("visible").toBool());
+        QTRY_VERIFY_WITH_TIMEOUT(picker->property("currentProcessId").toUInt() != 0, 5000);
+        const DWORD nextPid = picker->property("currentProcessId").toUInt();
+        TestProcessHandle nextProcess(nextPid);
+        QVERIFY(nextPid && nextPid != oldPid && nextProcess.value);
+        QCOMPARE(WaitForSingleObject(oldProcess.value, 0), DWORD(WAIT_OBJECT_0));
+        QTRY_VERIFY_WITH_TIMEOUT(visibleNativeDialog(window_, picker->property("title").toString(), nextPid), 5000);
+        QCOMPARE(WaitForSingleObject(nextProcess.value, 0), DWORD(WAIT_TIMEOUT));
+        QVERIFY(!visibleNativeDialog(window_, picker->property("title").toString(), oldPid));
+        qInfo() << "Native picker rapid reopen: oldPid=" << oldPid << "nextPid=" << nextPid
+                << "oldExited=" << true << "nextVisible=" << true;
+        QVERIFY(QMetaObject::invokeMethod(picker, "reject"));
+        QTRY_COMPARE_WITH_TIMEOUT(WaitForSingleObject(nextProcess.value, 0), DWORD(WAIT_OBJECT_0), 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(IsWindowEnabled(reinterpret_cast<HWND>(window_->winId())), 5000);
+    }
+#endif
+}
+
+void PrototypeWindowTest::layoutImportNativeSelection() {
+#ifdef Q_OS_WIN
+    if (qEnvironmentVariable("XDSTARTER_NATIVE_PICKER_SELECTION") != QLatin1String("1"))
+        QSKIP("Native selection automation runs only in the disposable hosted fixture");
+    QCOMPARE(qEnvironmentVariable("GITHUB_ACTIONS"), QStringLiteral("true"));
+    QCOMPARE(qEnvironmentVariable("RUNNER_ENVIRONMENT"), QStringLiteral("github-hosted"));
+    QCOMPARE(QGuiApplication::platformName(), QStringLiteral("windows"));
+    QTemporaryDir directory;
+    QVERIFY(directory.isValid());
+    const auto source = directory.filePath(QStringLiteral("chosen.json"));
+    xdstarter::PrototypeService sample(grid_);
+    QVERIFY(xdstarter::LayoutStore(source).save(sample.snapshot()).success);
+    destroyWindow();
+    createWindow(directory.filePath(QStringLiteral("current.json")), false);
+    auto* picker = window_->findChild<QObject*>(QStringLiteral("layoutFileDialog"));
+    QVERIFY(picker);
+    QSignalSpy accepted(picker, SIGNAL(accepted()));
+    QSignalSpy rejected(picker, SIGNAL(rejected()));
+    QSignalSpy failure(picker, SIGNAL(failed()));
+    QVERIFY(accepted.isValid() && rejected.isValid() && failure.isValid());
+    QVERIFY(QMetaObject::invokeMethod(window_, "openLayoutImport"));
+    QTRY_VERIFY(picker->property("visible").toBool());
+    const DWORD pid = picker->property("currentProcessId").toUInt();
+    TestProcessHandle process(pid);
+    QVERIFY(pid && process.value);
+    QTRY_VERIFY_WITH_TIMEOUT(visibleNativeDialog(window_, picker->property("title").toString(), pid), 5000);
+    const HWND dialog = visibleNativeDialog(window_, picker->property("title").toString(), pid);
+    const HWND owner = reinterpret_cast<HWND>(window_->winId());
+    QProcess driver;
+    driver.start(QCoreApplication::applicationDirPath() + QStringLiteral("/xdstarter_native_picker_driver.exe"),
+                 {QString::number(reinterpret_cast<quintptr>(dialog)), QString::number(pid),
+                  QString::number(reinterpret_cast<quintptr>(owner)), QString::number(GetCurrentProcessId()),
+                  QDir::toNativeSeparators(source)});
+    QVERIFY(driver.waitForStarted(5000));
+    QElapsedTimer driverClock;
+    driverClock.start();
+    while (driver.state() != QProcess::NotRunning && driverClock.elapsed() < 15000)
+        QTest::qWait(20);
+    const bool driverFinished = driver.state() == QProcess::NotRunning;
+    if (!driverFinished) {
+        driver.kill();
+        driver.waitForFinished(5000);
+    }
+    qInfo() << "Native picker selection driver: pid=" << pid << "hwnd=" << quintptr(dialog)
+            << "finished=" << driverFinished << "exit=" << driver.exitCode()
+            << "elapsedMs=" << driverClock.elapsed() << driver.readAllStandardOutput()
+            << driver.readAllStandardError();
+    QVERIFY2(driverFinished && driver.exitStatus() == QProcess::NormalExit && driver.exitCode() == 0,
+             "The bounded native selection driver did not complete successfully");
+    QElapsedTimer selectionClock;
+    selectionClock.start();
+    while (!accepted.count() && !failure.count() && !rejected.count() && selectionClock.elapsed() < 5000)
+        QTest::qWait(20);
+    DWORD processExit = STILL_ACTIVE;
+    QVERIFY(GetExitCodeProcess(process.value, &processExit));
+    qInfo() << "Native picker result observation: pid=" << pid << "elapsedMs=" << selectionClock.elapsed()
+            << "processExit=" << processExit << "visible=" << picker->property("visible").toBool()
+            << "accepted=" << accepted.count() << "rejected=" << rejected.count() << "failed=" << failure.count();
+    if (!accepted.count()) EnumWindows(reportPickerWindow, static_cast<LPARAM>(pid));
+    QCOMPARE(accepted.count(), 1);
+    QCOMPARE(picker->property("selectedFile").toUrl(), QUrl::fromLocalFile(source));
+    QTRY_COMPARE_WITH_TIMEOUT(WaitForSingleObject(process.value, 0), DWORD(WAIT_OBJECT_0), 5000);
+    QTRY_VERIFY_WITH_TIMEOUT(!controller_->importBusy(), 5000);
+    QVERIFY(!controller_->importPreview().isEmpty());
+    auto* preview = window_->findChild<QObject*>(QStringLiteral("layoutImportDialog"));
+    QVERIFY(preview);
+    QTRY_VERIFY(preview->property("visible").toBool());
+    QVERIFY(IsWindowEnabled(owner));
+    qInfo() << "Native picker selected file and opened import preview: pid=" << pid;
+#else
+    QSKIP("Native selection automation requires Windows");
+#endif
+}
+
+void PrototypeWindowTest::layoutImportNativeLaunchFailure() {
+#ifdef Q_OS_WIN
+    if (qEnvironmentVariable("XDSTARTER_NATIVE_PICKER_SELECTION") != QLatin1String("1"))
+        QSKIP("Native failure automation runs only in the disposable hosted fixture");
+    QCOMPARE(qEnvironmentVariable("GITHUB_ACTIONS"), QStringLiteral("true"));
+    QCOMPARE(qEnvironmentVariable("RUNNER_ENVIRONMENT"), QStringLiteral("github-hosted"));
+    QCOMPARE(QGuiApplication::platformName(), QStringLiteral("windows"));
+    QTemporaryDir directory;
+    destroyWindow();
+    createWindow(directory.filePath(QStringLiteral("current.json")), false);
+    auto* picker = window_->findChild<QObject*>(QStringLiteral("layoutFileDialog"));
+    QVERIFY(picker);
+    QSignalSpy failure(picker, SIGNAL(failed()));
+    QVERIFY(failure.isValid());
+    auto* native = picker->property("nativePicker").value<xdstarter::NativeLayoutPicker*>();
+    QVERIFY(native);
+    native->setTitle(QString{}); // Invalid bounded request, without modifying the real owner.
+    QVERIFY(QMetaObject::invokeMethod(picker, "open"));
+    QCOMPARE(failure.count(), 1);
+    QVERIFY(!picker->property("visible").toBool());
+    QVERIFY(window_->property("showSelectionFeedback").toBool());
+    QVERIFY(window_->property("selectionStatus").toString().contains(QStringLiteral("无法打开")));
+    native->setTitle(picker->property("title").toString());
+    QVERIFY(QMetaObject::invokeMethod(picker, "open"));
+    QTRY_VERIFY(picker->property("visible").toBool());
+    const DWORD pid = picker->property("currentProcessId").toUInt();
+    TestProcessHandle process(pid);
+    QVERIFY(pid && process.value);
+    QTRY_VERIFY_WITH_TIMEOUT(visibleNativeDialog(window_, picker->property("title").toString(), pid), 5000);
+    TestWindowHandle unrelated;
+    unrelated.value = CreateWindowExW(WS_EX_TOOLWINDOW, L"STATIC", L"XDStarter focus fixture",
+                                      WS_OVERLAPPEDWINDOW | WS_VISIBLE, 20, 20, 200, 120,
+                                      nullptr, nullptr, GetModuleHandleW(nullptr), nullptr);
+    QVERIFY(unrelated.value);
+    QVERIFY(SetForegroundWindow(unrelated.value));
+    QTRY_COMPARE_WITH_TIMEOUT(GetForegroundWindow(), unrelated.value, 3000);
+    auto placement = xdstarter::createDesktopPlatform();
+    QVERIFY(!placement->hasOwnedForegroundWindow(window_->winId()));
+    QVERIFY(QMetaObject::invokeMethod(picker, "reject"));
+    QTRY_COMPARE_WITH_TIMEOUT(WaitForSingleObject(process.value, 0), DWORD(WAIT_OBJECT_0), 5000);
+    QTRY_VERIFY_WITH_TIMEOUT(IsWindowEnabled(reinterpret_cast<HWND>(window_->winId())), 5000);
+    QCOMPARE(GetForegroundWindow(), unrelated.value);
+    qInfo() << "Native picker external focus preserved: pid=" << pid << "otherForeground=" << true;
+    qInfo() << "Native picker launch failure visibly reported and retry canceled: pid=" << pid;
+#else
+    QSKIP("Native failure automation requires Windows");
+#endif
+}
+
+void PrototypeWindowTest::layoutImportNativeShutdown() {
+#ifdef Q_OS_WIN
+    if (qEnvironmentVariable("XDSTARTER_NATIVE_PICKER_SHUTDOWN") != QLatin1String("1"))
+        QSKIP("Native shutdown automation runs only in the disposable hosted fixture");
+    QCOMPARE(qEnvironmentVariable("GITHUB_ACTIONS"), QStringLiteral("true"));
+    QCOMPARE(qEnvironmentVariable("RUNNER_ENVIRONMENT"), QStringLiteral("github-hosted"));
+    QCOMPARE(QGuiApplication::platformName(), QStringLiteral("windows"));
+    QTemporaryDir directory;
+    destroyWindow();
+    createWindow(directory.filePath(QStringLiteral("current.json")), false);
+    auto desktopState = std::make_shared<DesktopTestState>();
+    xdstarter::DesktopShellService shell(std::make_unique<DesktopTestPlatform>(desktopState));
+    auto placement = xdstarter::createDesktopPlatform();
+    PickerShutdownTray tray;
+    PickerShutdownCapture winCapture, startCapture;
+    xdstarter::DesktopWindowHost host(*window_, shell, *placement, tray);
+    host.attachWinKeyCapture(winCapture);
+    host.attachStartButtonCapture(startCapture);
+    host.start(QImage(16, 16, QImage::Format_ARGB32));
+    host.toggleWinKeyCapture();
+    QVERIFY(winCapture.isActive());
+    QVERIFY(startCapture.isActive());
+    connect(qApp, &QCoreApplication::aboutToQuit, &host, &xdstarter::DesktopWindowHost::shutdown);
+    auto* picker = window_->findChild<QObject*>(QStringLiteral("layoutFileDialog"));
+    QVERIFY(picker);
+    QVERIFY(QMetaObject::invokeMethod(window_, "openLayoutImport"));
+    QTRY_VERIFY(picker->property("visible").toBool());
+    const DWORD pid = picker->property("currentProcessId").toUInt();
+    TestProcessHandle process(pid);
+    QVERIFY(pid && process.value);
+    QTRY_VERIFY_WITH_TIMEOUT(visibleNativeDialog(window_, picker->property("title").toString(), pid), 5000);
+    QElapsedTimer shutdownClock;
+    shutdownClock.start();
+    QVERIFY(QMetaObject::invokeMethod(qApp, "aboutToQuit", Qt::DirectConnection));
+    const qint64 releaseMs = shutdownClock.elapsed();
+    QVERIFY2(releaseMs < 1500, "Picker shutdown delayed the desktop host release");
+    QVERIFY(!winCapture.isActive() && winCapture.stops > 0);
+    QVERIFY(!startCapture.isActive() && startCapture.stops > 0);
+    QVERIFY(!tray.isAvailable() && tray.stops > 0);
+    QTRY_COMPARE_WITH_TIMEOUT(WaitForSingleObject(process.value, 0), DWORD(WAIT_OBJECT_0), 5000);
+    QVERIFY(!visibleNativeDialog(window_, picker->property("title").toString(), pid));
+    qInfo() << "Native picker shutdown: pid=" << pid << "releaseMs=" << releaseMs
+            << "fakeWinCaptureStopped=" << true << "fakeStartCaptureStopped=" << true
+            << "childExited=" << true;
+#else
+    QSKIP("Native shutdown automation requires Windows");
+#endif
 }
 
 void PrototypeWindowTest::layoutImportDialogThemeAndKeyboard_data() {
