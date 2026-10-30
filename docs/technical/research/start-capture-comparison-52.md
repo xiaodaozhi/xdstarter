@@ -72,6 +72,8 @@ ctest --test-dir build/app-release -R '^experimental\.start-bridge' --output-on-
 
 自动集成检查覆盖真实 DLL 加载、PM_REMOVE 消息处理、跨进程 named pipe、心跳、身份/nonce、成对释放、重建和安全停止。兼容鼠标与原始指针属于不同输入通路，必须验证匹配窗口/代次，避免二次切换或误吞其他窗口。未排空持有的按下时，停止超时属于未完成卸载；正常关闭必须先释放，异常进程退出另列恢复边界。
 
+握手就绪由异步 worker 发布，启动该 worker 的首条 Hook 消息可能发生在共享状态可见之前，不能假定就绪时回调计数已非零。回归在就绪后只向自有 fixture 窗口投递 `WM_NULL`，有界等待新的回调计数、连接和就绪状态同时成立；失败记录投递结果及前后计数。随后仍验证真实的受控鼠标消息成对处理，不把该探针作为物理输入或 Explorer 接管证据。
+
 本机原生指针投递探针为两次尝试、零次成功，返回 `ERROR_INVALID_MESSAGE`（1002），Hook 观察到零份 `WM_POINTER`。这属于系统拒绝投递，不能写成成功消费。B 本轮对真实 `WM_POINTER` 全部放行；指针/兼容消息的状态回归通过独立命名的仿真帧进入同一规范化逻辑，测试会话显式开启 `enableEmulatedFrames`，普通控制器默认关闭。即便仿真通过，也没有获得真实触控支持。
 
 该实验没有现代 Explorer InputSite 适配器，目标白名单会拒绝 Explorer。它也没有证明真实任务栏输入都经过 `GetMessage`。自有消息投递通过，只能证明队列桥接与 IPC 机制，不构成 Explorer 接管、硬件触控或 Win 键路由通过。

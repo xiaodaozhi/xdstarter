@@ -154,8 +154,24 @@ void testGestureAndDrain(const std::wstring& dll, const std::wstring& fixturePat
         return;
     expect(modulePresent(fixture.process(), canonicalPath(dll)),
            "actual DLL is mapped in the other fixture process");
-    expect(server.observe().callbacks > 0 && server.observe().connected,
-           "real GetMessage hook and named pipe are active");
+    // The first message starts the worker before its shared state necessarily
+    // exists. A ready heartbeat does not by itself guarantee that a later hook
+    // callback has already been counted. Exercise the actual hook using a
+    // harmless message addressed only to the controlled fixture window.
+    const auto beforeProbe = server.observe();
+    const HWND target = fixture.window();
+    const bool posted = target && PostMessageW(target, WM_NULL, 0, 0);
+    expect(posted, "controlled fixture receives a non-input hook probe");
+    SessionObservation observed;
+    const bool callbackObserved = posted && until([&] {
+        observed = server.observe();
+        return observed.callbacks > beforeProbe.callbacks && observed.connected && observed.ready;
+    });
+    if (!callbackObserved)
+        std::cerr << "Bridge probe: before=" << beforeProbe.callbacks
+                  << " after=" << observed.callbacks << " connected=" << observed.connected
+                  << " ready=" << observed.ready << " posted=" << posted << '\n';
+    expect(callbackObserved, "real GetMessage hook and named pipe are active");
     fixture.command(FixtureCommand::MousePair);
     expect(until([&] { return server.observe().toggles == 1; }),
            "one complete mouse pair dispatches one IPC toggle");
