@@ -223,6 +223,14 @@ class EvidenceTests(TemporaryRepository):
                                  'newer': {'version': '0.0.2', 'setupSha256': 'd' * 64, 'markerSha256': 'e' * 64}},
                              'cases': [{'case': case, 'passed': True} for case in ci_evidence.LIFECYCLE_CASES]}
                 (self.root / ci_evidence.COPIES['lifecycle.json']).write_text(json.dumps(lifecycle), encoding='utf-8')
+                smoke_raw = b'Smoke stage before-application 0 ms\nSmoke stage event-loop-returned 7 ms\n'
+                (self.root / ci_evidence.COPIES['smoke-startup.log']).write_bytes(smoke_raw)
+                smoke = {'status': 'passed', 'exitCode': 0, 'readerFinished': True, 'outputTruncated': False,
+                         'executableSha256': 'a' * 64, 'outputSha256': hashlib.sha256(smoke_raw).hexdigest(),
+                         'createReturnMilliseconds': 1, 'firstByteMilliseconds': 2, 'firstStageMilliseconds': 2,
+                         'finishedMilliseconds': 7, 'stages': [{'name': 'before-application'},
+                                                               {'name': 'event-loop-returned'}]}
+                (self.root / ci_evidence.COPIES['smoke-startup.json']).write_text(json.dumps(smoke), encoding='utf-8')
                 graphics = {'status': 'passed', 'softwareOpenGLAbsent': True,
                             'results': {name: {} for name in ('normal', 'hardware-failure', 'all-failure',
                                         'delayed-all-failure', 'hosted-resident')}}
@@ -263,6 +271,28 @@ class EvidenceTests(TemporaryRepository):
         (self.root / 'build/ci-evidence/windows/experiments.log').write_text('failed', encoding='utf-8')
         with self.assertRaises(ValueError):
             ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_smoke_timeout_or_changed_output_cannot_be_green(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'smoke-startup.json'
+        original = json.loads(path.read_text(encoding='utf-8'))
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        for mutation in ('timeout', 'output-hash', 'missing-stage', 'impossible-time'):
+            data = json.loads(json.dumps(original))
+            if mutation == 'timeout':
+                data['status'] = 'timeout-before-first-stage'
+            elif mutation == 'output-hash':
+                data['outputSha256'] = 'b' * 64
+            elif mutation == 'missing-stage':
+                data['stages'] = []
+            else:
+                data['firstStageMilliseconds'] = 0
+            path.write_text(json.dumps(data), encoding='utf-8')
+            report['files']['smoke-startup.json'] = ci_evidence.checksum(path)
+            manifest.write_text(json.dumps(report), encoding='utf-8')
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, 'smoke-startup'):
+                ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
 
     def test_downgrade_requires_distinct_synthetic_versions_and_cases(self):
         directory = self.root / 'build/ci-evidence/windows'

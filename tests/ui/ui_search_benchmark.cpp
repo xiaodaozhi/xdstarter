@@ -30,6 +30,7 @@
 #include <QtTest>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <functional>
@@ -167,6 +168,7 @@ int runUiSearchBenchmark() {
     const bool hosted = qEnvironmentVariable("GITHUB_ACTIONS") == QLatin1String("true") &&
                         qEnvironmentVariable("RUNNER_ENVIRONMENT") == QLatin1String("github-hosted");
     const bool localNative = qEnvironmentVariable("XDSTARTER_UI_BENCHMARK_LOCAL_NATIVE") == QLatin1String("1");
+    const bool inputTiming = qEnvironmentVariable("XDSTARTER_UI_BENCHMARK_INPUT_TIMING") == QLatin1String("1");
     if (qpa != QLatin1String("offscreen") &&
         !(qpa == QLatin1String("windows") && (hosted || localNative))) {
         qCritical() << "Native benchmark windows require a hosted runner or explicit local opt-in.";
@@ -268,30 +270,65 @@ int runUiSearchBenchmark() {
         }
         Clock::time_point controllerReady;
         bool controllerReadySeen = false;
+        qint64 controllerObserverNs = 0;
+        qint64 rowObserverNs = 0;
+        int controllerObserverCalls = 0;
+        int rowObserverCalls = 0;
         const auto readyConnection = QObject::connect(&controller, &xdstarter::MenuController::searchChanged,
             &controller, [&] {
-                if (controllerReadySeen || controller.searchQuery() != query || controller.searchBusy())
-                    return;
-                const auto results = controller.searchResults();
-                if (results.size() == 1 && results.first().toMap().value(QStringLiteral("appId")) == expected) {
-                    controllerReady = Clock::now();
-                    controllerReadySeen = true;
+                const auto observerStart = inputTiming ? Clock::now() : Clock::time_point{};
+                if (!controllerReadySeen && controller.searchQuery() == query && !controller.searchBusy()) {
+                    const auto results = controller.searchResults();
+                    if (results.size() == 1 && results.first().toMap().value(QStringLiteral("appId")) == expected) {
+                        controllerReady = Clock::now();
+                        controllerReadySeen = true;
+                    }
+                }
+                if (inputTiming) {
+                    ++controllerObserverCalls;
+                    controllerObserverNs += std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - observerStart).count();
                 }
             });
         const auto started = Clock::now();
         Clock::time_point finalKeyStarted;
+        std::array<std::array<Clock::time_point, 5>, 8> keyTimes{};
         for (qsizetype position = 0; position < query.size(); ++position) {
             if (position == query.size() - 1)
                 finalKeyStarted = Clock::now();
-            QTest::keyClick(window, query.at(position).toLatin1(), Qt::NoModifier, 0);
+            const char key = query.at(position).toLatin1();
+            if (!inputTiming) {
+                QTest::keyClick(window, key, Qt::NoModifier, 0);
+                continue;
+            }
+            // Qt 6.8.2's QTest QWindow keyClick dispatches each key via
+            // qt_handleKeyEvent followed by processEvents for press and release.
+            // Keep this diagnostic path explicit and separate from the baseline.
+            auto& times = keyTimes.at(static_cast<std::size_t>(position));
+            const auto code = QTest::asciiToKey(key);
+            const QString text(QChar::fromLatin1(key));
+            times[0] = Clock::now();
+            qt_handleKeyEvent(window, QEvent::KeyPress, code, Qt::NoModifier, text, false, 0);
+            times[1] = Clock::now();
+            QCoreApplication::processEvents();
+            times[2] = Clock::now();
+            qt_handleKeyEvent(window, QEvent::KeyRelease, code, Qt::NoModifier, text, false, 0);
+            times[3] = Clock::now();
+            QCoreApplication::processEvents();
+            times[4] = Clock::now();
         }
         const auto inputReturned = Clock::now();
         const bool ready = waitUntil([&] {
+            const auto observerStart = inputTiming ? Clock::now() : Clock::time_point{};
             const auto results = controller.searchResults();
             auto* row = visualItem(window->contentItem(), QStringLiteral("searchResult-") + expected);
-            return controller.searchQuery() == query && !controller.searchBusy() &&
+            const bool found = controller.searchQuery() == query && !controller.searchBusy() &&
                    results.size() == 1 && results.first().toMap().value(QStringLiteral("appId")) == expected &&
                    list->property("count").toInt() == 1 && row && row->isVisible();
+            if (inputTiming) {
+                ++rowObserverCalls;
+                rowObserverNs += std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - observerStart).count();
+            }
+            return found;
         });
         const auto rowReady = Clock::now();
         QObject::disconnect(readyConnection);
@@ -337,7 +374,7 @@ int runUiSearchBenchmark() {
             const double finalKeyToControllerMs = elapsedMs(controllerReady, finalKeyStarted);
             const double finalKeyToRowMs = elapsedMs(rowReady, finalKeyStarted);
             const double controllerToRowMs = elapsedMs(rowReady, controllerReady);
-            samples.append(QJsonObject{{QStringLiteral("query"), query},
+            QJsonObject sample{{QStringLiteral("query"), query},
                                        {QStringLiteral("expectedAppId"), expected},
                                        {QStringLiteral("prefixInputMilliseconds"), prefixMs},
                                        {QStringLiteral("inputReturnMilliseconds"), inputReturnMs},
@@ -346,7 +383,28 @@ int runUiSearchBenchmark() {
                                        {QStringLiteral("finalKeyToRowMilliseconds"), finalKeyToRowMs},
                                        {QStringLiteral("controllerToRowMilliseconds"), controllerToRowMs},
                                        {QStringLiteral("modelReadyMilliseconds"), modelMs},
-                                       {QStringLiteral("synchronizedFrameMilliseconds"), frameMs}});
+                                       {QStringLiteral("synchronizedFrameMilliseconds"), frameMs}};
+            if (inputTiming) {
+                QJsonArray keys;
+                for (qsizetype position = 0; position < query.size(); ++position) {
+                    const auto& t = keyTimes.at(static_cast<std::size_t>(position));
+                    const auto ns = [](Clock::time_point end, Clock::time_point begin) {
+                        return static_cast<qint64>(std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count());
+                    };
+                    keys.append(QJsonObject{{QStringLiteral("key"), QString(query.at(position))},
+                        {QStringLiteral("pressDispatchNs"), ns(t[1], t[0])},
+                        {QStringLiteral("pressProcessEventsNs"), ns(t[2], t[1])},
+                        {QStringLiteral("releaseDispatchNs"), ns(t[3], t[2])},
+                        {QStringLiteral("releaseProcessEventsNs"), ns(t[4], t[3])}});
+                }
+                sample.insert(QStringLiteral("inputTiming"), QJsonObject{
+                    {QStringLiteral("keys"), keys},
+                    {QStringLiteral("controllerObserverCalls"), controllerObserverCalls},
+                    {QStringLiteral("controllerObserverNs"), controllerObserverNs},
+                    {QStringLiteral("rowObserverCalls"), rowObserverCalls},
+                    {QStringLiteral("rowObserverNs"), rowObserverNs}});
+            }
+            samples.append(sample);
             modelTimes.push_back(modelMs);
             frameTimes.push_back(frameMs);
             prefixTimes.push_back(prefixMs);
@@ -374,6 +432,8 @@ int runUiSearchBenchmark() {
 #endif
     const QJsonObject report{
         {QStringLiteral("schemaVersion"), 2},
+        {QStringLiteral("inputTimingMethod"), inputTiming ? QStringLiteral("qt-test-window-dispatch-phases")
+                                                           : QStringLiteral("none")},
         {QStringLiteral("executionMode"), executionMode},
         {QStringLiteral("capturedAtUtc"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)},
         {QStringLiteral("scope"), QStringLiteral("synthetic catalog and layout; in-process Qt key events; no real input, desktop integration, application launch or user layout")},

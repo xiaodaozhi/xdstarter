@@ -10,3 +10,5 @@ CMakeLists.txt text eol=lf
 *.h text eol=lf
 *.svg text eol=lf
 *.png binary
+# Preserve the exact pipe bytes referenced by the local startup evidence.
+docs/technical/validation/issue-86/*.log -text whitespace=cr-at-eol

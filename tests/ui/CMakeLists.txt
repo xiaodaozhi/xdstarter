@@ -50,12 +50,16 @@ set_tests_properties(ui.prototype PROPERTIES
 if(WIN32 AND DEFINED ENV{WINDIR})
     set_property(TEST ui.prototype APPEND PROPERTY ENVIRONMENT "QT_QPA_FONTDIR=$ENV{WINDIR}/Fonts")
 endif()
-if(WIN32 AND "$ENV{GITHUB_ACTIONS}" STREQUAL "true" AND
-   "$ENV{RUNNER_ENVIRONMENT}" STREQUAL "github-hosted")
+option(XDSTARTER_BUILD_LOCAL_NATIVE_PICKER_TESTS "Build the explicitly opted-in local picker driver" OFF)
+if(WIN32 AND (XDSTARTER_BUILD_LOCAL_NATIVE_PICKER_TESTS OR
+   ("$ENV{GITHUB_ACTIONS}" STREQUAL "true" AND "$ENV{RUNNER_ENVIRONMENT}" STREQUAL "github-hosted")))
     add_executable(xdstarter_native_picker_driver native_picker_driver.cpp)
     target_link_libraries(xdstarter_native_picker_driver PRIVATE ole32 oleaut32 user32 uiautomationcore uuid)
     set_target_properties(xdstarter_native_picker_driver PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
+endif()
+if(WIN32 AND "$ENV{GITHUB_ACTIONS}" STREQUAL "true" AND
+   "$ENV{RUNNER_ENVIRONMENT}" STREQUAL "github-hosted")
     set(import_evidence "${PROJECT_BINARY_DIR}/layout-import-native-evidence")
     file(MAKE_DIRECTORY "${import_evidence}")
     add_test(NAME ui.layout-import-native COMMAND xdstarter_ui_tests
