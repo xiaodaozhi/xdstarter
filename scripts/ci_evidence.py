@@ -46,6 +46,8 @@ COPIES = {
     'downgrade-older-fixture.log': 'build/package/lifecycle-evidence/downgrade-older-fixture.log',
     'downgrade-future-schema-runtime.json': 'build/package/lifecycle-evidence/downgrade-future-schema-runtime.json',
     'uninstall.log': 'build/package/lifecycle-evidence/uninstall-keep-data.log',
+    'smoke-startup.json': 'build/validation/smoke-startup-ci/result.json',
+    'smoke-startup.log': 'build/validation/smoke-startup-ci/smoke.log',
     'search.json': 'build/app-release/search-benchmark-ci.json',
     'ui-search.json': 'build/app-release/ui-search-benchmark-ci.json',
     'shell-workspace-initial.json': 'build/app-release/shell-localization-history/workspace-initial.json',
@@ -181,6 +183,21 @@ def validate_role(directory, role, expected):
                 all(row[1] == 'Passed' for row in rows) and set(tests) <= set(names),
                 'incomplete-or-failed-test-log')
     if role == 'windows':
+        smoke = json.loads((directory / 'smoke-startup.json').read_text(encoding='utf-8'))
+        smoke_raw = (directory / 'smoke-startup.log').read_bytes()
+        timing_values = [smoke.get(name) for name in ('createReturnMilliseconds', 'firstByteMilliseconds',
+                         'firstStageMilliseconds', 'finishedMilliseconds')]
+        stage_names = [stage.get('name') for stage in smoke.get('stages', [])]
+        require(smoke.get('status') == 'passed' and smoke.get('exitCode') == 0 and
+                smoke.get('readerFinished') is True and smoke.get('outputTruncated') is False and
+                isinstance(smoke.get('executableSha256'), str) and
+                re.fullmatch(r'[0-9a-f]{64}', smoke['executableSha256']) and
+                smoke.get('outputSha256') == hashlib.sha256(smoke_raw).hexdigest() and
+                all(type(value) in (int, float) and 0 <= value < 60000 for value in timing_values) and
+                timing_values[0] <= timing_values[1] <= timing_values[2] <= timing_values[3] and
+                'before-application' in stage_names and 'event-loop-returned' in stage_names and
+                b'Smoke stage before-application' in smoke_raw and b'Smoke stage event-loop-returned' in smoke_raw,
+                'incomplete-smoke-startup-evidence')
         try:
             resident_sample.inspect(directory / 'resident-sample', expected['GITHUB_SHA'])
         except (OSError, ValueError, KeyError, TypeError) as error:
