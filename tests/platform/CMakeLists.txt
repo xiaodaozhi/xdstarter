@@ -98,8 +98,12 @@ add_test(NAME platform.win-key-capture COMMAND xdstarter_win_key_capture_tests)
 set_tests_properties(platform.win-key-capture PROPERTIES
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}" TIMEOUT 15)
 
-add_executable(xdstarter_start_button_capture_tests start_button_capture_tests.cpp)
+add_executable(xdstarter_start_button_capture_tests
+    start_button_capture_tests.cpp recovery_safety_tests.cpp recovery_safety_model.h)
 target_link_libraries(xdstarter_start_button_capture_tests PRIVATE xdstarter_platform)
+if(WIN32)
+    target_link_libraries(xdstarter_start_button_capture_tests PRIVATE user32)
+endif()
 add_test(NAME platform.start-button-capture COMMAND xdstarter_start_button_capture_tests)
 set_tests_properties(platform.start-button-capture PROPERTIES
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}" TIMEOUT 15)

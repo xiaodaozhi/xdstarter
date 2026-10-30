@@ -26,6 +26,8 @@
 
 ## 当前自动检查
 
+[#32](https://github.com/xiaodaozhi/xdstarter/issues/32) 的[恢复安全模型](research/recovery-safety-32.md)以注入的电源／会话事件、时钟和注册结果检查失效、旧代次与输入配对；Windows 测试只向本进程自有消息窗口发送消息。模型明确保留恢复后第一条输入先于通知／采样的反例，不改变产品逻辑，也不代表真实睡眠、锁屏或系统入口验收。
+
 [#80](https://github.com/xiaodaozhi/xdstarter/issues/80) 的隔离 QML 回归检查深浅主题下分组管理、快捷栏、更多按钮和搜索框的真实键盘焦点边框，并比较常态、悬停及可按控件的按下色；另检查磁贴内外焦点线、全部调色板的常态／悬停／按下渐变端点和网格几何。颜色比较使用 sRGB 相对亮度、3:1 设计参考；它不等于对整个应用的 WCAG 合规审计。离屏夹具与实际 Windows 显示、高对比度和屏幕阅读器验收分别记录。
 
 [#83](https://github.com/xiaodaozhi/xdstarter/issues/83) 的高对比度检查以两组注入的系统色测试切换／恢复、提示、菜单、应用目录、搜索、拖动状态、完整名称和几何，并与减少动画共同执行；平台测试注入读取器，向本进程自有隐藏窗口发送系统色通知，不改本机设置。本机 Qt 6.8.2、附加 MSVC v142 19.29.30159、offscreen/software 的完整 UI、启动冒烟和两个偏好测试 **4/4**，QML lint 通过。样例测试程序 SHA-256 为 `b0e354ecf7734fede2974c4f197178ed8a9ebc9db25965b1b6a565c68c4d7c85`；[深底](../design/validation/issue-83/contrast-dark.png)、[浅底焦点](../design/validation/issue-83/contrast-light-focus.png)、[浅底菜单](../design/validation/issue-83/contrast-light-menu.png)是匿名模拟色离屏抓帧，不代表实际系统配色或物理显示。
