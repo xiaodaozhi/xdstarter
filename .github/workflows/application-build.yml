@@ -153,6 +153,12 @@
           "id": "experiments"
         },
         {
+          "name": "Sample bounded hosted resident resources",
+          "id": "resident_sample",
+          "shell": "pwsh",
+          "run": "$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$env:TEMP = Join-Path $PWD 'build/tmp'\n$env:TMP = $env:TEMP\n& ./build/tooling/Scripts/python.exe scripts/benchmark_resident.py --executable build/app-release/bin/xdstarter.exe --output build/validation/resident-sample-ci\nif ($LASTEXITCODE -ne 0) { throw 'Bounded resident sample failed.' }\n& ./build/tooling/Scripts/python.exe scripts/inspect_resident_sample.py build/validation/resident-sample-ci --expected-sha $env:GITHUB_SHA\nif ($LASTEXITCODE -ne 0) { throw 'Resident sample evidence is incomplete.' }"
+        },
+        {
           "name": "Identify fixed Windows packaging inputs",
           "id": "package-inputs",
           "shell": "pwsh",
@@ -286,6 +292,17 @@
           "with": {
             "name": "xdstarter-high-contrast-${{ github.sha }}",
             "path": "build/app-release/high-contrast-native-evidence/*.log\nbuild/app-release/high-contrast-native-evidence/*.png",
+            "if-no-files-found": "warn",
+            "retention-days": 7
+          }
+        },
+        {
+          "name": "Upload hosted resident sample",
+          "if": "always() && !cancelled()",
+          "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "with": {
+            "name": "xdstarter-resident-sample-${{ github.sha }}",
+            "path": "build/validation/resident-sample-ci/",
             "if-no-files-found": "warn",
             "retention-days": 7
           }
