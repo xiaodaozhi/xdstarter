@@ -50,6 +50,8 @@
 
 本机三次 offscreen/software 对照中，早期抓帧时搜索图标仍在加载，之前每次已有一次 frameSwapped；图标 Ready 后的抓帧在该图标区域与后续抓帧一致。一个样本的[环境与源码哈希](validation/issue-85/offscreen/context.json)、[帧事件及状态](validation/issue-85/offscreen/frame-trace.json)、[早期截图](validation/issue-85/offscreen/contrast-dark-early.png)与[图标就绪截图](validation/issue-85/offscreen/contrast-dark-ready.png)保留在仓库，完整图像可由 `scripts/inspect_contrast_frame_trace.py` 复核。该观察不能证明先前未复现的整块内容缺失具有相同原因，也不能代替 Windows 原生或真实显示验收。
 
+进一步用独立测试窗口和受控异步图片提供器暂停加载，在图片仍为 Loading 时显式请求更新并要求至少一次 `frameSwapped`，检查抓帧中心仍为背景；释放加载后，等待 Ready 和最终图片颜色。本机 Qt 6.8.2、Windows 11、附加 MSVC v142 下，offscreen/software 和 Windows QPA/D3D11 各通过 3/3；该 D3D11 后端断言不区分硬件和 WARP。测试只证明该受控场景可以在图片未就绪时提交一帧，不能推断先前界面异常原因、整个界面完整性或物理显示时刻。测试固定 8 秒等待上限，失败路径会释放图片提供器，避免阻塞窗口销毁。
+
 `python3 scripts/check_repository.py` 检查本地文档/图片链接、JSON/SVG/PNG 基本有效性、当前设计尺寸、Logo 透明通道及 SVG 网格几何。该检查不运行 Qt，也不代表 Windows 原型通过。
 
 GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查看 PNG，核对字体、应用图标、长名称、间隙及辅助功能信息的表达。

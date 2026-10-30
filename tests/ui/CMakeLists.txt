@@ -1,4 +1,17 @@
 find_package(Qt6 REQUIRED COMPONENTS Test)
+qt_add_executable(xdstarter_delayed_asset_tests delayed_asset_tests.cpp)
+target_link_libraries(xdstarter_delayed_asset_tests PRIVATE Qt6::Gui Qt6::Qml Qt6::Quick Qt6::Test)
+add_test(NAME ui.delayed-asset-offscreen COMMAND xdstarter_delayed_asset_tests)
+set_tests_properties(ui.delayed-asset-offscreen PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software;QT_FORCE_STDERR_LOGGING=1;XDSTARTER_DELAYED_ASSET_REQUIRE_SOFTWARE=1"
+    WORKING_DIRECTORY "${PROJECT_BINARY_DIR}" TIMEOUT 20)
+if(WIN32 AND "$ENV{GITHUB_ACTIONS}" STREQUAL "true" AND
+   "$ENV{RUNNER_ENVIRONMENT}" STREQUAL "github-hosted")
+    add_test(NAME ui.delayed-asset-native COMMAND xdstarter_delayed_asset_tests)
+    set_tests_properties(ui.delayed-asset-native PROPERTIES
+        ENVIRONMENT "QT_QPA_PLATFORM=windows;QSG_RHI_BACKEND=d3d11;QT_FORCE_STDERR_LOGGING=1;XDSTARTER_DELAYED_ASSET_REQUIRE_D3D11=1"
+        WORKING_DIRECTORY "${PROJECT_BINARY_DIR}" TIMEOUT 20)
+endif()
 qt_add_executable(xdstarter_scene_graph_failure_host_fixture
     scene_graph_failure_host_fixture.cpp
     "${PROJECT_SOURCE_DIR}/src/app/scene_graph_failure_guard.cpp"
