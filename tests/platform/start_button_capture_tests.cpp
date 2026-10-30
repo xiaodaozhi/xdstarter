@@ -2,6 +2,7 @@
 
 #include "platform/start_button_capture.h"
 #include "platform/start_button_capture_state.h"
+#include "recovery_safety_model.h"
 
 #include <QCoreApplication>
 #include <QJsonArray>
@@ -543,6 +544,7 @@ int main(int argc, char* argv[]) {
                     diagnostic.value(QStringLiteral("consumedDown")).toInteger() == 0,
                 "unstarted native diagnostics separate installation/eligibility/input/consumption");
     }
+    failures += recovery_safety::runTests();
     std::cout << checks << " checks, " << failures << " failures\n";
     return failures ? 1 : 0;
 }
