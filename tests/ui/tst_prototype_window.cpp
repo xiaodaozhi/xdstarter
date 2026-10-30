@@ -522,6 +522,7 @@ class PrototypeWindowTest : public QObject {
     void failedSaveCanBeRetried();
     void futureConfigurationIsReadOnly();
     void applicationDirectoryAndPinning();
+    void lateApplicationMenuClosePreservesTileFocus();
     void equivalentShortcutsPreserveOldTilesAndSearch();
     void applicationLaunchLifecycle();
     void searchFocusCompositionAndEscape();
@@ -3437,6 +3438,30 @@ void PrototypeWindowTest::equivalentShortcutsPreserveOldTilesAndSearch() {
     catalog_->refreshApplications();
     QTRY_VERIFY(!catalog_->busy());
     QCOMPARE(catalog_->canonicalApplicationId(common.id), common.id);
+}
+
+void PrototypeWindowTest::lateApplicationMenuClosePreservesTileFocus() {
+    const auto state = std::make_shared<CatalogTestState>();
+    destroyWindow();
+    createWindow({}, false, state);
+    pinFirstApplication(state);
+    const auto applicationId = state->applications.first().id;
+    auto* application = item(QStringLiteral("applicationLaunch-") + applicationId);
+    const auto tileId = service_->previewGroups().first().tiles.first().id;
+    auto* tile = item(QStringLiteral("tile-") + tileId);
+    QVERIFY(application && application->isVisible() && application->isEnabled());
+    QVERIFY(tile && tile->isVisible() && tile->isEnabled());
+    QVERIFY(!window_->property("internalPopupVisible").toBool());
+
+    // Model the old pin menu's queued close callback arriving after a later
+    // interaction has already focused the newly pinned tile.
+    QVERIFY(window_->setProperty("pinMenuReturnTarget", QVariant::fromValue(application)));
+    tile->forceActiveFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(tile->hasActiveFocus());
+    QVERIFY(QMetaObject::invokeMethod(window_, "restoreApplicationMenuFocus"));
+    QVERIFY2(tile->hasActiveFocus(), "A stale application-menu close stole tile focus");
+    QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+    QTRY_VERIFY(sizeMenu()->property("opened").toBool());
 }
 
 void PrototypeWindowTest::applicationDirectoryAndPinning() {
@@ -6609,6 +6634,7 @@ void PrototypeWindowTest::contextMenuShortcutsRespectFocus() {
     QCOMPARE(pinOpened.count(), 1);
     QTest::keyClick(window_, Qt::Key_Escape);
     QTRY_VERIFY(!pin->property("visible").toBool());
+    QTRY_VERIFY(application->hasActiveFocus());
 
     auto* actions = item(QStringLiteral("groupActions-work"));
     QVERIFY(actions && actions->isVisible());
