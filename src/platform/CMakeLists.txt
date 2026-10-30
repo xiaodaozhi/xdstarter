@@ -16,6 +16,10 @@ if(WIN32)
         windows/windows_installation_guard.cpp
         windows/windows_graphics_failure_notice.cpp
         windows/windows_graphics_failure_notice.h
+        windows/native_picker_focus.cpp
+        windows/native_picker_focus.h
+        windows/native_picker_helper.cpp
+        windows/native_picker_protocol.h
         windows/windows_platform_integration.cpp
         windows/windows_platform_integration.h
         windows/windows_motion_preference.cpp

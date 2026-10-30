@@ -18,6 +18,9 @@
 #include "platform/contrast_preference.h"
 #include "platform/start_button_capture.h"
 #include "platform/win_key_capture.h"
+#ifdef Q_OS_WIN
+#include "platform/windows/native_picker_protocol.h"
+#endif
 #include "services/application_catalog.h"
 #include "services/desktop_shell_service.h"
 #include "services/layout_store.h"
@@ -99,6 +102,10 @@ std::optional<QVariantMap> loadVisualTokens() {
 } // namespace
 
 int main(int argc, char* argv[]) {
+#ifdef Q_OS_WIN
+    if (argc == 3 && QString::fromLocal8Bit(argv[1]) == QLatin1String(xdstarter::native_picker::argument))
+        return xdstarter::native_picker::runHelper(argv[2]);
+#endif
     if (argc == 2 && QString::fromLocal8Bit(argv[1]) ==
                          QLatin1String(xdstarter::graphicsFailureNoticeArgument)) {
         return xdstarter::runGraphicsFailureNotice();

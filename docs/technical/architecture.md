@@ -15,6 +15,8 @@
 
 依赖方向为 `ui → app/models → services/core → platform interface`，Windows 实现由 app 注入。布局与搜索无需运行 Explorer；平台模块不依赖 QML 页面类型。
 
+布局文件选择的 Windows 请求生命周期见 [ADR-0021](adr/0021-native-layout-picker-lifetime.md)：系统对话框运行在同一 EXE 的隔离辅助进程中，请求代次、进程句柄和 owner 链约束取消及焦点；QML 不直接调用 Win32。该实现的实际 Windows 11 结果仍按 Issue #88 单独记录。
+
 工程目录已建立，当前 targets 为：
 
 | Target | 当前实现 |
