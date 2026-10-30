@@ -1,4 +1,5 @@
 #include "native_chrome_probe.h"
+#include "contrast_frame_trace.h"
 #include "visual_acceptance_probe.h"
 #include "ui_search_benchmark.h"
 
@@ -242,6 +243,15 @@ QQuickItem* visualItem(QQuickItem* parent, const QString& name) {
             return found;
         }
     }
+    return nullptr;
+}
+
+QQuickItem* namedGlyph(QQuickItem* parent, const QString& name) {
+    if (!parent) return nullptr;
+    if (parent->property("name").toString() == name && parent->property("status").isValid())
+        return parent;
+    for (auto* child : parent->childItems())
+        if (auto* found = namedGlyph(child, name)) return found;
     return nullptr;
 }
 
@@ -1197,6 +1207,35 @@ void PrototypeWindowTest::highContrastTracksSystemPalette() {
     auto* tileSymbol = visualItem(tile, QStringLiteral("tileSymbol"));
     auto* tileIcon = visualItem(tile, QStringLiteral("tileIcon"));
     QVERIFY(tileLabel && tileSymbol && tileIcon);
+    const auto traceDirectory = qEnvironmentVariable("XDSTARTER_FRAME_TRACE_DIR");
+    std::unique_ptr<ContrastFrameTrace> frameTrace;
+    auto* traceSearchField = item(QStringLiteral("searchField"));
+    QQuickItem* traceSearchGlyph = nullptr;
+    if (!traceDirectory.isEmpty()) {
+        QVERIFY(QDir().mkpath(traceDirectory));
+        traceSearchGlyph = namedGlyph(traceSearchField, QStringLiteral("search"));
+        QVERIFY(traceSearchField && traceSearchGlyph);
+        frameTrace = std::make_unique<ContrastFrameTrace>(window_, traceDirectory);
+    }
+    const auto frameState = [&]() -> QJsonObject {
+        return {{QStringLiteral("highContrast"), window_->property("highContrast").toBool()},
+                {QStringLiteral("sceneGraphInitialized"), window_->isSceneGraphInitialized()},
+                {QStringLiteral("windowVisible"), window_->isVisible()},
+                {QStringLiteral("windowExposed"), window_->isExposed()},
+                {QStringLiteral("catalogRows"), catalog_->applicationsModel()->rowCount()},
+                {QStringLiteral("tileCount"), int(tileGeometries().size())},
+                {QStringLiteral("tileGeometry"), rectangleJson(itemGeometry(tile))},
+                {QStringLiteral("tileVisible"), tile->isVisible()},
+                {QStringLiteral("tileLabelVisible"), tileLabel->isVisible()},
+                {QStringLiteral("tileSymbolVisible"), tileSymbol->isVisible()},
+                {QStringLiteral("searchGlyphStatus"), traceSearchGlyph ? traceSearchGlyph->property("status").toInt() : -1},
+                {QStringLiteral("searchGlyphVisible"), traceSearchGlyph && traceSearchGlyph->isVisible()},
+                {QStringLiteral("searchGlyphSceneRect"), traceSearchGlyph
+                     ? rectangleJson(traceSearchGlyph->mapRectToScene(traceSearchGlyph->boundingRect())) : QJsonObject{}},
+                {QStringLiteral("searchCursorVisible"), traceSearchField && traceSearchField->property("cursorVisible").toBool()},
+                {QStringLiteral("chromeColor"), chrome->property("color").value<QColor>().name(QColor::HexArgb)},
+                {QStringLiteral("labelColor"), tileLabel->property("color").value<QColor>().name(QColor::HexArgb)}};
+    };
     const QVariantMap dark{{QStringLiteral("window"), QColor(QStringLiteral("#101020"))},
                            {QStringLiteral("windowText"), QColor(QStringLiteral("#FFFF00"))},
                            {QStringLiteral("highlight"), QColor(QStringLiteral("#003399"))},
@@ -1207,20 +1246,38 @@ void PrototypeWindowTest::highContrastTracksSystemPalette() {
                             {QStringLiteral("highlight"), QColor(QStringLiteral("#800020"))},
                             {QStringLiteral("highlightText"), QColor(Qt::white)},
                             {QStringLiteral("grayText"), QColor(QStringLiteral("#555555"))}};
-    const auto capture = [this](const QString& name) {
+    const auto capture = [this, &frameTrace, &frameState, &traceSearchGlyph](const QString& name) {
         const auto destination = qEnvironmentVariable("XDSTARTER_CONTRAST_CAPTURE_DIR");
         if (destination.isEmpty())
             return;
         QVERIFY(QDir().mkpath(destination));
+        const QString scene = name.endsWith(QLatin1String(".png")) ? name.chopped(4) : name;
+        if (frameTrace) frameTrace->mark(scene + QStringLiteral(":request-update"), frameState());
         window_->requestUpdate();
+        if (frameTrace) {
+            frameTrace->mark(scene + QStringLiteral(":before-early-grab"), frameState());
+            const auto early = window_->grabWindow();
+            QVERIFY(frameTrace->capture(scene, QStringLiteral("early"), early, frameState()));
+            // This waits for one specifically identified glyph, not for every
+            // resource or for a universal scene-rendering completion signal.
+            QTRY_COMPARE_WITH_TIMEOUT(traceSearchGlyph->property("status").toInt(), 1, 5000);
+            frameTrace->mark(scene + QStringLiteral(":before-ready-grab"), frameState());
+            window_->requestUpdate();
+            const auto ready = window_->grabWindow();
+            QVERIFY(frameTrace->capture(scene, QStringLiteral("ready"), ready, frameState()));
+        }
         QTest::qWait(250);
+        if (frameTrace) frameTrace->mark(scene + QStringLiteral(":before-first-grab"), frameState());
         const auto initial = window_->grabWindow();
         QVERIFY(!initial.isNull());
         QVERIFY(initial.save(QDir(destination).filePath(QStringLiteral("first-") + name)));
+        if (frameTrace) QVERIFY(frameTrace->capture(scene, QStringLiteral("first"), initial, frameState()));
         QTest::qWait(350);
+        if (frameTrace) frameTrace->mark(scene + QStringLiteral(":before-later-grab"), frameState());
         const auto frame = window_->grabWindow();
         QVERIFY(!frame.isNull());
         QVERIFY(frame.save(QDir(destination).filePath(name)));
+        if (frameTrace) QVERIFY(frameTrace->capture(scene, QStringLiteral("later"), frame, frameState()));
     };
     QSignalSpy changes(controller_.get(), &xdstarter::MenuController::highContrastChanged);
     const auto check = [&](const QVariantMap& colors) {
@@ -1422,6 +1479,7 @@ void PrototypeWindowTest::highContrastTracksSystemPalette() {
     QVERIFY(window_->property("darkTheme").toBool());
     QVERIFY(saved.open(QIODevice::ReadOnly));
     QCOMPARE(saved.readAll(), userChoice);
+    if (frameTrace) QVERIFY(frameTrace->finish());
 }
 
 void PrototypeWindowTest::systemThemePreferenceTracksAndPersists() {

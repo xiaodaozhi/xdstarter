@@ -26,6 +26,10 @@
 
 首轮模拟切换暴露颜色与启用状态通知顺序导致 QML 未定义颜色警告，调整绑定与保留有效配色后定向测试通过；先前一次短等待抓帧出现局部绘制不完整，offscreen/software 中等待两次 `frameSwapped` 未达到要求，后续分时抓帧完整，但未定位该次画面异常原因。真实 Windows 主题切换、屏幕阅读器及更多系统组合仍未完成，不能以模拟结果宣称通过。
 
+[#85](https://github.com/xiaodaozhi/xdstarter/issues/85) 增加仅用于研究的显式帧跟踪：在相同匿名高对比度场景中记录单调时间、同步／渲染／提交事件、测试线程、布局和搜索图标 `Image.status`；保存状态检查后立即、该图标 Ready 后立即及原有两个时间点的图像。证据脚本核对事件顺序、场景、图像尺寸与哈希，并仅对该图标区域检查 Ready 后抓帧的稳定性。一次性 hosted Windows 另收集 offscreen/software 与 Windows QPA/D3D11 两组原始日志、事件和截图。额外的抓帧、像素比较与事件观察会改变时序；特定图标 Ready 和某次 frameSwapped 都不构成整个界面已完整或实际屏幕已呈现的保证。具体结果与未复现情况保留在 Issue。
+
+本机三次 offscreen/software 对照中，早期抓帧时搜索图标仍在加载，之前每次已有一次 frameSwapped；图标 Ready 后的抓帧在该图标区域与后续抓帧一致。一个样本的[环境与源码哈希](validation/issue-85/offscreen/context.json)、[帧事件及状态](validation/issue-85/offscreen/frame-trace.json)、[早期截图](validation/issue-85/offscreen/contrast-dark-early.png)与[图标就绪截图](validation/issue-85/offscreen/contrast-dark-ready.png)保留在仓库，完整图像可由 `scripts/inspect_contrast_frame_trace.py` 复核。该观察不能证明先前未复现的整块内容缺失具有相同原因，也不能代替 Windows 原生或真实显示验收。
+
 `python3 scripts/check_repository.py` 检查本地文档/图片链接、JSON/SVG/PNG 基本有效性、当前设计尺寸、Logo 透明通道及 SVG 网格几何。该检查不运行 Qt，也不代表 Windows 原型通过。
 
 GitHub Actions 在 push/PR 上运行相同检查。设计重建后应目视查看 PNG，核对字体、应用图标、长名称、间隙及辅助功能信息的表达。
