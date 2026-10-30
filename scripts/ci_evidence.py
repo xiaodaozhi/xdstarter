@@ -13,9 +13,10 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 LOGS = {
-    'core': {'ctest.log': ('core.tile_grid',)},
+    'core': {'ctest.log': ('core.tile_grid', 'core.picker_request_state')},
     'windows': {
         'ctest.log': ('app.d3d11_failure_exit', 'app.qml_smoke', 'app.qt-translations', 'core.tile_grid',
+                      'core.picker_request_state',
                       'platform.applications', 'platform.applications.localized', 'platform.contrast-preference',
                       'platform.desktop', 'platform.desktop-width-snap', 'platform.graphics-failure-notice',
                       'platform.installation-guard', 'platform.motion-preference', 'platform.native-menu-resize',
@@ -25,11 +26,13 @@ LOGS = {
                       'services.prototype', 'services.search', 'services.session_instance',
                       'ui.desktop_window_host', 'ui.high-contrast-native', 'ui.layout-import-native',
                       'ui.native-picker-immediate', 'ui.native-picker-rapid', 'ui.native-picker-shown',
+                      'ui.native-picker-selection', 'ui.native-picker-shutdown',
                       'ui.prototype', 'ui.scene_graph_failure_host'),
         'smoke.log': ('app.qml_smoke',),
         'shell.log': ('platform.applications', 'platform.applications.localized'),
         'experiments.log': ('experimental.start-bridge', 'experimental.start-bridge-ui-smoke',
-                            'experimental.explorer-route-self-test', 'experimental.picker-cancel'),
+                            'experimental.explorer-route-self-test', 'experimental.picker-cancel',
+                            'experimental.picker-process'),
     },
 }
 COPIES = {
@@ -47,6 +50,8 @@ COPIES = {
     'picker-rapid.log': 'build/app-release/native-picker-evidence/rapid.log',
     'picker-immediate.log': 'build/app-release/native-picker-evidence/immediate.log',
     'picker-shown.log': 'build/app-release/native-picker-evidence/shown.log',
+    'picker-selection.log': 'build/app-release/native-picker-evidence/selection.log',
+    'picker-shutdown.log': 'build/app-release/native-picker-evidence/shutdown.log',
     'graphics.json': 'build/app-release/graphics-failure-evidence/result.json',
     'graphics-normal.log': 'build/app-release/graphics-failure-evidence/result-normal.log',
     'graphics-hardware-failure.log': 'build/app-release/graphics-failure-evidence/result-hardware-failure.log',
@@ -64,11 +69,14 @@ QT_LOGS = {
     'picker-rapid.log': ('layoutImportFilePickerOwnership()',),
     'picker-immediate.log': ('layoutImportFilePickerOwnership()',),
     'picker-shown.log': ('layoutImportFilePickerOwnership()',),
+    'picker-selection.log': ('layoutImportNativeSelection()', 'layoutImportNativeLaunchFailure()'),
+    'picker-shutdown.log': ('layoutImportNativeShutdown()',),
 }
 PHASES = {'core': {'python-packages', 'configure', 'compile', 'ctest'},
           'windows': {'python-packages', 'configure', 'compile', 'qml-lint', 'ctest'}}
 STEPS = {'core': ('build',),
-         'windows': ('build', 'smoke', 'shell', 'search', 'ui-search', 'experiments', 'prepare', 'package')}
+         'windows': ('build', 'picker-audit', 'smoke', 'shell', 'search', 'ui-search',
+                     'experiments', 'prepare', 'package')}
 
 
 def require(ok, message):
@@ -154,10 +162,29 @@ def validate_role(directory, role, expected):
                     Counter(passes) == Counter(expected_passes) and
                     not re.search(r'\bQ(?:CRITICAL|FATAL)\s*:|FAIL\s*!', text),
                     'failed-or-incomplete-native-qt-log:' + name)
-            if name.startswith('picker-'):
+            if name in ('picker-rapid.log', 'picker-immediate.log', 'picker-shown.log'):
                 mode = name.removeprefix('picker-').removesuffix('.log')
                 require(all(f'Native picker before close: "{mode}" dark= {dark}' in text
                             for dark in ('true', 'false')), 'ambiguous-native-picker-log:' + name)
+                if mode == 'rapid':
+                    require('Native picker rapid reopen:' in text and 'oldExited= true' in text and
+                            'nextVisible= true' in text, 'incomplete-picker-reopen')
+                elif mode == 'immediate':
+                    require('Native picker after-close observation:' in text and 'processExited= true' in text,
+                            'incomplete-picker-immediate')
+                else:
+                    require('Native picker foreground verified:' in text and 'foreground= true' in text and
+                            'Native picker owner focus restored:' in text and 'ownerForeground= true' in text,
+                            'incomplete-picker-focus')
+            if name == 'picker-selection.log':
+                require('Native picker selected file and opened import preview:' in text and
+                        'Native picker launch failure visibly reported and retry canceled:' in text and
+                        'Native picker external focus preserved:' in text and 'otherForeground= true' in text and
+                        'finished= true' in text, 'incomplete-picker-selection')
+            if name == 'picker-shutdown.log':
+                require('Native picker shutdown:' in text and 'fakeWinCaptureStopped= true' in text and
+                        'fakeStartCaptureStopped= true' in text and 'childExited= true' in text,
+                        'incomplete-picker-shutdown')
         lifecycle = json.loads((directory / 'lifecycle.json').read_text(encoding='utf-8'))
         require(lifecycle.get('status') == 'passed' and lifecycle.get('serverLifecycleFixture') is True and
                 lifecycle.get('cleanWindows11Accepted') is False and

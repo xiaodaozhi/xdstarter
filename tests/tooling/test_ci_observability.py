@@ -159,9 +159,24 @@ class EvidenceTests(TemporaryRepository):
                 for name, functions in ci_evidence.QT_LOGS.items():
                     cases = ('initTestCase()', *functions, 'cleanupTestCase()')
                     rows = [f'PASS : PrototypeWindowTest::{case}' for case in cases]
-                    if name.startswith('picker-'):
+                    if name in ('picker-rapid.log', 'picker-immediate.log', 'picker-shown.log'):
                         mode = name.removeprefix('picker-').removesuffix('.log')
                         rows += [f'Native picker before close: "{mode}" dark= {dark}' for dark in ('true', 'false')]
+                        if mode == 'rapid':
+                            rows += ['Native picker rapid reopen: oldExited= true nextVisible= true']
+                        elif mode == 'immediate':
+                            rows += ['Native picker after-close observation: processExited= true']
+                        else:
+                            rows += ['Native picker foreground verified: foreground= true',
+                                     'Native picker owner focus restored: ownerForeground= true']
+                    if name == 'picker-selection.log':
+                        rows += ['Native picker selected file and opened import preview:',
+                                 'Native picker launch failure visibly reported and retry canceled:',
+                                 'Native picker external focus preserved: otherForeground= true',
+                                 'finished= true']
+                    if name == 'picker-shutdown.log':
+                        rows += ['Native picker shutdown: fakeWinCaptureStopped= true '
+                                 'fakeStartCaptureStopped= true childExited= true']
                     rows.append(f'Totals: {len(cases)} passed, 0 failed, 0 skipped, 0 blacklisted, 10ms')
                     (self.root / ci_evidence.COPIES[name]).write_text('\n'.join(rows) + '\n', encoding='utf-8')
                 lifecycle = {'status': 'passed', 'serverLifecycleFixture': True, 'cleanWindows11Accepted': False,
@@ -243,6 +258,25 @@ class EvidenceTests(TemporaryRepository):
         manifest.write_text(json.dumps(report), encoding='utf-8')
         with self.assertRaisesRegex(ValueError, 'failed-or-incomplete-native-qt-log'):
             ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_picker_scenarios_cannot_be_replaced_by_passing_totals(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        scenarios = (('picker-rapid.log', 'nextVisible= true', 'incomplete-picker-reopen'),
+                     ('picker-selection.log', 'otherForeground= true', 'incomplete-picker-selection'),
+                     ('picker-shutdown.log', 'childExited= true', 'incomplete-picker-shutdown'))
+        for name, marker, error in scenarios:
+            path = directory / name
+            original = path.read_text(encoding='utf-8')
+            path.write_text(original.replace(marker, 'missing'), encoding='utf-8')
+            report['files'][name] = ci_evidence.checksum(path)
+            manifest.write_text(json.dumps(report), encoding='utf-8')
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, error):
+                ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+            path.write_text(original, encoding='utf-8')
+            report['files'][name] = ci_evidence.checksum(path)
+            manifest.write_text(json.dumps(report), encoding='utf-8')
 
     def test_native_picker_log_cannot_be_misattributed_to_another_mode(self):
         directory = self.root / 'build/ci-evidence/windows'
