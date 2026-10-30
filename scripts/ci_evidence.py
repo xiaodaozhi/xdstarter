@@ -12,6 +12,7 @@ import shutil
 import sys
 
 import inspect_contrast_frame_trace as frame_trace
+import inspect_resident_sample as resident_sample
 
 ROOT = Path(__file__).resolve().parents[1]
 LOGS = {
@@ -65,6 +66,10 @@ FRAME_FILES = ('frame-trace.json', 'test.log',
                *(f'{scene}-{stage}.png' for scene in frame_trace.SCENES for stage in frame_trace.STAGES))
 COPIES.update({f'frame-{mode}/{name}': f'build/app-release/high-contrast-frame-evidence/{mode}/{name}'
                for mode in FRAME_MODES for name in FRAME_FILES})
+RESIDENT_FILES = ('resident-sample.json', 'snapshot.json', 'stdout.log', 'stderr.log')
+COPIES.update({f'resident-sample/{name}': f'build/validation/resident-sample-ci/{name}'
+               for name in RESIDENT_FILES})
+EMPTY_ALLOWED_FILES = {'resident-sample/stdout.log', 'resident-sample/stderr.log'}
 LIFECYCLE_CASES = {'junction-parent-refused', 'install', 'modified-obsolete-refused',
                    'upgrade-retire-unchanged', 'upgrade-disable-autostart', 'upgrade-retain-disabled-autostart',
                    'upgrade-enable-autostart', 'running-install-refused', 'running-uninstall-refused',
@@ -84,7 +89,7 @@ PHASES = {'core': {'python-packages', 'configure', 'compile', 'ctest'},
           'windows': {'python-packages', 'configure', 'compile', 'qml-lint', 'ctest'}}
 STEPS = {'core': ('build',),
          'windows': ('build', 'picker-audit', 'contrast-trace', 'smoke', 'shell', 'search', 'ui-search',
-                     'experiments', 'prepare', 'package')}
+                     'experiments', 'resident-sample', 'prepare', 'package')}
 
 
 def require(ok, message):
@@ -102,10 +107,10 @@ def identity(env):
     return result
 
 
-def checksum(path):
+def checksum(path, allow_empty=False):
     require(path.is_file() and not path.is_symlink(), 'missing-raw-evidence')
     size = path.stat().st_size
-    require(0 < size <= 100 * 1024 * 1024, 'empty-or-oversized-evidence')
+    require((size > 0 or allow_empty) and size <= 100 * 1024 * 1024, 'empty-or-oversized-evidence')
     with path.open('rb') as stream:
         return {'bytes': size, 'sha256': hashlib.file_digest(stream, 'sha256').hexdigest()}
 
@@ -126,7 +131,7 @@ def collect(role, root=ROOT, env=None):
                 shutil.copyfile(path, destination)
     for name in ('timings.json', *LOGS[role], *(COPIES if role == 'windows' else ())):
         try:
-            report['files'][name] = checksum(directory / name)
+            report['files'][name] = checksum(directory / name, allow_empty=name in EMPTY_ALLOWED_FILES)
         except (OSError, ValueError) as error:
             report['errors'].append(name + ':' + str(error))
     (directory / 'manifest.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
@@ -154,7 +159,8 @@ def validate_role(directory, role, expected):
             required_files | {'manifest.json'},
             'unexpected-or-ambiguous-evidence')
     for name in required_files:
-        require(checksum(directory / name) == report['files'][name], 'changed-raw-evidence')
+        require(checksum(directory / name, allow_empty=name in EMPTY_ALLOWED_FILES) == report['files'][name],
+                'changed-raw-evidence')
     timing = json.loads((directory / 'timings.json').read_text(encoding='utf-8'))
     require(timing.get('identity') == report['identity'], 'timing-identity-mismatch')
     commands = timing.get('commands', [])
@@ -171,6 +177,10 @@ def validate_role(directory, role, expected):
                 all(row[1] == 'Passed' for row in rows) and set(tests) <= set(names),
                 'incomplete-or-failed-test-log')
     if role == 'windows':
+        try:
+            resident_sample.inspect(directory / 'resident-sample', expected['GITHUB_SHA'])
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            raise ValueError('incomplete-resident-sample') from error
         for mode, (qpa, graphics_api) in FRAME_MODES.items():
             try:
                 frame_trace.inspect(directory / f'frame-{mode}', qpa, graphics_api)

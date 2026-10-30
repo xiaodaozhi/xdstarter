@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 import ci_classify
 import ci_evidence
 import ci_package_inputs
+import benchmark_resident
 
 
 class TemporaryRepository(unittest.TestCase):
@@ -166,6 +167,30 @@ class EvidenceTests(TemporaryRepository):
                     # not a claim that the archived offscreen sample is D3D11.
                     trace.update(qpa=qpa, graphicsApi=graphics_api)
                     path.write_text(json.dumps(trace), encoding='utf-8')
+                resident = {name: self.root / ci_evidence.COPIES[f'resident-sample/{name}']
+                            for name in ci_evidence.RESIDENT_FILES}
+                samples = [{'atNs': i * 1_000_000_000, 'cpu100ns': i * 10_000_000,
+                            'workingSetBytes': 100 + i, 'privateBytes': 200 + i,
+                            'visibleTopLevelWindows': 0, 'observerNs': 5000}
+                           for i in range(benchmark_resident.SAMPLE_COUNT)]
+                resident_result = {'schemaVersion': 1, 'processId': 42, 'executableSha256': 'd' * 64,
+                                   'productExit': 0, 'buildInfo': {'qt': '6.8.2',
+                                       'revision': self.env['GITHUB_SHA'], 'dirty': False, 'distribution': True},
+                                   'ci': {**{key: self.env[key] for key in
+                                             ('GITHUB_SHA', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT')},
+                                          'RUNNER_OS': 'Windows', 'RUNNER_ARCH': 'X64'},
+                                   'diagnostic': {'intervalMs': 250, 'runId': 'run-1', 'writeFailures': 0,
+                                       'initialHookInstalled': True, 'initialSessionActive': True,
+                                       'observedHookInstalled': True, 'observedSessionActive': True,
+                                       'finalHookInstalled': False, 'finalSessionActive': False},
+                                   'samples': samples, 'summary': benchmark_resident.summarize(samples),
+                                   'limitations': ['diagnostic overhead', 'sampled visibility', 'hosted platform']}
+                resident['resident-sample.json'].write_text(json.dumps(resident_result), encoding='utf-8')
+                resident['snapshot.json'].write_text(json.dumps({'processId': 42, 'executableSha256': 'd' * 64,
+                    'runId': 'run-1', 'hookInstalled': False, 'sessionActive': False,
+                    'diagnosticWriteFailures': 0}), encoding='utf-8')
+                resident['stdout.log'].write_text('', encoding='utf-8')
+                resident['stderr.log'].write_text('', encoding='utf-8')
                 for name, functions in ci_evidence.QT_LOGS.items():
                     cases = ('initTestCase()', *functions, 'cleanupTestCase()')
                     rows = [f'PASS : PrototypeWindowTest::{case}' for case in cases]
@@ -346,6 +371,28 @@ class EvidenceTests(TemporaryRepository):
         report['steps']['contrast-trace'] = 'skipped'
         manifest.write_text(json.dumps(report), encoding='utf-8')
         with self.assertRaisesRegex(ValueError, 'missing-or-failed-step'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_resident_sample_identity_and_severe_logs_are_rechecked(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        path = directory / 'resident-sample/resident-sample.json'
+        original = path.read_text(encoding='utf-8')
+        data = json.loads(original)
+        data['buildInfo']['revision'] = 'c' * 40
+        path.write_text(json.dumps(data), encoding='utf-8')
+        report['files']['resident-sample/resident-sample.json'] = ci_evidence.checksum(path)
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'incomplete-resident-sample'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+        path.write_text(original, encoding='utf-8')
+        report['files']['resident-sample/resident-sample.json'] = ci_evidence.checksum(path)
+        stderr = directory / 'resident-sample/stderr.log'
+        stderr.write_text('critical: failed\n', encoding='utf-8')
+        report['files']['resident-sample/stderr.log'] = ci_evidence.checksum(stderr)
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'incomplete-resident-sample'):
             ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
 
 

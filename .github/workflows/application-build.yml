@@ -341,6 +341,7 @@
             "XDSTARTER_STEP_SEARCH": "${{ steps.search.outcome }}",
             "XDSTARTER_STEP_UI_SEARCH": "${{ steps.ui_search.outcome }}",
             "XDSTARTER_STEP_EXPERIMENTS": "${{ steps.experiments.outcome }}",
+            "XDSTARTER_STEP_RESIDENT_SAMPLE": "${{ steps.resident_sample.outcome }}",
             "XDSTARTER_STEP_PREPARE": "${{ steps.prepare.outcome }}",
             "XDSTARTER_STEP_PACKAGE": "${{ steps.package.outcome }}"
           },
