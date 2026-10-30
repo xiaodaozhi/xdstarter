@@ -43,9 +43,24 @@
         },
         {
           "name": "Build and test core with declared tools",
-          "run": "build/tooling/bin/python scripts/toolchain.py build --preset core-release"
+          "run": "build/tooling/bin/python scripts/toolchain.py build --preset core-release",
+          "id": "build"
+        },
+        {
+          "name": "Upload core phase timings and CTest logs",
+          "if": "always() && !cancelled()",
+          "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "with": {
+            "name": "xdstarter-phase-core-${{ github.sha }}-${{ github.run_attempt }}",
+            "path": "build/ci-evidence/core/",
+            "if-no-files-found": "warn",
+            "retention-days": 7
+          }
         }
-      ]
+      ],
+      "env": {
+        "XDSTARTER_CI_EVIDENCE": "build/ci-evidence/core"
+      }
     },
     "windows": {
       "runs-on": "windows-2022",
@@ -73,55 +88,110 @@
           }
         },
         {
+          "name": "Acquire declared Python",
+          "id": "python",
+          "shell": "pwsh",
+          "run": "$pythonVersion = '${{ steps.toolchain.outputs.python }}'\nuv python install $pythonVersion\nif ($LASTEXITCODE -ne 0) { throw 'Declared Python acquisition failed.' }\n$pythonPath = (uv python find --managed-python $pythonVersion).Trim()\nif ($LASTEXITCODE -ne 0 -or !$pythonPath) { throw 'Cannot locate declared managed Python.' }\n\"path=$pythonPath\" >> $env:GITHUB_OUTPUT"
+        },
+        {
           "name": "Acquire declared tools and Qt, build, lint and test",
           "shell": "pwsh",
-          "run": "$pythonVersion = '${{ steps.toolchain.outputs.python }}'\nuv python install $pythonVersion\nif ($LASTEXITCODE -ne 0) { throw 'Declared Python acquisition failed.' }\n$pythonPath = (uv python find --managed-python $pythonVersion).Trim()\nif ($LASTEXITCODE -ne 0 -or !$pythonPath) { throw 'Cannot locate declared managed Python.' }\n./scripts/build-windows.ps1 -Toolchain MSVC2022 -InstallTools -Python $pythonPath -Fresh -Distribution -BuildNumber $env:GITHUB_RUN_NUMBER"
+          "run": "./scripts/build-windows.ps1 -Toolchain MSVC2022 -InstallTools -Python $env:XDSTARTER_DECLARED_PYTHON -Fresh -Distribution -BuildNumber $env:GITHUB_RUN_NUMBER",
+          "env": {
+            "XDSTARTER_DECLARED_PYTHON": "${{ steps.python.outputs.path }}"
+          },
+          "id": "build"
         },
         {
           "name": "Record smoke startup phases",
-          "if": "always()",
+          "if": "always() && !cancelled()",
           "shell": "pwsh",
-          "run": "$test = Join-Path $PWD 'build/app-release/bin/xdstarter.exe'\n$ctest = Join-Path $PWD 'build/tooling/Scripts/ctest.exe'\nif (!(Test-Path $test) -or !(Test-Path $ctest)) { Write-Host 'Smoke binary or CTest unavailable; phase comparison skipped.'; exit 0 }\n$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$env:TEMP = Join-Path $PWD 'build/tmp'\n$env:TMP = $env:TEMP\n& $ctest --test-dir build/app-release -R '^app\\.qml_smoke$' --verbose --no-tests=error\nif ($LASTEXITCODE -ne 0) { throw 'Smoke startup phase check failed.' }"
+          "run": "$test = Join-Path $PWD 'build/app-release/bin/xdstarter.exe'\n$ctest = Join-Path $PWD 'build/tooling/Scripts/ctest.exe'\nif (!(Test-Path $test) -or !(Test-Path $ctest)) { Write-Host 'Smoke binary or CTest unavailable; phase comparison skipped.'; exit 0 }\n$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$env:TEMP = Join-Path $PWD 'build/tmp'\n$env:TMP = $env:TEMP\n& $ctest --test-dir build/app-release -R '^app\\.qml_smoke$' --verbose --no-tests=error --output-log (Join-Path $env:XDSTARTER_CI_EVIDENCE 'smoke.log')\nif ($LASTEXITCODE -ne 0) { throw 'Smoke startup phase check failed.' }",
+          "id": "smoke"
         },
         {
           "name": "Compare failed Shell fixture in the user profile",
-          "if": "failure()",
+          "if": "failure() && !cancelled()",
           "shell": "pwsh",
           "run": "$test = Join-Path $PWD 'build/app-release/xdstarter_application_platform_tests.exe'\n$helper = Join-Path $PWD 'build/app-release/xdstarter_launch_fixture.exe'\nif (!(Test-Path $test) -or !(Test-Path $helper)) { Write-Host 'Shell fixture binaries unavailable; comparison skipped.'; exit 0 }\n$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$comparison = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) \"Temp/xdstarter-shell-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT/build/fixture\"\nNew-Item -ItemType Directory -Path $comparison -Force | Out-Null\nPush-Location $comparison\ntry {\n  & $test $helper\n  $result = $LASTEXITCODE\n  Write-Host \"User-profile fixture comparison exit code: $result\"\n} finally { Pop-Location }\nexit 0"
         },
         {
           "name": "Repeat hosted Shell localization checks",
           "shell": "pwsh",
-          "run": "$ErrorActionPreference = 'Stop'\n$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$env:TEMP = Join-Path $PWD 'build/tmp'\n$env:TMP = $env:TEMP\n$history = Join-Path $PWD 'build/app-release/shell-localization-history'\nNew-Item -ItemType Directory -Path $history -Force | Out-Null\nforeach ($name in @('workspace', 'profile')) { $source = Join-Path $PWD \"build/app-release/shell-localization-evidence/$name/catalog-errors.json\"; Copy-Item -LiteralPath $source -Destination (Join-Path $history \"$name-initial.json\"); Remove-Item -LiteralPath $source }\n& ./build/tooling/Scripts/ctest.exe --test-dir build/app-release -R '^platform\\.applications(\\.localized)?$' --output-on-failure --no-tests=error\n$result = $LASTEXITCODE\nforeach ($name in @('workspace', 'profile')) { $source = Join-Path $PWD \"build/app-release/shell-localization-evidence/$name/catalog-errors.json\"; if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination (Join-Path $history \"$name-repeat.json\") } elseif ($result -eq 0) { throw \"Missing repeated Shell evidence: $name\" } }\nif ($result -ne 0) { throw 'Repeated Shell localization check failed.' }"
+          "run": "$ErrorActionPreference = 'Stop'\n$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$env:TEMP = Join-Path $PWD 'build/tmp'\n$env:TMP = $env:TEMP\n$history = Join-Path $PWD 'build/app-release/shell-localization-history'\nNew-Item -ItemType Directory -Path $history -Force | Out-Null\nforeach ($name in @('workspace', 'profile')) { $source = Join-Path $PWD \"build/app-release/shell-localization-evidence/$name/catalog-errors.json\"; Copy-Item -LiteralPath $source -Destination (Join-Path $history \"$name-initial.json\"); Remove-Item -LiteralPath $source }\n& ./build/tooling/Scripts/ctest.exe --test-dir build/app-release -R '^platform\\.applications(\\.localized)?$' --output-on-failure --no-tests=error --output-log (Join-Path $env:XDSTARTER_CI_EVIDENCE 'shell.log')\n$result = $LASTEXITCODE\nforeach ($name in @('workspace', 'profile')) { $source = Join-Path $PWD \"build/app-release/shell-localization-evidence/$name/catalog-errors.json\"; if (Test-Path -LiteralPath $source) { Copy-Item -LiteralPath $source -Destination (Join-Path $history \"$name-repeat.json\") } elseif ($result -eq 0) { throw \"Missing repeated Shell evidence: $name\" } }\nif ($result -ne 0) { throw 'Repeated Shell localization check failed.' }",
+          "id": "shell"
         },
         {
           "name": "Validate synthetic search benchmark evidence",
           "shell": "pwsh",
-          "run": "$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$env:TEMP = Join-Path $PWD 'build/tmp'\n$env:TMP = $env:TEMP\n& ./build/tooling/Scripts/python.exe scripts/benchmark_search.py --executable build/app-release/xdstarter_search_service_tests.exe --output build/app-release/search-benchmark-ci.json --entries 0 1000\nif ($LASTEXITCODE -ne 0) { throw 'Synthetic search benchmark evidence failed.' }"
+          "run": "$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$env:TEMP = Join-Path $PWD 'build/tmp'\n$env:TMP = $env:TEMP\n& ./build/tooling/Scripts/python.exe scripts/benchmark_search.py --executable build/app-release/xdstarter_search_service_tests.exe --output build/app-release/search-benchmark-ci.json --entries 0 1000\nif ($LASTEXITCODE -ne 0) { throw 'Synthetic search benchmark evidence failed.' }",
+          "id": "search"
         },
         {
           "name": "Validate synthetic UI search benchmark evidence",
           "shell": "pwsh",
-          "run": "$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$env:TEMP = Join-Path $PWD 'build/tmp'\n$env:TMP = $env:TEMP\n$env:QT_FORCE_STDERR_LOGGING = '1'\n& ./build/tooling/Scripts/python.exe scripts/benchmark_ui_search.py --executable build/app-release/bin/xdstarter_ui_tests.exe --output build/app-release/ui-search-benchmark-ci.json --hosted-native\nif ($LASTEXITCODE -ne 0) { throw 'Synthetic UI search benchmark evidence failed.' }"
+          "run": "$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$env:TEMP = Join-Path $PWD 'build/tmp'\n$env:TMP = $env:TEMP\n$env:QT_FORCE_STDERR_LOGGING = '1'\n& ./build/tooling/Scripts/python.exe scripts/benchmark_ui_search.py --executable build/app-release/bin/xdstarter_ui_tests.exe --output build/app-release/ui-search-benchmark-ci.json --hosted-native\nif ($LASTEXITCODE -ne 0) { throw 'Synthetic UI search benchmark evidence failed.' }",
+          "id": "ui_search"
         },
         {
           "name": "Build and test isolated Windows experiments",
           "shell": "pwsh",
-          "run": "$vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'\n$vs = & $vswhere -latest -products '*' -version '[17.0,18.0)' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath\nif ($LASTEXITCODE -ne 0 -or !$vs) { throw 'Cannot locate the MSVC 2022 validation toolchain.' }\nImport-Module (Join-Path $vs 'Common7/Tools/Microsoft.VisualStudio.DevShell.dll')\nEnter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'\n$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$env:TEMP = Join-Path $PWD 'build/tmp'\n$env:TMP = $env:TEMP\n$cmake = './build/tooling/Scripts/cmake.exe'\n& $cmake -S . -B build/app-release -DXDSTARTER_BUILD_START_BRIDGE_POC=ON -DXDSTARTER_BUILD_EXPLORER_ROUTE_PROBE=ON -DXDSTARTER_BUILD_PICKER_CANCEL_POC=ON\nif ($LASTEXITCODE) { throw 'Experiment configure failed.' }\n& $cmake --build build/app-release --parallel 3 --target xdstarter_start_bridge_poc xdstarter_start_bridge_fixture xdstarter_start_bridge_controller xdstarter_start_bridge_tests xdstarter_route_probe xdstarter_picker_cancel_poc\nif ($LASTEXITCODE) { throw 'Experiment build failed.' }\n& ./build/tooling/Scripts/ctest.exe --test-dir build/app-release -R '^experimental\\.(start-bridge|explorer-route|picker-cancel)' --verbose --no-tests=error\nif ($LASTEXITCODE) { throw 'Experiment integration failed.' }\n& ./build/tooling/Scripts/python.exe scripts/verify_capture_diagnostics.py --executable build/app-release/bin/xdstarter.exe --output build/validation/capture-diagnostics-ci\nif ($LASTEXITCODE) { throw 'Diagnostic I/O recovery failed.' }\n& ./build/tooling/Scripts/python.exe scripts/verify_capture_diagnostics.py --executable build/app-release/bin/xdstarter.exe --mode area-cache --output build/validation/area-diagnostics-ci\nif ($LASTEXITCODE) { throw 'Area diagnostic I/O recovery failed.' }"
+          "run": "$vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'\n$vs = & $vswhere -latest -products '*' -version '[17.0,18.0)' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath\nif ($LASTEXITCODE -ne 0 -or !$vs) { throw 'Cannot locate the MSVC 2022 validation toolchain.' }\nImport-Module (Join-Path $vs 'Common7/Tools/Microsoft.VisualStudio.DevShell.dll')\nEnter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'\n$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$env:TEMP = Join-Path $PWD 'build/tmp'\n$env:TMP = $env:TEMP\n$cmake = './build/tooling/Scripts/cmake.exe'\n& $cmake -S . -B build/app-release -DXDSTARTER_BUILD_START_BRIDGE_POC=ON -DXDSTARTER_BUILD_EXPLORER_ROUTE_PROBE=ON -DXDSTARTER_BUILD_PICKER_CANCEL_POC=ON\nif ($LASTEXITCODE) { throw 'Experiment configure failed.' }\n& $cmake --build build/app-release --parallel 3 --target xdstarter_start_bridge_poc xdstarter_start_bridge_fixture xdstarter_start_bridge_controller xdstarter_start_bridge_tests xdstarter_route_probe xdstarter_picker_cancel_poc\nif ($LASTEXITCODE) { throw 'Experiment build failed.' }\n& ./build/tooling/Scripts/ctest.exe --test-dir build/app-release -R '^experimental\\.(start-bridge|explorer-route|picker-cancel)' --verbose --no-tests=error --output-log (Join-Path $env:XDSTARTER_CI_EVIDENCE 'experiments.log')\nif ($LASTEXITCODE) { throw 'Experiment integration failed.' }\n& ./build/tooling/Scripts/python.exe scripts/verify_capture_diagnostics.py --executable build/app-release/bin/xdstarter.exe --output build/validation/capture-diagnostics-ci\nif ($LASTEXITCODE) { throw 'Diagnostic I/O recovery failed.' }\n& ./build/tooling/Scripts/python.exe scripts/verify_capture_diagnostics.py --executable build/app-release/bin/xdstarter.exe --mode area-cache --output build/validation/area-diagnostics-ci\nif ($LASTEXITCODE) { throw 'Area diagnostic I/O recovery failed.' }",
+          "id": "experiments"
+        },
+        {
+          "name": "Identify fixed Windows packaging inputs",
+          "id": "package-inputs",
+          "shell": "pwsh",
+          "run": "./build/tooling/Scripts/python.exe scripts/ci_package_inputs.py plan"
+        },
+        {
+          "name": "Restore fixed Windows packaging inputs",
+          "id": "package-cache",
+          "uses": "actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+          "with": {
+            "key": "${{ steps.package-inputs.outputs.key }}",
+            "path": "${{ steps.package-inputs.outputs.paths }}"
+          }
+        },
+        {
+          "name": "Verify restored input sources and bytes",
+          "if": "steps.package-cache.outputs.cache-matched-key != ''",
+          "shell": "pwsh",
+          "env": {
+            "XDSTARTER_MATCHED_KEY": "${{ steps.package-cache.outputs.cache-matched-key }}"
+          },
+          "run": "./build/tooling/Scripts/python.exe scripts/ci_package_inputs.py verify --restored --matched-key $env:XDSTARTER_MATCHED_KEY"
         },
         {
           "name": "Prepare locked Windows packaging inputs",
           "shell": "pwsh",
-          "run": "./scripts/build-windows.ps1 -Toolchain MSVC2022 -Stage prepare-package"
+          "run": "./scripts/build-windows.ps1 -Toolchain MSVC2022 -Stage prepare-package",
+          "id": "prepare"
+        },
+        {
+          "name": "Verify all prepared supplier inputs",
+          "shell": "pwsh",
+          "run": "./build/tooling/Scripts/python.exe scripts/ci_package_inputs.py verify"
+        },
+        {
+          "name": "Save verified supplier inputs from main",
+          "if": "github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.package-cache.outputs.cache-hit != 'true'",
+          "uses": "actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+          "with": {
+            "key": "${{ steps.package-inputs.outputs.key }}",
+            "path": "${{ steps.package-inputs.outputs.paths }}"
+          }
         },
         {
           "name": "Deploy, prune, verify and package the Windows candidate",
           "shell": "pwsh",
-          "run": "./scripts/build-windows.ps1 -Toolchain MSVC2022 -Stage package\nif ($LASTEXITCODE) { throw \"Windows candidate packaging failed\" }\n./build/tooling/Scripts/python.exe scripts/verify_windows_installer.py --output-dir build/package\nif ($LASTEXITCODE) { throw \"Isolated installer lifecycle failed\" }"
+          "run": "./scripts/build-windows.ps1 -Toolchain MSVC2022 -Stage package\nif ($LASTEXITCODE) { throw \"Windows candidate packaging failed\" }\n./build/tooling/Scripts/python.exe scripts/verify_windows_installer.py --output-dir build/package\nif ($LASTEXITCODE) { throw \"Isolated installer lifecycle failed\" }",
+          "id": "package"
         },
         {
           "name": "Upload hosted search benchmark evidence",
-          "if": "always()",
+          "if": "always() && !cancelled()",
           "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
           "with": {
             "name": "xdstarter-search-benchmark-${{ github.sha }}",
@@ -132,7 +202,7 @@
         },
         {
           "name": "Upload hosted UI search benchmark evidence",
-          "if": "always()",
+          "if": "always() && !cancelled()",
           "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
           "with": {
             "name": "xdstarter-ui-search-benchmark-${{ github.sha }}",
@@ -143,7 +213,7 @@
         },
         {
           "name": "Upload hosted Shell localization evidence",
-          "if": "always()",
+          "if": "always() && !cancelled()",
           "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
           "with": {
             "name": "xdstarter-shell-localization-${{ github.sha }}",
@@ -154,7 +224,7 @@
         },
         {
           "name": "Upload Windows candidate and bounded evidence",
-          "if": "always()",
+          "if": "always() && !cancelled()",
           "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
           "with": {
             "name": "xdstarter-windows-${{ github.sha }}",
@@ -165,7 +235,7 @@
         },
         {
           "name": "Upload hosted graphics failure evidence",
-          "if": "always()",
+          "if": "always() && !cancelled()",
           "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
           "with": {
             "name": "xdstarter-graphics-failure-${{ github.sha }}",
@@ -176,7 +246,7 @@
         },
         {
           "name": "Upload hosted layout import evidence",
-          "if": "always()",
+          "if": "always() && !cancelled()",
           "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
           "with": {
             "name": "xdstarter-layout-import-${{ github.sha }}",
@@ -187,7 +257,7 @@
         },
         {
           "name": "Upload native picker diagnostic evidence",
-          "if": "always()",
+          "if": "always() && !cancelled()",
           "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
           "with": {
             "name": "xdstarter-native-picker-${{ github.sha }}",
@@ -198,7 +268,7 @@
         },
         {
           "name": "Upload hosted high contrast evidence",
-          "if": "always()",
+          "if": "always() && !cancelled()",
           "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
           "with": {
             "name": "xdstarter-high-contrast-${{ github.sha }}",
@@ -206,9 +276,23 @@
             "if-no-files-found": "warn",
             "retention-days": 7
           }
+        },
+        {
+          "name": "Upload windows phase timings and CTest logs",
+          "if": "always() && !cancelled()",
+          "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "with": {
+            "name": "xdstarter-phase-windows-${{ github.sha }}-${{ github.run_attempt }}",
+            "path": "build/ci-evidence/windows/",
+            "if-no-files-found": "warn",
+            "retention-days": 7
+          }
         }
       ],
-      "name": "Windows MSVC 2022 candidate (local v142 baseline unchanged)"
+      "name": "Windows MSVC 2022 candidate (local v142 baseline unchanged)",
+      "env": {
+        "XDSTARTER_CI_EVIDENCE": "build/ci-evidence/windows"
+      }
     }
   }
 }

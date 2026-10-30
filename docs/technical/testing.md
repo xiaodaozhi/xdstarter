@@ -999,3 +999,9 @@ $env:XDSTARTER_QT_ROOT = "$PWD/build/Qt/6.8.2/msvc2022_64"
 常驻后从唤起输入到首帧可交互 P95 ≤200 ms；索引就绪后查询至结果更新 P95 ≤100 ms。至少采集 100 次并区分冷/热启动。记录工作集、私有内存、隐藏时 CPU 和动画时帧耗时，暂不凭框架名称承诺内存数值。
 
 原生材料在虚拟机/远程桌面下的表现单独记录，不能替代本地真机结论。失败用例进入 Bug Issue，附版本、复现、预期/实际和日志截图。
+
+## CI 阶段计时与固定输入缓存
+
+[#92](https://github.com/xiaodaozhi/xdstarter/issues/92) 的第一步保留仓库检查、Linux 核心和 Windows Server 应用作业及其现有测试。工具获取、Qt 下载、配置、编译、QML lint 和 CTest 的阶段耗时与退出码关联运行、尝试次数及提交，并与原始 CTest 输出作为工件保留 7 天。仓库检查仅取消同一 PR 的旧运行；应用作业包含独立实验，不启用自动取消。主分支推送、手动运行与项目初始化的既有入口保持原样。
+
+Windows 打包仅缓存有固定供应商来源和 SHA-256 的原始下载，恢复后逐项核验；不缓存 SDK、构建产物或测试结果。详情见[工程依赖](dependencies.md)。变更分类及严格证据汇总仍在 #92 的后续 PR 中验证，当前未启用文档跳过。原生文件选择器的线程清理 QCRITICAL 仍由 [#88](https://github.com/xiaodaozhi/xdstarter/issues/88) 跟踪；现有 QtTest 通过不能证明该问题消失。Server 夹具不替代 Windows 11 真机验收。
