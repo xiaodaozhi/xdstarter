@@ -62,9 +62,11 @@ class UiSearchBenchmarkEvidenceTests(unittest.TestCase):
             VALIDATE(report, "a" * 64, native=True, execution_mode="local-native")
 
     def test_native_opt_in_is_explicit_and_hosted_guard_is_preserved(self):
-        inherited = {"XDSTARTER_UI_BENCHMARK_LOCAL_NATIVE": "1", "QT_QUICK_BACKEND": "software"}
+        inherited = {"XDSTARTER_UI_BENCHMARK_LOCAL_NATIVE": "1", "XDSTARTER_UI_BENCHMARK_INPUT_TIMING": "1",
+                     "QT_QUICK_BACKEND": "software"}
         offscreen = ENVIRONMENT(inherited, "offscreen", "nt")
         self.assertNotIn("XDSTARTER_UI_BENCHMARK_LOCAL_NATIVE", offscreen)
+        self.assertNotIn("XDSTARTER_UI_BENCHMARK_INPUT_TIMING", offscreen)
         self.assertEqual(offscreen["QT_QPA_PLATFORM"], "offscreen")
         local = ENVIRONMENT({}, "local-native", "nt")
         self.assertEqual(local["XDSTARTER_UI_BENCHMARK_LOCAL_NATIVE"], "1")
@@ -129,6 +131,34 @@ class UiSearchBenchmarkEvidenceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             VALIDATE(report, "a" * 64)
         VALIDATE(report, "a" * 64, allow_legacy=True)
+
+    def test_input_timing_requires_complete_ordered_and_bounded_samples(self):
+        report = fixture()
+        with self.assertRaisesRegex(ValueError, "input timing method"):
+            VALIDATE(report, "a" * 64, require_input_timing=True)
+        report["inputTimingMethod"] = "qt-test-window-dispatch-phases"
+        for sample in report["samples"]:
+            sample["inputTiming"] = {"keys": [
+                {"key": char, "pressDispatchNs": 100, "pressProcessEventsNs": 100,
+                 "releaseDispatchNs": 100, "releaseProcessEventsNs": 100}
+                for char in sample["query"]], "controllerObserverCalls": 1,
+                "controllerObserverNs": 10, "rowObserverCalls": 1, "rowObserverNs": 10}
+        VALIDATE(report, "a" * 64, require_input_timing=True)
+        for mutation in ("missing-key", "wrong-key", "negative", "exceeds-input", "missing-observer"):
+            broken = deepcopy(report)
+            detail = broken["samples"][0]["inputTiming"]
+            if mutation == "missing-key":
+                detail["keys"].pop()
+            elif mutation == "wrong-key":
+                detail["keys"][0]["key"] = "x"
+            elif mutation == "negative":
+                detail["keys"][0]["pressDispatchNs"] = -1
+            elif mutation == "exceeds-input":
+                detail["keys"][0]["pressDispatchNs"] = 10_000_000
+            else:
+                detail["rowObserverCalls"] = 0
+            with self.subTest(mutation=mutation), self.assertRaises(ValueError):
+                VALIDATE(broken, "a" * 64, require_input_timing=True)
 
 
 if __name__ == "__main__":

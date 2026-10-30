@@ -24,7 +24,8 @@ def file_hash(path):
     return result.hexdigest()
 
 
-def validate_report(report, binary_hash, native=False, allow_legacy=False, execution_mode=None):
+def validate_report(report, binary_hash, native=False, allow_legacy=False, execution_mode=None,
+                    require_input_timing=False):
     expected = {"entries": 1000, "tiles": 100,
                 "warmups": 5, "measuredQueries": 100, "releaseNdebug": True,
                 "steadyClock": True, "binarySha256": binary_hash}
@@ -35,6 +36,12 @@ def validate_report(report, binary_hash, native=False, allow_legacy=False, execu
         raise ValueError("incorrect schemaVersion")
     if execution_mode is not None and report.get("executionMode") != execution_mode:
         raise ValueError("incorrect executionMode")
+    timing_method = report.get("inputTimingMethod", "none")
+    if timing_method not in ("none", "qt-test-window-dispatch-phases") or (
+            require_input_timing and timing_method != "qt-test-window-dispatch-phases"):
+        raise ValueError("incorrect input timing method")
+    if timing_method != "none" and version != 2:
+        raise ValueError("input timing requires schemaVersion 2")
     for key, value in expected.items():
         if type(report.get(key)) is not type(value) or report.get(key) != value:
             raise ValueError(f"incorrect {key}")
@@ -88,6 +95,25 @@ def validate_report(report, binary_hash, native=False, allow_legacy=False, execu
                                  ("controllerToRow", row - controller)):
                 if not math.isclose(times[name][-1], actual, rel_tol=0, abs_tol=1e-6):
                     raise ValueError(f"{name} disagrees with phase timestamps")
+        if timing_method == "qt-test-window-dispatch-phases":
+            detail = sample.get("inputTiming")
+            if not isinstance(detail, dict) or not isinstance(detail.get("keys"), list) or len(detail["keys"]) != len(query):
+                raise ValueError("missing per-key timing")
+            phase_total = 0
+            for char, key in zip(query, detail["keys"]):
+                if not isinstance(key, dict) or key.get("key") != char:
+                    raise ValueError("per-key timing identity differs")
+                for field in ("pressDispatchNs", "pressProcessEventsNs", "releaseDispatchNs", "releaseProcessEventsNs"):
+                    value = key.get(field)
+                    if type(value) is not int or value < 0:
+                        raise ValueError("invalid per-key timing")
+                    phase_total += value
+            for name in ("controllerObserverCalls", "rowObserverCalls", "controllerObserverNs", "rowObserverNs"):
+                value = detail.get(name)
+                if type(value) is not int or value < 0 or (name.endswith("Calls") and value == 0):
+                    raise ValueError("invalid observer timing")
+            if phase_total > times["inputReturn"][-1] * 1_000_000 + 1000:
+                raise ValueError("per-key phases exceed the input interval")
     for name, values in times.items():
         summary = report.get(name)
         if not isinstance(summary, dict):
@@ -105,6 +131,7 @@ def validate_report(report, binary_hash, native=False, allow_legacy=False, execu
 def benchmark_environment(base, mode, system):
     env = base.copy()
     env.pop("XDSTARTER_UI_BENCHMARK_LOCAL_NATIVE", None)
+    env.pop("XDSTARTER_UI_BENCHMARK_INPUT_TIMING", None)
     hosted = env.get("GITHUB_ACTIONS") == "true" and env.get("RUNNER_ENVIRONMENT") == "github-hosted"
     if mode == "hosted-native" and not hosted:
         raise ValueError("--hosted-native requires a disposable GitHub-hosted runner")
@@ -131,6 +158,8 @@ def main():
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--hosted-native", action="store_true")
     mode.add_argument("--local-native", action="store_true")
+    parser.add_argument("--input-timing", action="store_true",
+                        help="record diagnostic per-key dispatch and event processing costs")
     parser.add_argument("--timeout-seconds", type=int, default=240)
     args = parser.parse_args()
     if not args.executable.is_file():
@@ -146,6 +175,8 @@ def main():
         parser.error(str(error))
     env["XDSTARTER_UI_BENCHMARK_OUTPUT"] = str(args.output.resolve())
     env["XDSTARTER_UI_BENCHMARK_SAMPLES"] = "100"
+    if args.input_timing:
+        env["XDSTARTER_UI_BENCHMARK_INPUT_TIMING"] = "1"
     try:
         result = subprocess.run([str(args.executable.resolve()), "--ui-search-benchmark"],
                                 env=env, timeout=args.timeout_seconds, check=False)
@@ -153,7 +184,7 @@ def main():
             raise ValueError(f"benchmark exited {result.returncode}")
         report = json.loads(args.output.read_text(encoding="utf-8"))
         validate_report(report, file_hash(args.executable), native=execution_mode != "offscreen",
-                        execution_mode=execution_mode)
+                        execution_mode=execution_mode, require_input_timing=args.input_timing)
     except (OSError, ValueError, subprocess.TimeoutExpired) as error:
         parser.exit(1, f"UI benchmark failed: {error}\n")
     print(f"Validated 100 synthetic UI queries: {args.output}")
