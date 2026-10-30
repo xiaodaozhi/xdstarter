@@ -1081,6 +1081,18 @@ ApplicationWindow {
         });
     }
 
+    function restoreMoreMenuFocus(): void {
+        if (groupFocusPending)
+            restoreGroupFocus();
+        else if (visible && !presentationSuspended && !internalPopupVisible) {
+            const focused = activeFocusItem;
+            // A queued close must not reclaim focus after a later interaction
+            // has already moved it to a visible, enabled control.
+            if (!focused || focused === contentItem || focused === moreMenuButton || !focused.visible || !focused.enabled)
+                moreMenuButton.forceActiveFocus(Qt.OtherFocusReason);
+        }
+    }
+
     function prepareForPresentation(): void {
         if (!visible)
             return;
@@ -2633,12 +2645,7 @@ ApplicationWindow {
 
 
         width: 240
-        onClosed: window.queuePopupFocusRestore(function () {
-            if (window.groupFocusPending)
-                window.restoreGroupFocus();
-            else if (window.visible && !window.presentationSuspended && !window.internalPopupVisible)
-                moreMenuButton.forceActiveFocus(Qt.OtherFocusReason);
-        })
+        onClosed: window.queuePopupFocusRestore(window.restoreMoreMenuFocus)
 
 
 

@@ -519,6 +519,10 @@ class PrototypeWindowTest : public QObject {
     void searchKeyboardAndLaunchLifecycle();
     void searchRefreshAliasesAndRestart();
     void groupManagementLifecycle();
+    void lateMoreMenuClosePreservesGroupFocus();
+    void explicitGroupFocusSurvivesLateMenuClose();
+    void explicitSearchFocusSurvivesLateMenuClose();
+    void moreMenuCloseReturnsFocus();
     void groupNameCompositionAndCancellation();
     void groupCatalogMoveAndRestart();
     void groupChangesPreserveSearchFocus();
@@ -3972,6 +3976,64 @@ void PrototypeWindowTest::submitGroupName(const QString& name) {
     QVERIFY(field->setProperty("text", name));
     QTest::keyClick(window_, Qt::Key_Return);
     QTRY_VERIFY(!dialog->property("visible").toBool());
+}
+
+void PrototypeWindowTest::moreMenuCloseReturnsFocus() {
+    auto* button = item(QStringLiteral("moreMenuButton"));
+    QVERIFY(button);
+    button->forceActiveFocus(Qt::OtherFocusReason);
+    QVERIFY(button->hasActiveFocus());
+    openMoreMenu();
+    auto* menu = window_->findChild<QObject*>(QStringLiteral("moreMenu"));
+    QVERIFY(menu);
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!menu->property("visible").toBool());
+    QTRY_VERIFY(button->hasActiveFocus());
+}
+
+void PrototypeWindowTest::explicitSearchFocusSurvivesLateMenuClose() {
+    auto* search = item(QStringLiteral("searchField"));
+    QVERIFY(search);
+    search->forceActiveFocus(Qt::OtherFocusReason);
+    QVERIFY(search->hasActiveFocus());
+    QVERIFY(!window_->property("internalPopupVisible").toBool());
+    QVERIFY(QMetaObject::invokeMethod(window_, "restoreMoreMenuFocus"));
+    QVERIFY2(search->hasActiveFocus(), "A stale menu close stole focus from search");
+}
+
+void PrototypeWindowTest::explicitGroupFocusSurvivesLateMenuClose() {
+    controller_->setEditMode(true);
+    const auto id = controller_->createGroup(QStringLiteral("焦点回归"));
+    QVERIFY(!id.isEmpty());
+    QTRY_VERIFY(item(QStringLiteral("groupActions-") + id));
+    auto* actions = item(QStringLiteral("groupActions-") + id);
+    QVERIFY(actions->isVisible());
+    actions->forceActiveFocus(Qt::OtherFocusReason);
+    QVERIFY(actions->hasActiveFocus());
+    QVERIFY(!window_->property("groupFocusPending").toBool());
+    QVERIFY(QMetaObject::invokeMethod(window_, "restoreMoreMenuFocus"));
+    QVERIFY2(actions->hasActiveFocus(), "A stale menu close stole focus from an already focused group");
+}
+
+void PrototypeWindowTest::lateMoreMenuClosePreservesGroupFocus() {
+    controller_->setEditMode(true);
+    openMoreMenu();
+    auto* create = item(QStringLiteral("newGroupButton"));
+    QVERIFY(create && create->isEnabled());
+    create->forceActiveFocus(Qt::TabFocusReason);
+    QTest::keyClick(window_, Qt::Key_Return);
+    submitGroupName(QStringLiteral("焦点回归"));
+    QTRY_COMPARE(controller_->groups().size(), 4);
+    const auto id = controller_->groups().last().toMap().value(QStringLiteral("id")).toString();
+    auto* actions = item(QStringLiteral("groupActions-") + id);
+    QVERIFY(actions);
+    QTRY_VERIFY(actions->hasActiveFocus());
+    QVERIFY(!window_->property("groupFocusPending").toBool());
+    QVERIFY(!window_->property("internalPopupVisible").toBool());
+    // A previously queued more-menu close may run after the new delegate has
+    // already taken focus. Invoke its exact decision at that controlled point.
+    QVERIFY(QMetaObject::invokeMethod(window_, "restoreMoreMenuFocus"));
+    QVERIFY2(actions->hasActiveFocus(), "A stale menu close stole focus from the new group");
 }
 
 void PrototypeWindowTest::groupManagementLifecycle() {
