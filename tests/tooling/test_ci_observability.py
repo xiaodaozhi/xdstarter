@@ -156,6 +156,16 @@ class EvidenceTests(TemporaryRepository):
                     path = self.root / source
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text('{}', encoding='utf-8')
+                archived = ROOT / 'docs/technical/validation/issue-85/offscreen'
+                for mode, (qpa, graphics_api) in ci_evidence.FRAME_MODES.items():
+                    for name in ci_evidence.FRAME_FILES:
+                        shutil.copyfile(archived / name, self.root / ci_evidence.COPIES[f'frame-{mode}/{name}'])
+                    path = self.root / ci_evidence.COPIES[f'frame-{mode}/frame-trace.json']
+                    trace = json.loads(path.read_text(encoding='utf-8'))
+                    # Synthetic native identity tests validation only; this is
+                    # not a claim that the archived offscreen sample is D3D11.
+                    trace.update(qpa=qpa, graphicsApi=graphics_api)
+                    path.write_text(json.dumps(trace), encoding='utf-8')
                 for name, functions in ci_evidence.QT_LOGS.items():
                     cases = ('initTestCase()', *functions, 'cleanupTestCase()')
                     rows = [f'PASS : PrototypeWindowTest::{case}' for case in cases]
@@ -298,6 +308,44 @@ class EvidenceTests(TemporaryRepository):
         report['files']['shell-profile-repeat.json'] = ci_evidence.checksum(path)
         manifest.write_text(json.dumps(report), encoding='utf-8')
         with self.assertRaisesRegex(ValueError, 'misattributed-shell-evidence'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_frame_backend_cannot_be_misattributed_even_with_updated_checksum(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'frame-native/frame-trace.json'
+        trace = json.loads(path.read_text(encoding='utf-8'))
+        trace.update(qpa='offscreen', graphicsApi=1)
+        path.write_text(json.dumps(trace), encoding='utf-8')
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        report['files']['frame-native/frame-trace.json'] = ci_evidence.checksum(path)
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'incomplete-frame-trace:native'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_frame_critical_log_cannot_hide_behind_successful_totals(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'frame-offscreen/test.log'
+        path.write_text('QCRITICAL: failed render\n' + path.read_text(encoding='utf-8'), encoding='utf-8')
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        report['files']['frame-offscreen/test.log'] = ci_evidence.checksum(path)
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'incomplete-frame-trace:offscreen'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_missing_frame_image_or_audit_step_is_not_green(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        image = directory / 'frame-native/contrast-dark-ready.png'
+        image.unlink()
+        with self.assertRaises(ValueError):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+        shutil.copyfile(ROOT / 'docs/technical/validation/issue-85/offscreen/contrast-dark-ready.png', image)
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        report['steps']['contrast-trace'] = 'skipped'
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'missing-or-failed-step'):
             ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
 
 

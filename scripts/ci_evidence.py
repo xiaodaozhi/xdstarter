@@ -11,6 +11,8 @@ import re
 import shutil
 import sys
 
+import inspect_contrast_frame_trace as frame_trace
+
 ROOT = Path(__file__).resolve().parents[1]
 LOGS = {
     'core': {'ctest.log': ('core.tile_grid', 'core.picker_request_state')},
@@ -24,7 +26,8 @@ LOGS = {
                       'platform.win-key-capture', 'services.application_browser', 'services.application_catalog',
                       'services.desktop_shell', 'services.layout_import', 'services.layout_store',
                       'services.prototype', 'services.search', 'services.session_instance',
-                      'ui.desktop_window_host', 'ui.high-contrast-native', 'ui.layout-import-native',
+                      'ui.desktop_window_host', 'ui.high-contrast-native', 'ui.high-contrast-frame-offscreen',
+                      'ui.high-contrast-frame-native', 'ui.layout-import-native',
                       'ui.native-picker-immediate', 'ui.native-picker-rapid', 'ui.native-picker-shown',
                       'ui.native-picker-selection', 'ui.native-picker-shutdown',
                       'ui.prototype', 'ui.scene_graph_failure_host'),
@@ -57,6 +60,11 @@ COPIES = {
     'graphics-hardware-failure.log': 'build/app-release/graphics-failure-evidence/result-hardware-failure.log',
     'graphics-all-failure.log': 'build/app-release/graphics-failure-evidence/result-all-failure.log',
 }
+FRAME_MODES = {'offscreen': ('offscreen', 1), 'native': ('windows', 4)}
+FRAME_FILES = ('frame-trace.json', 'test.log',
+               *(f'{scene}-{stage}.png' for scene in frame_trace.SCENES for stage in frame_trace.STAGES))
+COPIES.update({f'frame-{mode}/{name}': f'build/app-release/high-contrast-frame-evidence/{mode}/{name}'
+               for mode in FRAME_MODES for name in FRAME_FILES})
 LIFECYCLE_CASES = {'junction-parent-refused', 'install', 'modified-obsolete-refused',
                    'upgrade-retire-unchanged', 'upgrade-disable-autostart', 'upgrade-retain-disabled-autostart',
                    'upgrade-enable-autostart', 'running-install-refused', 'running-uninstall-refused',
@@ -75,7 +83,7 @@ QT_LOGS = {
 PHASES = {'core': {'python-packages', 'configure', 'compile', 'ctest'},
           'windows': {'python-packages', 'configure', 'compile', 'qml-lint', 'ctest'}}
 STEPS = {'core': ('build',),
-         'windows': ('build', 'picker-audit', 'smoke', 'shell', 'search', 'ui-search',
+         'windows': ('build', 'picker-audit', 'contrast-trace', 'smoke', 'shell', 'search', 'ui-search',
                      'experiments', 'prepare', 'package')}
 
 
@@ -113,14 +121,18 @@ def collect(role, root=ROOT, env=None):
         for name, source in COPIES.items():
             path = root / source
             if path.is_file() and not path.is_symlink():
-                shutil.copyfile(path, directory / name)
+                destination = directory / name
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(path, destination)
     for name in ('timings.json', *LOGS[role], *(COPIES if role == 'windows' else ())):
         try:
             report['files'][name] = checksum(directory / name)
         except (OSError, ValueError) as error:
             report['errors'].append(name + ':' + str(error))
     (directory / 'manifest.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
-    print(json.dumps(report))
+    print(f"Collected {role} evidence: {len(report['files'])} files, {len(report['errors'])} errors")
+    for error in report['errors']:
+        print('Evidence collection error: ' + error)
     return report
 
 
@@ -133,7 +145,13 @@ def validate_role(directory, role, expected):
     require(report.get('steps') == {name: 'success' for name in STEPS[role]}, 'missing-or-failed-step')
     required_files = {'timings.json', *LOGS[role], *(COPIES if role == 'windows' else ())}
     require(set(report.get('files', {})) == required_files, 'missing-or-ambiguous-file-set')
-    require({item.name for item in directory.iterdir()} == required_files | {'manifest.json'},
+    entries = list(directory.rglob('*'))
+    expected_directories = {str(parent).replace('\\', '/') for name in required_files
+                            for parent in Path(name).parents if str(parent) != '.'}
+    require(all(not item.is_symlink() for item in entries) and
+            {item.relative_to(directory).as_posix() for item in entries if item.is_dir()} == expected_directories and
+            {item.relative_to(directory).as_posix() for item in entries if not item.is_dir()} ==
+            required_files | {'manifest.json'},
             'unexpected-or-ambiguous-evidence')
     for name in required_files:
         require(checksum(directory / name) == report['files'][name], 'changed-raw-evidence')
@@ -153,6 +171,11 @@ def validate_role(directory, role, expected):
                 all(row[1] == 'Passed' for row in rows) and set(tests) <= set(names),
                 'incomplete-or-failed-test-log')
     if role == 'windows':
+        for mode, (qpa, graphics_api) in FRAME_MODES.items():
+            try:
+                frame_trace.inspect(directory / f'frame-{mode}', qpa, graphics_api)
+            except (OSError, ValueError, KeyError, TypeError) as error:
+                raise ValueError('incomplete-frame-trace:' + mode) from error
         for name, functions in QT_LOGS.items():
             text = (directory / name).read_text(encoding='utf-8', errors='replace')
             totals = re.findall(r'Totals:\s+([1-9][0-9]*) passed,\s+0 failed,\s+0 skipped,\s+0 blacklisted', text)
