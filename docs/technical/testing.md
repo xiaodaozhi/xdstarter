@@ -18,7 +18,11 @@
 
 [#99](https://github.com/xiaodaozhi/xdstarter/issues/99) 针对应用固定菜单关闭的延迟恢复，在新磁贴已获得焦点后执行旧回调，验证不再抢走该焦点，随后仍能用 Shift+F10 打开磁贴菜单；同时检查正常菜单关闭返焦、来源应用被刷新移除后的回退、搜索和其他弹层行为。目标仍可用且新的焦点可见、可用时保留新焦点；来源不可用时沿用既有回退。受控交错证明旧代码存在焦点竞争，但不能单独确定既有整套测试偶发失败的原因，也不替代真实 Windows 输入验收。
 
-[#88](https://github.com/xiaodaozhi/xdstarter/issues/88) 的产品诊断只在一次性 GitHub-hosted Windows 上运行独立 QtTest 进程：快速取消及重开、原生窗口出现前取消、窗口出现后取消，以及通过独立的有界 UI Automation 进程选择实际测试文件。夹具持有辅助进程句柄，核对 PID、owner、进程退出和 owner 恢复；不按标题关闭其他进程。日志保留取消耗时和原始 Qt 严重消息。有限轮询只报告实际观察，不能证明从未闪现；夹具通过也不代表真实 Windows 11 通过。此前 Qt 线程诊断和失败记录保留于 Issue，不能用本次结果覆盖。
+[#88](https://github.com/xiaodaozhi/xdstarter/issues/88) 的产品诊断在一次性 GitHub-hosted Windows 上运行独立 QtTest 进程：快速取消及重开、原生窗口出现前取消、窗口出现后取消，以及通过独立的有界 UI Automation 进程选择实际测试文件。夹具持有辅助进程句柄，核对 PID、owner、进程退出和 owner 恢复；不按标题关闭其他进程。日志保留取消耗时和原始 Qt 严重消息。有限轮询只报告实际观察，不能证明从未闪现；此前 Qt 线程诊断和失败记录保留于 Issue，不能用后续结果覆盖。
+
+本机 Windows 可通过 `XDSTARTER_BUILD_LOCAL_NATIVE_PICKER_TESTS=ON` 构建测试程序、应用辅助程序和驱动，再显式运行 `python scripts/verify_native_picker_local.py --run --executable build/app-release/bin/xdstarter_ui_tests.exe --output-dir build/validation/native-picker-local`。输出目录必须是 `build/` 下尚不存在的独立目录；脚本为测试临时文件另建目录，窗口短暂显示并可能获取焦点。驱动在本机核对父测试程序身份、驱动和选择器的直接父进程、目标窗口 PID／owner、目标文件位于临时目录且不是重解析点；反例检查拒绝临时目录外的文件。每个测试进程限时，超时仅清理它及其子进程，记录原始日志和程序散列。不安装、修改系统设置或启用全局输入 Hook；自动操作不替代真人键盘、屏幕阅读器和完整系统入口验收。
+
+2026-10-30 本机 Windows 11 26300、Qt 6.8.2、附加 MSVC v142 19.29.30159、Windows QPA／Intel Iris Xe D3D11，五个独立进程合计 **16 passed、0 failed、0 skipped**（含各自初始化／清理），覆盖快速重开、立即取消、显示后取消、选择及失败反馈、退出恢复；目录外文件被拒绝后原选择器仍可见，随后正确选择临时文件。测试程序 SHA-256 `07e5e78ae93daaf52de2ff0e0e4321668dc82c1a2f854bd0cd43f429f031ef00`，辅助程序 `64c4688674e891edbdca958b8c48346c3cd1c819fb81ecb2774ad2f69a64fc4d`，驱动 `d6685700d7f7cebde3452cd232c5c032c826a47b0f42ae06f6405ac54f93ad3e`；原始日志与结果留在本机 `build/validation/native-picker-local-3/`。第一轮快速重开未取得可用 PID／句柄，原日志未分别记录两者；补充等待和诊断后的第二轮快速及立即取消通过，但显示场景的 `SetForegroundWindow` 返回 false。第三轮未改变前台策略而全部通过；两次失败继续保留，不能反推其具体原因或证明今后前台请求必然成功。搜索框角色／说明与高对比小磁贴角色／键盘说明另有 Qt 可访问接口自动断言，不等于真实屏幕阅读器验收。
 
 另有默认不构建的 `XDSTARTER_BUILD_PICKER_CANCEL_POC`：一次性 hosted Windows 自有进程使用各自独立 owner 的 COM 文件对话框，受控比较进入 Show 前取消、检查之后／Show 之前取消、窗口显示后取消与并发下一请求。事件回调尝试按文档关闭，辅助观察只对本进程、请求 owner 和标题均匹配的窗口投递关闭；超时只结束该夹具进程。此实验不是产品实现，轮询可能漏过瞬时窗口，不能证明任何运行条件下无闪现、无泄漏或安全退出；不在本机托管外运行系统对话框。
 

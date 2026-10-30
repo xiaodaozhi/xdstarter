@@ -77,6 +77,12 @@
 namespace {
 
 #ifdef Q_OS_WIN
+bool nativePickerFixtureAllowed() {
+    const bool hosted = qEnvironmentVariable("GITHUB_ACTIONS") == QLatin1String("true") &&
+                        qEnvironmentVariable("RUNNER_ENVIRONMENT") == QLatin1String("github-hosted");
+    return hosted || qEnvironmentVariable("XDSTARTER_NATIVE_PICKER_LOCAL") == QLatin1String("1");
+}
+
 struct NativeDialogLookup {
     DWORD processId;
     HWND owner;
@@ -1375,6 +1381,8 @@ void PrototypeWindowTest::highContrastTracksSystemPalette() {
     QVERIFY(smallAccessible);
     QCOMPARE(smallAccessible->text(QAccessible::Name),
              tileData(QStringLiteral("daily-small-1")).value(QStringLiteral("name")).toString());
+    QCOMPARE(smallAccessible->role(), QAccessible::Button);
+    QVERIFY(smallAccessible->text(QAccessible::Description).contains(QStringLiteral("Shift 加 F10")));
     auto* powerAccessible = QAccessible::queryAccessibleInterface(item(QStringLiteral("shortcut-power")));
     QVERIFY(powerAccessible);
     QCOMPARE(powerAccessible->text(QAccessible::Name), QStringLiteral("电源与退出"));
@@ -3680,6 +3688,9 @@ void PrototypeWindowTest::searchFocusCompositionAndEscape() {
     auto* accessible = QAccessible::queryAccessibleInterface(field);
     QVERIFY(accessible);
     QCOMPARE(accessible->text(QAccessible::Name), QStringLiteral("搜索应用"));
+    QCOMPARE(accessible->role(), QAccessible::EditableText);
+    QCOMPARE(accessible->text(QAccessible::Description),
+             QStringLiteral("输入名称、拼音或首字母。向下键选择结果，Enter 启动，Esc 清空搜索。"));
 
     item(QStringLiteral("moreMenuButton"))->forceActiveFocus(Qt::TabFocusReason);
     QTest::keyClick(window_, Qt::Key_F, Qt::ControlModifier);
@@ -6006,8 +6017,7 @@ void PrototypeWindowTest::layoutImportFilePickerOwnership() {
     if (!diagnostic.isEmpty()) {
         QVERIFY(diagnostic == QLatin1String("rapid") || diagnostic == QLatin1String("immediate") ||
                 diagnostic == QLatin1String("shown"));
-        QCOMPARE(qEnvironmentVariable("GITHUB_ACTIONS"), QStringLiteral("true"));
-        QCOMPARE(qEnvironmentVariable("RUNNER_ENVIRONMENT"), QStringLiteral("github-hosted"));
+        QVERIFY2(nativePickerFixtureAllowed(), "Native picker diagnostics require hosted or explicit local opt-in");
         QCOMPARE(QGuiApplication::platformName(), QStringLiteral("windows"));
     }
 #endif
@@ -6128,8 +6138,12 @@ void PrototypeWindowTest::layoutImportFilePickerOwnership() {
         QVERIFY(picker);
         QVERIFY(QMetaObject::invokeMethod(window_, "openLayoutImport"));
         QTRY_VERIFY(picker->property("visible").toBool());
+        QTRY_VERIFY_WITH_TIMEOUT(picker->property("currentProcessId").toUInt() != 0, 5000);
         const DWORD oldPid = picker->property("currentProcessId").toUInt();
         TestProcessHandle oldProcess(oldPid);
+        const DWORD oldOpenError = oldProcess.value ? ERROR_SUCCESS : GetLastError();
+        qInfo() << "Native picker rapid first request: pid=" << oldPid
+                << "processOpened=" << bool(oldProcess.value) << "openError=" << oldOpenError;
         QVERIFY(oldPid && oldProcess.value);
         QVERIFY(QMetaObject::invokeMethod(picker, "reject"));
         QVERIFY(QMetaObject::invokeMethod(window_, "openLayoutImport"));
@@ -6154,9 +6168,8 @@ void PrototypeWindowTest::layoutImportFilePickerOwnership() {
 void PrototypeWindowTest::layoutImportNativeSelection() {
 #ifdef Q_OS_WIN
     if (qEnvironmentVariable("XDSTARTER_NATIVE_PICKER_SELECTION") != QLatin1String("1"))
-        QSKIP("Native selection automation runs only in the disposable hosted fixture");
-    QCOMPARE(qEnvironmentVariable("GITHUB_ACTIONS"), QStringLiteral("true"));
-    QCOMPARE(qEnvironmentVariable("RUNNER_ENVIRONMENT"), QStringLiteral("github-hosted"));
+        QSKIP("Native selection automation requires hosted or explicit local fixture mode");
+    QVERIFY2(nativePickerFixtureAllowed(), "Native selection requires hosted or explicit local opt-in");
     QCOMPARE(QGuiApplication::platformName(), QStringLiteral("windows"));
     QTemporaryDir directory;
     QVERIFY(directory.isValid());
@@ -6179,6 +6192,25 @@ void PrototypeWindowTest::layoutImportNativeSelection() {
     QTRY_VERIFY_WITH_TIMEOUT(visibleNativeDialog(window_, picker->property("title").toString(), pid), 5000);
     const HWND dialog = visibleNativeDialog(window_, picker->property("title").toString(), pid);
     const HWND owner = reinterpret_cast<HWND>(window_->winId());
+    if (qEnvironmentVariable("XDSTARTER_NATIVE_PICKER_LOCAL") == QLatin1String("1")) {
+        // The process/window are valid, but an existing file outside the
+        // fixture's temporary directory must never be sent to the picker.
+        QProcess denied;
+        denied.start(QCoreApplication::applicationDirPath() + QStringLiteral("/xdstarter_native_picker_driver.exe"),
+                     {QString::number(reinterpret_cast<quintptr>(dialog)), QString::number(pid),
+                      QString::number(reinterpret_cast<quintptr>(owner)), QString::number(GetCurrentProcessId()),
+                      QDir::toNativeSeparators(QCoreApplication::applicationFilePath())});
+        QVERIFY(denied.waitForStarted(5000));
+        const bool deniedFinished = denied.waitForFinished(5000);
+        if (!deniedFinished) {
+            denied.kill();
+            denied.waitForFinished(5000);
+        }
+        QVERIFY(deniedFinished && denied.exitStatus() == QProcess::NormalExit && denied.exitCode() == 3);
+        QVERIFY(visibleNativeDialog(window_, picker->property("title").toString(), pid));
+        QCOMPARE(WaitForSingleObject(process.value, 0), DWORD(WAIT_TIMEOUT));
+        qInfo() << "Native picker local path guard: rejected=" << true << "dialogStillVisible=" << true;
+    }
     QProcess driver;
     driver.start(QCoreApplication::applicationDirPath() + QStringLiteral("/xdstarter_native_picker_driver.exe"),
                  {QString::number(reinterpret_cast<quintptr>(dialog)), QString::number(pid),
@@ -6228,9 +6260,8 @@ void PrototypeWindowTest::layoutImportNativeSelection() {
 void PrototypeWindowTest::layoutImportNativeLaunchFailure() {
 #ifdef Q_OS_WIN
     if (qEnvironmentVariable("XDSTARTER_NATIVE_PICKER_SELECTION") != QLatin1String("1"))
-        QSKIP("Native failure automation runs only in the disposable hosted fixture");
-    QCOMPARE(qEnvironmentVariable("GITHUB_ACTIONS"), QStringLiteral("true"));
-    QCOMPARE(qEnvironmentVariable("RUNNER_ENVIRONMENT"), QStringLiteral("github-hosted"));
+        QSKIP("Native failure automation requires hosted or explicit local fixture mode");
+    QVERIFY2(nativePickerFixtureAllowed(), "Native failure fixture requires hosted or explicit local opt-in");
     QCOMPARE(QGuiApplication::platformName(), QStringLiteral("windows"));
     QTemporaryDir directory;
     destroyWindow();
@@ -6277,9 +6308,8 @@ void PrototypeWindowTest::layoutImportNativeLaunchFailure() {
 void PrototypeWindowTest::layoutImportNativeShutdown() {
 #ifdef Q_OS_WIN
     if (qEnvironmentVariable("XDSTARTER_NATIVE_PICKER_SHUTDOWN") != QLatin1String("1"))
-        QSKIP("Native shutdown automation runs only in the disposable hosted fixture");
-    QCOMPARE(qEnvironmentVariable("GITHUB_ACTIONS"), QStringLiteral("true"));
-    QCOMPARE(qEnvironmentVariable("RUNNER_ENVIRONMENT"), QStringLiteral("github-hosted"));
+        QSKIP("Native shutdown automation requires hosted or explicit local fixture mode");
+    QVERIFY2(nativePickerFixtureAllowed(), "Native shutdown fixture requires hosted or explicit local opt-in");
     QCOMPARE(QGuiApplication::platformName(), QStringLiteral("windows"));
     QTemporaryDir directory;
     destroyWindow();

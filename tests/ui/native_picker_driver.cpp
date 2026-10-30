@@ -1,7 +1,8 @@
-// Disposable hosted-only UI Automation driver. A separate process bounds any
-// provider call that blocks while the selected dialog is closing.
+// Bounded UI Automation driver for hosted tests and explicit local fixtures.
+// Local execution additionally verifies the test-process ancestry and file.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <tlhelp32.h>
 #include <objbase.h>
 #include <oleauto.h>
 #include <UIAutomation.h>
@@ -9,6 +10,7 @@
 #include <cstdint>
 #include <cwchar>
 #include <iostream>
+#include <iterator>
 #include <string>
 
 namespace {
@@ -17,6 +19,55 @@ bool hosted() {
     GetEnvironmentVariableW(L"GITHUB_ACTIONS", actions, 16);
     GetEnvironmentVariableW(L"RUNNER_ENVIRONMENT", runner, 32);
     return std::wstring(actions) == L"true" && std::wstring(runner) == L"github-hosted";
+}
+
+bool localOptIn() {
+    wchar_t value[8]{};
+    GetEnvironmentVariableW(L"XDSTARTER_NATIVE_PICKER_LOCAL", value, 8);
+    return std::wstring(value) == L"1";
+}
+
+DWORD parentProcessId(DWORD pid) {
+    const HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshot == INVALID_HANDLE_VALUE) return 0;
+    PROCESSENTRY32W entry{};
+    entry.dwSize = sizeof(entry);
+    DWORD parent = 0;
+    if (Process32FirstW(snapshot, &entry)) {
+        do {
+            if (entry.th32ProcessID == pid) { parent = entry.th32ParentProcessID; break; }
+        } while (Process32NextW(snapshot, &entry));
+    }
+    CloseHandle(snapshot);
+    return parent;
+}
+
+bool localFixtureIdentity(DWORD ownerPid, DWORD pickerPid, const wchar_t* file) {
+    if (parentProcessId(GetCurrentProcessId()) != ownerPid || parentProcessId(pickerPid) != ownerPid)
+        return false;
+    HANDLE owner = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, ownerPid);
+    if (!owner) return false;
+    wchar_t ownerPath[32768]{}, driverPath[32768]{}, tempPath[32768]{}, filePath[32768]{};
+    DWORD ownerLength = DWORD(std::size(ownerPath));
+    const bool ownerAlive = WaitForSingleObject(owner, 0) == WAIT_TIMEOUT;
+    const bool ownerNamed = QueryFullProcessImageNameW(owner, 0, ownerPath, &ownerLength) != FALSE;
+    CloseHandle(owner);
+    const DWORD driverLength = GetModuleFileNameW(nullptr, driverPath, DWORD(std::size(driverPath)));
+    const DWORD tempLength = GetTempPathW(DWORD(std::size(tempPath)), tempPath);
+    const DWORD fileLength = GetFullPathNameW(file, DWORD(std::size(filePath)), filePath, nullptr);
+    if (!ownerAlive || !ownerNamed || !driverLength || driverLength >= std::size(driverPath) ||
+        !tempLength || tempLength >= std::size(tempPath) || !fileLength || fileLength >= std::size(filePath))
+        return false;
+    std::wstring expected(driverPath);
+    const auto separator = expected.find_last_of(L"\\/");
+    if (separator == std::wstring::npos) return false;
+    expected.resize(separator + 1);
+    expected += L"xdstarter_ui_tests.exe";
+    const auto attributes = GetFileAttributesW(filePath);
+    return _wcsicmp(ownerPath, expected.c_str()) == 0 &&
+           _wcsnicmp(filePath, tempPath, tempLength) == 0 && fileLength > tempLength &&
+           attributes != INVALID_FILE_ATTRIBUTES &&
+           !(attributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT));
 }
 
 template <typename T> struct Com {
@@ -122,8 +173,8 @@ HRESULT findChildEdit(IUIAutomation* automation, IUIAutomationElement* parent,
 } // namespace
 
 int wmain(int argc, wchar_t** argv) {
-    if (!hosted()) {
-        std::cerr << "Only a disposable GitHub-hosted Windows runner may execute this fixture.\n";
+    if (!hosted() && !localOptIn()) {
+        std::cerr << "Native picker driver requires hosted or explicit local fixture mode.\n";
         return 2;
     }
     if (argc != 6) return 2;
@@ -145,7 +196,10 @@ int wmain(int argc, wchar_t** argv) {
         GetWindowThreadProcessId(dialog, &actualPid) && actualPid == pid &&
         GetWindow(dialog, GW_OWNER) == owner && GetWindowThreadProcessId(owner, &actualOwnerPid) &&
         actualOwnerPid == ownerPid;
-    if (!valid) { if (process) CloseHandle(process); return 3; }
+    if (!valid || (!hosted() && !localFixtureIdentity(ownerPid, pid, argv[5]))) {
+        if (process) CloseHandle(process);
+        return 3;
+    }
     const HRESULT initialized = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
     if (FAILED(initialized)) { CloseHandle(process); return 4; }
     HRESULT hr = E_FAIL;
