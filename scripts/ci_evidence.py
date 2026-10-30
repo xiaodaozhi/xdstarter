@@ -13,6 +13,7 @@ import sys
 
 import inspect_contrast_frame_trace as frame_trace
 import inspect_resident_sample as resident_sample
+import verify_shell_matrix
 
 ROOT = Path(__file__).resolve().parents[1]
 LOGS = {
@@ -55,6 +56,7 @@ COPIES = {
     'shell-workspace-repeat.json': 'build/app-release/shell-localization-history/workspace-repeat.json',
     'shell-profile-initial.json': 'build/app-release/shell-localization-history/profile-initial.json',
     'shell-profile-repeat.json': 'build/app-release/shell-localization-history/profile-repeat.json',
+    'shell-matrix.json': 'build/app-release/shell-localization-history/cross-matrix.json',
     'layout-import.log': 'build/app-release/layout-import-native-evidence/native-d3d11.log',
     'high-contrast.log': 'build/app-release/high-contrast-native-evidence/native-d3d11.log',
     'picker-rapid.log': 'build/app-release/native-picker-evidence/rapid.log',
@@ -95,7 +97,7 @@ QT_LOGS = {
 PHASES = {'core': {'python-packages', 'configure', 'compile', 'ctest'},
           'windows': {'python-packages', 'configure', 'compile', 'qml-lint', 'ctest'}}
 STEPS = {'core': ('build',),
-         'windows': ('build', 'picker-audit', 'contrast-trace', 'smoke', 'shell', 'search', 'ui-search',
+         'windows': ('build', 'picker-audit', 'contrast-trace', 'smoke', 'shell', 'shell-matrix', 'search', 'ui-search',
                      'experiments', 'resident-sample', 'prepare', 'package')}
 
 
@@ -275,6 +277,10 @@ def validate_role(directory, role, expected):
                         type(localized) is bool and (fixture == 'workspace' or localized is True) and
                         display.get('mode') == ('system' if fixture == 'workspace' else 'strict-localized'),
                         'incomplete-or-misattributed-shell-evidence')
+        matrix = json.loads((directory / 'shell-matrix.json').read_text(encoding='utf-8'))
+        verify_shell_matrix.validate(matrix, {'sha': expected['GITHUB_SHA'], 'runId': expected['GITHUB_RUN_ID'],
+                                               'attempt': expected['GITHUB_RUN_ATTEMPT'],
+                                               'runnerOs': 'Windows', 'runnerArch': 'X64'})
     return report
 
 
