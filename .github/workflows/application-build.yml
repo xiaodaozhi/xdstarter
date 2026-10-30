@@ -144,6 +144,12 @@
           "id": "shell"
         },
         {
+          "name": "Observe cross-location Shell resource matrix",
+          "id": "shell_matrix",
+          "shell": "pwsh",
+          "run": "$ErrorActionPreference = 'Stop'\n$helper = Join-Path $PWD 'build/app-release/xdstarter_launch_fixture.exe'\n$output = Join-Path $PWD 'build/app-release/shell-localization-history/cross-matrix.json'\n& ./scripts/diagnose_shell_matrix.ps1 -Helper $helper -Output $output\n& ./build/tooling/Scripts/python.exe scripts/verify_shell_matrix.py $output\nif ($LASTEXITCODE -ne 0) { throw 'Shell cross-location evidence invalid.' }"
+        },
+        {
           "name": "Validate synthetic search benchmark evidence",
           "shell": "pwsh",
           "run": "$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$env:TEMP = Join-Path $PWD 'build/tmp'\n$env:TMP = $env:TEMP\n& ./build/tooling/Scripts/python.exe scripts/benchmark_search.py --executable build/app-release/xdstarter_search_service_tests.exe --output build/app-release/search-benchmark-ci.json --entries 0 1000\nif ($LASTEXITCODE -ne 0) { throw 'Synthetic search benchmark evidence failed.' }",
@@ -338,6 +344,7 @@
             "XDSTARTER_STEP_CONTRAST_TRACE": "${{ steps.contrast_trace.outcome }}",
             "XDSTARTER_STEP_SMOKE": "${{ steps.smoke.outcome }}",
             "XDSTARTER_STEP_SHELL": "${{ steps.shell.outcome }}",
+            "XDSTARTER_STEP_SHELL_MATRIX": "${{ steps.shell_matrix.outcome }}",
             "XDSTARTER_STEP_SEARCH": "${{ steps.search.outcome }}",
             "XDSTARTER_STEP_UI_SEARCH": "${{ steps.ui_search.outcome }}",
             "XDSTARTER_STEP_EXPERIMENTS": "${{ steps.experiments.outcome }}",

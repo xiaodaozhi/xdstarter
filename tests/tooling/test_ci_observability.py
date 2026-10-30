@@ -12,10 +12,12 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / 'scripts'))
+sys.path.insert(0, str(ROOT / 'tests/tooling'))
 import ci_classify
 import ci_evidence
 import ci_package_inputs
 import benchmark_resident
+from test_shell_matrix import sample_report as sample_shell_matrix
 
 
 class TemporaryRepository(unittest.TestCase):
@@ -233,6 +235,11 @@ class EvidenceTests(TemporaryRepository):
                                                   'mode': 'system' if fixture == 'workspace' else 'strict-localized'}}
                         path = self.root / ci_evidence.COPIES[f'shell-{fixture}-{run}.json']
                         path.write_text(json.dumps(shell), encoding='utf-8')
+                matrix = sample_shell_matrix()
+                matrix['identity'].update(sha=self.env['GITHUB_SHA'], runId=self.env['GITHUB_RUN_ID'],
+                                          attempt=self.env['GITHUB_RUN_ATTEMPT'])
+                path = self.root / ci_evidence.COPIES['shell-matrix.json']
+                path.write_text(json.dumps(matrix), encoding='utf-8')
             env = {**self.env, 'RUNNER_OS': platform, 'RUNNER_ARCH': 'X64', 'XDSTARTER_JOB_STATUS': 'success'}
             env.update({'XDSTARTER_STEP_' + name.upper().replace('-', '_'): 'success'
                         for name in ci_evidence.STEPS[role]})
@@ -360,6 +367,19 @@ class EvidenceTests(TemporaryRepository):
         report['files']['shell-profile-repeat.json'] = ci_evidence.checksum(path)
         manifest.write_text(json.dumps(report), encoding='utf-8')
         with self.assertRaisesRegex(ValueError, 'misattributed-shell-evidence'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_shell_matrix_from_another_attempt_is_not_same_run(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'shell-matrix.json'
+        matrix = json.loads(path.read_text(encoding='utf-8'))
+        matrix['identity']['attempt'] = '2'
+        path.write_text(json.dumps(matrix), encoding='utf-8')
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        report['files']['shell-matrix.json'] = ci_evidence.checksum(path)
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'shell-matrix-identity-mismatch'):
             ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
 
     def test_shell_modes_reject_missing_or_failed_evidence(self):

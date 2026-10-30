@@ -139,6 +139,8 @@ PR #54 的首轮 [Windows CI](https://github.com/xiaodaozhi/xdstarter/actions/ru
 
 后续夹具改用自有helper的中性中文STRINGTABLE及官方[SHSetLocalizedName](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shsetlocalizedname)，只定制自有临时目录。分别检查`LoadStringW`、`SHLoadIndirectString`、Unicode配置读回与真实Shell中文显示，并保留同显示名不同路径不得合并的断言。失败时增加来源的Zone.Identifier、卷类型、完整系统build/UBR与设置HRESULT，避免仅凭API成功推断Shell已采用配置。此调整只涉及测试资源和夹具，产品显示逻辑不变；本机仅重建平台测试/helper并复测`platform.applications`，1/1通过、23.75秒，仓库737文件检查通过，产品EXE散列不变。远程结果按新head单独记录。
 
+针对 [#56](https://github.com/xiaodaozhi/xdstarter/issues/56)，托管 Windows 另设自有目录与资源模块的工作区／临时用户目录 2×2 交叉观测，记录同一资源的哈希、文件属性、来源标记、ACL 摘要、卷文件系统、间接字符串和原生 Shell 显示名；成功与物理名称回退均作为观测保留。脚本仅在 GitHub 托管 Windows 运行，验证临时根路径并清理自建目录，证据门禁要求同一运行身份与完整四组记录。位置可能位于同一卷，该对照不能证明历史失败的原因，也不改变原有严格用户目录和带来源标记用例的断言。
+
 ## 按点透视与内容对齐（Issue #50）
 
 磁贴左键按下采用带透视分母的视觉矩阵，三档尺寸按归一化按点倾斜，90 ms按下、180 ms复原；按钮命中与拖放坐标保持原几何。滚动条进入既有正文右边距，磁贴视口、组操作、窄模式目录与右上关闭按钮共享内容右缘；关于框“项目主页”使用明确左对齐的零水平内距文本。参数与行为见[交互说明](../product/interaction.md)和[布局说明](tile-layout.md)，不改变布局格式或Windows接管。
