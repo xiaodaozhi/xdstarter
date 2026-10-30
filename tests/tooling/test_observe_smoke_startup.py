@@ -1,4 +1,6 @@
 """Watchdog evidence for independently owned, controlled child processes."""
+import hashlib
+import json
 import os
 from pathlib import Path
 import sys
@@ -10,6 +12,12 @@ from observe_smoke_startup import MAX_OUTPUT, observe
 
 
 class SmokeObserverTests(unittest.TestCase):
+    def test_saved_local_log_matches_its_raw_digest(self):
+        evidence = ROOT / 'docs/technical/validation/issue-86'
+        record = json.loads((evidence / 'smoke-startup-local.json').read_text(encoding='utf-8'))
+        raw = (evidence / 'smoke-startup-local.log').read_bytes()
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), record['outputSha256'])
+
     def run_child(self, source, timeout=2):
         return observe([sys.executable, '-u', '-c', source], timeout=timeout,
                        cwd=ROOT, env=dict(os.environ))
