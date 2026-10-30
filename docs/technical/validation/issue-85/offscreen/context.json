@@ -1,0 +1,12 @@
+{
+  "baseCommit": "74ef3a4a6c9b8e0c6cdc7b17806e4d8241b77189",
+  "windowsBuild": "26300.9711",
+  "qt": "6.8.2",
+  "compiler": "MSVC 19.29.30159",
+  "mode": "Release/offscreen/software",
+  "sample": "ready-repeat/sample-1",
+  "testExeSha256": "e09e15942e3b9d13757e4a14cb735fdf03d11f13b32461025d5bd76c35da95db",
+  "testSourceSha256": "fe39a5aa2e06b17c8fca007f046718ddf2744fb7f96f7a305123aa0ac4e728a3",
+  "traceSourceSha256": "851fca8957915dbe6ddf77925ea114da9de1d3cc127c4e60a3c25dd8a123e60b",
+  "note": "Instrumented anonymous fixture; not physical presentation or full-scene completion."
+}

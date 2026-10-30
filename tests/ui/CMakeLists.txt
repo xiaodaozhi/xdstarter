@@ -33,6 +33,8 @@ qt_add_executable(xdstarter_ui_tests
     visual_acceptance_probe.cpp
     ui_search_benchmark.h
     ui_search_benchmark.cpp
+    contrast_frame_trace.h
+    contrast_frame_trace.cpp
 )
 xdstarter_add_ui(xdstarter_ui_tests "${PROJECT_BINARY_DIR}/test-qml")
 target_link_libraries(xdstarter_ui_tests PRIVATE Qt6::Test)
@@ -92,6 +94,21 @@ if(WIN32 AND "$ENV{GITHUB_ACTIONS}" STREQUAL "true" AND
         ENVIRONMENT "QT_QPA_PLATFORM=windows;QSG_RHI_BACKEND=d3d11;QSG_INFO=1;QT_FORCE_STDERR_LOGGING=1;XDSTARTER_TEST_REQUIRE_D3D11=1;XDSTARTER_CONTRAST_CAPTURE_DIR=${contrast_evidence}"
         WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
         TIMEOUT 60)
+    set(frame_evidence "${PROJECT_BINARY_DIR}/high-contrast-frame-evidence")
+    foreach(mode IN ITEMS offscreen native)
+        file(MAKE_DIRECTORY "${frame_evidence}/${mode}")
+        add_test(NAME ui.high-contrast-frame-${mode} COMMAND xdstarter_ui_tests
+            highContrastTracksSystemPalette -o "${frame_evidence}/${mode}/test.log,txt")
+        if(mode STREQUAL "native")
+            set(frame_backend "QT_QPA_PLATFORM=windows;QSG_RHI_BACKEND=d3d11;XDSTARTER_TEST_REQUIRE_D3D11=1")
+        else()
+            set(frame_backend "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software")
+        endif()
+        set_tests_properties(ui.high-contrast-frame-${mode} PROPERTIES
+            ENVIRONMENT "${frame_backend};QT_FORCE_STDERR_LOGGING=1;QSG_INFO=1;XDSTARTER_FRAME_TRACE_DIR=${frame_evidence}/${mode};XDSTARTER_CONTRAST_CAPTURE_DIR=${frame_evidence}/${mode};QT_QPA_FONTDIR=$ENV{WINDIR}/Fonts"
+            WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
+            TIMEOUT 60)
+    endforeach()
 endif()
 
 qt_add_executable(xdstarter_desktop_window_host_tests
