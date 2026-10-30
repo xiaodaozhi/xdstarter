@@ -1,0 +1,117 @@
+{
+  "status": "passed",
+  "exitCode": 0,
+  "timeoutSeconds": 15.0,
+  "createReturnMilliseconds": 65.8426,
+  "firstByteMilliseconds": 247.5558,
+  "firstStageMilliseconds": 259.4622,
+  "finishedMilliseconds": 8050.8443,
+  "stages": [
+    {
+      "name": "before-application",
+      "childMilliseconds": 0,
+      "observedMilliseconds": 259.4622
+    },
+    {
+      "name": "application-ready",
+      "childMilliseconds": 189,
+      "observedMilliseconds": 436.8272
+    },
+    {
+      "name": "font-ready",
+      "childMilliseconds": 1289,
+      "observedMilliseconds": 1536.501
+    },
+    {
+      "name": "before-installation-guard",
+      "childMilliseconds": 1422,
+      "observedMilliseconds": 1669.7326
+    },
+    {
+      "name": "installation-guard-ready",
+      "childMilliseconds": 1422,
+      "observedMilliseconds": 1669.889
+    },
+    {
+      "name": "before-motion-preference",
+      "childMilliseconds": 1459,
+      "observedMilliseconds": 1706.8982
+    },
+    {
+      "name": "motion-preference-ready",
+      "childMilliseconds": 1459,
+      "observedMilliseconds": 1706.8982
+    },
+    {
+      "name": "before-contrast-preference",
+      "childMilliseconds": 1459,
+      "observedMilliseconds": 1706.8982
+    },
+    {
+      "name": "contrast-preference-ready",
+      "childMilliseconds": 1459,
+      "observedMilliseconds": 1706.8982
+    },
+    {
+      "name": "before-qml-load",
+      "childMilliseconds": 1479,
+      "observedMilliseconds": 1726.9604
+    },
+    {
+      "name": "qml-loaded",
+      "childMilliseconds": 2575,
+      "observedMilliseconds": 2822.8159
+    },
+    {
+      "name": "before-window-show",
+      "childMilliseconds": 2577,
+      "observedMilliseconds": 2824.9308
+    },
+    {
+      "name": "before-visible-motion-refresh",
+      "childMilliseconds": 2578,
+      "observedMilliseconds": 2825.9659
+    },
+    {
+      "name": "visible-motion-refreshed",
+      "childMilliseconds": 2578,
+      "observedMilliseconds": 2826.3451
+    },
+    {
+      "name": "before-visible-contrast-refresh",
+      "childMilliseconds": 2579,
+      "observedMilliseconds": 2826.6249
+    },
+    {
+      "name": "visible-contrast-refreshed",
+      "childMilliseconds": 2579,
+      "observedMilliseconds": 2826.7058
+    },
+    {
+      "name": "window-show-returned",
+      "childMilliseconds": 2580,
+      "observedMilliseconds": 2828.2722
+    },
+    {
+      "name": "scene-graph-ready",
+      "childMilliseconds": 2715,
+      "observedMilliseconds": 2962.4821
+    },
+    {
+      "name": "event-loop-returned",
+      "childMilliseconds": 2966,
+      "observedMilliseconds": 3213.6056
+    }
+  ],
+  "outputTruncated": false,
+  "readerFinished": true,
+  "executableSha256": "64c4688674e891edbdca958b8c48346c3cd1c819fb81ecb2774ad2f69a64fc4d",
+  "outputSha256": "9d9a1ed6ddcc95a4f011743f3a52800a49eb062bcd46a0437f47b65502d24205",
+  "platform": "Windows-11-10.0.26300-SP0",
+  "scope": "independent offscreen smoke process",
+  "limitations": [
+    "Popen itself is not interrupted if process creation blocks.",
+    "Pipe receipt includes scheduling and is not the exact emission time.",
+    "A separate smoke run cannot locate an earlier failed process."
+  ]
+}
