@@ -225,7 +225,8 @@ class EvidenceTests(TemporaryRepository):
                 for fixture in ('workspace', 'profile'):
                     for run in ('initial', 'repeat'):
                         shell = {'passed': True, 'fixtureCleaned': True, 'allFixtureDaclsRestored': True,
-                                 'shellDisplay': {'displayAssertionPassed': True, 'strictLocalizedDistinctPaths': True,
+                                 'shellDisplay': {'displayAssertionPassed': True, 'matchesNativeShell': True,
+                                                  'strictLocalizedDistinctPaths': fixture == 'profile',
                                                   'mode': 'system' if fixture == 'workspace' else 'strict-localized'}}
                         path = self.root / ci_evidence.COPIES[f'shell-{fixture}-{run}.json']
                         path.write_text(json.dumps(shell), encoding='utf-8')
@@ -334,6 +335,40 @@ class EvidenceTests(TemporaryRepository):
         manifest.write_text(json.dumps(report), encoding='utf-8')
         with self.assertRaisesRegex(ValueError, 'misattributed-shell-evidence'):
             ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_shell_modes_reject_missing_or_failed_evidence(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        cases = (
+            ('shell-workspace-initial.json', 'matchesNativeShell', False),
+            ('shell-workspace-repeat.json', 'displayAssertionPassed', False),
+            ('shell-workspace-initial.json', 'strictLocalizedDistinctPaths', None),
+            ('shell-workspace-repeat.json', 'mode', 'strict-localized'),
+            ('shell-workspace-initial.json', 'passed', False),
+            ('shell-profile-initial.json', 'strictLocalizedDistinctPaths', False),
+            ('shell-profile-repeat.json', 'matchesNativeShell', False),
+            ('shell-profile-initial.json', 'mode', 'system'),
+            ('shell-profile-repeat.json', 'fixtureCleaned', False),
+            ('shell-workspace-repeat.json', 'allFixtureDaclsRestored', False),
+        )
+        for name, key, value in cases:
+            path = directory / name
+            original = path.read_text(encoding='utf-8')
+            evidence = json.loads(original)
+            target = evidence if key in ('passed', 'fixtureCleaned', 'allFixtureDaclsRestored') else evidence['shellDisplay']
+            if value is None:
+                del target[key]
+            else:
+                target[key] = value
+            path.write_text(json.dumps(evidence), encoding='utf-8')
+            report['files'][name] = ci_evidence.checksum(path)
+            manifest.write_text(json.dumps(report), encoding='utf-8')
+            with self.subTest(name=name, key=key), self.assertRaisesRegex(ValueError, 'misattributed-shell-evidence'):
+                ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+            path.write_text(original, encoding='utf-8')
+            report['files'][name] = ci_evidence.checksum(path)
+            manifest.write_text(json.dumps(report), encoding='utf-8')
 
     def test_frame_backend_cannot_be_misattributed_even_with_updated_checksum(self):
         directory = self.root / 'build/ci-evidence/windows'
