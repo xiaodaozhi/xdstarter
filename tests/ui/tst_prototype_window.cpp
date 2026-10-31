@@ -525,6 +525,8 @@ class PrototypeWindowTest : public QObject {
     void mouseDragConflictAndEscape();
     void dragPreviewInitialPosition_data();
     void dragPreviewInitialPosition();
+    void dragPreviewFrameState_data();
+    void dragPreviewFrameState();
     void applicationDragPreviewInitialPosition_data();
     void applicationDragPreviewInitialPosition();
     void sizeMenuAndKeyboardEditing();
@@ -2988,6 +2990,73 @@ void PrototypeWindowTest::dragPreviewInitialPosition_data() {
     QTest::addColumn<bool>("animations");
     QTest::newRow("animated") << true;
     QTest::newRow("reduced-motion") << false;
+}
+
+void PrototypeWindowTest::dragPreviewFrameState_data() {
+    QTest::addColumn<bool>("animations");
+    QTest::addColumn<bool>("applicationDrag");
+    QTest::newRow("tile-animated") << true << false;
+    QTest::newRow("tile-reduced-motion") << false << false;
+    QTest::newRow("application-animated") << true << true;
+    QTest::newRow("application-reduced-motion") << false << true;
+}
+
+void PrototypeWindowTest::dragPreviewFrameState() {
+    QFETCH(bool, animations);
+    QFETCH(bool, applicationDrag);
+    ManualMotionPreference motion(animations);
+    const auto state = std::make_shared<CatalogTestState>();
+    destroyWindow();
+    createWindow({}, !applicationDrag, applicationDrag ? state : nullptr, {}, &motion);
+    if (!applicationDrag)
+        controller_->setEditMode(true);
+    const auto applicationId = state->applications.first().id;
+    if (applicationDrag)
+        QTRY_VERIFY(item(QStringLiteral("applicationLaunch-") + applicationId));
+    auto* preview = item(QStringLiteral("dragPlacementPreview"));
+    QVERIFY(preview);
+    struct Sample { QPointF position; QPointF target; bool guiThread; };
+    QVector<Sample> samples;
+    int attempt = 0;
+    bool collecting = false;
+    QObject observer;
+    connect(window_, &QQuickWindow::afterAnimating, &observer, [&] {
+        if (collecting && preview->isVisible() && samples.size() == attempt) {
+            samples.append({preview->position(),
+                            QPointF(window_->property("previewX").toReal(),
+                                    window_->property("previewY").toReal()),
+                            QThread::currentThread() == window_->thread()});
+        }
+    });
+    for (attempt = 0; attempt < 2; ++attempt) {
+        collecting = true;
+        QPoint releasePoint(1, 1);
+        if (applicationDrag) {
+            auto* application = item(QStringLiteral("applicationLaunch-") + applicationId);
+            QVERIFY(application);
+            const auto start = application->mapToScene(application->boundingRect().center()).toPoint();
+            releasePoint = start + QPoint(24, 0);
+            QTest::mousePress(window_, Qt::LeftButton, Qt::NoModifier, start);
+            QTest::mouseMove(window_, releasePoint, 20);
+            QTRY_COMPARE(window_->property("draggedApplicationId").toString(), applicationId);
+        } else {
+            beginMouseDrag(attempt == 0 ? QStringLiteral("work-standard-1")
+                                        : QStringLiteral("work-standard-long"));
+            QVERIFY(!QTest::currentTestFailed());
+        }
+        window_->requestUpdate();
+        QTRY_COMPARE_WITH_TIMEOUT(samples.size(), attempt + 1, 3000);
+        const auto sample = samples.last();
+        qInfo() << "First visible pre-sync frame:" << "attempt=" << attempt
+                << "position=" << sample.position << "target=" << sample.target
+                << "guiThread=" << sample.guiThread;
+        QVERIFY(sample.guiThread);
+        QCOMPARE(sample.position, sample.target);
+        collecting = false;
+        QTest::keyClick(window_, Qt::Key_Escape);
+        QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, releasePoint);
+        QVERIFY(!preview->isVisible());
+    }
 }
 
 void PrototypeWindowTest::dragPreviewInitialPosition() {
