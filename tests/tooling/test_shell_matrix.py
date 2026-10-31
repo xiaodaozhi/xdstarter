@@ -1,6 +1,8 @@
 import copy
 import json
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -39,14 +41,52 @@ def sample_report():
         {'left': 'profile', 'right': 'profile-local', 'sameVolumeRoot': True,
          'distinctParentPaths': True, 'sameParentAcl': False, 'resourceResolved': True},
     ]
-    return {'schemaVersion': 2, 'status': 'passed', 'cleanupComplete': True, 'errors': [],
+    acl_cases = []
+    for target in ('workspace', 'profile'):
+        for template in ('workspace', 'profile'):
+            case = copy.deepcopy(cases[0])
+            case.pop('folderLocation')
+            case.pop('moduleLocation')
+            folder_access = ('6' if template == 'workspace' else '7') * 64
+            ini_access = ('8' if template == 'workspace' else '9') * 64
+            case.update(targetLocation=target, templateLocation=template,
+                        physicalName=f'acl-{target}-{template}', folderAccessProtected=True,
+                        folderAccessSha256=folder_access, folderTemplateSha256=folder_access,
+                        iniAccessSha256=ini_access, iniTemplateSha256=ini_access)
+            case['ini']['aclProtected'] = True
+            acl_cases.append(case)
+    return {'schemaVersion': 3, 'status': 'passed', 'cleanupComplete': True, 'errors': [],
             'comInitializationResult': 0, 'osVersion': 'synthetic Windows',
             'identity': {'sha': 'd' * 40, 'runId': '123', 'attempt': '1',
                          'runnerOs': 'Windows', 'runnerArch': 'X64'}, 'cases': cases,
-            'parentCases': parents, 'parentComparisons': comparisons}
+            'parentCases': parents, 'parentComparisons': comparisons, 'aclCases': acl_cases}
 
 
 class ShellMatrixTests(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == 'win32' and shutil.which('pwsh'), 'requires Windows PowerShell 7')
+    def test_restoration_allows_only_auto_inherited_control_flag(self):
+        script = r'''
+            . $env:XDSTARTER_TEST_ACCESS_DESCRIPTOR_SCRIPT
+            $cases = @(
+                @{a='D:(A;;FA;;;SY)'; b='D:AI(A;;FA;;;SY)'; expected=$true},
+                @{a='D:AI(A;;FA;;;SY)'; b='D:(A;;FA;;;SY)'; expected=$false},
+                @{a='D:(A;;FA;;;SY)'; b='D:P(A;;FA;;;SY)'; expected=$false},
+                @{a='D:(A;;FA;;;SY)'; b='D:(A;;FR;;;SY)'; expected=$false},
+                @{a='D:(A;;FA;;;SY)'; b='D:(D;;FA;;;SY)'; expected=$false},
+                @{a='D:(A;;FA;;;SY)'; b='D:(A;ID;FA;;;SY)'; expected=$false},
+                @{a='D:(A;;FA;;;SY)(A;;FR;;;BA)'; b='D:(A;;FR;;;BA)(A;;FA;;;SY)'; expected=$false}
+            )
+            foreach ($case in $cases) {
+                if ((Test-RestoredAccess $case.a $case.b) -ne $case.expected) { exit 1 }
+            }
+        '''
+        env = os.environ.copy()
+        env['XDSTARTER_TEST_ACCESS_DESCRIPTOR_SCRIPT'] = str(
+            Path(verify_shell_matrix.__file__).parent / 'windows_access_descriptor.ps1')
+        result = subprocess.run([shutil.which('pwsh'), '-NoProfile', '-NonInteractive', '-Command', script],
+                                capture_output=True, text=True, encoding='utf-8', env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_accepts_distinct_combinations_and_records_shell_fallbacks(self):
         report = sample_report()
         report['cases'][0].update(indirectResult=-1, indirectName='', shellDisplayName='matrix-workspace-workspace')
@@ -133,8 +173,50 @@ class ShellMatrixTests(unittest.TestCase):
         report['parentComparisons'][0]['resourceResolved'] = False
         verify_shell_matrix.validate(report, require_parent_cases=True)
 
+    def test_rejects_incomplete_or_unapplied_access_contrasts(self):
+        for change in ('missing', 'duplicate', 'wrong-target', 'wrong-module', 'missing-hash',
+                       'folder-mismatch', 'file-mismatch', 'unprotected-folder', 'unprotected-file',
+                       'inconsistent-template'):
+            with self.subTest(change=change):
+                report = sample_report()
+                cases = report['aclCases']
+                if change == 'missing':
+                    cases.pop()
+                elif change == 'duplicate':
+                    cases[1] = copy.deepcopy(cases[0])
+                elif change == 'wrong-target':
+                    cases[0]['targetLocation'] = 'other'
+                elif change == 'wrong-module':
+                    cases[0]['modulePathSha256'] = 'f' * 64
+                elif change == 'missing-hash':
+                    cases[0].pop('folderAccessSha256')
+                elif change == 'folder-mismatch':
+                    cases[0]['folderAccessSha256'] = 'f' * 64
+                elif change == 'file-mismatch':
+                    cases[0]['iniAccessSha256'] = 'f' * 64
+                elif change == 'unprotected-folder':
+                    cases[0]['folderAccessProtected'] = False
+                elif change == 'unprotected-file':
+                    cases[0]['ini']['aclProtected'] = False
+                else:
+                    cases[2].update(folderAccessSha256='f' * 64, folderTemplateSha256='f' * 64)
+                with self.assertRaises(ValueError):
+                    verify_shell_matrix.validate(report, require_acl_cases=True)
+
+    def test_equal_access_templates_are_observations_not_a_forced_difference(self):
+        report = sample_report()
+        for case in report['aclCases']:
+            case.update(folderAccessSha256='6' * 64, folderTemplateSha256='6' * 64,
+                        iniAccessSha256='8' * 64, iniTemplateSha256='8' * 64)
+        verify_shell_matrix.validate(report, require_acl_cases=True)
+
     def test_legacy_reports_remain_readable_but_not_sufficient_for_new_ci(self):
         report = sample_report()
+        report['schemaVersion'] = 2
+        report.pop('aclCases')
+        verify_shell_matrix.validate(report, require_parent_cases=True)
+        with self.assertRaisesRegex(ValueError, 'missing-acl-matrix'):
+            verify_shell_matrix.validate(report, require_acl_cases=True)
         report['schemaVersion'] = 1
         report.pop('parentCases')
         report.pop('parentComparisons')

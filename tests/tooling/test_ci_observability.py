@@ -435,6 +435,20 @@ class EvidenceTests(TemporaryRepository):
         with self.assertRaisesRegex(ValueError, 'missing-parent-matrix'):
             ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
 
+    def test_current_ci_rejects_legacy_matrix_without_access_contrasts(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'shell-matrix.json'
+        matrix = json.loads(path.read_text(encoding='utf-8'))
+        matrix['schemaVersion'] = 2
+        matrix.pop('aclCases')
+        path.write_text(json.dumps(matrix), encoding='utf-8')
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        report['files']['shell-matrix.json'] = ci_evidence.checksum(path)
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'missing-acl-matrix'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
     def test_shell_modes_reject_missing_or_failed_evidence(self):
         directory = self.root / 'build/ci-evidence/windows'
         manifest = directory / 'manifest.json'

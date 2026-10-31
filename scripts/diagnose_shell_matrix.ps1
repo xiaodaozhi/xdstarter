@@ -9,6 +9,7 @@ if (!$IsWindows -or $env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -
     $env:GITHUB_RUN_ID -notmatch '^[1-9][0-9]*$' -or $env:GITHUB_RUN_ATTEMPT -notmatch '^[1-9][0-9]*$') {
     throw 'The cross-location Shell fixture runs only on a GitHub-hosted Windows runner.'
 }
+. (Join-Path $PSScriptRoot 'windows_access_descriptor.ps1')
 
 $workspace = (Resolve-Path -LiteralPath $env:GITHUB_WORKSPACE).Path
 $workParent = (Resolve-Path -LiteralPath (Join-Path $workspace 'build')).Path
@@ -81,7 +82,66 @@ function Get-PathHash([string]$Path) {
         [Text.Encoding]::UTF8.GetBytes($normalized))).ToLowerInvariant()
 }
 
-function New-ShellObservation($FolderRoot, $ModuleRoot, [string]$Physical) {
+function Get-AccessDescriptor([string]$Path) {
+    return (Get-Acl -LiteralPath $Path).GetSecurityDescriptorSddlForm(
+        [Security.AccessControl.AccessControlSections]::Access)
+}
+
+function Get-DescriptorHash([string]$Descriptor) {
+    return [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData(
+        [Text.Encoding]::UTF8.GetBytes($Descriptor))).ToLowerInvariant()
+}
+
+function New-AccessTemplate([string]$Path, [string]$Root) {
+    # The ACL object is a copy; do not change the source fixture.
+    $acl = Get-Acl -LiteralPath $Path
+    $acl.SetAccessRuleProtection($true, $true)
+    $descriptor = $acl.GetSecurityDescriptorSddlForm([Security.AccessControl.AccessControlSections]::Access)
+    # Windows canonicalizes inherited ACEs when persisting protected access
+    # rules. Read the persisted descriptor from a separate owned object before
+    # comparing it with target observations.
+    $probe = Join-Path $Root ('acl-template-' + [Guid]::NewGuid().ToString('N'))
+    if ((Get-Item -LiteralPath $Path -Force) -is [IO.DirectoryInfo]) {
+        New-Item -ItemType Directory -Path $probe | Out-Null
+    } else {
+        [IO.File]::WriteAllText($probe, '')
+    }
+    $original = Get-AccessDescriptor $probe
+    try {
+        Set-OwnedAccess $probe $Root $descriptor
+        $persisted = Get-AccessDescriptor $probe
+    } finally {
+        Set-OwnedAccess $probe $Root $original
+        if (!(Test-RestoredAccess $original (Get-AccessDescriptor $probe))) {
+            throw 'Access template probe rules were not restored.'
+        }
+        Remove-Item -LiteralPath $probe -Force
+    }
+    return @{ descriptor = $persisted; sha256 = (Get-DescriptorHash $persisted) }
+}
+
+function Set-OwnedAccess([string]$Path, [string]$Root, [string]$Descriptor) {
+    $resolvedRoot = (Resolve-Path -LiteralPath $Root).Path
+    $resolved = (Resolve-Path -LiteralPath $Path).Path
+    $expected = [IO.Path]::GetFullPath($Path)
+    $prefix = $resolvedRoot.TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+    if (!$resolved.Equals($expected, [StringComparison]::OrdinalIgnoreCase) -or
+        !$resolved.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase) -or
+        ((Get-Item -LiteralPath $resolved -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        throw 'Refusing to change access on a path outside the owned fixture root.'
+    }
+    # Preserve the target owner and group; modify only its access descriptor.
+    $item = Get-Item -LiteralPath $resolved -Force
+    $acl = Get-Acl -LiteralPath $resolved
+    $acl.SetSecurityDescriptorSddlForm($Descriptor, [Security.AccessControl.AccessControlSections]::Access)
+    if ($item -is [IO.DirectoryInfo]) {
+        [IO.FileSystemAclExtensions]::SetAccessControl([IO.DirectoryInfo]$item, $acl)
+    } else {
+        [IO.FileSystemAclExtensions]::SetAccessControl([IO.FileInfo]$item, $acl)
+    }
+}
+
+function New-ShellObservation($FolderRoot, $ModuleRoot, [string]$Physical, $AccessTemplate = $null) {
     $folder = Join-Path $FolderRoot.path $Physical
     New-Item -ItemType Directory -Path $folder | Out-Null
     if (![XDStarterShellMatrix]::PathMakeSystemFolderW($folder)) { throw 'Cannot set owned folder attributes.' }
@@ -89,26 +149,56 @@ function New-ShellObservation($FolderRoot, $ModuleRoot, [string]$Physical) {
     $reference = '@' + $ModuleRoot.module + ',-5301'
     $content = "[.ShellClassInfo]`r`nLocalizedResourceName=$reference`r`n"
     [IO.File]::WriteAllText($ini, $content, [Text.UnicodeEncoding]::new($false, $true))
-    $configured = [XDStarterShellMatrix]::SHSetLocalizedName($folder, $ModuleRoot.module, 5301)
-    if ($configured -lt 0) { throw "SHSetLocalizedName failed: $configured" }
-    [IO.File]::SetAttributes($ini, [IO.FileAttributes]::Hidden -bor [IO.FileAttributes]::System)
-    [XDStarterShellMatrix]::SHChangeNotify(0x2000, 0x1005, $folder, [IntPtr]::Zero)
-    $indirect = [Text.StringBuilder]::new(256)
-    $indirectResult = [XDStarterShellMatrix]::SHLoadIndirectString($reference, $indirect, 256, [IntPtr]::Zero)
-    $info = [XDStarterShellMatrix+SHFILEINFO]::new()
-    $size = [Runtime.InteropServices.Marshal]::SizeOf([type][XDStarterShellMatrix+SHFILEINFO])
-    $displayResult = [XDStarterShellMatrix]::SHGetFileInfoW($folder, 0, [ref]$info, $size, 0x200)
-    $folderDrive = [IO.Path]::GetPathRoot($folder)
-    $moduleDrive = [IO.Path]::GetPathRoot($ModuleRoot.module)
-    return @{ folderDrive = $folderDrive; moduleDrive = $moduleDrive; physicalName = $Physical;
-              folderFileSystem = [IO.DriveInfo]::new($folderDrive).DriveFormat;
-              moduleFileSystem = [IO.DriveInfo]::new($moduleDrive).DriveFormat;
-              moduleSha256 = $ModuleRoot.moduleSha256; modulePathSha256 = (Get-PathHash $ModuleRoot.module);
-              module = (Get-FileFacts $ModuleRoot.module);
-              ini = (Get-FileFacts $ini); folderAttributes = [int](Get-Item -LiteralPath $folder -Force).Attributes;
-              folderAclSha256 = (Get-AclHash $folder); setLocalizedName = $configured;
-              indirectResult = $indirectResult; indirectName = $indirect.ToString();
-              shellDisplayAvailable = ($displayResult -ne [IntPtr]::Zero); shellDisplayName = $info.displayName }
+    $originalFolderAccess = $null
+    $originalIniAccess = $null
+    if ($null -ne $AccessTemplate) {
+        $originalFolderAccess = Get-AccessDescriptor $folder
+        $originalIniAccess = Get-AccessDescriptor $ini
+    }
+    try {
+        if ($null -ne $AccessTemplate) {
+            Set-OwnedAccess $folder $FolderRoot.path $AccessTemplate.folder.descriptor
+            Set-OwnedAccess $ini $FolderRoot.path $AccessTemplate.ini.descriptor
+        }
+        $configured = [XDStarterShellMatrix]::SHSetLocalizedName($folder, $ModuleRoot.module, 5301)
+        if ($configured -lt 0) { throw "SHSetLocalizedName failed: $configured" }
+        [IO.File]::SetAttributes($ini, [IO.FileAttributes]::Hidden -bor [IO.FileAttributes]::System)
+        [XDStarterShellMatrix]::SHChangeNotify(0x2000, 0x1005, $folder, [IntPtr]::Zero)
+        $indirect = [Text.StringBuilder]::new(256)
+        $indirectResult = [XDStarterShellMatrix]::SHLoadIndirectString($reference, $indirect, 256, [IntPtr]::Zero)
+        $info = [XDStarterShellMatrix+SHFILEINFO]::new()
+        $size = [Runtime.InteropServices.Marshal]::SizeOf([type][XDStarterShellMatrix+SHFILEINFO])
+        $displayResult = [XDStarterShellMatrix]::SHGetFileInfoW($folder, 0, [ref]$info, $size, 0x200)
+        $folderDrive = [IO.Path]::GetPathRoot($folder)
+        $moduleDrive = [IO.Path]::GetPathRoot($ModuleRoot.module)
+        $observation = @{ folderDrive = $folderDrive; moduleDrive = $moduleDrive; physicalName = $Physical;
+                  folderFileSystem = [IO.DriveInfo]::new($folderDrive).DriveFormat;
+                  moduleFileSystem = [IO.DriveInfo]::new($moduleDrive).DriveFormat;
+                  moduleSha256 = $ModuleRoot.moduleSha256; modulePathSha256 = (Get-PathHash $ModuleRoot.module);
+                  module = (Get-FileFacts $ModuleRoot.module);
+                  ini = (Get-FileFacts $ini); folderAttributes = [int](Get-Item -LiteralPath $folder -Force).Attributes;
+                  folderAclSha256 = (Get-AclHash $folder); setLocalizedName = $configured;
+                  indirectResult = $indirectResult; indirectName = $indirect.ToString();
+                  shellDisplayAvailable = ($displayResult -ne [IntPtr]::Zero); shellDisplayName = $info.displayName }
+        if ($null -ne $AccessTemplate) {
+            $observation.folderAccessProtected = [bool](Get-Acl -LiteralPath $folder).AreAccessRulesProtected
+            $observation.folderAccessSha256 = Get-DescriptorHash (Get-AccessDescriptor $folder)
+            $observation.iniAccessSha256 = Get-DescriptorHash (Get-AccessDescriptor $ini)
+            $observation.folderTemplateSha256 = $AccessTemplate.folder.sha256
+            $observation.iniTemplateSha256 = $AccessTemplate.ini.sha256
+        }
+        return $observation
+    } finally {
+        if ($null -ne $AccessTemplate) {
+            # Restore the folder first so its child is traversable, then restore the file.
+            Set-OwnedAccess $folder $FolderRoot.path $originalFolderAccess
+            Set-OwnedAccess $ini $FolderRoot.path $originalIniAccess
+            if (!(Test-RestoredAccess $originalFolderAccess (Get-AccessDescriptor $folder)) -or
+                !(Test-RestoredAccess $originalIniAccess (Get-AccessDescriptor $ini))) {
+                throw 'The owned fixture access rules were not restored.'
+            }
+        }
+    }
 }
 
 function Remove-OwnedRoot([string]$Root, [string]$Parent, [string]$Leaf) {
@@ -144,6 +234,8 @@ $created = @()
 $cases = @()
 $parentCases = @()
 $parentComparisons = @()
+$aclCases = @()
+$aclTemplates = @{}
 $errors = @()
 $cleanupErrors = @()
 $comResult = $null
@@ -191,6 +283,25 @@ try {
             resourceResolved = ($left.indirectResult -ge 0 -and $right.indirectResult -ge 0 -and
                                 $left.indirectName -eq '本地化工具' -and $right.indirectName -eq '本地化工具') }
     }
+    # Compare protected copies of each source fixture's access rules at each
+    # target location. Only the newly-created target folder and desktop.ini
+    # are modified; parent folders, policy and the source fixtures are untouched.
+    foreach ($source in $roots) {
+        $sourceFolder = Join-Path $source.path ('parent-' + $source.name)
+        $aclTemplates[$source.name] = @{
+            folder = New-AccessTemplate $sourceFolder $source.path
+            ini = New-AccessTemplate (Join-Path $sourceFolder 'desktop.ini') $source.path
+        }
+    }
+    foreach ($target in $roots) {
+        foreach ($source in $roots) {
+            $physical = 'acl-' + $target.name + '-' + $source.name
+            $observation = New-ShellObservation $target $roots[0] $physical $aclTemplates[$source.name]
+            $observation.targetLocation = $target.name
+            $observation.templateLocation = $source.name
+            $aclCases += $observation
+        }
+    }
 } catch { $errors += $_.Exception.Message }
 finally {
     if ($null -ne $comResult -and $comResult -ge 0) { [XDStarterShellMatrix]::CoUninitialize() }
@@ -202,17 +313,21 @@ finally {
     }
 }
 $remaining = @($created | Where-Object { Test-Path -LiteralPath $_.path })
-$report = @{ schemaVersion = 2; cases = $cases; parentCases = $parentCases; parentComparisons = $parentComparisons;
+$report = @{ schemaVersion = 3; cases = $cases; parentCases = $parentCases; parentComparisons = $parentComparisons;
+             aclCases = $aclCases;
              comInitializationResult = $comResult;
              cleanupComplete = ($cleanupErrors.Count -eq 0 -and $remaining.Count -eq 0);
              identity = @{ sha = $env:GITHUB_SHA; runId = $env:GITHUB_RUN_ID; attempt = $env:GITHUB_RUN_ATTEMPT;
                            runnerOs = $env:RUNNER_OS; runnerArch = $env:RUNNER_ARCH };
              osVersion = [Environment]::OSVersion.VersionString;
              errors = $errors; status = $(if ($errors.Count -eq 0 -and $cases.Count -eq 4 -and
-                                             $parentCases.Count -eq 4 -and $parentComparisons.Count -eq 2) { 'passed' } else { 'failed' });
+                                             $parentCases.Count -eq 4 -and $parentComparisons.Count -eq 2 -and
+                                             $aclCases.Count -eq 4) { 'passed' } else { 'failed' });
              limitations = @('Fixture compares native Shell observations, not the cause of historical failures.',
                              'Volume roots and resolved parent path spellings do not establish physical volume or directory identity.',
-                             'ACL summaries are observational and do not isolate effective permissions or parent-path effects.') }
+                             'ACL summaries do not establish effective permissions or parent-path effects.',
+                             'Access templates apply to owned children, not parent directories or inherited-path policy.',
+                             'Descriptor hashes do not prove that Windows evaluates two access tokens identically.') }
 $report | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $outputPath -Encoding utf8NoBOM
 if ($report.status -ne 'passed') { throw ('Shell cross-location fixture failed: ' + ($errors -join '; ')) }
-Write-Host "Shell fixture collected $($cases.Count) cross-location and $($parentCases.Count) parent observations."
+Write-Host "Shell fixture collected $($cases.Count) cross-location, $($parentCases.Count) parent and $($aclCases.Count) access observations."
