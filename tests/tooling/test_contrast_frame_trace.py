@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import copy
 import hashlib
 import json
 from pathlib import Path
@@ -22,19 +23,22 @@ class ContrastFrameTraceTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         self.addCleanup(self.temporary.cleanup)
         events, captures = [], []
+        hints = {'tileCount': 1, 'tileHintsComplete': True,
+                 'tileHints': [{'tileId': 'sample', 'hovered': False, 'visible': False, 'opened': False}]}
         tick = 0
         for scene in inspector.SCENES:
             for phase in ('request-update', 'before-early-grab', 'before-ready-grab',
                           'before-first-grab', 'before-later-grab'):
                 tick += 1
                 events.append({'ns': tick, 'event': 'gui-state', 'phase': f'{scene}:{phase}',
-                               'thread': '42', 'state': {}})
+                               'thread': '42', 'state': copy.deepcopy(hints)})
             for stage in inspector.STAGES:
                 tick += 1
                 name = f'{scene}-{stage}.png'
                 (self.root / name).write_bytes(PNG)
                 captures.append({'scene': scene, 'stage': stage, 'ns': tick,
-                                 'state': {'highContrast': True, 'searchGlyphVisible': True, 'searchGlyphStatus': 1},
+                                 'state': {**copy.deepcopy(hints), 'highContrast': True,
+                                           'searchGlyphVisible': True, 'searchGlyphStatus': 1},
                                  'valid': True,
                                  'file': name, 'sha256': hashlib.sha256(PNG).hexdigest(),
                                  'width': 1, 'height': 1, 'dpr': 1})
@@ -42,7 +46,7 @@ class ContrastFrameTraceTests(unittest.TestCase):
                         'glyphComparable': True, 'glyphChangedPixels': 0}
                        for scene in inspector.SCENES for before, after in
                        (('early', 'ready'), ('ready', 'first'), ('first', 'later'))]
-        self.trace = {'schemaVersion': 1, 'observerIsInstrumented': True, 'eventLimitReached': False,
+        self.trace = {'schemaVersion': 2, 'observerIsInstrumented': True, 'eventLimitReached': False,
                       'qpa': 'offscreen', 'graphicsApi': 1, 'qtVersion': '6.8.2',
                       'events': events, 'captures': captures, 'pixelComparisons': comparisons}
         self.write_trace()
@@ -62,6 +66,48 @@ class ContrastFrameTraceTests(unittest.TestCase):
         self.assertNotIn('renderingComplete', report)
         with self.assertRaisesRegex(ValueError, 'backend does not match'):
             inspector.inspect(self.root, 'windows', 4)
+
+    def test_hint_changes_are_reported_without_claiming_render_completion(self):
+        for capture in self.trace['captures']:
+            if capture['scene'] == 'contrast-dark' and capture['stage'] == 'first':
+                capture['state']['tileHints'][0].update(hovered=True, visible=True, opened=True)
+        self.write_trace()
+        report = inspector.inspect(self.root, require_hints=True)
+        changes = report['tileHintChanges']['contrast-dark']['readyToFirst']
+        self.assertEqual(len(changes), 1)
+        self.assertEqual(changes[0]['tileId'], 'sample')
+        self.assertFalse(changes[0]['before']['visible'])
+        self.assertTrue(changes[0]['after']['visible'])
+        self.assertNotIn('renderingComplete', report)
+
+    def test_missing_invalid_or_duplicate_hint_state_is_rejected(self):
+        for change in ('missing', 'incomplete', 'duplicate', 'wrong-type', 'event-missing'):
+            with self.subTest(change=change):
+                original = json.loads(json.dumps(self.trace))
+                state = self.trace['captures'][0]['state']
+                if change == 'missing':
+                    state.pop('tileHints')
+                elif change == 'incomplete':
+                    state['tileHintsComplete'] = False
+                elif change == 'duplicate':
+                    state['tileHints'].append(dict(state['tileHints'][0]))
+                    state['tileCount'] = 2
+                elif change == 'wrong-type':
+                    state['tileHints'][0]['visible'] = 1
+                else:
+                    self.trace['events'][0]['state'].pop('tileHints')
+                self.write_trace()
+                with self.assertRaisesRegex(ValueError, 'tile hint state'):
+                    inspector.inspect(self.root, require_hints=True)
+                self.trace = original
+        self.write_trace()
+
+    def test_legacy_trace_can_be_read_but_does_not_satisfy_new_ci(self):
+        self.trace['schemaVersion'] = 1
+        self.write_trace()
+        self.assertNotIn('tileHintChanges', inspector.inspect(self.root))
+        with self.assertRaisesRegex(ValueError, 'missing tile hint trace'):
+            inspector.inspect(self.root, require_hints=True)
 
     def test_trace_audit_belongs_only_to_windows_job_after_build(self):
         workflow = json.loads((ROOT / '.github/workflows/application-build.yml').read_text(encoding='utf-8'))
