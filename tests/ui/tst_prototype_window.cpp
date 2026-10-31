@@ -3057,6 +3057,7 @@ void PrototypeWindowTest::dragPreviewFrameState() {
         QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, releasePoint);
         QVERIFY(!preview->isVisible());
     }
+    destroyWindow();
 }
 
 void PrototypeWindowTest::dragPreviewInitialPosition() {
