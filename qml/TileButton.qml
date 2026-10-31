@@ -22,7 +22,9 @@ Button {
     property bool dragging: false
     property int iconRevision: 0
     property var iconVersionSource: null
+    property var availabilitySource: null
     readonly property var iconVersionState: iconVersionSource && iconSource.length > 0 ? iconVersionSource.iconVersionState(tile.targetId) : null
+    readonly property var availabilityState: availabilitySource && tile.targetId ? availabilitySource.tileAvailabilityState(tile.targetId) : null
     readonly property bool pointerHovered: tileHover.hovered
     property bool pointerPressActive: false
     property bool pressComponentReady: false
@@ -38,7 +40,8 @@ Button {
         id: tileHover
     }
     readonly property bool applicationTile: tile.targetType !== undefined && tile.targetType !== "prototype"
-    readonly property bool targetAvailable: tile.available !== false
+    readonly property bool targetAvailable: availabilityState ? availabilityState.available : tile.available !== false
+    readonly property string targetUnavailableReason: availabilityState ? availabilityState.reason : (tile.unavailableReason || "")
     readonly property string iconSource: tile.iconSource || ""
     readonly property string paletteIdentity: tile.targetId || tile.id || ""
     readonly property int tokenPaletteIndex: paletteIndex(paletteIdentity)
@@ -170,7 +173,7 @@ Button {
     }
     focusPolicy: Qt.StrongFocus
     Accessible.name: tile.name
-    Accessible.description: !targetAvailable ? qsTr("%1，目标不可用。%2。Shift 加 F10 取消固定。").arg(tile.dimensions).arg(tile.unavailableReason || qsTr("应用已移除")) : (editMode ? qsTr("%1，编辑模式。按 Ctrl 加方向键移动一格，Shift 加 F10 打开磁贴菜单。").arg(tile.dimensions) : (applicationTile ? qsTr("%1，按 Enter 启动。Shift 加 F10 打开磁贴菜单。").arg(tile.dimensions) : qsTr("%1，仅供布局预览。Shift 加 F10 打开磁贴菜单。").arg(tile.dimensions)))
+    Accessible.description: !targetAvailable ? qsTr("%1，目标不可用。%2。Shift 加 F10 取消固定。").arg(tile.dimensions).arg(targetUnavailableReason || qsTr("应用已移除")) : (editMode ? qsTr("%1，编辑模式。按 Ctrl 加方向键移动一格，Shift 加 F10 打开磁贴菜单。").arg(tile.dimensions) : (applicationTile ? qsTr("%1，按 Enter 启动。Shift 加 F10 打开磁贴菜单。").arg(tile.dimensions) : qsTr("%1，仅供布局预览。Shift 加 F10 打开磁贴菜单。").arg(tile.dimensions)))
 
     function paletteIndex(identity: string): int {
         // Bounded identity hashing keeps one application's color stable through
@@ -350,7 +353,7 @@ Button {
         width: Math.min(380, implicitWidth)
         parent: tileButton
         visible: tileButton.hintsEnabled && !tileButton.pointerPressActive && !tileButton.dragging && (tileButton.pointerHovered || (tileButton.keyboardNavigation && tileButton.activeFocus))
-        text: tileButton.tile.name + "\n" + tileButton.tile.dimensions + (tileButton.targetAvailable ? "" : "\n" + (tileButton.tile.unavailableReason || qsTr("应用不可用；可右键取消固定。")))
+        text: tileButton.tile.name + "\n" + tileButton.tile.dimensions + (tileButton.targetAvailable ? "" : "\n" + (tileButton.targetUnavailableReason || qsTr("应用不可用；可右键取消固定。")))
         timeout: -1
         contentItem: Text {
             text: tileNameTip.text

@@ -2228,7 +2228,7 @@ ApplicationWindow {
                                 Repeater {
                                     id: groupRepeater
 
-                                    model: window.controller.groups
+                                    model: window.controller.presentationGroups
                                     onItemRemoved: (index, item) => {
                                         const removedGroup = item as TileGroup;
                                         // Capture actual focus before this delegate is deleted. A catalog
@@ -2258,6 +2258,7 @@ ApplicationWindow {
                                         contextShortcutsEnabled: window.contextShortcutsEnabled
                                         iconRevision: window.controller.iconRevision
                                         iconVersionSource: window.controller
+                                        availabilitySource: window.controller
                                         draggedTileId: window.draggedTileId
                                         onActionsRequested: (groupId, source) => window.openGroupMenu(groupId, source)
                                         onActionsFocused: groupId => {

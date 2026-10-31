@@ -15,6 +15,7 @@
 - 新建可替换的 `ApplicationPlatform`，提供同步的目录快照、图标、可用性与启动结果；与普通窗口 `PlatformIntegration` 分开。上层 ApplicationCatalog 在专用 QThread worker 调用，Win32/COM 头和句柄不进入布局及 QML。
 - Windows 枚举当前用户/公共 Programs Known Folder 中的 `.lnk`，通过 AppsFolder 补充打包应用。扫描限制应用、目录、层级与目录项数量，不递归重解析目录。快捷方式 id 来自规范化绝对路径，打包应用来自 AUMID；不按同一可执行文件或名称笼统合并快捷方式，从而保留不同参数和用户命名。下述 [#53](https://github.com/xiaodaozhi/xdstarter/issues/53) 的跨根等价展示例外不改变目标 id 或启动协议。
 - 图标按需在 worker 提取，平台以 RAII 释放 HBITMAP/HICON/DC 和 COM 引用，返回 QImage。GUI/provider 只读约 8 MiB 内存缓存或返回占位，再排队请求；不新增图标下载、永久缓存或 Widgets 依赖。
+- 固定磁贴的可用性按目标更新展示状态；分组与磁贴的公开数据仍包含可用性和原因。磁贴展示模型将状态与布局字段分开，避免一个目标变化时重建其他磁贴；最后一个相关磁贴取消固定后退休状态。目录检查和启动前复核仍以 `ApplicationCatalog` 为准，不改变持久化格式或启动权限语义。
 - 启动前重新校验目标。`.lnk` 原文件交给 ShellExecuteExW，不另拼参数或工作目录；后台线程调用使用 SEE_MASK_NOASYNC，错误通过结构结果回到 UI。打包应用只接受支持的 `packageFamily!application` AUMID，使用 IApplicationActivationManager::ActivateApplication。每个平台方法在调用线程内初始化及释放 COM，接口不保存跨线程 COM 对象。
 - 用户选择后才启动。保存/恢复和目录扫描不执行目标；系统接受启动请求后收起窗口，失败保留窗口并显示原因。非 Windows 实现明确返回不支持，不伪装为真实 Windows 目录。
 - 正常首次运行使用空“常用应用”分组；smoke 和独立测试保留三组样例。固定真实目录项时以标准尺寸选择目标分组首个空位，相同目标重复固定返回已有磁贴。取消固定不删除系统快捷方式或卸载应用。
