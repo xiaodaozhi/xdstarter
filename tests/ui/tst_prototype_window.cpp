@@ -1016,6 +1016,9 @@ void PrototypeWindowTest::createWindow(const QString& path, bool sampleMode,
         QVERIFY(!window_->isVisible());
         window_->setFlag(Qt::WindowDoesNotAcceptFocus);
         window_->setPosition(-30000, -30000);
+        const QRect testBounds(window_->position(), window_->size());
+        for (const auto* screen : QGuiApplication::screens())
+            QVERIFY2(!screen->geometry().intersects(testBounds), "Isolated UIA window would overlap a screen");
         window_->show();
         QTRY_VERIFY(window_->isVisible());
         QVERIFY(window_->flags().testFlag(Qt::WindowDoesNotAcceptFocus));
