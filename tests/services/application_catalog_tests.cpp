@@ -3,6 +3,7 @@
 
 #include <QCoreApplication>
 #include <QMutexLocker>
+#include <QSemaphore>
 #include <QSignalSpy>
 #include <QTest>
 
@@ -34,6 +35,10 @@ struct FakeState {
     std::atomic<int> checks{0};
     std::atomic<int> launches{0};
     std::atomic<int> guiThreadCalls{0};
+    std::atomic_bool pauseFirstIcon{false};
+    std::atomic_bool iconWaitExpired{false};
+    QSemaphore firstIconStarted;
+    QSemaphore continueFirstIcon;
 };
 
 class FakeApplicationPlatform final : public ApplicationPlatform {
@@ -49,13 +54,20 @@ class FakeApplicationPlatform final : public ApplicationPlatform {
 
     QImage loadIcon(const LaunchTarget&, int size) override {
         recordThread();
-        ++state_->iconLoads;
-        QMutexLocker lock(&state_->mutex);
-        if (state_->nullIcons || size <= 0) {
-            return {};
+        const int load = ++state_->iconLoads;
+        QImage image;
+        {
+            QMutexLocker lock(&state_->mutex);
+            if (state_->nullIcons || size <= 0)
+                return {};
+            image = QImage(state_->iconEdge, state_->iconEdge, QImage::Format_ARGB32_Premultiplied);
+            image.fill(state_->iconColor);
         }
-        QImage image(state_->iconEdge, state_->iconEdge, QImage::Format_ARGB32_Premultiplied);
-        image.fill(state_->iconColor);
+        if (load == 1 && state_->pauseFirstIcon) {
+            state_->firstIconStarted.release();
+            if (!state_->continueFirstIcon.tryAcquire(1, 5000))
+                state_->iconWaitExpired = true;
+        }
         return image;
     }
 
@@ -105,6 +117,7 @@ class ApplicationCatalogTests final : public QObject {
     void partialRefreshKeepsUsableEntriesAndWarning();
     void iconRequestsAreDeduplicatedAndCacheIsBounded();
     void refreshReloadsIconsAndMetadata();
+    void replacedTargetDiscardsPendingIcon();
     void launchChecksAvailabilityAndReportsCompletion();
     void registeredMissingTargetsPreserveLayout_data();
     void registeredMissingTargetsPreserveLayout();
@@ -337,6 +350,34 @@ void ApplicationCatalogTests::refreshReloadsIconsAndMetadata() {
     QCOMPARE(catalog.target(application.id).name, application.name);
     QCOMPARE(catalog.cachedIcon(application.id).pixel(0, 0), qRgb(40, 190, 70));
     QCOMPARE(state->iconLoads.load(), 3);
+    QCOMPARE(state->guiThreadCalls.load(), 0);
+}
+
+void ApplicationCatalogTests::replacedTargetDiscardsPendingIcon() {
+    auto state = std::make_shared<FakeState>();
+    state->pauseFirstIcon = true;
+    auto original = shortcut(QStringLiteral("Original"));
+    auto replacement = original;
+    replacement.name = QStringLiteral("Replacement");
+    ApplicationCatalog catalog(fakePlatform(state));
+    catalog.registerTargets({applicationTargetJson(original)});
+    QSignalSpy ready(&catalog, &ApplicationCatalog::iconReady);
+    catalog.requestIcon(original.id);
+    QVERIFY(state->firstIconStarted.tryAcquire(1, 3000));
+
+    {
+        QMutexLocker lock(&state->mutex);
+        state->iconColor = qRgb(20, 60, 210);
+    }
+    catalog.registerTargets({applicationTargetJson(replacement)});
+    QCOMPARE(catalog.target(original.id).name, replacement.name);
+    state->continueFirstIcon.release();
+
+    QTRY_COMPARE_WITH_TIMEOUT(ready.count(), 1, 3000);
+    QCOMPARE(ready.first().first().toString(), original.id);
+    QCOMPARE(state->iconLoads.load(), 2);
+    QVERIFY(!state->iconWaitExpired.load());
+    QCOMPARE(catalog.cachedIcon(original.id).pixel(0, 0), qRgb(20, 60, 210));
     QCOMPARE(state->guiThreadCalls.load(), 0);
 }
 

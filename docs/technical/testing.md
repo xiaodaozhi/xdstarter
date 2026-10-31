@@ -720,6 +720,8 @@ python scripts/benchmark_ui_search.py --executable build/app-release/bin/xdstart
 
 2026-10-31 [本机离屏样本](validation/issue-35/ui-reveal-layouts-offscreen-2026-10-31.json)用同一程序 `f655904376586a144706a3f790a502d1ea73cca77c7435943da09868217e6afd`，依次测量 100 磁贴与空布局的各 100 次暖唤起，以及各 100 个新进程；两种布局均有 1000 个匿名目录项。暖唤起焦点 P95 分别为 42.67 和 42.35 ms；新进程首次焦点 P95 分别为 475.63 和 72.62 ms。样本按固定顺序运行，系统负载和缓存未隔离，插桩与渲染会影响时序；不能由这组观察断定差异的单一原因。合并数据保留逐次事件和子日志哈希，完整子进程日志仍仅在本机 build 目录，不代表物理屏幕或真人输入验收。
 
+2026-11-01 对 [#126](https://github.com/xiaodaozhi/xdstarter/issues/126) 的图标版本通知进行[离屏前后对照](validation/issue-35/icon-binding-comparison-offscreen-2026-11-01.json)：各 100 个新进程、100 磁贴及 1000 个匿名目录项，使用相同测试夹具和事件循环计时插桩，顺序运行修复前后两种程序。首次唤起至搜索框获得焦点的 P95 分别为 488.47 和 209.15 ms；系统负载和缓存未隔离，不能把差值全归因于该修复，也不能视为真实桌面性能达标。另在独立启用 QML 调试的测试构建中各采集一轮完整进程轨迹，磁贴图标 source 绑定记录从 20300 次降至 500 次，组内版本传递从 20200 次降至 200 次；跟踪区间可能嵌套，不能累加为墙钟时间。JSON 保存程序和轨迹哈希、各样本及子日志哈希，原始子日志与剖析文件仅保留在本机 build 目录；不涉及发行构建或物理屏幕测量。
+
 ```powershell
 python scripts/benchmark_ui_reveal.py --executable build/app-release/bin/xdstarter_ui_tests.exe --output-dir build/validation/ui-reveal-local
 python scripts/benchmark_ui_reveal_fresh.py --executable build/app-release/bin/xdstarter_ui_tests.exe --output-dir build/validation/ui-reveal-fresh-local

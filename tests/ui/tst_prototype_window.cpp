@@ -5028,8 +5028,13 @@ void PrototypeWindowTest::iconUpdatesAreScopedAndRetired() {
     field->setProperty("text", QStringLiteral("测试"));
     QTRY_VERIFY(!controller_->searchBusy());
     QTRY_COMPARE(controller_->searchResults().size(), 2);
-    auto* firstRow = item(QStringLiteral("searchResult-") + firstId);
-    auto* secondRow = item(QStringLiteral("searchResult-") + secondId);
+    const auto firstRowName = QStringLiteral("searchResult-") + firstId;
+    const auto secondRowName = QStringLiteral("searchResult-") + secondId;
+    // The model can be ready before ListView has instantiated its delegates.
+    QTRY_VERIFY(item(firstRowName));
+    QTRY_VERIFY(item(secondRowName));
+    auto* firstRow = item(firstRowName);
+    auto* secondRow = item(secondRowName);
     QVERIFY(firstRow && secondRow);
     auto* firstSearchIcon = visualItem(firstRow, QStringLiteral("searchResultIcon"));
     auto* secondSearchIcon = visualItem(secondRow, QStringLiteral("searchResultIcon"));
@@ -5048,7 +5053,8 @@ void PrototypeWindowTest::iconUpdatesAreScopedAndRetired() {
     QVERIFY(controller_->unpinApplication(firstId));
     QCOMPARE(controller_->iconVersionState(firstId), firstVersion);
     QTRY_COMPARE(controller_->searchResults().size(), 2);
-    auto* retainedRow = item(QStringLiteral("searchResult-") + firstId);
+    QTRY_VERIFY(item(firstRowName));
+    auto* retainedRow = item(firstRowName);
     QVERIFY(retainedRow);
     auto* retainedIcon = visualItem(retainedRow, QStringLiteral("searchResultIcon"));
     QVERIFY(retainedIcon);
