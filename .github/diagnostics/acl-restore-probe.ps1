@@ -3,6 +3,7 @@ if (!$IsWindows -or $env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -
     throw 'This probe runs only on a GitHub-hosted Windows runner.'
 }
 $workspace = (Resolve-Path -LiteralPath $env:GITHUB_WORKSPACE).Path
+. (Join-Path $workspace 'scripts/windows_access_descriptor.ps1')
 $workspaceParent = (Resolve-Path -LiteralPath (Join-Path $workspace 'build')).Path
 $profileParent = (Resolve-Path -LiteralPath (Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'Temp')).Path
 $parents = @(@{ name = 'workspace'; path = $workspaceParent }, @{ name = 'profile'; path = $profileParent })
@@ -74,9 +75,11 @@ foreach ($parent in $parents) {
             $applied = Read-Access $probe
             Write-Access $probe $root $original
             $restored = Read-Access $probe
+            $rulesRestored = Test-RestoredAccess $original $restored
             @{ location = $parent.name; kind = $kind; exactRestore = ($original -eq $restored);
-               before = (Describe-Access $original); applied = (Describe-Access $applied);
+               rulesRestored = $rulesRestored; before = (Describe-Access $original); applied = (Describe-Access $applied);
                after = (Describe-Access $restored) } | ConvertTo-Json -Depth 8 -Compress | Write-Output
+            if (!$rulesRestored) { throw 'Restored access rules differ.' }
         }
     } finally {
         $expected = [IO.Path]::GetFullPath((Join-Path $parent.path $leaf))
