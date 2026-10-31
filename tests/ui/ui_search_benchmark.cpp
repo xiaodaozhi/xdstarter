@@ -637,11 +637,36 @@ int runUiRevealBenchmark() {
         }
         const auto started = Clock::now();
         host.showWindow();
-        const bool ready = waitUntil([&] {
+        const auto showReturned = Clock::now();
+        const auto readiness = [&] {
             return window->isVisible() && window->isExposed() && field->isVisible() &&
                    field->isEnabled() && field->hasActiveFocus() &&
                    !window->property("presentationSuspended").toBool();
-        });
+        };
+        const bool profileReadiness = qEnvironmentVariable("XDSTARTER_UI_REVEAL_DIAGNOSTIC") == QLatin1String("1");
+        qint64 predicateNs = 0, eventNs = 0, sleepNs = 0;
+        int iterations = 0;
+        bool ready = false;
+        if (profileReadiness) {
+            QElapsedTimer timeout;
+            timeout.start();
+            do {
+                auto measured = Clock::now();
+                ready = readiness();
+                predicateNs += std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - measured).count();
+                if (ready || timeout.elapsed() >= 10000)
+                    break;
+                measured = Clock::now();
+                QCoreApplication::processEvents(QEventLoop::AllEvents, 10);
+                eventNs += std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - measured).count();
+                measured = Clock::now();
+                QThread::msleep(1);
+                sleepNs += std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - measured).count();
+                ++iterations;
+            } while (true);
+        } else {
+            ready = waitUntil(readiness);
+        }
         const auto interactive = Clock::now();
         if (!ready) {
             writeEvent({{QStringLiteral("phase"), phase}, {QStringLiteral("index"), index},
@@ -687,6 +712,13 @@ int runUiRevealBenchmark() {
                            {QStringLiteral("focusReadyMilliseconds"), readyMs},
                            {QStringLiteral("synchronizedFrameMilliseconds"), frameMs},
                            {QStringLiteral("syntheticKeyAccepted"), true}};
+        if (profileReadiness) {
+            sample.insert(QStringLiteral("showReturnMilliseconds"), elapsedMs(showReturned, started));
+            sample.insert(QStringLiteral("predicateMilliseconds"), predicateNs / 1'000'000.0);
+            sample.insert(QStringLiteral("eventLoopMilliseconds"), eventNs / 1'000'000.0);
+            sample.insert(QStringLiteral("sleepMilliseconds"), sleepNs / 1'000'000.0);
+            sample.insert(QStringLiteral("readinessIterations"), iterations);
+        }
         if (phase == QLatin1String("first"))
             sample.insert(QStringLiteral("fixtureToFocusMilliseconds"), elapsedMs(interactive, fixtureStarted));
         if (!writeEvent(sample)) {
