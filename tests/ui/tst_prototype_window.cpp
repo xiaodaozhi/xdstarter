@@ -534,6 +534,8 @@ class PrototypeWindowTest : public QObject {
     void futureConfigurationIsReadOnly();
     void applicationDirectoryAndPinning();
     void lateApplicationMenuClosePreservesTileFocus();
+    void duplicateApplicationMenuClosePreservesTileFocus_data();
+    void duplicateApplicationMenuClosePreservesTileFocus();
     void explicitSearchSurvivesMissingApplicationMenuSource();
     void equivalentShortcutsPreserveOldTilesAndSearch();
     void applicationLaunchLifecycle();
@@ -3595,6 +3597,63 @@ void PrototypeWindowTest::equivalentShortcutsPreserveOldTilesAndSearch() {
     QCOMPARE(catalog_->canonicalApplicationId(common.id), common.id);
 }
 
+void PrototypeWindowTest::duplicateApplicationMenuClosePreservesTileFocus_data() {
+    QTest::addColumn<bool>("sourceExists");
+    QTest::newRow("duplicate-close") << true;
+    QTest::newRow("source-disappeared") << false;
+}
+
+void PrototypeWindowTest::duplicateApplicationMenuClosePreservesTileFocus() {
+    QFETCH(bool, sourceExists);
+    const auto state = std::make_shared<CatalogTestState>();
+    destroyWindow();
+    createWindow({}, false, state);
+    pinFirstApplication(state);
+    auto* application = item(QStringLiteral("applicationLaunch-") + state->applications.first().id);
+    const auto tileId = service_->previewGroups().first().tiles.first().id;
+    auto* tile = item(QStringLiteral("tile-") + tileId);
+    QVERIFY(application && tile && application->isVisible() && tile->isVisible());
+    QTRY_VERIFY(!window_->property("internalPopupVisible").toBool());
+    QTRY_VERIFY(!window_->property("presentationFocusPending").toBool());
+    const auto originalName = window_->objectName();
+    const auto fence = QStringLiteral("earlierCallbacksSettled");
+    QVERIFY(queueFocusReplay(QStringLiteral("restoreMoreMenuFocus"), fence));
+    QTRY_COMPARE(window_->objectName(), fence);
+    window_->setObjectName(originalName);
+    application->forceActiveFocus(Qt::OtherFocusReason);
+    QVERIFY(application->hasActiveFocus());
+    QVERIFY(window_->setProperty("pinMenuReturnTarget", sourceExists
+        ? QVariant::fromValue(application) : QVariant::fromValue(static_cast<QQuickItem*>(nullptr))));
+    const auto firstMarker = QStringLiteral("firstApplicationCallbackExecuted");
+    const auto lastMarker = QStringLiteral("lastApplicationCallbackExecuted");
+    QSignalSpy nameChanges(window_, &QObject::objectNameChanged);
+    QObject observer;
+    bool firstPreservedTile = false;
+    bool firstClearedTarget = false;
+    connect(window_, &QObject::objectNameChanged, &observer, [&](const QString& name) {
+        if (name == firstMarker) {
+            firstPreservedTile = tile->hasActiveFocus();
+            firstClearedTarget = window_->property("pinMenuReturnTarget").isNull();
+        }
+    });
+    if (sourceExists)
+        QVERIFY(queueFocusReplay(QStringLiteral("restoreApplicationMenuFocus"), firstMarker));
+    QVERIFY(queueFocusReplay(QStringLiteral("restoreApplicationMenuFocus"), lastMarker));
+    tile->forceActiveFocus(Qt::TabFocusReason);
+    QVERIFY(tile->hasActiveFocus());
+    QTRY_COMPARE(window_->objectName(), lastMarker);
+    if (sourceExists) {
+        bool firstExecuted = false;
+        for (const auto& change : nameChanges)
+            firstExecuted |= change.at(0).toString() == firstMarker;
+        QVERIFY(firstExecuted);
+        QVERIFY(firstPreservedTile);
+        QVERIFY(firstClearedTarget);
+    }
+    QVERIFY2(tile->hasActiveFocus(), "A later application-menu restore stole tile focus");
+    window_->setObjectName(originalName);
+}
+
 void PrototypeWindowTest::lateApplicationMenuClosePreservesTileFocus() {
     const auto state = std::make_shared<CatalogTestState>();
     destroyWindow();
@@ -3834,7 +3893,16 @@ void PrototypeWindowTest::applicationDirectoryAndPinning() {
     QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 0);
     QTest::keyClick(window_, Qt::Key_Escape);
     QTRY_VERIFY(!applicationMenu->property("visible").toBool());
-    QTRY_VERIFY(item(QStringLiteral("moreMenuButton"))->hasActiveFocus());
+    const auto focusDescription = [this] {
+        QStringList chain;
+        for (auto* current = window_->activeFocusItem(); current; current = current->parentItem()) {
+            chain.append(QStringLiteral("%1[%2, visible=%3, enabled=%4]")
+                .arg(current->objectName(), QString::fromLatin1(current->metaObject()->className()))
+                .arg(current->isVisible()).arg(current->isEnabled()));
+        }
+        return chain.join(QStringLiteral(" -> "));
+    };
+    QTRY_VERIFY2(item(QStringLiteral("moreMenuButton"))->hasActiveFocus(), qPrintable(focusDescription()));
 }
 
 void PrototypeWindowTest::applicationLaunchLifecycle() {
