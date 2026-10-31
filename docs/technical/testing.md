@@ -161,7 +161,9 @@ PR #54 的首轮 [Windows CI](https://github.com/xiaodaozhi/xdstarter/actions/ru
 
 后续夹具改用自有helper的中性中文STRINGTABLE及官方[SHSetLocalizedName](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shsetlocalizedname)，只定制自有临时目录。分别检查`LoadStringW`、`SHLoadIndirectString`、Unicode配置读回与真实Shell中文显示，并保留同显示名不同路径不得合并的断言。失败时增加来源的Zone.Identifier、卷类型、完整系统build/UBR与设置HRESULT，避免仅凭API成功推断Shell已采用配置。此调整只涉及测试资源和夹具，产品显示逻辑不变；本机仅重建平台测试/helper并复测`platform.applications`，1/1通过、23.75秒，仓库737文件检查通过，产品EXE散列不变。远程结果按新head单独记录。
 
-针对 [#56](https://github.com/xiaodaozhi/xdstarter/issues/56)，托管 Windows 另设自有目录与资源模块的工作区／临时用户目录 2×2 交叉观测，记录同一资源的哈希、文件属性、来源标记、ACL 摘要、卷文件系统、间接字符串和原生 Shell 显示名；成功与物理名称回退均作为观测保留。脚本仅在 GitHub 托管 Windows 运行，验证临时根路径并清理自建目录，证据门禁要求同一运行身份与完整四组记录。位置可能位于同一卷，该对照不能证明历史失败的原因，也不改变原有严格用户目录和带来源标记用例的断言。
+针对 [#56](https://github.com/xiaodaozhi/xdstarter/issues/56)，托管 Windows 另设自有目录与资源模块的工作区／临时用户目录 2×2 交叉观测，记录同一资源的哈希、文件属性、来源标记、ACL 摘要、卷文件系统、间接字符串和原生 Shell 显示名；成功与物理名称回退均作为观测保留。进一步固定工作区的同一资源模块，在工作区、runner 临时目录、用户临时目录和用户本地目录创建四组自有文件夹，记录父目录路径及 ACL 摘要、子目录与文件 ACL、卷根和显示名，并标记两组同卷根／不同父路径对照是否成立、ACL 摘要是否相同和资源是否解析。卷根与规范化路径摘要不证明物理卷或目录身份，ACL 摘要也不等于有效权限；该观测只能缩小线索，不能确定历史失败的原因。
+
+脚本仅在 GitHub 托管 Windows 运行，验证临时根路径并清理自建目录，证据门禁要求同一运行身份、原有四组交叉记录及新增四组父目录记录。旧版报告可用 `verify_shell_matrix.py --allow-legacy` 读取，但不能作为新 CI 的完整证据。该对照不改变原有严格用户目录和带来源标记用例的断言，也不修改系统信任策略。
 
 ## 按点透视与内容对齐（Issue #50）
 
