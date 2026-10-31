@@ -29,7 +29,7 @@ Item {
     property bool readOnly: false
     property bool contextShortcutsEnabled: true
     property int iconRevision: 0
-    property var iconVersions: ({})
+    property var iconVersionSource: null
     property string draggedTileId: ""
     property alias gridItem: grid
     property alias actionsItem: groupActions
@@ -234,7 +234,7 @@ Item {
                 editMode: tileGroup.editMode
                 readOnly: tileGroup.readOnly
                 iconRevision: tileGroup.iconRevision
-                iconVersions: tileGroup.iconVersions
+                iconVersionSource: tileGroup.iconVersionSource
                 dragging: tile.id === tileGroup.draggedTileId
                 onSelected: name => tileGroup.selected(name)
                 onActivated: tileId => tileGroup.activated(tileId)

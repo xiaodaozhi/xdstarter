@@ -18,6 +18,7 @@
 
 #include <QFileInfo>
 #include <QPointer>
+#include <QQmlEngine>
 
 #include <algorithm>
 #include <atomic>
@@ -170,7 +171,7 @@ MenuController::MenuController(PrototypeService& prototypeService,
             emit iconRevisionChanged();
             if (!catalog_->busy() && !searchTargetIds_.isEmpty()) {
                 for (const auto& id : searchTargetIds_)
-                    iconVersions_.insert(id, QVariant::fromValue(++nextIconVersion_));
+                    advanceIconVersion(id);
                 emit iconVersionsChanged();
             }
             rebuildSearchEntries();
@@ -182,7 +183,7 @@ MenuController::MenuController(PrototypeService& prototypeService,
         connect(catalog_, &ApplicationCatalog::iconReady, this, [this](const QString& id) {
             if (!pinnedTargetIds_.contains(id) && !searchTargetIds_.contains(id))
                 return;
-            iconVersions_.insert(id, QVariant::fromValue(++nextIconVersion_));
+            advanceIconVersion(id);
             emit iconVersionsChanged();
         });
         connect(catalog_, &ApplicationCatalog::launchStateChanged, this,
@@ -300,6 +301,7 @@ void MenuController::refreshGroups() {
     bool versionsChanged = false;
     for (auto iterator = iconVersions_.begin(); iterator != iconVersions_.end();) {
         if (!pinned.contains(iterator.key()) && !searchTargetIds_.contains(iterator.key())) {
+            retireIconVersionState(iterator.key());
             iterator = iconVersions_.erase(iterator);
             versionsChanged = true;
         } else {
@@ -309,7 +311,7 @@ void MenuController::refreshGroups() {
     for (const auto& id : pinned) {
         if (!pinnedTargetIds_.contains(id)) {
             // Re-pinning must not reuse an old placeholder from Qt's image cache.
-            iconVersions_.insert(id, QVariant::fromValue(++nextIconVersion_));
+            advanceIconVersion(id);
             versionsChanged = true;
         }
     }
@@ -388,6 +390,26 @@ bool MenuController::catalogError() const { return catalog_ && catalog_->error()
 bool MenuController::launchBusy() const { return catalog_ && catalog_->launchBusy(); }
 int MenuController::iconRevision() const { return iconRevision_; }
 QVariantMap MenuController::iconVersions() const { return iconVersions_; }
+QObject* MenuController::iconVersionState(const QString& id) const {
+    return iconVersionStates_.value(id, nullptr);
+}
+
+void MenuController::advanceIconVersion(const QString& id) {
+    const auto version = ++nextIconVersion_;
+    iconVersions_.insert(id, QVariant::fromValue(version));
+    if (auto* state = iconVersionStates_.value(id, nullptr)) {
+        state->setVersion(version);
+    } else {
+        auto* newState = new IconVersionState(version, this);
+        QQmlEngine::setObjectOwnership(newState, QQmlEngine::CppOwnership);
+        iconVersionStates_.insert(id, newState);
+    }
+}
+
+void MenuController::retireIconVersionState(const QString& id) {
+    if (auto* state = iconVersionStates_.take(id))
+        state->deleteLater();
+}
 
 QString MenuController::searchQuery() const { return search_->query(); }
 
@@ -502,7 +524,7 @@ void MenuController::refreshSearchResults() {
         });
         ids.insert(match.targetId);
         if (!iconVersions_.contains(match.targetId)) {
-            iconVersions_.insert(match.targetId, QVariant::fromValue(++nextIconVersion_));
+            advanceIconVersion(match.targetId);
             versionsChanged = true;
         }
     }
@@ -510,6 +532,7 @@ void MenuController::refreshSearchResults() {
     for (auto iterator = iconVersions_.begin(); iterator != iconVersions_.end();) {
         if (!pinnedTargetIds_.contains(iterator.key()) &&
             !searchTargetIds_.contains(iterator.key())) {
+            retireIconVersionState(iterator.key());
             iterator = iconVersions_.erase(iterator);
             versionsChanged = true;
         } else {

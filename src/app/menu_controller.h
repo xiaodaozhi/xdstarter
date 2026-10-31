@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QAbstractItemModel>
+#include <QHash>
 #include <QJsonObject>
 #include <QObject>
 #include <QPointer>
@@ -28,6 +29,28 @@ class SearchService;
 struct LayoutResult;
 struct LayoutImportPreview;
 struct PendingLayoutImport;
+
+class IconVersionState final : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(quint64 version READ version NOTIFY versionChanged)
+
+  public:
+    explicit IconVersionState(quint64 version, QObject* parent = nullptr)
+        : QObject(parent), version_(version) {}
+    [[nodiscard]] quint64 version() const { return version_; }
+    void setVersion(quint64 version) {
+        if (version_ == version)
+            return;
+        version_ = version;
+        emit versionChanged();
+    }
+
+  signals:
+    void versionChanged();
+
+  private:
+    quint64 version_;
+};
 
 class MenuController : public QObject {
     Q_OBJECT
@@ -150,6 +173,7 @@ class MenuController : public QObject {
     [[nodiscard]] bool launchBusy() const;
     [[nodiscard]] int iconRevision() const;
     [[nodiscard]] QVariantMap iconVersions() const;
+    Q_INVOKABLE QObject* iconVersionState(const QString& id) const;
     [[nodiscard]] QString searchQuery() const;
     void setSearchQuery(const QString& query);
     [[nodiscard]] bool searchActive() const;
@@ -219,6 +243,8 @@ class MenuController : public QObject {
   private:
     void applyThemePreference(const QString& preference);
     void refreshGroups();
+    void advanceIconVersion(const QString& id);
+    void retireIconVersionState(const QString& id);
     void setOperationMessage(QString message, bool error = false);
     void setPersistenceStatus(QString status, bool error = false);
     void scheduleSave();
@@ -285,6 +311,7 @@ class MenuController : public QObject {
     QSet<QString> searchTargetIds_;
     int iconRevision_ = 0;
     QVariantMap iconVersions_;
+    QHash<QString, IconVersionState*> iconVersionStates_;
     QSet<QString> pinnedTargetIds_;
     quint64 nextIconVersion_ = 0;
 };

@@ -2257,7 +2257,7 @@ ApplicationWindow {
                                         readOnly: window.controller.readOnly || window.controller.importCommitting
                                         contextShortcutsEnabled: window.contextShortcutsEnabled
                                         iconRevision: window.controller.iconRevision
-                                        iconVersions: window.controller.iconVersions
+                                        iconVersionSource: window.controller
                                         draggedTileId: window.draggedTileId
                                         onActionsRequested: (groupId, source) => window.openGroupMenu(groupId, source)
                                         onActionsFocused: groupId => {
@@ -2399,8 +2399,9 @@ ApplicationWindow {
                                         id: searchIcon
 
                                         objectName: "searchResultIcon"
+                                        readonly property var iconVersionState: searchRow.modelData.iconSource ? window.controller.iconVersionState(searchRow.modelData.appId) : null
                                         anchors.fill: parent
-                                        source: searchRow.modelData.iconSource ? searchRow.modelData.iconSource + "?v=" + (window.controller.iconVersions[searchRow.modelData.appId] || 0) : ""
+                                        source: searchRow.modelData.iconSource ? searchRow.modelData.iconSource + "?v=" + (iconVersionState ? iconVersionState.version : 0) : ""
                                         sourceSize.width: 64
                                         sourceSize.height: 64
                                         asynchronous: true
