@@ -329,7 +329,7 @@ def validate_role(directory, role, expected):
         verify_shell_matrix.validate(matrix, {'sha': expected['GITHUB_SHA'], 'runId': expected['GITHUB_RUN_ID'],
                                                'attempt': expected['GITHUB_RUN_ATTEMPT'],
                                                'runnerOs': 'Windows', 'runnerArch': 'X64'},
-                                     require_parent_cases=True, require_acl_cases=True,
+                                     require_parent_cases=True, require_acl_cases=True, require_path_facts=True,
                                      expected_module_sha256=checksum(directory / 'shell-helper.exe')['sha256'])
     return report
 
