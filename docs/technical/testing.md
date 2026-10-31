@@ -704,6 +704,19 @@ python scripts/benchmark_ui_search.py --executable build/app-release/bin/xdstart
 
 2026-10-29 [托管 Windows 原始数据](validation/issue-35/ui-search-windows-ci.json)来自 [CI 40868948279](https://github.com/xiaodaozhi/xdstarter/actions/runs/40868948279)，PR head `88bccddc6521e66a5df2f2301fee5294f3479926` 的测试合并提交 `8922f12e426b496d749b2c4b8509b1e6106e4cef`；Windows Server 内核 10.0.20348、Qt 6.8.2、MSVC 19.44、Windows QPA / D3D11 RHI，程序 SHA-256 `21282f737895020235b50a3180be38190d48c6d4dd17439ccb5249c21a80ac2d`。100 条结果行就绪 P95 / 最大为 155.31 / 204.81 ms，确认后的同步帧 P95 / 最大为 169.30 / 206.21 ms。采样会轮询并检查 QML 对象，包含模拟逐键输入，当前未量化其扰动；需继续调查这些值，不能直接判断真实端到端目标。
 
+### 受控窗口宿主的唤起采样（#35）
+
+`scripts/benchmark_ui_reveal.py` 以 100 枚磁贴、1000 个匿名目录项和内存图标运行真实 `DesktopWindowHost`；定位、任务栏锚点和托盘均使用模拟适配器，不扫描用户目录、不启动目标程序、不安装输入 Hook。窗口隐藏后调用宿主显示入口，记录搜索框可见、可用并获得焦点的时间，再等待请求更新后的同步帧，并单独验证一个发往本进程窗口的合成按键被接受。首轮显示单列，随后预热 5 次并记录 100 次同进程暖唤起；每次事件和进程日志独立保存，脚本核对样本顺序、程序哈希、输入结果、帧时序和百分位数。
+
+`scripts/benchmark_ui_reveal_fresh.py` 顺序启动 100 个独立测试进程，每个进程只测首次唤起并保存子进程报告、事件和日志；另记录测试夹具开始至焦点就绪以及完整测试进程生存期。夹具时间包含 QML 和匿名目录准备，但不包含 `QGuiApplication` 之前的初始化；进程生存期包含退出清理，不能当成首帧时间。操作系统文件缓存不被清理，这些数据不是冷机器启动测量。
+
+两种脚本默认离屏，原生模式仅允许一次性 hosted Windows，均要求新建 `build/` 内证据目录。托管 CI 保存同轮原始数据并独立校验运行身份、样本和汇总，不以不稳定运行器上的耗时设通过阈值。焦点与 `frameSwapped` 是可检查的代理边界，不证明物理屏幕呈现或真实键鼠端到端延迟；模拟托盘和定位也不覆盖实际 Windows 接管路径。真实参考设备、系统输入和 PRD-012 验收仍由 [#35](https://github.com/xiaodaozhi/xdstarter/issues/35) 跟踪。
+
+```powershell
+python scripts/benchmark_ui_reveal.py --executable build/app-release/bin/xdstarter_ui_tests.exe --output-dir build/validation/ui-reveal-local
+python scripts/benchmark_ui_reveal_fresh.py --executable build/app-release/bin/xdstarter_ui_tests.exe --output-dir build/validation/ui-reveal-fresh-local
+```
+
 ### 托管环境常驻资源采样
 
 `scripts/benchmark_resident.py` 仅在 GitHub 标记的一次性 Windows hosted runner 启动自己的限时产品进程，使用 build 内隔离布局和诊断文件，不注入输入。首次诊断快照后等待 2 秒，再以约 1 秒间隔采集 21 次进程 CPU 累计时间、工作集、私有内存、该 PID 可见顶层窗口数量和单次读取耗时；20 个 CPU 区间以一个逻辑核的 100% 为单位。脚本记录程序散列、构建身份、运行与尝试编号，并检查正常退出后的捕获状态；独立校验器重新计算区间值。正常退出超时时仅终止本次启动的进程并保留失败证据。

@@ -7437,6 +7437,8 @@ int main(int argc, char* argv[]) {
         return runVisualAcceptanceProbe();
     if (QCoreApplication::arguments().contains(QStringLiteral("--ui-search-benchmark")))
         return runUiSearchBenchmark();
+    if (QCoreApplication::arguments().contains(QStringLiteral("--ui-reveal-benchmark")))
+        return runUiRevealBenchmark();
     PrototypeWindowTest test;
     return QTest::qExec(&test, argc, argv);
 }

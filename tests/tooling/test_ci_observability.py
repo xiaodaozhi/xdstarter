@@ -18,6 +18,7 @@ import ci_evidence
 import ci_package_inputs
 import benchmark_resident
 from test_shell_matrix import sample_report as sample_shell_matrix
+from test_ui_reveal_benchmark import example_100 as sample_reveal, fresh_example
 
 
 class TemporaryRepository(unittest.TestCase):
@@ -159,6 +160,32 @@ class EvidenceTests(TemporaryRepository):
                     path = self.root / source
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text('{}', encoding='utf-8')
+                reveal, reveal_events = sample_reveal()
+                reveal.update(qpa='windows', graphicsApi='Direct3D11')
+                reveal_paths = {name: self.root / ci_evidence.COPIES[f'ui-reveal/{name}']
+                                for name in ci_evidence.REVEAL_FILES}
+                reveal_paths['reveal.json'].write_text(json.dumps(reveal), encoding='utf-8')
+                reveal_paths['events.jsonl'].write_text(''.join(json.dumps(row) + '\n' for row in reveal_events),
+                                                       encoding='utf-8')
+                reveal_paths['process.log'].write_text('info: synthetic fixture\n', encoding='utf-8')
+                reveal_identity = {key: self.env[key] for key in ('GITHUB_SHA', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT')}
+                reveal_manifest = {'schemaVersion': 1, 'status': 'passed', 'mode': 'hosted-native',
+                                   'identity': reveal_identity, 'binarySha256': reveal['binarySha256'],
+                                   'files': {name: hashlib.sha256(reveal_paths[name].read_bytes()).hexdigest()
+                                             for name in ('reveal.json', 'events.jsonl', 'process.log')}}
+                reveal_paths['manifest.json'].write_text(json.dumps(reveal_manifest), encoding='utf-8')
+                fresh_summary, fresh_events = fresh_example()
+                fresh_summary.update(qpa='windows', graphicsApi='Direct3D11')
+                fresh_paths = {name: self.root / ci_evidence.COPIES[f'ui-reveal-fresh/{name}']
+                               for name in ci_evidence.FRESH_REVEAL_FILES}
+                fresh_paths['summary.json'].write_text(json.dumps(fresh_summary), encoding='utf-8')
+                fresh_paths['events.jsonl'].write_text(''.join(json.dumps(row) + '\n' for row in fresh_events),
+                                                      encoding='utf-8')
+                fresh_manifest = {'schemaVersion': 1, 'status': 'passed', 'mode': 'hosted-native',
+                                  'identity': reveal_identity, 'binarySha256': fresh_summary['binarySha256'],
+                                  'files': {name: hashlib.sha256(fresh_paths[name].read_bytes()).hexdigest()
+                                            for name in ('summary.json', 'events.jsonl')}}
+                fresh_paths['manifest.json'].write_text(json.dumps(fresh_manifest), encoding='utf-8')
                 archived = ROOT / 'docs/technical/validation/issue-85/offscreen'
                 for mode, (qpa, graphics_api) in ci_evidence.FRAME_MODES.items():
                     for name in ci_evidence.FRAME_FILES:
@@ -405,6 +432,51 @@ class EvidenceTests(TemporaryRepository):
         report['files']['shell-profile-repeat.json'] = ci_evidence.checksum(path)
         manifest.write_text(json.dumps(report), encoding='utf-8')
         with self.assertRaisesRegex(ValueError, 'misattributed-shell-evidence'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_reveal_evidence_from_another_attempt_is_rejected(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'ui-reveal/manifest.json'
+        reveal = json.loads(path.read_text(encoding='utf-8'))
+        reveal['identity']['GITHUB_RUN_ATTEMPT'] = '2'
+        path.write_text(json.dumps(reveal), encoding='utf-8')
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        report['files']['ui-reveal/manifest.json'] = ci_evidence.checksum(path)
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'incomplete-ui-reveal-evidence'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_fresh_reveal_evidence_from_another_attempt_is_rejected(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'ui-reveal-fresh/manifest.json'
+        reveal = json.loads(path.read_text(encoding='utf-8'))
+        reveal['identity']['GITHUB_RUN_ATTEMPT'] = '2'
+        path.write_text(json.dumps(reveal), encoding='utf-8')
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        report['files']['ui-reveal-fresh/manifest.json'] = ci_evidence.checksum(path)
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'incomplete-ui-reveal-evidence'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_warm_and_fresh_reveals_must_use_same_executable(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        fresh_dir = directory / 'ui-reveal-fresh'
+        summary_path, reveal_manifest_path = fresh_dir / 'summary.json', fresh_dir / 'manifest.json'
+        summary = json.loads(summary_path.read_text(encoding='utf-8'))
+        summary['binarySha256'] = 'b' * 64
+        summary_path.write_text(json.dumps(summary), encoding='utf-8')
+        reveal_manifest = json.loads(reveal_manifest_path.read_text(encoding='utf-8'))
+        reveal_manifest['binarySha256'] = 'b' * 64
+        reveal_manifest['files']['summary.json'] = hashlib.sha256(summary_path.read_bytes()).hexdigest()
+        reveal_manifest_path.write_text(json.dumps(reveal_manifest), encoding='utf-8')
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        for name in ('summary.json', 'manifest.json'):
+            report['files'][f'ui-reveal-fresh/{name}'] = ci_evidence.checksum(fresh_dir / name)
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'incomplete-ui-reveal-evidence'):
             ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
 
     def test_shell_matrix_from_another_attempt_is_not_same_run(self):

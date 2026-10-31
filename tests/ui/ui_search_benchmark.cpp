@@ -1,11 +1,15 @@
 #include "ui_search_benchmark.h"
 
 #include "app/application_icon_provider.h"
+#include "app/desktop_window_host.h"
 #include "app/menu_controller.h"
 #include "core/tile_grid.h"
 #include "platform/application_platform.h"
+#include "platform/desktop_platform.h"
+#include "platform/desktop_tray.h"
 #include "platform/platform_integration.h"
 #include "services/application_catalog.h"
+#include "services/desktop_shell_service.h"
 #include "services/prototype_service.h"
 
 #include <QCoreApplication>
@@ -70,6 +74,46 @@ class SyntheticIntegration final : public xdstarter::PlatformIntegration {
     QString displayName() const override { return QStringLiteral("Synthetic benchmark"); }
     QString statusDescription() const override { return QStringLiteral("No system integration"); }
     bool isSimulated() const override { return true; }
+};
+
+class SyntheticRevealAnchor final : public xdstarter::DesktopPlatform {
+  public:
+    xdstarter::DesktopActionResult openDesktopAction(const QString&) override { return {}; }
+    xdstarter::DesktopAnchorResult queryStartButtonAnchor() override {
+        xdstarter::DesktopAnchorResult anchor;
+        anchor.monitorPhysicalRect = QRect(0, 0, 1920, 1080);
+        anchor.workAreaPhysicalRect = QRect(0, 0, 1920, 1008);
+        anchor.startButtonPhysicalRect = QRect(24, 1008, 72, 72);
+        anchor.dpi = 96;
+        return anchor;
+    }
+};
+
+class SyntheticRevealPlacement final : public xdstarter::DesktopPlatform {
+  public:
+    xdstarter::DesktopActionResult openDesktopAction(const QString&) override { return {}; }
+    xdstarter::DesktopAnchorResult queryStartButtonAnchor() override { return {}; }
+    QScreen* screenForAnchor(const xdstarter::DesktopAnchorResult&) override {
+        return QGuiApplication::primaryScreen();
+    }
+    bool hasOwnedForegroundWindow(quintptr) override { return true; }
+    xdstarter::DesktopPlacementResult placeWindow(quintptr, const xdstarter::DesktopAnchorResult&,
+                                                   int, bool, int) override {
+        return {true, QRect(0, 0, 980, 680), {}, {}};
+    }
+};
+
+class SyntheticRevealTray final : public xdstarter::DesktopTray {
+  public:
+    xdstarter::DesktopActionResult start(const QImage&) override {
+        available_ = true;
+        return {true, QStringLiteral("Synthetic tray"), {}};
+    }
+    void stop() override { available_ = false; }
+    bool isAvailable() const override { return available_; }
+    void showContextMenu() override {}
+  private:
+    bool available_ = false;
 };
 
 QVector<xdstarter::LaunchTarget> syntheticEntries() {
@@ -466,5 +510,224 @@ int runUiSearchBenchmark() {
         return 1;
     }
     qInfo() << "Synthetic UI benchmark:" << samples.size() << "samples," << qpa << outputPath;
+    return 0;
+}
+
+int runUiRevealBenchmark() {
+    const auto fixtureStarted = Clock::now();
+    const auto qpa = QGuiApplication::platformName();
+    const bool hosted = qEnvironmentVariable("GITHUB_ACTIONS") == QLatin1String("true") &&
+                        qEnvironmentVariable("RUNNER_ENVIRONMENT") == QLatin1String("github-hosted");
+    if (qpa != QLatin1String("offscreen") && !(qpa == QLatin1String("windows") && hosted)) {
+        qCritical() << "Reveal benchmark permits offscreen or hosted Windows only.";
+        return 1;
+    }
+    const auto outputPath = qEnvironmentVariable("XDSTARTER_UI_REVEAL_OUTPUT");
+    const auto eventsPath = qEnvironmentVariable("XDSTARTER_UI_REVEAL_EVENTS");
+    if (outputPath.isEmpty() || eventsPath.isEmpty() || outputPath == eventsPath ||
+        !QFileInfo(outputPath).isAbsolute() || !QFileInfo(eventsPath).isAbsolute() ||
+        QFile::exists(outputPath) || QFile::exists(eventsPath)) {
+        qCritical() << "Reveal benchmark requires two new absolute output paths.";
+        return 1;
+    }
+    bool countOk = true;
+    const auto requested = qEnvironmentVariable("XDSTARTER_UI_REVEAL_SAMPLES");
+    const bool firstOnly = qEnvironmentVariable("XDSTARTER_UI_REVEAL_FIRST_ONLY") == QLatin1String("1");
+    const int sampleCount = firstOnly ? 0 : requested.isEmpty() ? 100 : requested.toInt(&countOk);
+    const int revealWarmups = firstOnly ? 0 : warmupCount;
+    if (!countOk || (!firstOnly && sampleCount < 1) || sampleCount > 100) {
+        qCritical() << "Reveal benchmark sample count must be between 1 and 100.";
+        return 1;
+    }
+    QFile binary(QCoreApplication::applicationFilePath());
+    QCryptographicHash hash(QCryptographicHash::Sha256);
+    if (!binary.open(QIODevice::ReadOnly) || !hash.addData(&binary)) {
+        qCritical() << "Cannot hash reveal benchmark executable.";
+        return 1;
+    }
+    QFile events(eventsPath);
+    if (!events.open(QIODevice::WriteOnly | QIODevice::NewOnly)) {
+        qCritical() << "Cannot create reveal benchmark event stream.";
+        return 1;
+    }
+    const auto writeEvent = [&](const QJsonObject& event) {
+        const QByteArray bytes = QJsonDocument(event).toJson(QJsonDocument::Compact) + '\n';
+        return events.write(bytes) == bytes.size() && events.flush();
+    };
+    QFile tokensFile(QStringLiteral(":/xdstarter/tokens/visual.json"));
+    if (!tokensFile.open(QIODevice::ReadOnly)) {
+        qCritical() << "Cannot read bundled tokens.";
+        return 1;
+    }
+    const auto tokens = QJsonDocument::fromJson(tokensFile.readAll()).object().toVariantMap();
+    if (tokens.isEmpty()) {
+        qCritical() << "Invalid bundled tokens.";
+        return 1;
+    }
+    const auto entries = syntheticEntries();
+    const xdstarter::TileGrid grid;
+    xdstarter::PrototypeService service(grid, {}, true);
+    const auto restored = service.restoreSnapshot(syntheticLayout(service, entries));
+    if (!restored.success) {
+        qCritical() << "Synthetic layout rejected:" << restored.message;
+        return 1;
+    }
+    SyntheticIntegration integration;
+    xdstarter::ApplicationCatalog catalog(std::make_unique<SyntheticPlatform>(entries));
+    xdstarter::MenuController controller(service, integration, tokens, nullptr, &catalog);
+    QQmlApplicationEngine engine;
+    engine.addImageProvider(QStringLiteral("application-icons"),
+                            new xdstarter::ApplicationIconProvider(&catalog));
+    QStringList qmlWarnings;
+    QObject::connect(&engine, &QQmlEngine::warnings, &engine,
+                     [&qmlWarnings](const QList<QQmlError>& warnings) {
+                         for (const auto& warning : warnings)
+                             qmlWarnings.append(warning.toString());
+                     });
+    engine.setInitialProperties({{QStringLiteral("controller"), QVariant::fromValue(&controller)},
+                                 {QStringLiteral("visible"), false}});
+    engine.loadFromModule("XDStarter", "Main");
+    auto* window = engine.rootObjects().isEmpty() ? nullptr
+        : qobject_cast<QQuickWindow*>(engine.rootObjects().first());
+    if (!window || !waitUntil([&] { return !catalog.busy() &&
+                                           catalog.applicationsModel()->rowCount() == catalogSize; })) {
+        qCritical() << "Synthetic reveal window or catalog is unavailable:" << qmlWarnings;
+        return 1;
+    }
+    auto* field = visualItem(window->contentItem(), QStringLiteral("searchField"));
+    if (!field || window->isVisible()) {
+        qCritical() << "Reveal benchmark did not start hidden with a search field.";
+        return 1;
+    }
+    xdstarter::DesktopShellService shell(std::make_unique<SyntheticRevealAnchor>());
+    SyntheticRevealPlacement placement;
+    SyntheticRevealTray tray;
+    xdstarter::DesktopWindowHost host(*window, shell, placement, tray);
+    host.start(QImage(1, 1, QImage::Format_ARGB32_Premultiplied));
+    const auto elapsedMs = [](Clock::time_point end, Clock::time_point begin) {
+        return std::chrono::duration<double, std::milli>(end - begin).count();
+    };
+    QJsonObject first;
+    QJsonArray samples;
+    std::vector<double> readyTimes;
+    std::vector<double> frameTimes;
+    for (int round = -revealWarmups - 1; round < sampleCount; ++round) {
+        const QString phase = round == -revealWarmups - 1 ? QStringLiteral("first")
+            : round < 0 ? QStringLiteral("warmup") : QStringLiteral("warm");
+        const int index = round == -revealWarmups - 1 ? 0 : round < 0 ? round + revealWarmups : round;
+        if (window->isVisible()) {
+            host.dismissWindow();
+            if (!waitUntil([&] { return !window->isVisible(); })) {
+                writeEvent({{QStringLiteral("phase"), phase}, {QStringLiteral("index"), index},
+                            {QStringLiteral("failure"), QStringLiteral("hide-timeout")}});
+                qCritical() << "Synthetic reveal window did not hide.";
+                return 1;
+            }
+        }
+        const auto started = Clock::now();
+        host.showWindow();
+        const bool ready = waitUntil([&] {
+            return window->isVisible() && window->isExposed() && field->isVisible() &&
+                   field->isEnabled() && field->hasActiveFocus() &&
+                   !window->property("presentationSuspended").toBool();
+        });
+        const auto interactive = Clock::now();
+        if (!ready) {
+            writeEvent({{QStringLiteral("phase"), phase}, {QStringLiteral("index"), index},
+                        {QStringLiteral("failure"), QStringLiteral("focus-ready-timeout")}});
+            qCritical() << "Synthetic reveal did not reach focused, visible controls.";
+            return 1;
+        }
+        auto frame = std::make_shared<FrameObservation>();
+        frame->start = started;
+        const auto syncConnection = QObject::connect(window, &QQuickWindow::afterSynchronizing, window,
+            [frame] { frame->synchronized.store(true, std::memory_order_release); }, Qt::DirectConnection);
+        const auto swapConnection = QObject::connect(window, &QQuickWindow::frameSwapped, window,
+            [frame] {
+                if (!frame->synchronized.load(std::memory_order_acquire))
+                    return;
+                qint64 unset = -1;
+                const auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(Clock::now() - frame->start).count();
+                frame->elapsedNanoseconds.compare_exchange_strong(unset, elapsed);
+            }, Qt::DirectConnection);
+        window->update();
+        const bool swapped = waitUntil([&] { return frame->elapsedNanoseconds.load() >= 0; });
+        QObject::disconnect(syncConnection);
+        QObject::disconnect(swapConnection);
+        if (!swapped) {
+            writeEvent({{QStringLiteral("phase"), phase}, {QStringLiteral("index"), index},
+                        {QStringLiteral("failure"), QStringLiteral("frame-timeout")}});
+            qCritical() << "Synthetic reveal did not produce a synchronized frame.";
+            return 1;
+        }
+        const double readyMs = elapsedMs(interactive, started);
+        const double frameMs = frame->elapsedNanoseconds.load() / 1'000'000.0;
+        QTest::keyClick(window, Qt::Key_X);
+        const bool accepted = waitUntil([&] { return field->property("text").toString() == QLatin1String("x"); });
+        field->setProperty("text", QString{});
+        const bool cleared = waitUntil([&] { return controller.searchQuery().isEmpty() && !controller.searchBusy(); });
+        if (!accepted || !cleared || frameMs < readyMs) {
+            writeEvent({{QStringLiteral("phase"), phase}, {QStringLiteral("index"), index},
+                        {QStringLiteral("failure"), QStringLiteral("input-or-order")}});
+            qCritical() << "Synthetic reveal failed its input or frame-order check.";
+            return 1;
+        }
+        QJsonObject sample{{QStringLiteral("phase"), phase}, {QStringLiteral("index"), index},
+                           {QStringLiteral("focusReadyMilliseconds"), readyMs},
+                           {QStringLiteral("synchronizedFrameMilliseconds"), frameMs},
+                           {QStringLiteral("syntheticKeyAccepted"), true}};
+        if (phase == QLatin1String("first"))
+            sample.insert(QStringLiteral("fixtureToFocusMilliseconds"), elapsedMs(interactive, fixtureStarted));
+        if (!writeEvent(sample)) {
+            qCritical() << "Cannot persist reveal benchmark sample.";
+            return 1;
+        }
+        if (phase == QLatin1String("first")) {
+            first = sample;
+        } else if (phase == QLatin1String("warm")) {
+            samples.append(sample);
+            readyTimes.push_back(readyMs);
+            frameTimes.push_back(frameMs);
+        }
+    }
+    const auto api = graphicsApi(window->rendererInterface()->graphicsApi());
+    host.shutdown();
+    if (!qmlWarnings.isEmpty()) {
+        qCritical() << "QML warnings:" << qmlWarnings;
+        return 1;
+    }
+#ifdef _MSC_FULL_VER
+    const QString compiler = QStringLiteral("MSVC %1").arg(_MSC_FULL_VER);
+#else
+    const QString compiler = QStringLiteral("other");
+#endif
+#ifdef NDEBUG
+    constexpr bool releaseNdebug = true;
+#else
+    constexpr bool releaseNdebug = false;
+#endif
+    const QJsonObject report{
+        {QStringLiteral("schemaVersion"), 1},
+        {QStringLiteral("scope"), QStringLiteral("real DesktopWindowHost with synthetic anchor, placement, tray, 100 tiles and 1000 catalog entries; no system hooks or real user input")},
+        {QStringLiteral("boundary"), QStringLiteral("host show request to exposed focused enabled search field, then a synchronized frame and a separately verified synthetic key; first reveal follows initialized QML and catalog; not physical presentation or cold OS startup")},
+        {QStringLiteral("capturedAtUtc"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)},
+        {QStringLiteral("qpa"), qpa}, {QStringLiteral("graphicsApi"), api},
+        {QStringLiteral("qtVersion"), QString::fromLatin1(qVersion())},
+        {QStringLiteral("compiler"), compiler}, {QStringLiteral("kernelVersion"), QSysInfo::kernelVersion()},
+        {QStringLiteral("binarySha256"), QString::fromLatin1(hash.result().toHex())},
+        {QStringLiteral("releaseNdebug"), releaseNdebug}, {QStringLiteral("steadyClock"), Clock::is_steady},
+        {QStringLiteral("entries"), catalogSize}, {QStringLiteral("tiles"), tileCount},
+        {QStringLiteral("warmups"), revealWarmups}, {QStringLiteral("measuredReveals"), sampleCount},
+        {QStringLiteral("firstReveal"), first},
+        {QStringLiteral("focusReady"), sampleCount ? QJsonValue(statistics(readyTimes)) : QJsonValue(QJsonValue::Null)},
+        {QStringLiteral("synchronizedFrame"), sampleCount ? QJsonValue(statistics(frameTimes)) : QJsonValue(QJsonValue::Null)},
+        {QStringLiteral("samples"), samples}};
+    QFile output(outputPath);
+    const auto bytes = QJsonDocument(report).toJson();
+    if (!output.open(QIODevice::WriteOnly | QIODevice::NewOnly) || output.write(bytes) != bytes.size()) {
+        qCritical() << "Cannot write reveal benchmark report:" << output.errorString();
+        return 1;
+    }
+    qInfo() << "Synthetic host reveal benchmark:" << samples.size() << "warm samples," << qpa << outputPath;
     return 0;
 }
