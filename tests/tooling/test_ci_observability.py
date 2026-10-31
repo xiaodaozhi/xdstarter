@@ -242,6 +242,11 @@ class EvidenceTests(TemporaryRepository):
                 for name, functions in ci_evidence.QT_LOGS.items():
                     cases = ('initTestCase()', *functions, 'cleanupTestCase()')
                     rows = [f'PASS : PrototypeWindowTest::{case}' for case in cases]
+                    if name == 'accessibility-uia.log':
+                        rows.append('Native UIA scope: non-parent process refused')
+                        rows += [f'Native UIA description: {field} matched=1 found=1 '
+                                 'descriptionHresult=0 variantType=8 controlType=50004'
+                                 for field in ('search', 'group', 'tile')]
                     if name in ('picker-rapid.log', 'picker-immediate.log', 'picker-shown.log'):
                         mode = name.removeprefix('picker-').removesuffix('.log')
                         rows += [f'Native picker before close: "{mode}" dark= {dark}' for dark in ('true', 'false')]
@@ -414,6 +419,34 @@ class EvidenceTests(TemporaryRepository):
         report['files']['picker-rapid.log'] = ci_evidence.checksum(path)
         manifest.write_text(json.dumps(report), encoding='utf-8')
         with self.assertRaisesRegex(ValueError, 'failed-or-incomplete-native-qt-log'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_native_uia_requires_each_matching_description(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'accessibility-uia.log'
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        original = path.read_text(encoding='utf-8')
+        for field in ('search', 'group', 'tile'):
+            marker = f'Native UIA description: {field} matched=1'
+            path.write_text(original.replace(marker, f'Native UIA description: {field} matched=0'),
+                            encoding='utf-8')
+            report['files']['accessibility-uia.log'] = ci_evidence.checksum(path)
+            manifest.write_text(json.dumps(report), encoding='utf-8')
+            with self.subTest(field=field), self.assertRaisesRegex(
+                    ValueError, 'incomplete-native-uia-description:' + field):
+                ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_native_uia_requires_non_parent_refusal(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'accessibility-uia.log'
+        text = path.read_text(encoding='utf-8').replace('Native UIA scope: non-parent process refused', '')
+        path.write_text(text, encoding='utf-8')
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        report['files']['accessibility-uia.log'] = ci_evidence.checksum(path)
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'missing-native-uia-scope-refusal'):
             ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
 
     def test_picker_scenarios_cannot_be_replaced_by_passing_totals(self):

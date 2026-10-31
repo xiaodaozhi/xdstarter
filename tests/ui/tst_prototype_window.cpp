@@ -26,6 +26,7 @@
 #include <QElapsedTimer>
 #include <QEventLoop>
 #include <QFile>
+#include <QFileInfo>
 #include <QFontInfo>
 #include <QGuiApplication>
 #include <QImage>
@@ -544,6 +545,8 @@ class PrototypeWindowTest : public QObject {
     void searchFocusCompositionAndEscape();
     void textFieldAccessibleDescriptionSurvivesActivation_data();
     void textFieldAccessibleDescriptionSurvivesActivation();
+    void nativeAccessibilityDescriptions_data();
+    void nativeAccessibilityDescriptions();
     void searchPreservesBrowsing();
     void searchKeyboardAndLaunchLifecycle();
     void searchRefreshAliasesAndRestart();
@@ -997,14 +1000,30 @@ void PrototypeWindowTest::createWindow(const QString& path, bool sampleMode,
             warnings_.append(warning.toString());
         }
     });
-    engine_->setInitialProperties(
-        {{QStringLiteral("controller"), QVariant::fromValue(controller_.get())}});
+    QVariantMap initialProperties{{QStringLiteral("controller"), QVariant::fromValue(controller_.get())}};
+    const bool isolatedUia = qEnvironmentVariable("XDSTARTER_NATIVE_UIA_LOCAL") == QLatin1String("1");
+    if (isolatedUia) {
+        initialProperties.insert(QStringLiteral("visible"), false);
+        initialProperties.insert(QStringLiteral("x"), -30000);
+        initialProperties.insert(QStringLiteral("y"), -30000);
+    }
+    engine_->setInitialProperties(initialProperties);
     engine_->loadFromModule("XDStarter", "Main");
     QVERIFY2(!engine_->rootObjects().isEmpty(), qPrintable(warnings_.join(u'\n')));
     window_ = qobject_cast<QQuickWindow*>(engine_->rootObjects().first());
     QVERIFY(window_);
-    QVERIFY(QTest::qWaitForWindowExposed(window_));
-    window_->requestActivate();
+    if (isolatedUia) {
+        QVERIFY(!window_->isVisible());
+        window_->setFlag(Qt::WindowDoesNotAcceptFocus);
+        window_->setPosition(-30000, -30000);
+        window_->show();
+        QTRY_VERIFY(window_->isVisible());
+        QVERIFY(window_->flags().testFlag(Qt::WindowDoesNotAcceptFocus));
+        QVERIFY(window_->x() <= -10000 && window_->y() <= -10000);
+    } else {
+        QVERIFY(QTest::qWaitForWindowExposed(window_));
+        window_->requestActivate();
+    }
     QTRY_VERIFY(item(QStringLiteral("moreMenuButton")));
     if (sampleMode) {
         QTRY_VERIFY(item(QStringLiteral("tile-work-standard-1")));
@@ -4093,6 +4112,81 @@ void PrototypeWindowTest::textFieldAccessibleDescriptionSurvivesActivation() {
     QCOMPARE(accessible->text(QAccessible::Description), updated);
     QAccessible::setActive(true);
     QCOMPARE(accessible->text(QAccessible::Description), updated);
+}
+
+void PrototypeWindowTest::nativeAccessibilityDescriptions_data() {
+    QTest::addColumn<QString>("field");
+    QTest::newRow("search") << QStringLiteral("search");
+    QTest::newRow("group") << QStringLiteral("group");
+    QTest::newRow("tile") << QStringLiteral("tile");
+}
+
+void PrototypeWindowTest::nativeAccessibilityDescriptions() {
+#ifdef Q_OS_WIN
+    const auto driver = qEnvironmentVariable("XDSTARTER_NATIVE_UIA_DRIVER");
+    if (driver.isEmpty())
+        QSKIP("Native UI Automation requires the isolated hosted or explicit local fixture");
+    const bool hosted = qEnvironmentVariable("GITHUB_ACTIONS") == QLatin1String("true") &&
+                        qEnvironmentVariable("RUNNER_ENVIRONMENT") == QLatin1String("github-hosted");
+    QVERIFY(hosted || qEnvironmentVariable("XDSTARTER_NATIVE_UIA_LOCAL") == QLatin1String("1"));
+    QCOMPARE(QGuiApplication::platformName(), QStringLiteral("windows"));
+    if (hosted)
+        QCOMPARE(window_->rendererInterface()->graphicsApi(), QSGRendererInterface::Direct3D11);
+    const auto expectedDriver = QDir(QCoreApplication::applicationDirPath())
+                                    .filePath(QStringLiteral("xdstarter_accessibility_uia_driver.exe"));
+    QCOMPARE(QFileInfo(driver).canonicalFilePath(), QFileInfo(expectedDriver).canonicalFilePath());
+    QVERIFY(QFileInfo(expectedDriver).isFile());
+    QFETCH(QString, field);
+
+    if (field == QLatin1String("search")) {
+        QProcess denied;
+        denied.start(driver, {QStringLiteral("4294967295"), field});
+        QVERIFY(denied.waitForFinished(3000));
+        QCOMPARE(denied.exitStatus(), QProcess::NormalExit);
+        QCOMPARE(denied.exitCode(), 2);
+        qInfo() << "Native UIA scope: non-parent process refused";
+    }
+    if (field == QLatin1String("group")) {
+        controller_->setEditMode(true);
+        QVERIFY(QMetaObject::invokeMethod(window_, "openGroupNameDialog", Q_ARG(QString, QString{})));
+        auto* dialog = window_->findChild<QObject*>(QStringLiteral("groupNameDialog"));
+        QVERIFY(dialog);
+        QTRY_VERIFY(dialog->property("opened").toBool());
+        QTRY_VERIFY(item(QStringLiteral("groupNameField"))->isVisible());
+    } else if (field == QLatin1String("tile")) {
+        QVERIFY(window_->setProperty("resizeTileId", QStringLiteral("work-standard-1")));
+        QVERIFY(QMetaObject::invokeMethod(window_, "openTileNameDialog"));
+        auto* dialog = window_->findChild<QObject*>(QStringLiteral("tileNameDialog"));
+        QVERIFY(dialog);
+        QTRY_VERIFY(dialog->property("opened").toBool());
+        QTRY_VERIFY(item(QStringLiteral("tileNameField"))->isVisible());
+    }
+    QAccessible::setActive(true);
+    QProcess process;
+    QEventLoop loop;
+    QTimer timeout;
+    timeout.setSingleShot(true);
+    connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
+    connect(&process, &QProcess::finished, &loop, &QEventLoop::quit);
+    process.start(driver, {QString::number(QCoreApplication::applicationPid()), field});
+    QVERIFY2(process.waitForStarted(3000), qPrintable(process.errorString()));
+    timeout.start(15000);
+    if (process.state() != QProcess::NotRunning)
+        loop.exec();
+    if (process.state() != QProcess::NotRunning) {
+        process.kill();
+        process.waitForFinished(3000);
+        QFAIL("Native UI Automation probe exceeded its deadline");
+    }
+    const auto output = QString::fromUtf8(process.readAllStandardOutput()).trimmed();
+    const auto errors = QString::fromUtf8(process.readAllStandardError()).trimmed();
+    qInfo().noquote() << "Native UIA description:" << field << output;
+    QVERIFY2(errors.isEmpty(), qPrintable(errors));
+    QCOMPARE(process.exitStatus(), QProcess::NormalExit);
+    QCOMPARE(process.exitCode(), 0);
+#else
+    QSKIP("Windows UI Automation is unavailable on this platform");
+#endif
 }
 
 void PrototypeWindowTest::searchFocusCompositionAndEscape() {
