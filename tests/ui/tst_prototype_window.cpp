@@ -523,6 +523,10 @@ class PrototypeWindowTest : public QObject {
     void mouseDragWithinGroup();
     void mouseDragAcrossGroups();
     void mouseDragConflictAndEscape();
+    void dragPreviewInitialPosition_data();
+    void dragPreviewInitialPosition();
+    void applicationDragPreviewInitialPosition_data();
+    void applicationDragPreviewInitialPosition();
     void sizeMenuAndKeyboardEditing();
     void sizeMenuTextRemainsReadable();
     void saveAndRestoreLayout();
@@ -2936,6 +2940,112 @@ void PrototypeWindowTest::moveMouseToGrid(const QString& groupId, const QPointF&
     }
     QTest::mouseMove(window_, gridPosition(groupId, position), 20);
     QTRY_COMPARE(window_->property("dragTargetGroupId").toString(), groupId);
+}
+
+void PrototypeWindowTest::dragPreviewInitialPosition_data() {
+    QTest::addColumn<bool>("animations");
+    QTest::newRow("animated") << true;
+    QTest::newRow("reduced-motion") << false;
+}
+
+void PrototypeWindowTest::dragPreviewInitialPosition() {
+    QFETCH(bool, animations);
+    ManualMotionPreference motion(animations);
+    destroyWindow();
+    createWindow({}, true, {}, {}, &motion);
+    controller_->setEditMode(true);
+    auto* preview = item(QStringLiteral("dragPlacementPreview"));
+    auto* grid = item(QStringLiteral("grid-work"));
+    QVERIFY(preview && grid && preview->parentItem());
+    const auto firstVisiblePositions = std::make_shared<QVector<QPointF>>();
+    connect(preview, &QQuickItem::visibleChanged, preview, [preview, firstVisiblePositions] {
+        if (preview->isVisible())
+            firstVisiblePositions->append(preview->position());
+    });
+    const auto before = service_->snapshot();
+    const QStringList tileIds{QStringLiteral("work-standard-1"), QStringLiteral("work-standard-long")};
+    for (int attempt = 0; attempt < tileIds.size(); ++attempt) {
+        const auto& tileId = tileIds[attempt];
+        const auto tile = tileData(tileId);
+        beginMouseDrag(tileId);
+        QVERIFY(!QTest::currentTestFailed());
+        QVERIFY(preview->isVisible());
+        QVERIFY(window_->property("dragValid").toBool());
+        const auto expected = grid->mapToItem(preview->parentItem(),
+                                              QPointF(tile.value(QStringLiteral("x")).toReal(),
+                                                      tile.value(QStringLiteral("y")).toReal()));
+        QCOMPARE(firstVisiblePositions->size(), attempt + 1);
+        qInfo() << "Initial tile drag preview:" << "visible=" << firstVisiblePositions->last()
+                << "current=" << preview->position() << "target=" << expected;
+        QCOMPARE(preview->position(), expected);
+        QCOMPARE(firstVisiblePositions->last(), expected);
+        QCOMPARE(preview->size(), QSizeF(tile.value(QStringLiteral("width")).toReal(),
+                                         tile.value(QStringLiteral("height")).toReal()));
+        moveMouseToGrid(QStringLiteral("work"), QPointF(52, 164));
+        QVERIFY(!QTest::currentTestFailed());
+        QVERIFY(window_->property("dragValid").toBool());
+        if (attempt == 1)
+            QTRY_COMPARE(preview->position(), grid->mapToItem(preview->parentItem(), QPointF(0, 112)));
+        QTest::keyClick(window_, Qt::Key_Escape);
+        QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, QPoint(1, 1));
+        QVERIFY(!window_->property("dragActive").toBool());
+        QVERIFY(!preview->isVisible());
+        QCOMPARE(service_->snapshot(), before);
+    }
+    destroyWindow();
+}
+
+void PrototypeWindowTest::applicationDragPreviewInitialPosition_data() {
+    dragPreviewInitialPosition_data();
+}
+
+void PrototypeWindowTest::applicationDragPreviewInitialPosition() {
+    QFETCH(bool, animations);
+    ManualMotionPreference motion(animations);
+    const auto state = std::make_shared<CatalogTestState>();
+    destroyWindow();
+    createWindow({}, false, state, {}, &motion);
+    const auto applicationId = state->applications.first().id;
+    QTRY_VERIFY(item(QStringLiteral("applicationLaunch-") + applicationId));
+    auto* application = item(QStringLiteral("applicationLaunch-") + applicationId);
+    auto* preview = item(QStringLiteral("dragPlacementPreview"));
+    QVERIFY(application && preview && preview->parentItem());
+    const auto firstVisiblePositions = std::make_shared<QVector<QPointF>>();
+    connect(preview, &QQuickItem::visibleChanged, preview, [preview, firstVisiblePositions] {
+        if (preview->isVisible())
+            firstVisiblePositions->append(preview->position());
+    });
+    const auto before = service_->snapshot();
+    for (int attempt = 0; attempt < 2; ++attempt) {
+        const auto start = application->mapToScene(application->boundingRect().center()).toPoint();
+        const auto dragged = start + QPoint(24, 0);
+        QTest::mousePress(window_, Qt::LeftButton, Qt::NoModifier, start);
+        QTest::mouseMove(window_, dragged, 20);
+        QTRY_COMPARE(window_->property("draggedApplicationId").toString(), applicationId);
+        QVERIFY(preview->isVisible());
+        QVERIFY(window_->property("dragTargetGroupId").toString().isEmpty());
+        const auto expected = preview->parentItem()->mapFromScene(dragged) - QPointF(52, 52);
+        QCOMPARE(firstVisiblePositions->size(), attempt + 1);
+        qInfo() << "Initial application drag preview:" << "visible=" << firstVisiblePositions->last()
+                << "current=" << preview->position() << "target=" << expected;
+        QCOMPARE(preview->position(), expected);
+        QCOMPARE(firstVisiblePositions->last(), expected);
+        QCOMPARE(preview->size(), QSizeF(104, 104));
+        if (attempt == 1) {
+            moveMouseToGrid(QStringLiteral("default"), QPointF(52, 52));
+            QVERIFY(!QTest::currentTestFailed());
+            QVERIFY(window_->property("dragValid").toBool());
+            auto* grid = item(QStringLiteral("grid-default"));
+            QVERIFY(grid);
+            QTRY_COMPARE(preview->position(), grid->mapToItem(preview->parentItem(), QPointF(0, 0)));
+        }
+        QTest::keyClick(window_, Qt::Key_Escape);
+        QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, dragged);
+        QVERIFY(!window_->property("dragActive").toBool());
+        QVERIFY(!preview->isVisible());
+        QCOMPARE(service_->snapshot(), before);
+    }
+    destroyWindow();
 }
 
 void PrototypeWindowTest::mouseDragWithinGroup() {
