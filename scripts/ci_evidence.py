@@ -30,7 +30,7 @@ LOGS = {
                       'platform.win-key-capture', 'services.application_browser', 'services.application_catalog',
                       'services.desktop_shell', 'services.layout_import', 'services.layout_store',
                       'services.prototype', 'services.search', 'services.session_instance',
-                      'ui.desktop_window_host', 'ui.delayed-asset-offscreen', 'ui.delayed-asset-native',
+                      'ui.accessibility-uia-native', 'ui.desktop_window_host', 'ui.delayed-asset-offscreen', 'ui.delayed-asset-native',
                       'ui.high-contrast-native', 'ui.high-contrast-frame-offscreen',
                       'ui.high-contrast-frame-native', 'ui.layout-import-native',
                       'ui.native-picker-immediate', 'ui.native-picker-rapid', 'ui.native-picker-shown',
@@ -61,6 +61,7 @@ COPIES = {
     'shell-matrix.json': 'build/app-release/shell-localization-history/cross-matrix.json',
     'shell-helper.exe': 'build/app-release/xdstarter_launch_fixture.exe',
     'layout-import.log': 'build/app-release/layout-import-native-evidence/native-d3d11.log',
+    'accessibility-uia.log': 'build/app-release/accessibility-uia-native-evidence/test.log',
     'high-contrast.log': 'build/app-release/high-contrast-native-evidence/native-d3d11.log',
     'picker-rapid.log': 'build/app-release/native-picker-evidence/rapid.log',
     'picker-immediate.log': 'build/app-release/native-picker-evidence/immediate.log',
@@ -94,6 +95,9 @@ LIFECYCLE_CASES = {'junction-parent-refused', 'install', 'modified-obsolete-refu
                    'downgrade-future-schema-runtime', 'uninstall-keep-data', 'reinstall-no-autostart',
                    'uninstall-explicit-data-cleanup'}
 QT_LOGS = {
+    'accessibility-uia.log': ('nativeAccessibilityDescriptions(search)',
+                              'nativeAccessibilityDescriptions(group)',
+                              'nativeAccessibilityDescriptions(tile)'),
     'layout-import.log': ('layoutImportDialogThemeAndKeyboard(normal)',
                           'layoutImportDialogThemeAndKeyboard(completion-during-key-click)'),
     'high-contrast.log': ('highContrastTracksSystemPalette()',),
@@ -257,6 +261,13 @@ def validate_role(directory, role, expected):
                     Counter(passes) == Counter(expected_passes) and
                     not re.search(r'\bQ(?:CRITICAL|FATAL)\s*:|FAIL\s*!', text),
                     'failed-or-incomplete-native-qt-log:' + name)
+            if name == 'accessibility-uia.log':
+                require(text.count('Native UIA scope: non-parent process refused') == 1,
+                        'missing-native-uia-scope-refusal')
+                for field in ('search', 'group', 'tile'):
+                    marker = (f'Native UIA description: {field} matched=1 found=1 '
+                              'descriptionHresult=0 variantType=8 controlType=50004')
+                    require(text.count(marker) == 1, 'incomplete-native-uia-description:' + field)
             if name in ('picker-rapid.log', 'picker-immediate.log', 'picker-shown.log'):
                 mode = name.removeprefix('picker-').removesuffix('.log')
                 require(all(f'Native picker before close: "{mode}" dark= {dark}' in text
