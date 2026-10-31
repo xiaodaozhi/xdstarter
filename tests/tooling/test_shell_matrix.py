@@ -1,6 +1,8 @@
 import copy
 import json
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -61,6 +63,30 @@ def sample_report():
 
 
 class ShellMatrixTests(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == 'win32' and shutil.which('pwsh'), 'requires Windows PowerShell 7')
+    def test_restoration_allows_only_auto_inherited_control_flag(self):
+        script = r'''
+            . $env:XDSTARTER_TEST_ACCESS_DESCRIPTOR_SCRIPT
+            $cases = @(
+                @{a='D:(A;;FA;;;SY)'; b='D:AI(A;;FA;;;SY)'; expected=$true},
+                @{a='D:AI(A;;FA;;;SY)'; b='D:(A;;FA;;;SY)'; expected=$true},
+                @{a='D:(A;;FA;;;SY)'; b='D:P(A;;FA;;;SY)'; expected=$false},
+                @{a='D:(A;;FA;;;SY)'; b='D:(A;;FR;;;SY)'; expected=$false},
+                @{a='D:(A;;FA;;;SY)'; b='D:(D;;FA;;;SY)'; expected=$false},
+                @{a='D:(A;;FA;;;SY)'; b='D:(A;ID;FA;;;SY)'; expected=$false},
+                @{a='D:(A;;FA;;;SY)(A;;FR;;;BA)'; b='D:(A;;FR;;;BA)(A;;FA;;;SY)'; expected=$false}
+            )
+            foreach ($case in $cases) {
+                if ((Test-RestoredAccess $case.a $case.b) -ne $case.expected) { exit 1 }
+            }
+        '''
+        env = os.environ.copy()
+        env['XDSTARTER_TEST_ACCESS_DESCRIPTOR_SCRIPT'] = str(
+            Path(verify_shell_matrix.__file__).parent / 'windows_access_descriptor.ps1')
+        result = subprocess.run([shutil.which('pwsh'), '-NoProfile', '-NonInteractive', '-Command', script],
+                                capture_output=True, text=True, encoding='utf-8', env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_accepts_distinct_combinations_and_records_shell_fallbacks(self):
         report = sample_report()
         report['cases'][0].update(indirectResult=-1, indirectName='', shellDisplayName='matrix-workspace-workspace')
