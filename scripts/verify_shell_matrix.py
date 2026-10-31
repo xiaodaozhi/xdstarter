@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -36,7 +37,8 @@ def validate_observation(case):
             'incomplete-shell-matrix-observation')
 
 
-def validate(report, expected_identity=None, require_parent_cases=False, require_acl_cases=False):
+def validate(report, expected_identity=None, require_parent_cases=False, require_acl_cases=False,
+             expected_module_sha256=None):
     require(isinstance(report, dict) and type(report.get('schemaVersion')) is int and
             report['schemaVersion'] in (1, 2, 3) and
             report.get('status') == 'passed' and report.get('cleanupComplete') is True and
@@ -83,6 +85,9 @@ def validate(report, expected_identity=None, require_parent_cases=False, require
         require(case.get('physicalName') == f'matrix-{folder}-{module}',
                 'incomplete-shell-matrix-observation')
     require(len(modules) == 1, 'different-shell-matrix-modules')
+    if expected_module_sha256 is not None:
+        require(is_hash(expected_module_sha256) and modules == {expected_module_sha256},
+                'shell-matrix-helper-mismatch')
     if report['schemaVersion'] >= 2:
         validate_parent_cases(report, locations, modules, module_paths['workspace'])
     if report['schemaVersion'] >= 3:
@@ -178,12 +183,18 @@ def validate_parent_cases(report, locations, modules, workspace_module_path):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('report', type=Path)
+    parser.add_argument('--helper', type=Path, help='verify the preserved resource module against the report')
     parser.add_argument('--allow-legacy', action='store_true',
                         help='read a schema 1 or 2 report without the latest observations')
     args = parser.parse_args()
+    helper_sha256 = None
+    if args.helper is not None:
+        require(args.helper.is_file() and not args.helper.is_symlink(), 'missing-shell-matrix-helper')
+        with args.helper.open('rb') as helper:
+            helper_sha256 = hashlib.file_digest(helper, 'sha256').hexdigest()
     report = validate(json.loads(args.report.read_text(encoding='utf-8')),
                       require_parent_cases=not args.allow_legacy,
-                      require_acl_cases=not args.allow_legacy)
+                      require_acl_cases=not args.allow_legacy, expected_module_sha256=helper_sha256)
     if report['schemaVersion'] == 1:
         print('Legacy Shell cross-location observations verified; parent observations unavailable.')
     elif report['schemaVersion'] == 2:

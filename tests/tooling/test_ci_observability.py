@@ -279,6 +279,12 @@ class EvidenceTests(TemporaryRepository):
                         path = self.root / ci_evidence.COPIES[f'shell-{fixture}-{run}.json']
                         path.write_text(json.dumps(shell), encoding='utf-8')
                 matrix = sample_shell_matrix()
+                helper = self.root / ci_evidence.COPIES['shell-helper.exe']
+                helper.write_bytes(b'synthetic shell fixture helper')
+                helper_hash = hashlib.sha256(helper.read_bytes()).hexdigest()
+                for group in ('cases', 'parentCases', 'aclCases'):
+                    for case in matrix[group]:
+                        case['moduleSha256'] = helper_hash
                 matrix['identity'].update(sha=self.env['GITHUB_SHA'], runId=self.env['GITHUB_RUN_ID'],
                                           attempt=self.env['GITHUB_RUN_ATTEMPT'])
                 path = self.root / ci_evidence.COPIES['shell-matrix.json']
@@ -490,6 +496,17 @@ class EvidenceTests(TemporaryRepository):
         report['files']['shell-matrix.json'] = ci_evidence.checksum(path)
         manifest.write_text(json.dumps(report), encoding='utf-8')
         with self.assertRaisesRegex(ValueError, 'shell-matrix-identity-mismatch'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_shell_helper_cannot_be_replaced_even_if_manifest_is_rehashed(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'shell-helper.exe'
+        path.write_bytes(b'another synthetic helper')
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        report['files']['shell-helper.exe'] = ci_evidence.checksum(path)
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'shell-matrix-helper-mismatch'):
             ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
 
     def test_current_ci_rejects_legacy_matrix_without_parent_observations(self):
