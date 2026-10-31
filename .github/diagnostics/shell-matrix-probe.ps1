@@ -25,15 +25,44 @@ try {
 } finally { Pop-Location }
 
 $output = Join-Path $history 'cross-matrix.json'
-try {
-    $env:XDSTARTER_SHELL_PARENT_ACCESS_PROBE = '1'
-    & (Join-Path $workspace 'scripts/diagnose_shell_matrix.ps1') -Helper $helper -Output $output
-    & python (Join-Path $workspace 'scripts/verify_shell_matrix.py') $output
-    if ($LASTEXITCODE -ne 0) { throw 'Shell matrix validation failed.' }
-} finally {
-    if (Test-Path -LiteralPath $output) {
+$origin = Join-Path $workspace 'build/replay-origin'
+$preserved = Join-Path $origin 'xdstarter_launch_fixture.exe'
+$originReport = Join-Path $origin 'shell-localization-history/cross-matrix.json'
+$expectedHash = 'c640725bccb6d6c6c4666b2ecdda628b24e60abfc377f1d2a5ee1cc9b6a382c2'
+if (!(Test-Path -LiteralPath $preserved) -or !(Test-Path -LiteralPath $originReport) -or
+    (Get-FileHash -LiteralPath $preserved -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedHash) {
+    throw 'Preserved resource helper is missing or has the wrong hash.'
+}
+& python (Join-Path $workspace 'scripts/verify_shell_matrix.py') $originReport
+if ($LASTEXITCODE -ne 0) { throw 'Original Shell matrix evidence is invalid.' }
+$original = Get-Content -LiteralPath $originReport -Raw | ConvertFrom-Json
+if ($original.identity.runId -ne '41211992144' -or
+    @($original.cases | Where-Object moduleSha256 -ne $expectedHash).Count -ne 0) {
+    throw 'Preserved helper is not bound to the expected source run.'
+}
+$env:XDSTARTER_SHELL_PARENT_ACCESS_PROBE = '1'
+foreach ($label in @('minimal', 'replayed')) {
+    if ($label -eq 'replayed') {
+        Copy-Item -LiteralPath $preserved -Destination $helper -Force
+        if ((Get-FileHash -LiteralPath $helper -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedHash) {
+            throw 'The replayed module differs from its preserved source.'
+        }
+    }
+    $currentHash = (Get-FileHash -LiteralPath $helper -Algorithm SHA256).Hash.ToLowerInvariant()
+    try {
+        & pwsh -NoProfile -NonInteractive -File (Join-Path $workspace 'scripts/diagnose_shell_matrix.ps1') -Helper $helper -Output $output
+        if ($LASTEXITCODE -ne 0) { throw 'Shell matrix execution failed.' }
+        & python (Join-Path $workspace 'scripts/verify_shell_matrix.py') $output
+        if ($LASTEXITCODE -ne 0) { throw 'Shell matrix validation failed.' }
         $report = Get-Content -LiteralPath $output -Raw | ConvertFrom-Json
-        @{ status = $report.status; cleanupComplete = $report.cleanupComplete; errors = $report.errors;
+        if (@($report.cases | Where-Object moduleSha256 -ne $currentHash).Count -ne 0) {
+            throw 'The current matrix did not use the selected module bytes.'
+        }
+    } finally {
+        if (Test-Path -LiteralPath $output) {
+            $report = Get-Content -LiteralPath $output -Raw | ConvertFrom-Json
+            @{ label = $label; helperSha256 = $currentHash; status = $report.status;
+               cleanupComplete = $report.cleanupComplete; errors = $report.errors;
            cases = @($report.aclCases | ForEach-Object {
                @{ target = $_.targetLocation; source = $_.templateLocation; name = $_.shellDisplayName;
                   folderMatches = ($_.folderAccessSha256 -eq $_.folderTemplateSha256);
@@ -48,5 +77,7 @@ try {
                   iniMatches = ($_.iniAccessSha256 -eq $_.iniTemplateSha256); iniTemplate = $_.iniTemplateSha256;
                   module = $_.moduleSha256; indirect = $_.indirectName }
            }) } | ConvertTo-Json -Depth 8 -Compress | Write-Output
+            Move-Item -LiteralPath $output -Destination (Join-Path $history ($label + '-matrix.json'))
+        }
     }
 }
