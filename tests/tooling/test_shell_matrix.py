@@ -114,6 +114,8 @@ class ShellMatrixTests(unittest.TestCase):
         facts['urlZone'].update(managerHResult=-1, managerAvailable=False, mapHResult=None, zone=None)
         facts['volume'].update(volumeNameAvailable=False, volumeNameError=5, volumeNameSha256=None)
         verify_shell_matrix.validate(report, require_path_facts=True)
+        facts['volume']['volumeNameError'] = -2147483648
+        verify_shell_matrix.validate(report, require_path_facts=True)
         facts['urlZone'].update(managerHResult=None, errorType='System.InvalidOperationException', errorHResult=-1)
         verify_shell_matrix.validate(report, require_path_facts=True)
 

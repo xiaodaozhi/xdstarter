@@ -45,7 +45,7 @@ def validate_path_facts(facts):
             require(zone.get('mapHResult') is None and zone.get('zone') is None, 'invalid-shell-url-zone')
     for prefix in ('mountPath', 'volumeName'):
         available, error, digest = (volume.get(prefix + suffix) for suffix in ('Available', 'Error', 'Sha256'))
-        require(type(available) is bool and type(error) is int and error >= 0 and
+        require(type(available) is bool and type(error) is int and -(2 ** 31) <= error < 2 ** 31 and
                 ((available and error == 0 and is_hash(digest)) or (not available and digest is None)),
                 'invalid-shell-volume-identity')
     require(not volume['volumeNameAvailable'] or volume['mountPathAvailable'], 'invalid-shell-volume-identity')
