@@ -82,6 +82,7 @@ COPIES.update({f'resident-sample/{name}': f'build/validation/resident-sample-ci/
                for name in RESIDENT_FILES})
 REVEAL_FILES = ('manifest.json', 'reveal.json', 'events.jsonl', 'process.log')
 COPIES.update({f'ui-reveal/{name}': f'build/validation/ui-reveal-ci/{name}' for name in REVEAL_FILES})
+COPIES.update({f'ui-reveal-empty/{name}': f'build/validation/ui-reveal-empty-ci/{name}' for name in REVEAL_FILES})
 FRESH_REVEAL_FILES = ('manifest.json', 'summary.json', 'events.jsonl')
 COPIES.update({f'ui-reveal-fresh/{name}': f'build/validation/ui-reveal-fresh-ci/{name}'
                for name in FRESH_REVEAL_FILES})
@@ -105,7 +106,7 @@ QT_LOGS = {
 PHASES = {'core': {'python-packages', 'configure', 'compile', 'ctest'},
           'windows': {'python-packages', 'configure', 'compile', 'qml-lint', 'ctest'}}
 STEPS = {'core': ('build',),
-         'windows': ('build', 'picker-audit', 'contrast-trace', 'smoke', 'shell', 'shell-matrix', 'search', 'ui-search', 'ui-reveal', 'ui-reveal-fresh',
+         'windows': ('build', 'picker-audit', 'contrast-trace', 'smoke', 'shell', 'shell-matrix', 'search', 'ui-search', 'ui-reveal', 'ui-reveal-fresh', 'ui-reveal-empty',
                      'experiments', 'resident-sample', 'prepare', 'package')}
 
 
@@ -197,7 +198,9 @@ def validate_role(directory, role, expected):
         try:
             warm_reveal = benchmark_ui_reveal.inspect(directory / 'ui-reveal', expected)
             fresh_reveal = benchmark_ui_reveal_fresh.inspect(directory / 'ui-reveal-fresh', expected)
-            require(warm_reveal['binarySha256'] == fresh_reveal['binarySha256'],
+            empty_reveal = benchmark_ui_reveal.inspect(directory / 'ui-reveal-empty', expected, expected_tiles=0)
+            require(fresh_reveal['schemaVersion'] == 2, 'legacy-fresh-ui-reveal-evidence')
+            require(warm_reveal['binarySha256'] == fresh_reveal['binarySha256'] == empty_reveal['binarySha256'],
                     'different-ui-reveal-executables')
         except (OSError, ValueError, KeyError, TypeError) as error:
             raise ValueError('incomplete-ui-reveal-evidence') from error

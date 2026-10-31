@@ -66,6 +66,13 @@ class RevealBenchmarkTests(unittest.TestCase):
         report, events = example()
         benchmark.validate_report(report, events, 'a' * 64, 'offscreen', sample_count=3)
 
+    def test_empty_layout_is_explicit_and_cannot_pass_as_standard(self):
+        report, events = example()
+        report['tiles'] = 0
+        benchmark.validate_report(report, events, 'a' * 64, 'offscreen', sample_count=3, tile_count=0)
+        with self.assertRaisesRegex(ValueError, 'incorrect tiles'):
+            benchmark.validate_report(report, events, 'a' * 64, 'offscreen', sample_count=3)
+
     def test_first_only_requires_no_warm_statistics(self):
         report, events = example()
         report.update(warmups=0, measuredReveals=0, samples=[], focusReady=None, synchronizedFrame=None)
@@ -150,14 +157,24 @@ class RevealBenchmarkTests(unittest.TestCase):
             path = root / 'manifest.json'
             path.write_text(json.dumps(manifest), encoding='utf-8')
             fresh.inspect(root, identity, sample_count=3)
+            with self.assertRaisesRegex(ValueError, 'fixture'):
+                fresh.inspect(root, identity, sample_count=3, expected_tiles=0)
+            summary.update(schemaVersion=2, tiles=0)
+            (root / 'summary.json').write_text(json.dumps(summary), encoding='utf-8')
+            manifest.update(schemaVersion=2, tiles=0)
+            manifest['files']['summary.json'] = hashlib.sha256((root / 'summary.json').read_bytes()).hexdigest()
+            path.write_text(json.dumps(manifest), encoding='utf-8')
+            fresh.inspect(root, identity, sample_count=3, expected_tiles=0)
+            with self.assertRaisesRegex(ValueError, 'fixture'):
+                fresh.inspect(root, identity, sample_count=3)
             with self.assertRaisesRegex(ValueError, 'child checksum'):
-                fresh.inspect(root, identity, sample_count=3, require_children=True)
+                fresh.inspect(root, identity, sample_count=3, require_children=True, expected_tiles=0)
             rows[0]['processLifetimeMilliseconds'] = 0
             (root / 'events.jsonl').write_text(''.join(json.dumps(row) + '\n' for row in rows), encoding='utf-8')
             manifest['files']['events.jsonl'] = hashlib.sha256((root / 'events.jsonl').read_bytes()).hexdigest()
             path.write_text(json.dumps(manifest), encoding='utf-8')
             with self.assertRaisesRegex(ValueError, 'timing order'):
-                fresh.inspect(root, identity, sample_count=3)
+                fresh.inspect(root, identity, sample_count=3, expected_tiles=0)
 
 
 if __name__ == '__main__':
