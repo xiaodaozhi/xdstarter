@@ -133,11 +133,11 @@ QVector<xdstarter::LaunchTarget> syntheticEntries() {
 }
 
 QJsonObject syntheticLayout(xdstarter::PrototypeService& service,
-                            const QVector<xdstarter::LaunchTarget>& entries) {
+                            const QVector<xdstarter::LaunchTarget>& entries, int fixtureTiles = tileCount) {
     auto snapshot = service.snapshot();
     QJsonArray targets;
     QJsonArray tiles;
-    for (int i = 0; i < tileCount; ++i) {
+    for (int i = 0; i < fixtureTiles; ++i) {
         targets.append(xdstarter::applicationTargetJson(entries.at(i)));
         tiles.append(QJsonObject{{QStringLiteral("id"), QStringLiteral("tile-%1").arg(i)},
                                  {QStringLiteral("targetId"), entries.at(i).id},
@@ -530,6 +530,12 @@ int runUiRevealBenchmark() {
         qCritical() << "Reveal benchmark requires two new absolute output paths.";
         return 1;
     }
+    const auto emptyLayoutOption = qEnvironmentVariable("XDSTARTER_UI_REVEAL_EMPTY_LAYOUT");
+    if (!emptyLayoutOption.isEmpty() && emptyLayoutOption != QLatin1String("1")) {
+        qCritical() << "Invalid empty-layout option.";
+        return 1;
+    }
+    const int fixtureTiles = emptyLayoutOption == QLatin1String("1") ? 0 : tileCount;
     bool countOk = true;
     const auto requested = qEnvironmentVariable("XDSTARTER_UI_REVEAL_SAMPLES");
     const bool firstOnly = qEnvironmentVariable("XDSTARTER_UI_REVEAL_FIRST_ONLY") == QLatin1String("1");
@@ -567,9 +573,14 @@ int runUiRevealBenchmark() {
     const auto entries = syntheticEntries();
     const xdstarter::TileGrid grid;
     xdstarter::PrototypeService service(grid, {}, true);
-    const auto restored = service.restoreSnapshot(syntheticLayout(service, entries));
+    const auto restored = service.restoreSnapshot(syntheticLayout(service, entries, fixtureTiles));
     if (!restored.success) {
         qCritical() << "Synthetic layout rejected:" << restored.message;
+        return 1;
+    }
+    const auto groups = service.previewGroups();
+    if (groups.size() != 1 || groups.first().tiles.size() != fixtureTiles) {
+        qCritical() << "Synthetic reveal layout has an unexpected number of tiles.";
         return 1;
     }
     SyntheticIntegration integration;
@@ -708,7 +719,7 @@ int runUiRevealBenchmark() {
 #endif
     const QJsonObject report{
         {QStringLiteral("schemaVersion"), 1},
-        {QStringLiteral("scope"), QStringLiteral("real DesktopWindowHost with synthetic anchor, placement, tray, 100 tiles and 1000 catalog entries; no system hooks or real user input")},
+        {QStringLiteral("scope"), QStringLiteral("real DesktopWindowHost with synthetic anchor, placement, tray and catalog; no system hooks or real user input")},
         {QStringLiteral("boundary"), QStringLiteral("host show request to exposed focused enabled search field, then a synchronized frame and a separately verified synthetic key; first reveal follows initialized QML and catalog; not physical presentation or cold OS startup")},
         {QStringLiteral("capturedAtUtc"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)},
         {QStringLiteral("qpa"), qpa}, {QStringLiteral("graphicsApi"), api},
@@ -716,7 +727,7 @@ int runUiRevealBenchmark() {
         {QStringLiteral("compiler"), compiler}, {QStringLiteral("kernelVersion"), QSysInfo::kernelVersion()},
         {QStringLiteral("binarySha256"), QString::fromLatin1(hash.result().toHex())},
         {QStringLiteral("releaseNdebug"), releaseNdebug}, {QStringLiteral("steadyClock"), Clock::is_steady},
-        {QStringLiteral("entries"), catalogSize}, {QStringLiteral("tiles"), tileCount},
+        {QStringLiteral("entries"), catalogSize}, {QStringLiteral("tiles"), fixtureTiles},
         {QStringLiteral("warmups"), revealWarmups}, {QStringLiteral("measuredReveals"), sampleCount},
         {QStringLiteral("firstReveal"), first},
         {QStringLiteral("focusReady"), sampleCount ? QJsonValue(statistics(readyTimes)) : QJsonValue(QJsonValue::Null)},

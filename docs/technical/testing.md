@@ -678,6 +678,8 @@ python scripts/benchmark_search.py --executable build/app-release/xdstarter_sear
 
 2026-10-29 一次本机受控采样的[全部原始数据](validation/issue-35/search-service.json)保留三个规模各 100 条记录。环境为 Windows 11 26300.9711、Intel Core i7-11370H、约 31.8 GiB 内存、Qt 6.8.2，Release 使用附加 v142 编译器 19.29.30159 / SDK 19041；不同于声明的精确编译器基线。1000 项的服务 P95 / 最大值为 7.77 / 8.29 ms，4096 项为 30.36 / 33.60 ms。测试程序 SHA-256 为 `f1b2d8d7d37405a4d944a066ef50a6dc7a18bd0aca39f653d714945ffd00a7f9`；该次编译的 `search_service_tests.cpp` SHA-256 为 `3fd07351f9637ecb9ee2f1bbfa810c474a51cf9eebd30f24594c5b8ae0e3c531`，其余源码以 `3821b4e1fb24311f80acc4a376b6295898b2f211` 为基础。系统负载未隔离，最大值和全部样本均予保留，不能把单次服务层结果推广为所有设备或端到端体验。
 
+2026-10-31 [同程序四种规模的匿名样本](validation/issue-35/search-service-scale-2026-10-31.json)分别记录 0、1000、4096、8192 项各 100 次查询，服务往返 P95 依次为 0.16、5.18、19.60、54.03 ms；程序 SHA-256 `3ec01f62bcec9a03f7fa9e70e7b2f94c21f4819c19c264fbdfec2e923e11347e`。环境仍为上述 Windows、CPU、内存和备用编译器，仓库位于 NVMe SSD；系统负载未隔离。此服务层实验不包含 QML、真实目录或用户输入，不能用于判断端到端目标。
+
 ### 合成数据的 QML 搜索采样（#35）
 
 `scripts/benchmark_ui_search.py` 只运行测试进程中的 QML 与 controller：假平台返回 1000 个固定应用和内存图标，内存布局含 100 枚小磁贴，不读取真实应用目录或用户布局、不启动目标、不注册托盘或输入 Hook。5 个独立预热查询后，100 个不同的单结果查询通过 Qt Test 向本进程窗口逐键发送。每次确认 controller 返回预期身份且 QML 结果行已创建并可见，随后显式请求更新，记录确认后同步并发出 `frameSwapped` 的一帧；轮询使用 1 ms sleep。原始数据保留每条输入、匿名目标身份、结果行就绪和同步帧的耗时。脚本独立核验目标哈希、时序、样本、P50/P95/最大值、程序散列及 Release 标识。
@@ -710,11 +712,17 @@ python scripts/benchmark_ui_search.py --executable build/app-release/bin/xdstart
 
 `scripts/benchmark_ui_reveal_fresh.py` 顺序启动 100 个独立测试进程，每个进程只测首次唤起并保存子进程报告、事件和日志；另记录测试夹具开始至焦点就绪以及完整测试进程生存期。夹具时间包含 QML 和匿名目录准备，但不包含 `QGuiApplication` 之前的初始化；进程生存期包含退出清理，不能当成首帧时间。操作系统文件缓存不被清理，这些数据不是冷机器启动测量。
 
+两种脚本都可显式加 `--empty-layout`，改用一个无磁贴的分组，同时仍加载相同的 1000 个匿名目录项；恢复后检查实际分组和磁贴数量，报告校验不会把空布局和 100 磁贴布局混淆。CI 另采集空布局的 100 次同进程暖唤起，并要求与标准布局使用同一程序；100 个空布局独立进程可按需运行。旧版独立进程报告仅按原来的 100 磁贴场景读取，不可充作空布局证据。
+
 两种脚本默认离屏，原生模式仅允许一次性 hosted Windows，均要求新建 `build/` 内证据目录。托管 CI 保存同轮原始数据并独立校验运行身份、样本和汇总，不以不稳定运行器上的耗时设通过阈值。焦点与 `frameSwapped` 是可检查的代理边界，不证明物理屏幕呈现或真实键鼠端到端延迟；模拟托盘和定位也不覆盖实际 Windows 接管路径。真实参考设备、系统输入和 PRD-012 验收仍由 [#35](https://github.com/xiaodaozhi/xdstarter/issues/35) 跟踪。
+
+2026-10-31 [本机离屏样本](validation/issue-35/ui-reveal-layouts-offscreen-2026-10-31.json)用同一程序 `f655904376586a144706a3f790a502d1ea73cca77c7435943da09868217e6afd`，依次测量 100 磁贴与空布局的各 100 次暖唤起，以及各 100 个新进程；两种布局均有 1000 个匿名目录项。暖唤起焦点 P95 分别为 42.67 和 42.35 ms；新进程首次焦点 P95 分别为 475.63 和 72.62 ms。样本按固定顺序运行，系统负载和缓存未隔离，插桩与渲染会影响时序；不能由这组观察断定差异的单一原因。合并数据保留逐次事件和子日志哈希，完整子进程日志仍仅在本机 build 目录，不代表物理屏幕或真人输入验收。
 
 ```powershell
 python scripts/benchmark_ui_reveal.py --executable build/app-release/bin/xdstarter_ui_tests.exe --output-dir build/validation/ui-reveal-local
 python scripts/benchmark_ui_reveal_fresh.py --executable build/app-release/bin/xdstarter_ui_tests.exe --output-dir build/validation/ui-reveal-fresh-local
+python scripts/benchmark_ui_reveal.py --executable build/app-release/bin/xdstarter_ui_tests.exe --output-dir build/validation/ui-reveal-empty-local --empty-layout
+python scripts/benchmark_ui_reveal_fresh.py --executable build/app-release/bin/xdstarter_ui_tests.exe --output-dir build/validation/ui-reveal-empty-fresh-local --empty-layout
 ```
 
 ### 托管环境常驻资源采样

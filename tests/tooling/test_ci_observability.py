@@ -174,14 +174,25 @@ class EvidenceTests(TemporaryRepository):
                                    'files': {name: hashlib.sha256(reveal_paths[name].read_bytes()).hexdigest()
                                              for name in ('reveal.json', 'events.jsonl', 'process.log')}}
                 reveal_paths['manifest.json'].write_text(json.dumps(reveal_manifest), encoding='utf-8')
+                empty_paths = {name: self.root / ci_evidence.COPIES[f'ui-reveal-empty/{name}']
+                               for name in ci_evidence.REVEAL_FILES}
+                empty_reveal = {**reveal, 'tiles': 0}
+                empty_paths['reveal.json'].write_text(json.dumps(empty_reveal), encoding='utf-8')
+                empty_paths['events.jsonl'].write_text(''.join(json.dumps(row) + '\n' for row in reveal_events),
+                                                      encoding='utf-8')
+                empty_paths['process.log'].write_text('info: synthetic empty fixture\n', encoding='utf-8')
+                empty_manifest = {**reveal_manifest,
+                                  'files': {name: hashlib.sha256(empty_paths[name].read_bytes()).hexdigest()
+                                            for name in ('reveal.json', 'events.jsonl', 'process.log')}}
+                empty_paths['manifest.json'].write_text(json.dumps(empty_manifest), encoding='utf-8')
                 fresh_summary, fresh_events = fresh_example()
-                fresh_summary.update(qpa='windows', graphicsApi='Direct3D11')
+                fresh_summary.update(schemaVersion=2, tiles=100, qpa='windows', graphicsApi='Direct3D11')
                 fresh_paths = {name: self.root / ci_evidence.COPIES[f'ui-reveal-fresh/{name}']
                                for name in ci_evidence.FRESH_REVEAL_FILES}
                 fresh_paths['summary.json'].write_text(json.dumps(fresh_summary), encoding='utf-8')
                 fresh_paths['events.jsonl'].write_text(''.join(json.dumps(row) + '\n' for row in fresh_events),
                                                       encoding='utf-8')
-                fresh_manifest = {'schemaVersion': 1, 'status': 'passed', 'mode': 'hosted-native',
+                fresh_manifest = {'schemaVersion': 2, 'tiles': 100, 'status': 'passed', 'mode': 'hosted-native',
                                   'identity': reveal_identity, 'binarySha256': fresh_summary['binarySha256'],
                                   'files': {name: hashlib.sha256(fresh_paths[name].read_bytes()).hexdigest()
                                             for name in ('summary.json', 'events.jsonl')}}
@@ -450,6 +461,45 @@ class EvidenceTests(TemporaryRepository):
         report = json.loads(manifest.read_text(encoding='utf-8'))
         report['files']['ui-reveal/manifest.json'] = ci_evidence.checksum(path)
         manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'incomplete-ui-reveal-evidence'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_standard_layout_cannot_replace_empty_layout_even_if_rehashed(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        empty_dir = directory / 'ui-reveal-empty'
+        report_path, reveal_manifest_path = empty_dir / 'reveal.json', empty_dir / 'manifest.json'
+        report = json.loads(report_path.read_text(encoding='utf-8'))
+        report['tiles'] = 100
+        report_path.write_text(json.dumps(report), encoding='utf-8')
+        reveal_manifest = json.loads(reveal_manifest_path.read_text(encoding='utf-8'))
+        reveal_manifest['files']['reveal.json'] = ci_evidence.checksum(report_path)
+        reveal_manifest_path.write_text(json.dumps(reveal_manifest), encoding='utf-8')
+        manifest = directory / 'manifest.json'
+        central = json.loads(manifest.read_text(encoding='utf-8'))
+        for name in ('reveal.json', 'manifest.json'):
+            central['files'][f'ui-reveal-empty/{name}'] = ci_evidence.checksum(empty_dir / name)
+        manifest.write_text(json.dumps(central), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'incomplete-ui-reveal-evidence'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_current_ci_rejects_legacy_fresh_reveal_without_fixture_identity(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        fresh_dir = directory / 'ui-reveal-fresh'
+        summary_path, reveal_manifest_path = fresh_dir / 'summary.json', fresh_dir / 'manifest.json'
+        summary = json.loads(summary_path.read_text(encoding='utf-8'))
+        summary['schemaVersion'] = 1
+        summary.pop('tiles')
+        summary_path.write_text(json.dumps(summary), encoding='utf-8')
+        reveal_manifest = json.loads(reveal_manifest_path.read_text(encoding='utf-8'))
+        reveal_manifest['schemaVersion'] = 1
+        reveal_manifest.pop('tiles')
+        reveal_manifest['files']['summary.json'] = ci_evidence.checksum(summary_path)
+        reveal_manifest_path.write_text(json.dumps(reveal_manifest), encoding='utf-8')
+        manifest = directory / 'manifest.json'
+        central = json.loads(manifest.read_text(encoding='utf-8'))
+        for name in ('summary.json', 'manifest.json'):
+            central['files'][f'ui-reveal-fresh/{name}'] = ci_evidence.checksum(fresh_dir / name)
+        manifest.write_text(json.dumps(central), encoding='utf-8')
         with self.assertRaisesRegex(ValueError, 'incomplete-ui-reveal-evidence'):
             ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
 

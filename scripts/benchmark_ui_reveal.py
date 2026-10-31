@@ -22,11 +22,13 @@ def finite_time(value):
     return not isinstance(value, bool) and isinstance(value, (int, float)) and math.isfinite(value) and value >= 0
 
 
-def validate_report(report, events, binary_hash, mode, sample_count=100, warmups=WARMUPS):
+def validate_report(report, events, binary_hash, mode, sample_count=100, warmups=WARMUPS, tile_count=100):
     if (not isinstance(report, dict) or type(report.get('schemaVersion')) is not int or
             report['schemaVersion'] != 1):
         raise ValueError('invalid reveal schema')
-    expected = {'entries': 1000, 'tiles': 100, 'warmups': warmups, 'measuredReveals': sample_count,
+    if type(tile_count) is not int or tile_count not in (0, 100):
+        raise ValueError('invalid reveal fixture')
+    expected = {'entries': 1000, 'tiles': tile_count, 'warmups': warmups, 'measuredReveals': sample_count,
                 'releaseNdebug': True, 'steadyClock': True, 'binarySha256': binary_hash}
     for key, value in expected.items():
         if type(report.get(key)) is not type(value) or report.get(key) != value:
@@ -79,7 +81,7 @@ def validate_report(report, events, binary_hash, mode, sample_count=100, warmups
             raise ValueError('incorrect reveal maximum')
 
 
-def inspect(directory, expected_identity=None):
+def inspect(directory, expected_identity=None, expected_tiles=100):
     directory = Path(directory)
     names = ('reveal.json', 'events.jsonl', 'process.log')
     for name in (*names, 'manifest.json'):
@@ -103,7 +105,7 @@ def inspect(directory, expected_identity=None):
         raise ValueError('benchmark emitted a critical or fatal message')
     report = json.loads((directory / 'reveal.json').read_text(encoding='utf-8'))
     events = [json.loads(line) for line in (directory / 'events.jsonl').read_text(encoding='utf-8').splitlines()]
-    validate_report(report, events, manifest['binarySha256'], manifest['mode'])
+    validate_report(report, events, manifest['binarySha256'], manifest['mode'], tile_count=expected_tiles)
     return report
 
 
@@ -112,6 +114,7 @@ def main():
     parser.add_argument('--executable', type=Path, required=True)
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--hosted-native', action='store_true')
+    parser.add_argument('--empty-layout', action='store_true', help='use one empty group and 1000 catalog entries')
     parser.add_argument('--timeout-seconds', type=int, default=240)
     args = parser.parse_args()
     try:
@@ -126,6 +129,10 @@ def main():
         mode = 'hosted-native' if args.hosted_native else 'offscreen'
         env = benchmark_environment(os.environ, mode, os.name)
         env.pop('XDSTARTER_UI_REVEAL_FIRST_ONLY', None)
+        env.pop('XDSTARTER_UI_REVEAL_EMPTY_LAYOUT', None)
+        if args.empty_layout:
+            env['XDSTARTER_UI_REVEAL_EMPTY_LAYOUT'] = '1'
+        expected_tiles = 0 if args.empty_layout else 100
         output.mkdir(parents=True, exist_ok=False)
         report_path, events_path = output / 'reveal.json', output / 'events.jsonl'
         env.update(XDSTARTER_UI_REVEAL_OUTPUT=str(report_path), XDSTARTER_UI_REVEAL_EVENTS=str(events_path),
@@ -144,14 +151,14 @@ def main():
         events = [json.loads(line) for line in events_path.read_text(encoding='utf-8').splitlines()]
         if file_hash(binary) != digest:
             raise ValueError('benchmark executable changed during sampling')
-        validate_report(report, events, digest, mode)
+        validate_report(report, events, digest, mode, tile_count=expected_tiles)
         identity = {key: env.get(key, '') for key in ('GITHUB_SHA', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT')}
         manifest = {'schemaVersion': 1, 'status': 'passed', 'mode': mode, 'identity': identity,
                     'binarySha256': digest,
                     'files': {p.name: hashlib.sha256(p.read_bytes()).hexdigest()
                               for p in (report_path, events_path, output / 'process.log')}}
         (output / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
-        inspect(output, identity)
+        inspect(output, identity, expected_tiles=expected_tiles)
         print(f'Validated first reveal and 100 warm synthetic host reveals: {output}')
     except (OSError, ValueError, subprocess.SubprocessError, json.JSONDecodeError) as error:
         parser.exit(1, f'Reveal benchmark failed: {error}\n')
