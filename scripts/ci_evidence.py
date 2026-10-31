@@ -57,6 +57,7 @@ COPIES = {
     'shell-profile-initial.json': 'build/app-release/shell-localization-history/profile-initial.json',
     'shell-profile-repeat.json': 'build/app-release/shell-localization-history/profile-repeat.json',
     'shell-matrix.json': 'build/app-release/shell-localization-history/cross-matrix.json',
+    'shell-helper.exe': 'build/app-release/xdstarter_launch_fixture.exe',
     'layout-import.log': 'build/app-release/layout-import-native-evidence/native-d3d11.log',
     'high-contrast.log': 'build/app-release/high-contrast-native-evidence/native-d3d11.log',
     'picker-rapid.log': 'build/app-release/native-picker-evidence/rapid.log',
@@ -281,7 +282,8 @@ def validate_role(directory, role, expected):
         verify_shell_matrix.validate(matrix, {'sha': expected['GITHUB_SHA'], 'runId': expected['GITHUB_RUN_ID'],
                                                'attempt': expected['GITHUB_RUN_ATTEMPT'],
                                                'runnerOs': 'Windows', 'runnerArch': 'X64'},
-                                     require_parent_cases=True, require_acl_cases=True)
+                                     require_parent_cases=True, require_acl_cases=True,
+                                     expected_module_sha256=checksum(directory / 'shell-helper.exe')['sha256'])
     return report
 
 
