@@ -162,6 +162,18 @@
           "id": "ui_search"
         },
         {
+          "name": "Sample synthetic host reveal performance",
+          "shell": "pwsh",
+          "run": "$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$env:TEMP = Join-Path $PWD 'build/tmp'\n$env:TMP = $env:TEMP\n& ./build/tooling/Scripts/python.exe scripts/benchmark_ui_reveal.py --executable build/app-release/bin/xdstarter_ui_tests.exe --output-dir build/validation/ui-reveal-ci --hosted-native\nif ($LASTEXITCODE -ne 0) { throw 'Synthetic host reveal benchmark evidence failed.' }",
+          "id": "ui_reveal"
+        },
+        {
+          "name": "Sample fresh synthetic host processes",
+          "shell": "pwsh",
+          "run": "$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$env:TEMP = Join-Path $PWD 'build/tmp'\n$env:TMP = $env:TEMP\n& ./build/tooling/Scripts/python.exe scripts/benchmark_ui_reveal_fresh.py --executable build/app-release/bin/xdstarter_ui_tests.exe --output-dir build/validation/ui-reveal-fresh-ci --hosted-native\nif ($LASTEXITCODE -ne 0) { throw 'Fresh synthetic host reveal evidence failed.' }",
+          "id": "ui_reveal_fresh"
+        },
+        {
           "name": "Build and test isolated Windows experiments",
           "shell": "pwsh",
           "run": "$vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'\n$vs = & $vswhere -latest -products '*' -version '[17.0,18.0)' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath\nif ($LASTEXITCODE -ne 0 -or !$vs) { throw 'Cannot locate the MSVC 2022 validation toolchain.' }\nImport-Module (Join-Path $vs 'Common7/Tools/Microsoft.VisualStudio.DevShell.dll')\nEnter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'\n$env:PATH = (Join-Path $PWD 'build/Qt/6.8.2/msvc2022_64/bin') + [IO.Path]::PathSeparator + $env:PATH\n$env:TEMP = Join-Path $PWD 'build/tmp'\n$env:TMP = $env:TEMP\n$cmake = './build/tooling/Scripts/cmake.exe'\n& $cmake -S . -B build/app-release -DXDSTARTER_BUILD_START_BRIDGE_POC=ON -DXDSTARTER_BUILD_EXPLORER_ROUTE_PROBE=ON -DXDSTARTER_BUILD_PICKER_CANCEL_POC=ON\nif ($LASTEXITCODE) { throw 'Experiment configure failed.' }\n& $cmake --build build/app-release --parallel 3 --target xdstarter_start_bridge_poc xdstarter_start_bridge_fixture xdstarter_start_bridge_controller xdstarter_start_bridge_tests xdstarter_route_probe xdstarter_picker_cancel_poc xdstarter_picker_process_poc\nif ($LASTEXITCODE) { throw 'Experiment build failed.' }\n& ./build/tooling/Scripts/ctest.exe --test-dir build/app-release -R '^experimental\\.(start-bridge|explorer-route|picker-(cancel|process))' --verbose --no-tests=error --output-log (Join-Path $env:XDSTARTER_CI_EVIDENCE 'experiments.log')\nif ($LASTEXITCODE) { throw 'Experiment integration failed.' }\n& ./build/tooling/Scripts/python.exe scripts/verify_capture_diagnostics.py --executable build/app-release/bin/xdstarter.exe --output build/validation/capture-diagnostics-ci\nif ($LASTEXITCODE) { throw 'Diagnostic I/O recovery failed.' }\n& ./build/tooling/Scripts/python.exe scripts/verify_capture_diagnostics.py --executable build/app-release/bin/xdstarter.exe --mode area-cache --output build/validation/area-diagnostics-ci\nif ($LASTEXITCODE) { throw 'Area diagnostic I/O recovery failed.' }",
@@ -312,6 +324,28 @@
           }
         },
         {
+          "name": "Upload fresh host reveal evidence",
+          "if": "always() && !cancelled()",
+          "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "with": {
+            "name": "xdstarter-ui-reveal-fresh-${{ github.sha }}",
+            "path": "build/validation/ui-reveal-fresh-ci/",
+            "if-no-files-found": "warn",
+            "retention-days": 7
+          }
+        },
+        {
+          "name": "Upload hosted host reveal evidence",
+          "if": "always() && !cancelled()",
+          "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "with": {
+            "name": "xdstarter-ui-reveal-${{ github.sha }}",
+            "path": "build/validation/ui-reveal-ci/",
+            "if-no-files-found": "warn",
+            "retention-days": 7
+          }
+        },
+        {
           "name": "Upload hosted resident sample",
           "if": "always() && !cancelled()",
           "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
@@ -347,6 +381,8 @@
             "XDSTARTER_STEP_SHELL_MATRIX": "${{ steps.shell_matrix.outcome }}",
             "XDSTARTER_STEP_SEARCH": "${{ steps.search.outcome }}",
             "XDSTARTER_STEP_UI_SEARCH": "${{ steps.ui_search.outcome }}",
+            "XDSTARTER_STEP_UI_REVEAL": "${{ steps.ui_reveal.outcome }}",
+            "XDSTARTER_STEP_UI_REVEAL_FRESH": "${{ steps.ui_reveal_fresh.outcome }}",
             "XDSTARTER_STEP_EXPERIMENTS": "${{ steps.experiments.outcome }}",
             "XDSTARTER_STEP_RESIDENT_SAMPLE": "${{ steps.resident_sample.outcome }}",
             "XDSTARTER_STEP_PREPARE": "${{ steps.prepare.outcome }}",

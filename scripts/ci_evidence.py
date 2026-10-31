@@ -13,6 +13,8 @@ import sys
 
 import inspect_contrast_frame_trace as frame_trace
 import inspect_resident_sample as resident_sample
+import benchmark_ui_reveal
+import benchmark_ui_reveal_fresh
 import verify_shell_matrix
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -78,6 +80,11 @@ COPIES.update({f'frame-{mode}/{name}': f'build/app-release/high-contrast-frame-e
 RESIDENT_FILES = ('resident-sample.json', 'snapshot.json', 'stdout.log', 'stderr.log')
 COPIES.update({f'resident-sample/{name}': f'build/validation/resident-sample-ci/{name}'
                for name in RESIDENT_FILES})
+REVEAL_FILES = ('manifest.json', 'reveal.json', 'events.jsonl', 'process.log')
+COPIES.update({f'ui-reveal/{name}': f'build/validation/ui-reveal-ci/{name}' for name in REVEAL_FILES})
+FRESH_REVEAL_FILES = ('manifest.json', 'summary.json', 'events.jsonl')
+COPIES.update({f'ui-reveal-fresh/{name}': f'build/validation/ui-reveal-fresh-ci/{name}'
+               for name in FRESH_REVEAL_FILES})
 EMPTY_ALLOWED_FILES = {'resident-sample/stdout.log', 'resident-sample/stderr.log'}
 LIFECYCLE_CASES = {'junction-parent-refused', 'install', 'modified-obsolete-refused',
                    'upgrade-retire-unchanged', 'upgrade-disable-autostart', 'upgrade-retain-disabled-autostart',
@@ -98,7 +105,7 @@ QT_LOGS = {
 PHASES = {'core': {'python-packages', 'configure', 'compile', 'ctest'},
           'windows': {'python-packages', 'configure', 'compile', 'qml-lint', 'ctest'}}
 STEPS = {'core': ('build',),
-         'windows': ('build', 'picker-audit', 'contrast-trace', 'smoke', 'shell', 'shell-matrix', 'search', 'ui-search',
+         'windows': ('build', 'picker-audit', 'contrast-trace', 'smoke', 'shell', 'shell-matrix', 'search', 'ui-search', 'ui-reveal', 'ui-reveal-fresh',
                      'experiments', 'resident-sample', 'prepare', 'package')}
 
 
@@ -187,6 +194,13 @@ def validate_role(directory, role, expected):
                 all(row[1] == 'Passed' for row in rows) and set(tests) <= set(names),
                 'incomplete-or-failed-test-log')
     if role == 'windows':
+        try:
+            warm_reveal = benchmark_ui_reveal.inspect(directory / 'ui-reveal', expected)
+            fresh_reveal = benchmark_ui_reveal_fresh.inspect(directory / 'ui-reveal-fresh', expected)
+            require(warm_reveal['binarySha256'] == fresh_reveal['binarySha256'],
+                    'different-ui-reveal-executables')
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            raise ValueError('incomplete-ui-reveal-evidence') from error
         smoke = json.loads((directory / 'smoke-startup.json').read_text(encoding='utf-8'))
         smoke_raw = (directory / 'smoke-startup.log').read_bytes()
         timing_values = [smoke.get(name) for name in ('createReturnMilliseconds', 'firstByteMilliseconds',
