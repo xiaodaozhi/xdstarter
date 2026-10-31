@@ -36,13 +36,14 @@ def validate_observation(case):
             'incomplete-shell-matrix-observation')
 
 
-def validate(report, expected_identity=None, require_parent_cases=False):
+def validate(report, expected_identity=None, require_parent_cases=False, require_acl_cases=False):
     require(isinstance(report, dict) and type(report.get('schemaVersion')) is int and
-            report['schemaVersion'] in (1, 2) and
+            report['schemaVersion'] in (1, 2, 3) and
             report.get('status') == 'passed' and report.get('cleanupComplete') is True and
             report.get('errors') == [] and type(report.get('comInitializationResult')) is int and
             report['comInitializationResult'] >= 0, 'incomplete-shell-matrix')
-    require(not require_parent_cases or report['schemaVersion'] == 2, 'missing-parent-matrix')
+    require(not require_parent_cases or report['schemaVersion'] >= 2, 'missing-parent-matrix')
+    require(not require_acl_cases or report['schemaVersion'] >= 3, 'missing-acl-matrix')
     identity = report.get('identity')
     require(isinstance(identity, dict) and isinstance(identity.get('sha'), str) and
             re.fullmatch(r'[0-9a-f]{40}', identity['sha']) is not None and
@@ -74,7 +75,7 @@ def validate(report, expected_identity=None, require_parent_cases=False):
             locations[location] = (drive, filesystem)
         validate_observation(case)
         modules.add(case['moduleSha256'])
-        if report['schemaVersion'] == 2:
+        if report['schemaVersion'] >= 2:
             path_hash = case.get('modulePathSha256')
             require(is_hash(path_hash) and (module not in module_paths or module_paths[module] == path_hash),
                     'inconsistent-shell-matrix-module-path')
@@ -82,9 +83,40 @@ def validate(report, expected_identity=None, require_parent_cases=False):
         require(case.get('physicalName') == f'matrix-{folder}-{module}',
                 'incomplete-shell-matrix-observation')
     require(len(modules) == 1, 'different-shell-matrix-modules')
-    if report['schemaVersion'] == 2:
+    if report['schemaVersion'] >= 2:
         validate_parent_cases(report, locations, modules, module_paths['workspace'])
+    if report['schemaVersion'] >= 3:
+        validate_acl_cases(report, locations, modules, module_paths['workspace'])
     return report
+
+
+def validate_acl_cases(report, locations, modules, workspace_module_path):
+    cases = report.get('aclCases')
+    require(isinstance(cases, list) and len(cases) == 4 and all(isinstance(c, dict) for c in cases),
+            'incomplete-acl-matrix')
+    pairs = set()
+    templates = {}
+    for case in cases:
+        target, template = case.get('targetLocation'), case.get('templateLocation')
+        require(target in ('workspace', 'profile') and template in ('workspace', 'profile') and
+                (target, template) not in pairs, 'invalid-acl-matrix-pair')
+        pairs.add((target, template))
+        validate_observation(case)
+        require(case.get('physicalName') == f'acl-{target}-{template}' and
+                (case.get('folderDrive'), case.get('folderFileSystem')) == locations[target] and
+                (case.get('moduleDrive'), case.get('moduleFileSystem')) == locations['workspace'] and
+                case.get('moduleSha256') in modules and case.get('modulePathSha256') == workspace_module_path,
+                'invalid-acl-matrix-location')
+        keys = ('folderAccessSha256', 'iniAccessSha256', 'folderTemplateSha256', 'iniTemplateSha256')
+        require(all(is_hash(case.get(key)) for key in keys) and
+                case['folderAccessSha256'] == case['folderTemplateSha256'] and
+                case['iniAccessSha256'] == case['iniTemplateSha256'] and
+                case.get('folderAccessProtected') is True and case['ini']['aclProtected'] is True,
+                'invalid-acl-matrix-descriptor')
+        descriptors = (case['folderTemplateSha256'], case['iniTemplateSha256'])
+        require(template not in templates or templates[template] == descriptors,
+                'inconsistent-acl-matrix-template')
+        templates[template] = descriptors
 
 
 def validate_parent_cases(report, locations, modules, workspace_module_path):
@@ -147,14 +179,17 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('report', type=Path)
     parser.add_argument('--allow-legacy', action='store_true',
-                        help='read a schema 1 report without parent observations')
+                        help='read a schema 1 or 2 report without the latest observations')
     args = parser.parse_args()
     report = validate(json.loads(args.report.read_text(encoding='utf-8')),
-                      require_parent_cases=not args.allow_legacy)
+                      require_parent_cases=not args.allow_legacy,
+                      require_acl_cases=not args.allow_legacy)
     if report['schemaVersion'] == 1:
         print('Legacy Shell cross-location observations verified; parent observations unavailable.')
+    elif report['schemaVersion'] == 2:
+        print('Legacy Shell cross-location and parent observations verified; access observations unavailable.')
     else:
-        print('Shell cross-location and parent observations and cleanup verified.')
+        print('Shell cross-location, parent and access observations and cleanup verified.')
 
 
 if __name__ == '__main__':
