@@ -1,0 +1,15 @@
+{
+  "name": "Issue 56 ACL restore diagnostic",
+  "on": {"push": {"branches": ["exp/56-acl-restore-probe"]}},
+  "permissions": {"contents": "read"},
+  "jobs": {
+    "probe": {
+      "runs-on": "windows-2022",
+      "timeout-minutes": 8,
+      "steps": [
+        {"name": "Checkout", "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1", "with": {"persist-credentials": false}},
+        {"name": "Compare owned access descriptors", "shell": "pwsh", "run": "New-Item -ItemType Directory -Path build -Force | Out-Null\n& ./.github/diagnostics/acl-restore-probe.ps1"}
+      ]
+    }
+  }
+}
