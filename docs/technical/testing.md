@@ -22,6 +22,8 @@
 
 上述两项回归进一步通过实际 `queuePopupFocusRestore` 排队对应恢复函数，在处理队列之前将焦点转到新磁贴／分组，要求回调执行标记出现后焦点仍保留；这是受控排队，不是对历史自然失败事件顺序的记录。尺寸菜单断言失败时补充输入、目标可见／可用／焦点、活动焦点、菜单与呈现状态，固定应用用例在辅助函数失败后不继续执行取消固定。Windows 11、Qt 6.8.2、附加 MSVC v142 的本机 offscreen/software 和 Windows QPA／Intel D3D11 各 8/8；测试程序 SHA-256 为 `0d1d4bd49e549e1daae6e7455180f8ed7ded7595e88cf8d9cd161c5e02d5dfd7`。这不替代实际物理输入验收，也不证明旧偶发失败的根因。
 
+进一步的受控交错分别注入待恢复分组和已消失的应用菜单来源，先排队旧回调，再调用 Ctrl+F 所用的搜索聚焦入口；检查旧回调不会抢走搜索焦点、新排队的回调仍可执行，并覆盖分组操作直接排队的恢复函数。修复前两种情况均可复现焦点被抢；修复后本机 Qt 6.8.2、附加 MSVC v142 19.29.30159 的 offscreen/software 与 Windows QPA／Intel D3D11 各 14/14（含初始化和清理）；相同原生用例在开启及关闭 `QSG_INFO` 时均通过，测试程序 SHA-256 为 `b7724dc81e34e6a4ad0836afdcee550e0bff3f7cabc199122c2d76372b7b2220`。先前一次原生运行中搜索框无障碍描述断言失败，后续复测通过不能消除该记录，另见 [#115](https://github.com/xiaodaozhi/xdstarter/issues/115)。这些受控场景不证明历史偶发失败的根因，也不代替物理输入验收。
+
 [#88](https://github.com/xiaodaozhi/xdstarter/issues/88) 的产品诊断在一次性 GitHub-hosted Windows 上运行独立 QtTest 进程：快速取消及重开、原生窗口出现前取消、窗口出现后取消，以及通过独立的有界 UI Automation 进程选择实际测试文件。夹具持有辅助进程句柄，核对 PID、owner、进程退出和 owner 恢复；不按标题关闭其他进程。日志保留取消耗时和原始 Qt 严重消息。有限轮询只报告实际观察，不能证明从未闪现；此前 Qt 线程诊断和失败记录保留于 Issue，不能用后续结果覆盖。
 
 本机 Windows 可通过 `XDSTARTER_BUILD_LOCAL_NATIVE_PICKER_TESTS=ON` 构建测试程序、应用辅助程序和驱动，再显式运行 `python scripts/verify_native_picker_local.py --run --executable build/app-release/bin/xdstarter_ui_tests.exe --output-dir build/validation/native-picker-local`。输出目录必须是 `build/` 下尚不存在的独立目录；脚本为测试临时文件另建目录，窗口短暂显示并可能获取焦点。驱动在本机核对父测试程序身份、驱动和选择器的直接父进程、目标窗口 PID／owner、目标文件位于临时目录且不是重解析点；反例检查拒绝临时目录外的文件。每个测试进程限时，超时仅清理它及其子进程，记录原始日志和程序散列。不安装、修改系统设置或启用全局输入 Hook；自动操作不替代真人键盘、屏幕阅读器和完整系统入口验收。
