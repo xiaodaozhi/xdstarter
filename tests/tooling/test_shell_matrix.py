@@ -90,6 +90,50 @@ def sample_report():
 
 class ShellMatrixTests(unittest.TestCase):
     @unittest.skipUnless(sys.platform == 'win32' and shutil.which('pwsh'), 'requires Windows PowerShell 7')
+    def test_file_identity_supports_long_owned_paths(self):
+        root = Path(verify_shell_matrix.__file__).resolve().parents[1]
+        build = (root / 'build').resolve()
+        build.mkdir(exist_ok=True)
+        base = build / f'long-identity-{uuid.uuid4().hex}'
+        directories = [base]
+        for character in 'abc':
+            directories.append(directories[-1] / (character * 55))
+        marker = directories[-1] / 'desktop.ini'
+        self.assertTrue(base.is_relative_to(build))
+        self.assertGreater(len(str(marker)), 260)
+        extended = lambda path: '\\\\?\\' + str(path)
+        created = []
+        marker_created = False
+        try:
+            for directory in directories:
+                os.mkdir(extended(directory))
+                created.append(directory)
+            with open(extended(marker), 'wb') as stream:
+                stream.write(b'owned fixture')
+            marker_created = True
+            env = os.environ.copy()
+            env.update(XDSTARTER_TEST_JUNCTION_SCRIPT=str(root / 'scripts/shell_junction_probe.ps1'),
+                       XDSTARTER_TEST_LONG_DIRECTORY=str(directories[-1]), TEMP=str(build), TMP=str(build))
+            command = r'''
+                $ErrorActionPreference = 'Stop'
+                . $env:XDSTARTER_TEST_JUNCTION_SCRIPT
+                foreach ($path in @($env:XDSTARTER_TEST_LONG_DIRECTORY,
+                                    (Join-Path $env:XDSTARTER_TEST_LONG_DIRECTORY 'desktop.ini'))) {
+                    $plain = Get-XDStarterIdentityHash $path
+                    $extended = Get-XDStarterIdentityHash ('\\?\' + $path)
+                    if ($plain -ne $extended) { throw 'Long path identities differ.' }
+                }
+            '''
+            result = subprocess.run([shutil.which('pwsh'), '-NoProfile', '-NonInteractive', '-Command', command],
+                                    capture_output=True, text=True, encoding='utf-8', env=env, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr)
+        finally:
+            if marker_created:
+                os.remove(extended(marker))
+            for directory in reversed(created):
+                os.rmdir(extended(directory))
+
+    @unittest.skipUnless(sys.platform == 'win32' and shutil.which('pwsh'), 'requires Windows PowerShell 7')
     def test_fresh_shell_name_probe_reads_only_its_owned_fixture(self):
         root = Path(verify_shell_matrix.__file__).resolve().parents[1]
         build = root / 'build'

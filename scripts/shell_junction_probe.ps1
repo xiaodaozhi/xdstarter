@@ -3,6 +3,7 @@
 Add-Type -TypeDefinition @'
 using System;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
@@ -29,7 +30,10 @@ public static class XDStarterFileIdentity {
     private static extern bool GetFileInformationByHandle(SafeFileHandle handle, out FileInformation info);
 
     public static string Read(string path) {
-        using (var handle = CreateFileW(path, 0, 7, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero)) {
+        if (!Path.IsPathFullyQualified(path)) throw new ArgumentException("A fully qualified path is required.");
+        string extendedPath = path.StartsWith(@"\\?\", StringComparison.Ordinal) ? path :
+            path.StartsWith(@"\\", StringComparison.Ordinal) ? @"\\?\UNC\" + path.Substring(2) : @"\\?\" + path;
+        using (var handle = CreateFileW(extendedPath, 0, 7, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero)) {
             if (handle.IsInvalid) throw new Win32Exception(Marshal.GetLastWin32Error());
             FileInformation info;
             if (!GetFileInformationByHandle(handle, out info))
