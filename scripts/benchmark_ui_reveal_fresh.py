@@ -23,7 +23,7 @@ def statistics(values):
             'maximumMilliseconds': ordered[-1]}
 
 
-def inspect(directory, expected_identity=None, sample_count=100, require_children=False):
+def inspect(directory, expected_identity=None, sample_count=100, require_children=False, expected_tiles=100):
     directory = Path(directory)
     names = ('summary.json', 'events.jsonl')
     for name in (*names, 'manifest.json'):
@@ -31,12 +31,17 @@ def inspect(directory, expected_identity=None, sample_count=100, require_childre
         if not path.is_file() or path.is_symlink() or path.stat().st_size > 10 * 1024 * 1024:
             raise ValueError('missing or oversized fresh reveal evidence')
     manifest = json.loads((directory / 'manifest.json').read_text(encoding='utf-8'))
-    if (not isinstance(manifest, dict) or type(manifest.get('schemaVersion')) is not int or
-            manifest['schemaVersion'] != 1 or
+    if (type(expected_tiles) is not int or expected_tiles not in (0, 100) or
+            not isinstance(manifest, dict) or type(manifest.get('schemaVersion')) is not int or
+            manifest['schemaVersion'] not in (1, 2) or
             manifest.get('status') != 'passed' or manifest.get('mode') not in ('offscreen', 'hosted-native') or
             not isinstance(manifest.get('binarySha256'), str) or
             not re.fullmatch(r'[0-9a-f]{64}', manifest['binarySha256'])):
         raise ValueError('invalid fresh reveal manifest')
+    version = manifest['schemaVersion']
+    if ((version == 1 and expected_tiles != 100) or
+            (version == 2 and (type(manifest.get('tiles')) is not int or manifest['tiles'] != expected_tiles))):
+        raise ValueError('incorrect fresh reveal fixture')
     if expected_identity is not None and manifest.get('identity') != expected_identity:
         raise ValueError('fresh reveal identity mismatch')
     hashes = {name: hashlib.sha256((directory / name).read_bytes()).hexdigest() for name in names}
@@ -46,7 +51,8 @@ def inspect(directory, expected_identity=None, sample_count=100, require_childre
     events = [json.loads(line) for line in (directory / 'events.jsonl').read_text(encoding='utf-8').splitlines()]
     backend = ('offscreen', 'Software') if manifest['mode'] == 'offscreen' else ('windows', 'Direct3D11')
     if (sample_count < 1 or not isinstance(summary, dict) or type(summary.get('schemaVersion')) is not int or
-            summary['schemaVersion'] != 1 or
+            summary['schemaVersion'] != version or
+            (version == 2 and (type(summary.get('tiles')) is not int or summary['tiles'] != expected_tiles)) or
             type(summary.get('sampleCount')) is not int or summary['sampleCount'] != sample_count or
             summary.get('binarySha256') != manifest['binarySha256'] or len(events) != sample_count or
             (summary.get('qpa'), summary.get('graphicsApi')) != backend or
@@ -82,7 +88,8 @@ def inspect(directory, expected_identity=None, sample_count=100, require_childre
                     raise ValueError('fresh child checksum mismatch')
             report = json.loads((child / 'reveal.json').read_text(encoding='utf-8'))
             raw = [json.loads(line) for line in (child / 'events.jsonl').read_text(encoding='utf-8').splitlines()]
-            validate_report(report, raw, manifest['binarySha256'], manifest['mode'], sample_count=0, warmups=0)
+            validate_report(report, raw, manifest['binarySha256'], manifest['mode'], sample_count=0, warmups=0,
+                            tile_count=expected_tiles)
             if raw != [first]:
                 raise ValueError('fresh child event differs from aggregate')
             log = (child / 'process.log').read_text(encoding='utf-8', errors='replace')
@@ -106,6 +113,7 @@ def main():
     parser.add_argument('--executable', type=Path, required=True)
     parser.add_argument('--output-dir', type=Path, required=True)
     parser.add_argument('--hosted-native', action='store_true')
+    parser.add_argument('--empty-layout', action='store_true', help='use one empty group and 1000 catalog entries')
     parser.add_argument('--timeout-seconds', type=int, default=30)
     args = parser.parse_args()
     try:
@@ -119,6 +127,10 @@ def main():
             raise ValueError('per-process timeout must be between 1 and 120 seconds')
         mode = 'hosted-native' if args.hosted_native else 'offscreen'
         env = benchmark_environment(os.environ, mode, os.name)
+        env.pop('XDSTARTER_UI_REVEAL_EMPTY_LAYOUT', None)
+        if args.empty_layout:
+            env['XDSTARTER_UI_REVEAL_EMPTY_LAYOUT'] = '1'
+        expected_tiles = 0 if args.empty_layout else 100
         env.update(XDSTARTER_UI_REVEAL_FIRST_ONLY='1', QT_FORCE_STDERR_LOGGING='1',
                    QT_MESSAGE_PATTERN='%{type}: %{message}')
         output.mkdir(parents=True, exist_ok=False)
@@ -148,9 +160,9 @@ def main():
                     raise ValueError(f'fresh child {index} emitted critical or fatal output')
                 report = json.loads(report_path.read_text(encoding='utf-8'))
                 raw = [json.loads(line) for line in events_path.read_text(encoding='utf-8').splitlines()]
-                validate_report(report, raw, digest, mode, sample_count=0, warmups=0)
+                validate_report(report, raw, digest, mode, sample_count=0, warmups=0, tile_count=expected_tiles)
                 current_details = {key: report[key] for key in
-                                   ('qpa', 'graphicsApi', 'qtVersion', 'compiler', 'kernelVersion', 'releaseNdebug')}
+                                   ('qpa', 'graphicsApi', 'qtVersion', 'compiler', 'kernelVersion', 'releaseNdebug', 'tiles')}
                 if environment_details is not None and environment_details != current_details:
                     raise ValueError('fresh child environment changed during sampling')
                 environment_details = current_details
@@ -162,7 +174,7 @@ def main():
                 samples.append(row)
         if file_hash(binary) != digest:
             raise ValueError('benchmark executable changed during fresh-process sampling')
-        summary = {'schemaVersion': 1, 'sampleCount': len(samples), 'binarySha256': digest, **environment_details,
+        summary = {'schemaVersion': 2, 'sampleCount': len(samples), 'binarySha256': digest, **environment_details,
                    'scope': 'fresh synthetic test processes with a real host and simulated platform',
                    'boundary': 'first reveal after QGuiApplication exists; fixture time includes QML and catalog setup; process lifetime includes teardown; OS caches are not cleared and no physical input or display is measured',
                    'firstFocus': statistics([row['firstReveal']['focusReadyMilliseconds'] for row in samples]),
@@ -170,11 +182,11 @@ def main():
                    'processLifetime': statistics([row['processLifetimeMilliseconds'] for row in samples])}
         summary_path = output / 'summary.json'
         summary_path.write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8')
-        manifest = {'schemaVersion': 1, 'status': 'passed', 'mode': mode, 'identity': identity,
+        manifest = {'schemaVersion': 2, 'status': 'passed', 'mode': mode, 'identity': identity, 'tiles': expected_tiles,
                     'binarySha256': digest, 'files': {name: file_hash(output / name)
                                                      for name in ('summary.json', 'events.jsonl')}}
         (output / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
-        inspect(output, identity, require_children=True)
+        inspect(output, identity, require_children=True, expected_tiles=expected_tiles)
         print(f'Validated 100 fresh synthetic host processes: {output}')
     except (OSError, ValueError, subprocess.SubprocessError, json.JSONDecodeError) as error:
         parser.exit(1, f'Fresh reveal benchmark failed: {error}\n')
