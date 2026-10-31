@@ -280,7 +280,8 @@ def validate_role(directory, role, expected):
         matrix = json.loads((directory / 'shell-matrix.json').read_text(encoding='utf-8'))
         verify_shell_matrix.validate(matrix, {'sha': expected['GITHUB_SHA'], 'runId': expected['GITHUB_RUN_ID'],
                                                'attempt': expected['GITHUB_RUN_ATTEMPT'],
-                                               'runnerOs': 'Windows', 'runnerArch': 'X64'})
+                                               'runnerOs': 'Windows', 'runnerArch': 'X64'},
+                                     require_parent_cases=True)
     return report
 
 
