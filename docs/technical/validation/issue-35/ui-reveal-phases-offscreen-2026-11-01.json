@@ -1,0 +1,4676 @@
+{
+  "schemaVersion": 1,
+  "scope": "Sequential local offscreen synthetic host experiments with explicit event-loop timing.",
+  "limitations": "Event-loop wall time includes application callbacks, rendering, scheduling and instrumentation. OS caches and other system load were not isolated. Child logs remain local.",
+  "sourceSha256": "25d601f0894db1a5b9b880e8c7a3904d4ebfa1297959e4486011755141686ed8",
+  "fixtures": {
+    "standard": {
+      "summary": {
+        "schemaVersion": 2,
+        "sampleCount": 100,
+        "binarySha256": "d24d30becc18d21a7718dd2bd41fe6d3aad651bbc1d75af3f86ddf8095a1a352",
+        "qpa": "offscreen",
+        "graphicsApi": "Software",
+        "qtVersion": "6.8.2",
+        "compiler": "MSVC 192930159",
+        "kernelVersion": "10.0.26300",
+        "releaseNdebug": true,
+        "tiles": 100,
+        "scope": "fresh synthetic test processes with a real host and simulated platform",
+        "boundary": "first reveal after QGuiApplication exists; fixture time includes QML and catalog setup; process lifetime includes teardown; OS caches are not cleared and no physical input or display is measured",
+        "firstFocus": {
+          "p50Milliseconds": 438.7519,
+          "p95Milliseconds": 610.9427,
+          "maximumMilliseconds": 757.8638
+        },
+        "fixtureToFocus": {
+          "p50Milliseconds": 978.8405,
+          "p95Milliseconds": 1333.3932,
+          "maximumMilliseconds": 1486.2865
+        },
+        "processLifetime": {
+          "p50Milliseconds": 1282.5525,
+          "p95Milliseconds": 1690.6918,
+          "maximumMilliseconds": 1969.9694
+        }
+      },
+      "eventsSha256": "9be9cab557746c5fc6baeedc24e33a6909a76d09261ab4093b25fd0c94537f8d",
+      "events": [
+        {
+          "index": 0,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1583.5249,
+          "firstReveal": {
+            "eventLoopMilliseconds": 430.0401,
+            "fixtureToFocusMilliseconds": 1153.0423,
+            "focusReadyMilliseconds": 455.7643,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0205,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.0123,
+            "sleepMilliseconds": 25.6651,
+            "synchronizedFrameMilliseconds": 461.0314,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "f5b132db04798571fa9f26c2b56984f087fb51ede21b04ad3858b98a41fa4e4f",
+            "events.jsonl": "3c798afe90eddde143810f02ad5cc46a5ef372aac04e70479a3b0b4690aee27b",
+            "process.log": "289cde925c7784f7d5904991d5fae01f93a6f9d9e85707ad249ecbc5f844aaa7"
+          }
+        },
+        {
+          "index": 1,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1367.5,
+          "firstReveal": {
+            "eventLoopMilliseconds": 444.1276,
+            "fixtureToFocusMilliseconds": 1039.577,
+            "focusReadyMilliseconds": 472.4361,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0204,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.011,
+            "sleepMilliseconds": 28.254,
+            "synchronizedFrameMilliseconds": 473.2325,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "7beac26bb6767f7b4026cfeec867935388aea1fb84738e767ff95b04986efb8e",
+            "events.jsonl": "05fad0cebf5ba2fd09cdc5445e33a61c5869bbdffb9b42a8c8155f9b9217f136",
+            "process.log": "486019e767e56969d01f05628ceb46d828d661b675ae4c3bb602bfbbe2c4e0a5"
+          }
+        },
+        {
+          "index": 2,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1243.5746,
+          "firstReveal": {
+            "eventLoopMilliseconds": 410.2527,
+            "fixtureToFocusMilliseconds": 943.7233,
+            "focusReadyMilliseconds": 437.619,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0188,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0107,
+            "sleepMilliseconds": 27.3118,
+            "synchronizedFrameMilliseconds": 437.8539,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "daedaea25be1fc1cfa03939a253100daf6bdd9efc03b581554c05dd82d05e432",
+            "events.jsonl": "8c5926931c6c555fd3aa194ec4bf406b08b44d54f0d9e874e682ee78c5c5204e",
+            "process.log": "cc005ae9a2af02788922d68bd3b41c1fa6122af334ad5ce93c6ccd6d1659fbe9"
+          }
+        },
+        {
+          "index": 3,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1263.2183,
+          "firstReveal": {
+            "eventLoopMilliseconds": 397.8041,
+            "fixtureToFocusMilliseconds": 942.4879,
+            "focusReadyMilliseconds": 426.695,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0208,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0121,
+            "sleepMilliseconds": 28.8296,
+            "synchronizedFrameMilliseconds": 430.699,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "2847ab5ce2f1932b2b6f0b2a0dbca1798bc506fe04d3796f883f74c830057690",
+            "events.jsonl": "768edfa8b373b8ddde02000345c57fcd8f244051f7ae89acab8f63eb955d9941",
+            "process.log": "2dd686a30f59edaea35986b3ce278ba4378e7d8161051a45b48a54b3b3c000e4"
+          }
+        },
+        {
+          "index": 4,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1257.6996,
+          "firstReveal": {
+            "eventLoopMilliseconds": 405.4964,
+            "fixtureToFocusMilliseconds": 969.3727,
+            "focusReadyMilliseconds": 434.6355,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0315,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.0119,
+            "sleepMilliseconds": 29.069,
+            "synchronizedFrameMilliseconds": 435.1689,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "e62086a4524635349f1887bb63efa4df3316e6f6213368792eae6df4dc2a1680",
+            "events.jsonl": "c21586fb1d8e0047cfb55c63d096ba49fd7aa3207ad2d983b81fc38390ade448",
+            "process.log": "3160cbae92fc17eee84b80ae018935bd8dc1d95f56109908a9ce9cf3b2c4b1ab"
+          }
+        },
+        {
+          "index": 5,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1277.9544,
+          "firstReveal": {
+            "eventLoopMilliseconds": 410.4545,
+            "fixtureToFocusMilliseconds": 967.0996,
+            "focusReadyMilliseconds": 437.2497,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0203,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.0098,
+            "sleepMilliseconds": 26.7267,
+            "synchronizedFrameMilliseconds": 437.4225,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "ac504177d201d26c27442090510ed7b6f8f295f7529dbc7f3bd7e0e37243717d",
+            "events.jsonl": "fafa4fa8d4b7e00a4517bd122ace87326a8d72dea7c807bd7968d55a73590317",
+            "process.log": "49350e543c7b93bd3176b5185d925f495d6dd76f8e93bd4ac9c339488f21a18e"
+          }
+        },
+        {
+          "index": 6,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1268.2538,
+          "firstReveal": {
+            "eventLoopMilliseconds": 395.7939,
+            "fixtureToFocusMilliseconds": 978.8405,
+            "focusReadyMilliseconds": 422.4716,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.02,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.0125,
+            "sleepMilliseconds": 26.6189,
+            "synchronizedFrameMilliseconds": 422.6789,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "96ed7e780d071ff77e7038057c2889578d0ff09165faa0c21ee6236b701b0f71",
+            "events.jsonl": "582a026cd233501a7db19f76f92526f0d746c918cd792a35ba886c7e3bb3290d",
+            "process.log": "854894d42a2f9f3173a04d0cdb9a14be9c35de168d2f42d9d0ff9ac7576532eb"
+          }
+        },
+        {
+          "index": 7,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1258.5892,
+          "firstReveal": {
+            "eventLoopMilliseconds": 406.1977,
+            "fixtureToFocusMilliseconds": 962.0267,
+            "focusReadyMilliseconds": 432.1798,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0233,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0122,
+            "sleepMilliseconds": 25.9176,
+            "synchronizedFrameMilliseconds": 432.8657,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "8bc021132b90a698d202a3d09c8fb7707312885b0fa606e8681ce629f908a83d",
+            "events.jsonl": "5ceddab4d0477559485e78b074cda6e5a944765cd54701243c544d7ce3bde2d2",
+            "process.log": "4d5b19b99eb633b7869460dac2541ba6a265da84f59e85cc9e4a77cd7be4beed"
+          }
+        },
+        {
+          "index": 8,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1279.9185,
+          "firstReveal": {
+            "eventLoopMilliseconds": 422.9408,
+            "fixtureToFocusMilliseconds": 985.7187,
+            "focusReadyMilliseconds": 449.978,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0212,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.0097,
+            "sleepMilliseconds": 26.9782,
+            "synchronizedFrameMilliseconds": 450.206,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "a1b13b0833b68b75d36b5c7baf70ebef9e160711a85361cdcfba5ecfba49727c",
+            "events.jsonl": "ddb563c5093550ab5e5d9e278641e0b180d08e6097cb578e62f4b369d7adab46",
+            "process.log": "9243fdf072d03865c543451f472549b3301225723875f9d46c7710e46de435a7"
+          }
+        },
+        {
+          "index": 9,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1223.6477,
+          "firstReveal": {
+            "eventLoopMilliseconds": 364.5442,
+            "fixtureToFocusMilliseconds": 929.4121,
+            "focusReadyMilliseconds": 390.8404,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0169,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0108,
+            "sleepMilliseconds": 26.2429,
+            "synchronizedFrameMilliseconds": 391.0577,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "84cd38b45ab9dab7cdc4331804ab4e1f4ad831ef51346b92dd19b66647162a64",
+            "events.jsonl": "ee61c8a0b635e3188bfa3f988498f3bbcaf1f834248e30440ac7d06490b7dfdd",
+            "process.log": "c64eb68c6273c59f3ef6a1548d68d7f98dc697ebdb4911dc9d07c2a18bb5ac31"
+          }
+        },
+        {
+          "index": 10,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1293.6516,
+          "firstReveal": {
+            "eventLoopMilliseconds": 430.8585,
+            "fixtureToFocusMilliseconds": 1003.7483,
+            "focusReadyMilliseconds": 459.1686,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0207,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0123,
+            "sleepMilliseconds": 28.2511,
+            "synchronizedFrameMilliseconds": 459.5866,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "965b382a1ad9a504091d6cc770f6cd06e4584bbea94422a6f4e9ecf420a93f12",
+            "events.jsonl": "17a552547510a1dd4d1c8996fc8f6aa26952851720e9c44b2c8e00c23627b159",
+            "process.log": "6ccceaa8f46241d62e316eed44ced4d512f6d8f09c703941f3776c0828200a35"
+          }
+        },
+        {
+          "index": 11,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1403.0401,
+          "firstReveal": {
+            "eventLoopMilliseconds": 455.098,
+            "fixtureToFocusMilliseconds": 1061.4169,
+            "focusReadyMilliseconds": 482.7224,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.018,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0101,
+            "sleepMilliseconds": 27.5727,
+            "synchronizedFrameMilliseconds": 483.2245,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "c475eefb61e4aa61aa9aaa077cf2234323ea017ec16a70c99d76243a32410745",
+            "events.jsonl": "a21fb27357f0ae8f5ca325b9a82495ea1c125abc4f32e36830792a1a2f2b399e",
+            "process.log": "5e03857fad39b9dc590fb07b8bb6c36481ffc970b5537d3f090d5ef657e73fa4"
+          }
+        },
+        {
+          "index": 12,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1825.7759,
+          "firstReveal": {
+            "eventLoopMilliseconds": 736.2269,
+            "fixtureToFocusMilliseconds": 1477.3391,
+            "focusReadyMilliseconds": 757.8638,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0288,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0132,
+            "sleepMilliseconds": 21.5672,
+            "synchronizedFrameMilliseconds": 758.3941,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "752e3c0d031881587e7e24e508ecea6f35f621cb3443a4cb3582e33df601725e",
+            "events.jsonl": "ed9373559ff3710b2be8da2c38ea8b88b89234c89dbbb0ccd434d2ff4c47895e",
+            "process.log": "07d149d7c8048875bbb0a2f0b898cd6fd93b3007e8f9a9563838042b08ac8a5a"
+          }
+        },
+        {
+          "index": 13,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1969.9694,
+          "firstReveal": {
+            "eventLoopMilliseconds": 649.6604,
+            "fixtureToFocusMilliseconds": 1486.2865,
+            "focusReadyMilliseconds": 671.6109,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0187,
+            "readinessIterations": 14,
+            "showReturnMilliseconds": 0.013,
+            "sleepMilliseconds": 21.8897,
+            "synchronizedFrameMilliseconds": 671.9168,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "bc2d3f3bda5677cf5b25321953d6cdec9dce784547a68d058b06f44aeb3277a7",
+            "events.jsonl": "25416547981114954917cfcf5f79d9806813b3a5981dc2c6059a0c9b63a190db",
+            "process.log": "f3e850bb104c8bc264faf5497a79d722429e724bb82e26654a746b4948a89f2b"
+          }
+        },
+        {
+          "index": 14,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1545.3889,
+          "firstReveal": {
+            "eventLoopMilliseconds": 449.5442,
+            "fixtureToFocusMilliseconds": 1183.7838,
+            "focusReadyMilliseconds": 479.9833,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0218,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.0123,
+            "sleepMilliseconds": 30.3773,
+            "synchronizedFrameMilliseconds": 484.8887,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "2099cef0c671a2895524454bfcf0cc441b4a5dab5d73b84ca5091f1bd17c53af",
+            "events.jsonl": "8ee799515ffdd9784f7248b1ba771b39813433d04f9799cb1ef99f42c3b9735f",
+            "process.log": "4ff79735e1ab0c7131d0211224abaa7abe5ba7c63d9a9ec1da9c31aab86db071"
+          }
+        },
+        {
+          "index": 15,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1256.0237,
+          "firstReveal": {
+            "eventLoopMilliseconds": 391.9442,
+            "fixtureToFocusMilliseconds": 959.3517,
+            "focusReadyMilliseconds": 420.1308,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0167,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.0119,
+            "sleepMilliseconds": 28.1326,
+            "synchronizedFrameMilliseconds": 420.3635,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "9928f075a9decdc4e73f466e0113c29b2ea08eaf7e002a44eaa3442b874c8dda",
+            "events.jsonl": "1493d72465f22e423ea61d9cbac15dc96e13d153226f36ca8c234adc899ab95c",
+            "process.log": "521043cb889d3ac6933a29f26ee662580f2715a674aa8d0dd928ea990942ec00"
+          }
+        },
+        {
+          "index": 16,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1274.0541,
+          "firstReveal": {
+            "eventLoopMilliseconds": 422.8459,
+            "fixtureToFocusMilliseconds": 972.3272,
+            "focusReadyMilliseconds": 447.5082,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0163,
+            "readinessIterations": 14,
+            "showReturnMilliseconds": 0.0133,
+            "sleepMilliseconds": 24.6089,
+            "synchronizedFrameMilliseconds": 447.7194,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "f0ffec759301c8dbd1289ec7056b129fc284a7dcfe66c35685745c30e31e4837",
+            "events.jsonl": "65527ba419d3412cab969f999413ee0f95edfddd1c929b6be5463a3549c283a2",
+            "process.log": "d7f48828f5856553aeac51f01711973f9eca552bdb3b1e3172ec8485a3eb7bd5"
+          }
+        },
+        {
+          "index": 17,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1694.4622,
+          "firstReveal": {
+            "eventLoopMilliseconds": 579.2863,
+            "fixtureToFocusMilliseconds": 1341.449,
+            "focusReadyMilliseconds": 613.8975,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0235,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0126,
+            "sleepMilliseconds": 34.5472,
+            "synchronizedFrameMilliseconds": 617.9772,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "2b250d9b7b688be5942e992749414aefbe939a0c6faf6a1af8da750fd38d476a",
+            "events.jsonl": "bb8f0d231b6732888aa4dfe7f630f29793f8a26388ce7f5db97abc1fb2179ad8",
+            "process.log": "02dd18d872aa6e1075eced74310e52f928a095a9f2b76e1aff56202a782af33d"
+          }
+        },
+        {
+          "index": 18,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1259.275,
+          "firstReveal": {
+            "eventLoopMilliseconds": 389.7102,
+            "fixtureToFocusMilliseconds": 940.4516,
+            "focusReadyMilliseconds": 416.003,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.037,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.009,
+            "sleepMilliseconds": 26.2238,
+            "synchronizedFrameMilliseconds": 420.5254,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "2f596c03879bddc49816acbb2cdaa2fa2c909821e682354ea414a66538281308",
+            "events.jsonl": "4b37ef49b9ac25ecc07676cd66050bdc4b9b52770cc22f1c05b1f41d4e4e5bd5",
+            "process.log": "70defe9ff18841e08899c54ace0e14124b2b1789f926c420069360b33b9c0e19"
+          }
+        },
+        {
+          "index": 19,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1323.261,
+          "firstReveal": {
+            "eventLoopMilliseconds": 424.0278,
+            "fixtureToFocusMilliseconds": 1024.5213,
+            "focusReadyMilliseconds": 451.7189,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0184,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.0117,
+            "sleepMilliseconds": 27.635,
+            "synchronizedFrameMilliseconds": 451.9285,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "ad4d1c2c0269ed5b74c95483f99fe973d75657947616d788c03ea175e7933ff6",
+            "events.jsonl": "5814a28dc33e364b1c343d93497fd53c5ba26e87b9ad58506f7f0dea0ce06af5",
+            "process.log": "e02a57b17b44702229caaa635574e53f89102bbdcccc42aed766f1aa00c80730"
+          }
+        },
+        {
+          "index": 20,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1382.0463,
+          "firstReveal": {
+            "eventLoopMilliseconds": 425.7043,
+            "fixtureToFocusMilliseconds": 1001.1763,
+            "focusReadyMilliseconds": 454.6926,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0302,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.0109,
+            "sleepMilliseconds": 28.9177,
+            "synchronizedFrameMilliseconds": 455.1337,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "3a429e32803f39d809cbd8d50cceb098d5a2b9075de80363e793908878c13401",
+            "events.jsonl": "69ae9efb6d92af9cc141752f9e6cbec6c53bf3ffd22416526d14fc2fabfc5c06",
+            "process.log": "5778879aadbd1d9a209b3c4166d656d519738615a09c89c88f03e4e0dd52e569"
+          }
+        },
+        {
+          "index": 21,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1472.7351,
+          "firstReveal": {
+            "eventLoopMilliseconds": 512.7167,
+            "fixtureToFocusMilliseconds": 1097.6799,
+            "focusReadyMilliseconds": 535.3165,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.024,
+            "readinessIterations": 12,
+            "showReturnMilliseconds": 0.012,
+            "sleepMilliseconds": 22.5371,
+            "synchronizedFrameMilliseconds": 536.0235,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "cd4512c80cd6c737c173a444444183f58fe444e2d4ff758bc0ebc0abbb028e3e",
+            "events.jsonl": "85f01212e926c49ec704d6131170aea7e07df7bca21fe7d7d025a47338f62ea4",
+            "process.log": "beee4af21c928a99020520eb348f40fd94eceed6551743885aa1367868a9e43e"
+          }
+        },
+        {
+          "index": 22,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1521.18,
+          "firstReveal": {
+            "eventLoopMilliseconds": 491.4489,
+            "fixtureToFocusMilliseconds": 1135.3333,
+            "focusReadyMilliseconds": 518.3756,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0182,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.0108,
+            "sleepMilliseconds": 26.8761,
+            "synchronizedFrameMilliseconds": 522.8301,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "f5c1b8b6f03d697e54bbd2ab07b99ca64bc93968f0bc6aa4654e6f7d275e4a30",
+            "events.jsonl": "c5241d19a57002e5a489f729e08f8322555f80f894d5707e8058a93f751e555b",
+            "process.log": "2d2989861f512724a2a0db1f4349e7f0a30f84356a19220797349c98224abecd"
+          }
+        },
+        {
+          "index": 23,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1367.8012,
+          "firstReveal": {
+            "eventLoopMilliseconds": 431.9848,
+            "fixtureToFocusMilliseconds": 1012.3626,
+            "focusReadyMilliseconds": 459.7013,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0229,
+            "readinessIterations": 18,
+            "showReturnMilliseconds": 0.0126,
+            "sleepMilliseconds": 27.6519,
+            "synchronizedFrameMilliseconds": 464.2813,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "b705e49939ce2c80fa44d527fd0c75c6bedf61559508d9c234736b38c012ad2e",
+            "events.jsonl": "7d441194cc84c1892be20e5f58c4927e95803b1354ff79115379cec19efd312c",
+            "process.log": "4c3004040bc104212fff9fe1e2026e231485382a1d991eef230c945b000ebbe3"
+          }
+        },
+        {
+          "index": 24,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1283.3164,
+          "firstReveal": {
+            "eventLoopMilliseconds": 402.3779,
+            "fixtureToFocusMilliseconds": 980.0268,
+            "focusReadyMilliseconds": 430.8366,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0176,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.0082,
+            "sleepMilliseconds": 28.4086,
+            "synchronizedFrameMilliseconds": 431.0516,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "124d210ae3c2750350b6ccc293ca87dddd5f72f8a391316bef7f2b5a9b8e2aed",
+            "events.jsonl": "43dbe12ae246e400ed029211b89a49d7c72eef941b651e8c1f05c8dd5c1d1a06",
+            "process.log": "e86fcc05312de6ba8098567d4c40cd75dfd8cd83982eee6641931ff0bc7f89e1"
+          }
+        },
+        {
+          "index": 25,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1293.5883,
+          "firstReveal": {
+            "eventLoopMilliseconds": 413.7786,
+            "fixtureToFocusMilliseconds": 985.4153,
+            "focusReadyMilliseconds": 438.7519,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0146,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.01,
+            "sleepMilliseconds": 24.9288,
+            "synchronizedFrameMilliseconds": 443.1269,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "e59550f8bf661c835bae96701741f8bf3f2b4356038c88c82b367c3bf6960227",
+            "events.jsonl": "16a21c840246972239d7d104d746e0652c78b39ea788a209984fb6c4ab4ddacf",
+            "process.log": "640cbadb9b593e80f33ae72f2a8364b3a60ebcfc7298d2049130f4d3ceb068ce"
+          }
+        },
+        {
+          "index": 26,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1314.2045,
+          "firstReveal": {
+            "eventLoopMilliseconds": 433.183,
+            "fixtureToFocusMilliseconds": 994.2331,
+            "focusReadyMilliseconds": 459.881,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0505,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0093,
+            "sleepMilliseconds": 26.6154,
+            "synchronizedFrameMilliseconds": 460.3474,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "27a7cbb981259cd637a5d6ad3d22aa66d9563f6272b62afacdd7bb3eeaa99bde",
+            "events.jsonl": "e37dbdeb31ab07a9fb5f94505e006c9d599cae4c7c5167103ffffe7f776fa161",
+            "process.log": "ec2a9c6cad6fb6b755228587bca4538e486f991136052a7330ca783a16377331"
+          }
+        },
+        {
+          "index": 27,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1354.1085,
+          "firstReveal": {
+            "eventLoopMilliseconds": 444.4548,
+            "fixtureToFocusMilliseconds": 1031.244,
+            "focusReadyMilliseconds": 470.5272,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.017,
+            "readinessIterations": 13,
+            "showReturnMilliseconds": 0.0092,
+            "sleepMilliseconds": 26.0261,
+            "synchronizedFrameMilliseconds": 476.5537,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "ce3b8a87a0838f3f5714a6bd1bd0803f12e51e5478117efa732bd63010471268",
+            "events.jsonl": "acd014e013e2b22915a12dbe824cd9911cce04fa0a00ffc27c0f90efcd3218ac",
+            "process.log": "eeb929d13ff063b0e93297a2b3e593806ff0807e659e83dc582c22fa1cbb1ca6"
+          }
+        },
+        {
+          "index": 28,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1330.1866,
+          "firstReveal": {
+            "eventLoopMilliseconds": 457.5462,
+            "fixtureToFocusMilliseconds": 1024.4171,
+            "focusReadyMilliseconds": 483.1185,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0179,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0112,
+            "sleepMilliseconds": 25.516,
+            "synchronizedFrameMilliseconds": 483.2996,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "686f577a2063b9b14652265d78f1701e05306bc31ab12407fe7c80145fedf3a6",
+            "events.jsonl": "ac7124eea75f6b2a4160334c19e301887ed6c9056d5605c2ac50ccb401ef431f",
+            "process.log": "63a51e97a3298d93d7fe2a78e2d797367f9cc63ab0713fdfc84bb14efcae6127"
+          }
+        },
+        {
+          "index": 29,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1267.2597,
+          "firstReveal": {
+            "eventLoopMilliseconds": 373.4314,
+            "fixtureToFocusMilliseconds": 942.44,
+            "focusReadyMilliseconds": 401.3611,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0252,
+            "readinessIterations": 18,
+            "showReturnMilliseconds": 0.0109,
+            "sleepMilliseconds": 27.8683,
+            "synchronizedFrameMilliseconds": 401.7398,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "32c2242b8b9db09b8bd017dd8431156851822b1a73d8448330a403fbe7d22094",
+            "events.jsonl": "6ada72736a79b9bd84a0aba01aac5bba51aa226c551f605668283724440985cc",
+            "process.log": "1186c503d04f68646978d1d1f14f246f007bbcb58a45ed196b173980210ef214"
+          }
+        },
+        {
+          "index": 30,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1465.4819,
+          "firstReveal": {
+            "eventLoopMilliseconds": 521.5696,
+            "fixtureToFocusMilliseconds": 1122.4504,
+            "focusReadyMilliseconds": 546.7205,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0232,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0122,
+            "sleepMilliseconds": 25.0886,
+            "synchronizedFrameMilliseconds": 547.0467,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "3ac4a239d4d14c0f1496ef8ef2abee5092f0f47b0f53ead8383e8f05e3abf823",
+            "events.jsonl": "34e77f8d4331b37ef27b1f2919d500c3985b6a72dbd66909074dde161338d271",
+            "process.log": "fc0128d87bd0ec57e88316d29edf006f9fe2aafc22183b255da703ddb97bf101"
+          }
+        },
+        {
+          "index": 31,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1599.6106,
+          "firstReveal": {
+            "eventLoopMilliseconds": 449.3003,
+            "fixtureToFocusMilliseconds": 1158.1643,
+            "focusReadyMilliseconds": 473.8732,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0182,
+            "readinessIterations": 14,
+            "showReturnMilliseconds": 0.0115,
+            "sleepMilliseconds": 24.5166,
+            "synchronizedFrameMilliseconds": 478.2115,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "811058e972b2009970c2228c19b75538c01dc0c9986f97cb85783255480d5dcd",
+            "events.jsonl": "3ca8f03d7936616737edb49eab8b9cecb226f62525208e4df5b64fc50fe82839",
+            "process.log": "2fdf326e243a109d5a049cb0c72fd8762fb387a2a827e4d5293cb0909b0d4843"
+          }
+        },
+        {
+          "index": 32,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1432.8189,
+          "firstReveal": {
+            "eventLoopMilliseconds": 477.6515,
+            "fixtureToFocusMilliseconds": 1092.4032,
+            "focusReadyMilliseconds": 499.8492,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0222,
+            "readinessIterations": 13,
+            "showReturnMilliseconds": 0.025,
+            "sleepMilliseconds": 22.1256,
+            "synchronizedFrameMilliseconds": 500.0925,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "4f217432b1ffcee22d539ffbc3a2175efc32c9f1563f6880139ce3318b07b4bf",
+            "events.jsonl": "e062ead9086b9fbf568331ed30a1507c433d837af3a13a1edaeb9577df881c5b",
+            "process.log": "e21e59d5c8decbdc1c4cefb557bb3ce2983c7d9636e0e720d965b285567cc9ef"
+          }
+        },
+        {
+          "index": 33,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1333.6819,
+          "firstReveal": {
+            "eventLoopMilliseconds": 402.4903,
+            "fixtureToFocusMilliseconds": 984.1183,
+            "focusReadyMilliseconds": 427.6214,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.018,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.0077,
+            "sleepMilliseconds": 25.0844,
+            "synchronizedFrameMilliseconds": 427.8703,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "79cd00d1995326a6d4d2185b4aaa4f238848b1ec0fcee97566032e26debefeeb",
+            "events.jsonl": "5e98cfef26a48b57110c87e2e0ede5b0128dfea2a2a4267546cb7141e22b7eb0",
+            "process.log": "d353e8752821455a8008408c7f34d9a3bf117b7dbb25d18616512ffc3ef2baf7"
+          }
+        },
+        {
+          "index": 34,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1737.7668,
+          "firstReveal": {
+            "eventLoopMilliseconds": 661.821,
+            "fixtureToFocusMilliseconds": 1351.5753,
+            "focusReadyMilliseconds": 688.5327,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.025,
+            "readinessIterations": 14,
+            "showReturnMilliseconds": 0.0137,
+            "sleepMilliseconds": 26.6462,
+            "synchronizedFrameMilliseconds": 696.4499,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "c58d95081ef83a42228627efdd7f7967e655dd1a570adc99cd121d96e94db386",
+            "events.jsonl": "2f968b41c2d46ec8ddf36e472d8eee0a0c19d6d6946667d3493b5d5ceb98caed",
+            "process.log": "9c5fb5d4b61c24fc25c0b3c5bb209677447b328077ec8b501abc0d484d8b6d05"
+          }
+        },
+        {
+          "index": 35,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1395.83,
+          "firstReveal": {
+            "eventLoopMilliseconds": 508.824,
+            "fixtureToFocusMilliseconds": 1068.3504,
+            "focusReadyMilliseconds": 530.9326,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.02,
+            "readinessIterations": 12,
+            "showReturnMilliseconds": 0.0122,
+            "sleepMilliseconds": 22.0474,
+            "synchronizedFrameMilliseconds": 531.4514,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "98f6f5297d18a1f6eef052ddb7e3bec71462caa9f4a5be916bd8e828a910a1b6",
+            "events.jsonl": "996685159d29d7995d89915ed9abc380eda38c4417b89ade639247bf06c5c883",
+            "process.log": "a191f621382b8975788293c7ec991c082337bc084378fb6ac8e4b2b8ce3851af"
+          }
+        },
+        {
+          "index": 36,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1351.699,
+          "firstReveal": {
+            "eventLoopMilliseconds": 437.0307,
+            "fixtureToFocusMilliseconds": 1013.2122,
+            "focusReadyMilliseconds": 465.5778,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0183,
+            "readinessIterations": 18,
+            "showReturnMilliseconds": 0.009,
+            "sleepMilliseconds": 28.4985,
+            "synchronizedFrameMilliseconds": 465.8449,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "ab8d0cc15441cf300ccde6f57a83335ab8105c96310b93c7b04129caa6e73b66",
+            "events.jsonl": "69ed35cd711aa88835bbf811db0935443036488561aa9fc7550502ad1260a899",
+            "process.log": "17d5dfbf07472492050d3400e351e987ae309fc7331101668e270f5a82926313"
+          }
+        },
+        {
+          "index": 37,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1352.9912,
+          "firstReveal": {
+            "eventLoopMilliseconds": 464.9671,
+            "fixtureToFocusMilliseconds": 1017.3708,
+            "focusReadyMilliseconds": 489.1969,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0232,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0117,
+            "sleepMilliseconds": 24.1674,
+            "synchronizedFrameMilliseconds": 489.4336,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "b59422cbd0955b23f16354c839d1a54aff35c40b80b7f8bb1637d266462a676f",
+            "events.jsonl": "faebf856f1a4487824290ca3dd5da0ab66b0c9537d540a3b39e17437afc2acb8",
+            "process.log": "714d3f9282cba0b82e72d0f9f4cac82d668804585eb16ed03f46b58e07286cfc"
+          }
+        },
+        {
+          "index": 38,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1318.2129,
+          "firstReveal": {
+            "eventLoopMilliseconds": 414.0666,
+            "fixtureToFocusMilliseconds": 991.3547,
+            "focusReadyMilliseconds": 441.3862,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0194,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.011,
+            "sleepMilliseconds": 27.2637,
+            "synchronizedFrameMilliseconds": 441.619,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "7c04a16cff38e0d6927d0ce4a1d3b2b9f75021871a5e36ea74b788f10b643a95",
+            "events.jsonl": "c73fe729064e554fea37f96a9dfd5d7a1fa6efc048155fa54d1f2daffecb0a14",
+            "process.log": "de9fc9566d74f424cb5922236cd7fe5043cfbd81822c9483ad8cf6bc19ee9a84"
+          }
+        },
+        {
+          "index": 39,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1278.4729,
+          "firstReveal": {
+            "eventLoopMilliseconds": 405.3995,
+            "fixtureToFocusMilliseconds": 983.7548,
+            "focusReadyMilliseconds": 431.1544,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0205,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.014,
+            "sleepMilliseconds": 25.6771,
+            "synchronizedFrameMilliseconds": 431.3627,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "1b2acc2e2985641f9b1a93543c5782b8df32e88a863bff62c60b3751ce9419be",
+            "events.jsonl": "e685727878f8b4970990bd6aee2b3588efb249c06a55f627c2ecc0eb84194c8b",
+            "process.log": "f5c86bef3fdb1aaec74537c95535bbed0f0fa2703076049728a201e5c971d04d"
+          }
+        },
+        {
+          "index": 40,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1316.9394,
+          "firstReveal": {
+            "eventLoopMilliseconds": 419.1432,
+            "fixtureToFocusMilliseconds": 996.3822,
+            "focusReadyMilliseconds": 447.9989,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0189,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.013,
+            "sleepMilliseconds": 28.7863,
+            "synchronizedFrameMilliseconds": 448.2331,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "f16abdc9b7c3e3ef96dd49f4f1094f3430080e8f4438d81374b4f78cd15652e8",
+            "events.jsonl": "8d3b09d2e71f0571a5bd96f138c8db71a2dea805b80b59db67baa140c2f1d6e9",
+            "process.log": "2c40ecc18f4539c2603fdb8bd9301b8a22aef19703025cdcdea126f1c16458eb"
+          }
+        },
+        {
+          "index": 41,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1508.0849,
+          "firstReveal": {
+            "eventLoopMilliseconds": 410.2337,
+            "fixtureToFocusMilliseconds": 1192.8147,
+            "focusReadyMilliseconds": 436.6429,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0237,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.0124,
+            "sleepMilliseconds": 26.3443,
+            "synchronizedFrameMilliseconds": 436.861,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "31efc34b4053ff1c71f66be662b1e0a4dc8ab9e479af48c5e46375c82ac1f8b5",
+            "events.jsonl": "ce8561a3dd95b3a1a932dd7a26dd3083a7e04d962985ef83a5a34ddb2e4cd253",
+            "process.log": "89f6f495c6c4e5ee10222cc6452ad42fd9e36fde87a0aceaa044da61c2f50408"
+          }
+        },
+        {
+          "index": 42,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1278.1312,
+          "firstReveal": {
+            "eventLoopMilliseconds": 417.2926,
+            "fixtureToFocusMilliseconds": 978.8251,
+            "focusReadyMilliseconds": 445.4789,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.4244,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.016,
+            "sleepMilliseconds": 27.7142,
+            "synchronizedFrameMilliseconds": 445.8149,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "aa39d0c01ce0fd58a7bdb474cbe4edc6ae86df6379cb6b5ee047c3c5f8542f31",
+            "events.jsonl": "220ba490d6f7ea7c1901926ce4a284db52fbeee7b8653a81770502000a6b4963",
+            "process.log": "daa72555415514db8966744e0124778e2568cff0c627f4e0f97f76d66445967e"
+          }
+        },
+        {
+          "index": 43,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1281.0774,
+          "firstReveal": {
+            "eventLoopMilliseconds": 423.6415,
+            "fixtureToFocusMilliseconds": 976.9049,
+            "focusReadyMilliseconds": 448.291,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0294,
+            "readinessIterations": 14,
+            "showReturnMilliseconds": 0.0369,
+            "sleepMilliseconds": 24.5466,
+            "synchronizedFrameMilliseconds": 448.5343,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "84a393fd457eabf42294e8ebaf8d85dc0f958b4c01f45c49818ac90f1ab0e020",
+            "events.jsonl": "9e800fd8a7592811f663c3ed7a3fd17ac72a843b42af05a47e914296a917ebee",
+            "process.log": "6d55b8fbfcd203897458f50889dd70d6cec6712f80695aefef28bfc08c0f0510"
+          }
+        },
+        {
+          "index": 44,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1319.6267,
+          "firstReveal": {
+            "eventLoopMilliseconds": 429.2373,
+            "fixtureToFocusMilliseconds": 998.7551,
+            "focusReadyMilliseconds": 451.7888,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0271,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.0109,
+            "sleepMilliseconds": 22.4844,
+            "synchronizedFrameMilliseconds": 452.0624,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "74bf70107c6b4cc31c10e301d42421c9623eb1486e4d499e4c1014decef82436",
+            "events.jsonl": "4690999a4777dd74e178511d2bbe58368fe6e7afb5d3a5578fb2476930b75a81",
+            "process.log": "ddad4626c80376b308b2ab60942a53eb897f6074a7e98ca3fcc10fa621e5cec3"
+          }
+        },
+        {
+          "index": 45,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1351.2347,
+          "firstReveal": {
+            "eventLoopMilliseconds": 423.8214,
+            "fixtureToFocusMilliseconds": 1057.9949,
+            "focusReadyMilliseconds": 455.1478,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0217,
+            "readinessIterations": 18,
+            "showReturnMilliseconds": 0.012,
+            "sleepMilliseconds": 31.2641,
+            "synchronizedFrameMilliseconds": 455.3453,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "467d3a3559dc1a20a2de0696f88b9805aaeeaf53ca03a3f17b50715c1cb8ee42",
+            "events.jsonl": "bf3b4a55ed39e190a42b56bf09a6cd926c5ac1900dfbabd3b2f7468bac3c8592",
+            "process.log": "2f3730e912da0b2dc93f48a567136749c4f01e9ce6584e874ab5d25490717c86"
+          }
+        },
+        {
+          "index": 46,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1337.7407,
+          "firstReveal": {
+            "eventLoopMilliseconds": 456.9497,
+            "fixtureToFocusMilliseconds": 1007.621,
+            "focusReadyMilliseconds": 477.134,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0231,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.0116,
+            "sleepMilliseconds": 20.1188,
+            "synchronizedFrameMilliseconds": 482.8708,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "4b274db6086e3a0e44d88ddb0e806d3392511f284c09b08126bac82dbd3236b1",
+            "events.jsonl": "23d588ee954f7a24892e7b6340bc5ba4caa8c403a8cadb864518cdda3b0733bf",
+            "process.log": "92062d3a20724450fdd94ea9426e5186492c920fb2f04ffa870995eb5c76ca21"
+          }
+        },
+        {
+          "index": 47,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1399.2676,
+          "firstReveal": {
+            "eventLoopMilliseconds": 435.2123,
+            "fixtureToFocusMilliseconds": 1028.2631,
+            "focusReadyMilliseconds": 462.8651,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0211,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0113,
+            "sleepMilliseconds": 27.5907,
+            "synchronizedFrameMilliseconds": 463.133,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "eaf8e3d22be48c4922bd30024e7d76fa637735e8c1541d856a183b3f4b92bf4c",
+            "events.jsonl": "6f0eb1bebd59d24747943dfa4ae7181a060405407e6682e21df972ce0e645f22",
+            "process.log": "b5d550a7b3191ff6ed15222deff951174b95a43c63f73e10d5600dd2e8b9d959"
+          }
+        },
+        {
+          "index": 48,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1506.2275,
+          "firstReveal": {
+            "eventLoopMilliseconds": 587.8815,
+            "fixtureToFocusMilliseconds": 1161.8904,
+            "focusReadyMilliseconds": 610.9427,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.024,
+            "readinessIterations": 13,
+            "showReturnMilliseconds": 0.0123,
+            "sleepMilliseconds": 22.9936,
+            "synchronizedFrameMilliseconds": 611.7225,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "8cbfa1c85daca56e5e9c1423cfd65bfaa05a0ac80d9293aaa31dfd1c2199bce8",
+            "events.jsonl": "87c8ac6fdeb021c91993fe1c50e130b238476ada968dd599faf7b4c1d7755925",
+            "process.log": "82e9fc5b66924dc63f322f1f1399de2febd1ed9d4bbe559bb20e9a369e0e4228"
+          }
+        },
+        {
+          "index": 49,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1788.5009,
+          "firstReveal": {
+            "eventLoopMilliseconds": 602.2831,
+            "fixtureToFocusMilliseconds": 1365.5525,
+            "focusReadyMilliseconds": 629.2784,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0177,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0117,
+            "sleepMilliseconds": 26.9406,
+            "synchronizedFrameMilliseconds": 633.5627,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "044d1de17e5616bd60d2d25baeed131722f14dbe3ef3d90e4b3d60a59016735d",
+            "events.jsonl": "7d26b05b968922c7b59d1c3ed84e447fc4711319d9dc722e94962424af97c9f3",
+            "process.log": "36e0a1ad516b68dd08ac5411ca4d3ebd7605f31146c1e94d75bb57885e921368"
+          }
+        },
+        {
+          "index": 50,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1274.9977,
+          "firstReveal": {
+            "eventLoopMilliseconds": 399.0722,
+            "fixtureToFocusMilliseconds": 970.6331,
+            "focusReadyMilliseconds": 425.8338,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0216,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0092,
+            "sleepMilliseconds": 26.7047,
+            "synchronizedFrameMilliseconds": 426.0704,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "3139ff9fe9367acc0f1d0db1a48a4ba0b7c837e15705ac798022a395217c8170",
+            "events.jsonl": "97a6123be8a436f0c19cc1172d64a0a47e1ce07dc172c10c3f4b5bb7713bc841",
+            "process.log": "f55240ab33e1b7487cc0e5a60a62c08e6a16de3254bdc20d98295be61374792d"
+          }
+        },
+        {
+          "index": 51,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1484.44,
+          "firstReveal": {
+            "eventLoopMilliseconds": 542.2477,
+            "fixtureToFocusMilliseconds": 1131.8924,
+            "focusReadyMilliseconds": 565.7658,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0218,
+            "readinessIterations": 14,
+            "showReturnMilliseconds": 0.0125,
+            "sleepMilliseconds": 23.4561,
+            "synchronizedFrameMilliseconds": 566.4847,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "2dc49ecbbe3005de8d397f57a2895282ccb6a51680dd42c8211eac4bbb99fb48",
+            "events.jsonl": "0c9c2c10246112c268747a9216d0471c2b0103a3dd9f63dbb7178317ee8db2cd",
+            "process.log": "5c4564192346cd242c5d2359fa865ca9d84de58002041536f9f60df31c98da3e"
+          }
+        },
+        {
+          "index": 52,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1351.3995,
+          "firstReveal": {
+            "eventLoopMilliseconds": 386.1041,
+            "fixtureToFocusMilliseconds": 974.1832,
+            "focusReadyMilliseconds": 413.9398,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0178,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.0117,
+            "sleepMilliseconds": 27.781,
+            "synchronizedFrameMilliseconds": 414.2012,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "5436a9dc97691c0dfd6b9089687848e0925fd03bcbfa45ec32243629b6c34f5a",
+            "events.jsonl": "17ee28a690b41d88c0319a908e3cb88e72d02a70c5325606218221e6ee87b645",
+            "process.log": "8e5019c94e494b27b0f61b6e3d251215a96b44aa1c608499d8ca496710ff3782"
+          }
+        },
+        {
+          "index": 53,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1238.3936,
+          "firstReveal": {
+            "eventLoopMilliseconds": 406.9484,
+            "fixtureToFocusMilliseconds": 944.4783,
+            "focusReadyMilliseconds": 432.2462,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0174,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.009,
+            "sleepMilliseconds": 25.2474,
+            "synchronizedFrameMilliseconds": 432.4444,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "db4ac10e900be770da2085887741f741c4b7f022def20714bc61e78232652608",
+            "events.jsonl": "c4e3efd56cb49fd8af59cf2d83a0ef8e200d65d1e3fe394aed123b9ded7fcd15",
+            "process.log": "2a117e758bd65defcf4a62d69246ec90652be3ddc1868fd09f4141d69b8a125a"
+          }
+        },
+        {
+          "index": 54,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1403.5523,
+          "firstReveal": {
+            "eventLoopMilliseconds": 411.2954,
+            "fixtureToFocusMilliseconds": 1059.3065,
+            "focusReadyMilliseconds": 435.8736,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0211,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0122,
+            "sleepMilliseconds": 24.5172,
+            "synchronizedFrameMilliseconds": 436.1587,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "1f15a73442d620ab0ebe24ff0c1f1227698b29d6a9a4698f36ed6412c7e33717",
+            "events.jsonl": "4c1fddeb4565b8c4438c061784f0f174650123557cf69e5309ebc17075b9506a",
+            "process.log": "e6d31bb3add45ec0956b33449e3e73d0a73351ad1bad6c72084b99fe3835c301"
+          }
+        },
+        {
+          "index": 55,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1383.6415,
+          "firstReveal": {
+            "eventLoopMilliseconds": 480.6511,
+            "fixtureToFocusMilliseconds": 1071.9027,
+            "focusReadyMilliseconds": 506.7042,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0198,
+            "readinessIterations": 14,
+            "showReturnMilliseconds": 0.012,
+            "sleepMilliseconds": 25.9952,
+            "synchronizedFrameMilliseconds": 506.9768,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "8a62104971a09beedec222e6714a753a11b6e77bef29cb0155b2df65cf0d7faa",
+            "events.jsonl": "9b3cf8455705dac3fbff0a94223a2de3bc814a5c43cbe9fc96d1daa659747a7c",
+            "process.log": "6c5a36a31ccd544348b76ea0acc8fa96c8ab61b81ef04ef8845041c545facd98"
+          }
+        },
+        {
+          "index": 56,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1355.057,
+          "firstReveal": {
+            "eventLoopMilliseconds": 457.1545,
+            "fixtureToFocusMilliseconds": 1043.0868,
+            "focusReadyMilliseconds": 484.2386,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0205,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.0109,
+            "sleepMilliseconds": 27.025,
+            "synchronizedFrameMilliseconds": 484.493,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "235c496090f6370272175a0c4a69bc44d36ce6262997fee2aa41819f5c5c23ec",
+            "events.jsonl": "2c29195a973b3f6fabe62e0c25a79768d5aa19f70bceac45aa92d60b25264576",
+            "process.log": "9db12a18d10e8a4e8b97052a290dff3671ae8ebd1cfbc1c422d49447d607fcc9"
+          }
+        },
+        {
+          "index": 57,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1690.6918,
+          "firstReveal": {
+            "eventLoopMilliseconds": 412.0935,
+            "fixtureToFocusMilliseconds": 1333.3932,
+            "focusReadyMilliseconds": 439.5019,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0879,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.011,
+            "sleepMilliseconds": 27.2838,
+            "synchronizedFrameMilliseconds": 439.7448,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "a6bde7dcb066c88a4b6162c90e18a54d8a42370b658c98260db3387d86893ad7",
+            "events.jsonl": "1c602df34e27eec15c9d28ceb29f66aa1ef1798a2e4e2d30270a6c4df6e60703",
+            "process.log": "d7466628ce5fc6beb539ef6fd09eb4e295b18ea7c7a9ef6b5a9f46d603bddd5b"
+          }
+        },
+        {
+          "index": 58,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1245.0845,
+          "firstReveal": {
+            "eventLoopMilliseconds": 388.7387,
+            "fixtureToFocusMilliseconds": 943.079,
+            "focusReadyMilliseconds": 418.1184,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0347,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.0109,
+            "sleepMilliseconds": 29.3091,
+            "synchronizedFrameMilliseconds": 418.4282,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "63fa24fd37fe44383e81db2469eaa1b98d44bd6602d8d29f30173f39a46017ac",
+            "events.jsonl": "c60caa0b0b2c217a6f3d8eec14484a7c67d37ba9499a84ae4ab57856740e9753",
+            "process.log": "97353b1e7c24d5c38626a205a6822a8d1763394d83c92b2df8a68afdc7f1714d"
+          }
+        },
+        {
+          "index": 59,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1258.7268,
+          "firstReveal": {
+            "eventLoopMilliseconds": 381.93,
+            "fixtureToFocusMilliseconds": 945.3368,
+            "focusReadyMilliseconds": 410.2095,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0188,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.0128,
+            "sleepMilliseconds": 28.2215,
+            "synchronizedFrameMilliseconds": 410.4482,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "e7b0244fd03ff34651b9e28457fc093a027760a71fff35aa1566bf137d284438",
+            "events.jsonl": "4abd6119e6b8912dfbc61ab9aa5d75b62b58a3c727354c3a6f4fb75f67bf21b5",
+            "process.log": "6e720fa144255892ba601c4054987cb65e9e89aa9dfe4cd50cf9f323d61024e3"
+          }
+        },
+        {
+          "index": 60,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1295.5007,
+          "firstReveal": {
+            "eventLoopMilliseconds": 380.2427,
+            "fixtureToFocusMilliseconds": 958.5638,
+            "focusReadyMilliseconds": 409.0999,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0235,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.0312,
+            "sleepMilliseconds": 28.7762,
+            "synchronizedFrameMilliseconds": 413.2945,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "5978fe00dcd8779b8d78e913cc8980ee28a5114a4c4e1d82832846f34e5e50e0",
+            "events.jsonl": "2927b22720de0d7f98eb76c29eba82254c758e6a33b725c72689f34102eb67eb",
+            "process.log": "c8a3ae0c16f193b736883ccacec23a82f21e4dfc2133743e5eba429836991a70"
+          }
+        },
+        {
+          "index": 61,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1276.8275,
+          "firstReveal": {
+            "eventLoopMilliseconds": 432.9905,
+            "fixtureToFocusMilliseconds": 973.6979,
+            "focusReadyMilliseconds": 462.293,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0195,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.0118,
+            "sleepMilliseconds": 29.2454,
+            "synchronizedFrameMilliseconds": 463.7088,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "55a6659015a8be220a4128ac0829f7885cc7fb4be8711febbb8a811605781e6d",
+            "events.jsonl": "cbd75eaf06d412c007ce1cabdea059f3d683bafe3ba4816a09492d7db09b94a2",
+            "process.log": "2f290d5c82d7a9a7c38e51a963403881426f8dfdb090875d7226f5268de62ee7"
+          }
+        },
+        {
+          "index": 62,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1255.4828,
+          "firstReveal": {
+            "eventLoopMilliseconds": 406.3009,
+            "fixtureToFocusMilliseconds": 953.4696,
+            "focusReadyMilliseconds": 434.0395,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0217,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.0098,
+            "sleepMilliseconds": 27.6828,
+            "synchronizedFrameMilliseconds": 434.2615,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "7d011f8aa3af1d8a962a916d185945d79270bcdaa445c3a079b2ae4e99b6fb0a",
+            "events.jsonl": "74378ee2e4b3dc26f452d89784e448849604772f9eb3558a57ce773763f5a6c0",
+            "process.log": "e9dfad78ca18d935ecd57cd354efc377ab9f3f9ebf6f38a22096a964aa750492"
+          }
+        },
+        {
+          "index": 63,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1200.0542,
+          "firstReveal": {
+            "eventLoopMilliseconds": 377.308,
+            "fixtureToFocusMilliseconds": 912.8733,
+            "focusReadyMilliseconds": 403.3842,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0185,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.016,
+            "sleepMilliseconds": 26.0185,
+            "synchronizedFrameMilliseconds": 403.5679,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "9616939829407b5d238f68c6c0f08ddad37a30566459135aa996e631c14e5a37",
+            "events.jsonl": "3ec380f9a2b883abe0f9da11bf6f89e7113cda7b9a9c0f45e9b82afcf7a67380",
+            "process.log": "e64ab29db2eb901da04c766a770e18a21d623d817fcbbc59cf0fb7382fa68abc"
+          }
+        },
+        {
+          "index": 64,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1229.0251,
+          "firstReveal": {
+            "eventLoopMilliseconds": 387.3846,
+            "fixtureToFocusMilliseconds": 923.3261,
+            "focusReadyMilliseconds": 414.8766,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0169,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.0085,
+            "sleepMilliseconds": 27.4442,
+            "synchronizedFrameMilliseconds": 415.0864,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "5d6daa1dbdb4f5632b13180851734f8e937d5d9803d1ee8f0b6953319de4efcb",
+            "events.jsonl": "064bb175888e09635fb4a0e674287fe03787ea1d42b4ad5a6a6dc667dd03604b",
+            "process.log": "b91ee81538e22a64f5bc87f409825a3f65fa59658cfa884027c1ddb83b54237d"
+          }
+        },
+        {
+          "index": 65,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1452.1268,
+          "firstReveal": {
+            "eventLoopMilliseconds": 477.4588,
+            "fixtureToFocusMilliseconds": 1138.783,
+            "focusReadyMilliseconds": 507.2055,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0233,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.0107,
+            "sleepMilliseconds": 29.6821,
+            "synchronizedFrameMilliseconds": 507.4115,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "dd32adaa2de71814f41d5cbde6a0217aaf7cb99d84360f444f893e84075b311b",
+            "events.jsonl": "e7e1e1eee66596e04b4d9dedd175b7734d9823ffee03eb7fcb8dab705ccd92ee",
+            "process.log": "d9c77781bab4443fba020632626625db296a05ca1a05cc68f774cb5d34de6f28"
+          }
+        },
+        {
+          "index": 66,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1268.0375,
+          "firstReveal": {
+            "eventLoopMilliseconds": 411.7967,
+            "fixtureToFocusMilliseconds": 973.1814,
+            "focusReadyMilliseconds": 440.2993,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.019,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.0188,
+            "sleepMilliseconds": 28.437,
+            "synchronizedFrameMilliseconds": 440.559,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "57a3be0955db8b7ea2831335a5bf7cd35c0d49760cb20e4e495c69b0edccb5e8",
+            "events.jsonl": "f0e4296c44d0dde435d9286bb87f79b4e6513dca1fdad6f5a7e7c5dc1663f97e",
+            "process.log": "4c39fb17d7fd327e633e704fd3c9e711faaa73ee9331fc2b06224bd3acb55756"
+          }
+        },
+        {
+          "index": 67,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1268.043,
+          "firstReveal": {
+            "eventLoopMilliseconds": 407.1724,
+            "fixtureToFocusMilliseconds": 957.3722,
+            "focusReadyMilliseconds": 434.5377,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0206,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0112,
+            "sleepMilliseconds": 27.3069,
+            "synchronizedFrameMilliseconds": 439.083,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "709c532f46d379fda89d32ef278fcb04a988b2260d1bb680c53f41deedddaf4f",
+            "events.jsonl": "605fac3a3a6f59dd4107badca8da36720d5779af41c21b82af799253680030a8",
+            "process.log": "5dedf470e5d6f0f39261ff6e0f719dcff54d0f81c8e0fccbb16fad876bd37ac3"
+          }
+        },
+        {
+          "index": 68,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1251.0914,
+          "firstReveal": {
+            "eventLoopMilliseconds": 406.3905,
+            "fixtureToFocusMilliseconds": 951.9135,
+            "focusReadyMilliseconds": 436.1855,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0215,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.0109,
+            "sleepMilliseconds": 29.7348,
+            "synchronizedFrameMilliseconds": 436.713,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "f8c38ccd8ec738d459b1e82d712e0247c4d81a297667509f6cebd94317d3debc",
+            "events.jsonl": "55ce1b4896d6e6bcb3cff4d3c89b089d731c1ec87c60b67852deeab0d7ef3631",
+            "process.log": "816dc6160231b46837bffaad99f510a6fcaf0b83fbe6cddaf4fd10488ddf41f0"
+          }
+        },
+        {
+          "index": 69,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1422.5708,
+          "firstReveal": {
+            "eventLoopMilliseconds": 526.1524,
+            "fixtureToFocusMilliseconds": 1090.161,
+            "focusReadyMilliseconds": 551.2017,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0225,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0132,
+            "sleepMilliseconds": 24.9836,
+            "synchronizedFrameMilliseconds": 551.472,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "43d98ee1c16ff22440ea2cf8f87c5aee5e4bd04f768732f15359f8bf5231f551",
+            "events.jsonl": "8ec55d5690f28362508a23c6ce94a78435af6e55597712e631a300b9d6095199",
+            "process.log": "aeeaddbdb096699bc3dab19fedd7368d598aedc4296a33616b7f1bc37c278370"
+          }
+        },
+        {
+          "index": 70,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1358.6982,
+          "firstReveal": {
+            "eventLoopMilliseconds": 383.2325,
+            "fixtureToFocusMilliseconds": 995.5736,
+            "focusReadyMilliseconds": 410.8822,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0215,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.0076,
+            "sleepMilliseconds": 27.5993,
+            "synchronizedFrameMilliseconds": 411.1372,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "71e93372bbf27cd2596522fef8d0d37f59521c7c68996007a6b238af9dd128f9",
+            "events.jsonl": "f55088f4aef335816d0848d8362f24b2efd337f48e188a13279587a7a2f171f6",
+            "process.log": "ceccd9ad0513bf1608713419703543d06728e9b92981e75dbe6012db46a7614a"
+          }
+        },
+        {
+          "index": 71,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1269.253,
+          "firstReveal": {
+            "eventLoopMilliseconds": 398.7364,
+            "fixtureToFocusMilliseconds": 951.3689,
+            "focusReadyMilliseconds": 428.1219,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.023,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.0103,
+            "sleepMilliseconds": 29.3102,
+            "synchronizedFrameMilliseconds": 433.6959,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "1fff54dbe665d4cb5bfbb9116b54d29da9fa10a1bd7411d80c4a70e73500ffa6",
+            "events.jsonl": "f81bf0edf6ac14163aabe353dc7ee33dc02fbdb912e6305585846fc0681b974a",
+            "process.log": "e050e81d8e6e62dba77d4ba41121f2a6ae064e65d4897606bee5956fa8e4993a"
+          }
+        },
+        {
+          "index": 72,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1264.7538,
+          "firstReveal": {
+            "eventLoopMilliseconds": 400.8843,
+            "fixtureToFocusMilliseconds": 936.6164,
+            "focusReadyMilliseconds": 427.8406,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0265,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.0135,
+            "sleepMilliseconds": 26.8893,
+            "synchronizedFrameMilliseconds": 428.0442,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "cfcd9ef71595b381b72f9c16472cff68dd1a6ac36a97fa16c16cc521b1224ae3",
+            "events.jsonl": "a0f4b3ceafa926e7543fe61282b4487474bcb7a6c23ef7976c51d3d78669ec0b",
+            "process.log": "c96b53f67803e8984d8855dc6778a0bfa78dd0c022c8aee74c60d813933a580c"
+          }
+        },
+        {
+          "index": 73,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1282.5525,
+          "firstReveal": {
+            "eventLoopMilliseconds": 419.0221,
+            "fixtureToFocusMilliseconds": 983.3099,
+            "focusReadyMilliseconds": 446.7581,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0174,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0125,
+            "sleepMilliseconds": 27.6794,
+            "synchronizedFrameMilliseconds": 446.9787,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "5dbfaa073310c33d3e643e2c0cf800b36377d20c2d4478bd28006bb7209d5277",
+            "events.jsonl": "eab0c4eb5bb8184d87a722f7ac6e30ce8c538a8b0bf66e67b8fcb91a1d0c3f25",
+            "process.log": "2d981e10221ac6ad2071959eb09faf78d1190a75299b34da6cda51424900d07b"
+          }
+        },
+        {
+          "index": 74,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1249.9101,
+          "firstReveal": {
+            "eventLoopMilliseconds": 386.4015,
+            "fixtureToFocusMilliseconds": 913.7843,
+            "focusReadyMilliseconds": 412.9036,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0226,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.0076,
+            "sleepMilliseconds": 26.4464,
+            "synchronizedFrameMilliseconds": 417.4618,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "0670e9e568ba3c70f67a561301fa0744a2d9b94390234f7bde0a99fb7d4a7f4f",
+            "events.jsonl": "710682e33c5b9e21eaf75969afa7bd1c792ed73f83797ef670e33cdc4ea037c5",
+            "process.log": "2fb4bc330cbd69e155f2a418800f704b693fc3c763baf17f7238b02df4783450"
+          }
+        },
+        {
+          "index": 75,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1237.1849,
+          "firstReveal": {
+            "eventLoopMilliseconds": 379.5884,
+            "fixtureToFocusMilliseconds": 942.5002,
+            "focusReadyMilliseconds": 409.7578,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0199,
+            "readinessIterations": 18,
+            "showReturnMilliseconds": 0.0151,
+            "sleepMilliseconds": 30.1065,
+            "synchronizedFrameMilliseconds": 410.3343,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "5af9947f538ece2aacec6954d76bbce664230a3a34bf10a0372d1bb0bed88890",
+            "events.jsonl": "4bb398237248e4e237bd853a664e064248436d9474310fdeb6551aea491817e4",
+            "process.log": "d95d867c830c2b25671b632db632a3f520233b19b56119488ebd679f000ea00f"
+          }
+        },
+        {
+          "index": 76,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1259.7241,
+          "firstReveal": {
+            "eventLoopMilliseconds": 393.5634,
+            "fixtureToFocusMilliseconds": 949.5503,
+            "focusReadyMilliseconds": 419.7232,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0198,
+            "readinessIterations": 14,
+            "showReturnMilliseconds": 0.0115,
+            "sleepMilliseconds": 26.1013,
+            "synchronizedFrameMilliseconds": 420.0453,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "d2ba452590196ad6ad4cf7a4c38e94542193b62474515fcd019a473635c8d3d6",
+            "events.jsonl": "d1766184a26a6224578437a6f3ca98d3787b0d6a4d1f8ef65cbfea0a6537f925",
+            "process.log": "972f116b960101a8d8a98a2b8d82ba1ef0bf17a1e7d8170f1ed37979c155a0a6"
+          }
+        },
+        {
+          "index": 77,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1285.6884,
+          "firstReveal": {
+            "eventLoopMilliseconds": 369.9726,
+            "fixtureToFocusMilliseconds": 937.281,
+            "focusReadyMilliseconds": 398.6446,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0182,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.0106,
+            "sleepMilliseconds": 28.618,
+            "synchronizedFrameMilliseconds": 403.344,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "8f2459e3be9b7560902d5ce40b7468aee9b4454667ce4d05bf4837066d389563",
+            "events.jsonl": "6d5503a4d3c3781d9d9ec893519d384e72d8b9727492fd2defcb50e44c8c5786",
+            "process.log": "049f7660fcf33737bdd587f0f8572774adc95670f59dfd55659bde78608689cc"
+          }
+        },
+        {
+          "index": 78,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1251.5373,
+          "firstReveal": {
+            "eventLoopMilliseconds": 407.9088,
+            "fixtureToFocusMilliseconds": 952.1544,
+            "focusReadyMilliseconds": 434.2156,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0184,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0137,
+            "sleepMilliseconds": 26.2486,
+            "synchronizedFrameMilliseconds": 434.4229,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "ac04db46aee0cd415a308485a247c8a322dc34ffdb100195d43b46cabae7dd24",
+            "events.jsonl": "a5a2053f36a84538f6ee30d6c28fa0fa281f564a40bec273690c235a700cc5f5",
+            "process.log": "d14cc7cdfa1b95f6a9d1a731efd0599db3ad560e9ddee1bd530af81047f70010"
+          }
+        },
+        {
+          "index": 79,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1331.0116,
+          "firstReveal": {
+            "eventLoopMilliseconds": 409.7519,
+            "fixtureToFocusMilliseconds": 1016.5854,
+            "focusReadyMilliseconds": 433.5959,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.019,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0104,
+            "sleepMilliseconds": 23.7757,
+            "synchronizedFrameMilliseconds": 438.2004,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "f525fdb2381f6436f5aecd2c4c37055d7eb3dbb00262cd4e86df21b05c86bee9",
+            "events.jsonl": "1191232da4af20ec081d0a478ad13e0b5e41bd9f08d83b317c980133aba1d0f2",
+            "process.log": "612d9ea2136cc6df3e8c7e78909c8b57a1e7d6d98c6173d266f07617fdf4d225"
+          }
+        },
+        {
+          "index": 80,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1334.8569,
+          "firstReveal": {
+            "eventLoopMilliseconds": 478.1925,
+            "fixtureToFocusMilliseconds": 1023.3866,
+            "focusReadyMilliseconds": 502.8847,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0137,
+            "readinessIterations": 14,
+            "showReturnMilliseconds": 0.0135,
+            "sleepMilliseconds": 24.6408,
+            "synchronizedFrameMilliseconds": 503.0868,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "5bfbee6c417d81f83ac5245b120a26a36aabb7aeb08e6a65bf9ca09382fc43e2",
+            "events.jsonl": "ac8d006af8372da4e685ef40842e99b133d66ba89c6cc83cace7058c8abadab0",
+            "process.log": "43473c4c7b1adf0edb45c9607a77f4b91b411ef7bc39ffc0233cfa5a94349efa"
+          }
+        },
+        {
+          "index": 81,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1276.3278,
+          "firstReveal": {
+            "eventLoopMilliseconds": 407.4807,
+            "fixtureToFocusMilliseconds": 953.6284,
+            "focusReadyMilliseconds": 434.8312,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0175,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0117,
+            "sleepMilliseconds": 27.2936,
+            "synchronizedFrameMilliseconds": 439.4587,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "97e5c43b7e907c17e5ad8fbe7e9162a045fa4835555a41df83340071dbdd4ed3",
+            "events.jsonl": "146048ec5f4f4b7609cd344687b80aa10fec676e5cd5516cf096119f3c84042d",
+            "process.log": "d3882aae588c6dc3422c59743af8f29ad4426659854c319fd4e35d41f57bd29b"
+          }
+        },
+        {
+          "index": 82,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1238.3151,
+          "firstReveal": {
+            "eventLoopMilliseconds": 387.615,
+            "fixtureToFocusMilliseconds": 956.338,
+            "focusReadyMilliseconds": 416.8972,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0189,
+            "readinessIterations": 18,
+            "showReturnMilliseconds": 0.0128,
+            "sleepMilliseconds": 29.2196,
+            "synchronizedFrameMilliseconds": 417.1157,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "3a7405894494e0ec5333739f322afee7486cc4738bc1100959d17277493a6fa0",
+            "events.jsonl": "62d7833c7b33258469dbf04ec87284044acad9f6c33b69d2fda36d77ebbd68bc",
+            "process.log": "26392f79b70091372ce2ee7d255e8c60a5e9428e97cbf3453eb1feab586e927f"
+          }
+        },
+        {
+          "index": 83,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1261.3813,
+          "firstReveal": {
+            "eventLoopMilliseconds": 403.3608,
+            "fixtureToFocusMilliseconds": 954.271,
+            "focusReadyMilliseconds": 431.5629,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0198,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.0124,
+            "sleepMilliseconds": 28.1427,
+            "synchronizedFrameMilliseconds": 431.9909,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "2588a7e4179a5ad2407aacbcabed19e6f3360b62e5ae916b742ea20515cc14c3",
+            "events.jsonl": "97cdee9f11a8a67901f88fb29d912d2e47f9e6c0bf4b0510c2958f8c63838c27",
+            "process.log": "2b3001175601c3ccf03200d6a21a8919e6dab772b5771502ee90d52fa6f73619"
+          }
+        },
+        {
+          "index": 84,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1278.2837,
+          "firstReveal": {
+            "eventLoopMilliseconds": 417.049,
+            "fixtureToFocusMilliseconds": 970.5628,
+            "focusReadyMilliseconds": 445.2086,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0157,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.0098,
+            "sleepMilliseconds": 28.1142,
+            "synchronizedFrameMilliseconds": 449.6378,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "982a90fa4ba3991b810892f9f82b60816bf611f7013df45e4e391228ce72c030",
+            "events.jsonl": "5798307d51f5ed9eae701c78530b9a372a2d2a38eb595913af64480a1f654821",
+            "process.log": "f34bd7d713b09e72ea892772152bb2a7c905388801268674fdc3a1be48fd1246"
+          }
+        },
+        {
+          "index": 85,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1272.3858,
+          "firstReveal": {
+            "eventLoopMilliseconds": 404.242,
+            "fixtureToFocusMilliseconds": 970.4974,
+            "focusReadyMilliseconds": 431.7418,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0246,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0117,
+            "sleepMilliseconds": 27.4328,
+            "synchronizedFrameMilliseconds": 432.2294,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "de0749ab31f002f8d5781c92d80d1a84e0b28d534786d7e3e45104665f179d63",
+            "events.jsonl": "2d10bed72769f84875814601761e0b105ba994a3bcb89ff1bcb0a46c445011b8",
+            "process.log": "4abb5b841e7b99822ef3922a77590d37841dc012cb1be1d5196482b68913186f"
+          }
+        },
+        {
+          "index": 86,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1227.78,
+          "firstReveal": {
+            "eventLoopMilliseconds": 393.0424,
+            "fixtureToFocusMilliseconds": 932.7022,
+            "focusReadyMilliseconds": 423.0683,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0302,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.011,
+            "sleepMilliseconds": 29.9624,
+            "synchronizedFrameMilliseconds": 423.2632,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "fe5d17761ba08ea6c260559da84fa5a22bb7f4a0fbc5b68ac8a7c990b48b5af6",
+            "events.jsonl": "abdde75e41ffe5dc1f245c3eb1e37e1eeead129bf7e779226b04da5e6d7b0c1f",
+            "process.log": "39640f8c0b266b7de818f32f9f3b7e993d96d5d88b4746fff4ab0aeba1ab5430"
+          }
+        },
+        {
+          "index": 87,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1246.2924,
+          "firstReveal": {
+            "eventLoopMilliseconds": 377.0833,
+            "fixtureToFocusMilliseconds": 923.5616,
+            "focusReadyMilliseconds": 404.5162,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.021,
+            "readinessIterations": 18,
+            "showReturnMilliseconds": 0.0108,
+            "sleepMilliseconds": 27.3722,
+            "synchronizedFrameMilliseconds": 408.571,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "be1b8339d93ce27719541f63aeead2042ddf5e14137b1d96c9056b44b3f55d0f",
+            "events.jsonl": "8b065d999cfe69b2896009264a63c8013688403759195286e9f333122d4ba2e5",
+            "process.log": "776d5c95336436f66f22b70d666f1fd4cdc0903b269093eb946d6ee9c69d4c25"
+          }
+        },
+        {
+          "index": 88,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1530.8753,
+          "firstReveal": {
+            "eventLoopMilliseconds": 556.2567,
+            "fixtureToFocusMilliseconds": 1234.4864,
+            "focusReadyMilliseconds": 576.9577,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0194,
+            "readinessIterations": 12,
+            "showReturnMilliseconds": 0.0129,
+            "sleepMilliseconds": 20.6443,
+            "synchronizedFrameMilliseconds": 577.4965,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "4bad72636dcb8eb41d935e4cdc21b140ede1548f135ef099bb66ddaf510a88eb",
+            "events.jsonl": "8521f26c37b7131751b4e19f33c906ae2234baccffc70cd90950997f6f87cfab",
+            "process.log": "32943a37c5ce3e3d9751a879bca7836cef40edb5b3dcb150a3915d3eb67acf53"
+          }
+        },
+        {
+          "index": 89,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1236.8612,
+          "firstReveal": {
+            "eventLoopMilliseconds": 398.5265,
+            "fixtureToFocusMilliseconds": 934.4244,
+            "focusReadyMilliseconds": 431.2864,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0206,
+            "readinessIterations": 18,
+            "showReturnMilliseconds": 0.0134,
+            "sleepMilliseconds": 32.7007,
+            "synchronizedFrameMilliseconds": 431.4711,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "623f4ca1a967678a7b657454c4b8e772e0c684a4f93cefb4d178520c62f11d8c",
+            "events.jsonl": "500b88b7e37f848e1761d87e2a6e9e280910f4fa1919acdbca8e35a2b2bcc7fc",
+            "process.log": "1c48e4305bdf60347ab0c46b5a92d9a5139b826f756ec89fd6049a55c6f093d0"
+          }
+        },
+        {
+          "index": 90,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1216.4622,
+          "firstReveal": {
+            "eventLoopMilliseconds": 395.944,
+            "fixtureToFocusMilliseconds": 935.5339,
+            "focusReadyMilliseconds": 421.9813,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0175,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0118,
+            "sleepMilliseconds": 25.9829,
+            "synchronizedFrameMilliseconds": 422.1848,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "536a61ba8d2e4036386b17829b9e288e30f3f245aa27cb4bd8284d4d17c246a9",
+            "events.jsonl": "813f0a6c2cec28d900403beba5ceefac287aaab7af721fd28bd6097df505551b",
+            "process.log": "21c19985e3bfbb23590ccaefa29b22389f10b2fd212ea01e91d79788c4b99633"
+          }
+        },
+        {
+          "index": 91,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1208.5566,
+          "firstReveal": {
+            "eventLoopMilliseconds": 377.7335,
+            "fixtureToFocusMilliseconds": 916.4113,
+            "focusReadyMilliseconds": 404.1129,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0199,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0118,
+            "sleepMilliseconds": 26.3199,
+            "synchronizedFrameMilliseconds": 404.3652,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "a4a993a99afc307667f20a749bf6da8144b731cc00a632a08668b66c661d3680",
+            "events.jsonl": "813d033f2c98c2d7e70cca505333f129e63c59c8e1e8af1a4df7babd57c61446",
+            "process.log": "da28101e631025c7f6f0a260098d732605ed131a009abaa1bf9891eeb153a39c"
+          }
+        },
+        {
+          "index": 92,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1250.0286,
+          "firstReveal": {
+            "eventLoopMilliseconds": 436.4635,
+            "fixtureToFocusMilliseconds": 958.5586,
+            "focusReadyMilliseconds": 463.4183,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0802,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0082,
+            "sleepMilliseconds": 26.7505,
+            "synchronizedFrameMilliseconds": 463.8242,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "f1f1bcbe8b579f1657b7268517b3b35243c95139ff20b1e82c40676e8e2ce635",
+            "events.jsonl": "f63cce451743df95b49fe1792dc5c4006ea39471aeeab32b5a20b4c273ebb09e",
+            "process.log": "ecd5733fa851f71128690b04575fb60190c1ffdc20e46827f3192325471336b2"
+          }
+        },
+        {
+          "index": 93,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1380.4524,
+          "firstReveal": {
+            "eventLoopMilliseconds": 510.1374,
+            "fixtureToFocusMilliseconds": 1071.45,
+            "focusReadyMilliseconds": 535.7292,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0224,
+            "readinessIterations": 14,
+            "showReturnMilliseconds": 0.0112,
+            "sleepMilliseconds": 25.5169,
+            "synchronizedFrameMilliseconds": 535.9569,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "aa7cd170dd871ed1531ac0260b1b4d1f52e5e8ef98a35304009b7c29b4b754c1",
+            "events.jsonl": "66d4f83b91a624460a44f3fd1e9833dcb3ebb256b8a25537c73ab104bf29d67e",
+            "process.log": "f528987dc29f9e643d8a5cd23a7d86f532ead1925f266cb89a2605e847f569c6"
+          }
+        },
+        {
+          "index": 94,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1244.3875,
+          "firstReveal": {
+            "eventLoopMilliseconds": 404.4733,
+            "fixtureToFocusMilliseconds": 938.1037,
+            "focusReadyMilliseconds": 430.232,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0774,
+            "readinessIterations": 14,
+            "showReturnMilliseconds": 0.0075,
+            "sleepMilliseconds": 25.6535,
+            "synchronizedFrameMilliseconds": 430.5929,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "7b7773e245e4bf5d0de47e6300a03a72ef84325818a6b043713336c07cf631d0",
+            "events.jsonl": "1487fc31c88bc30535cd462e99308e3504fead09b687358b1fb857a19e90c897",
+            "process.log": "2265a1c7d3f9d8362bcff5f727849431e61ccd642738abe28cd833e29802dd43"
+          }
+        },
+        {
+          "index": 95,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1241.4564,
+          "firstReveal": {
+            "eventLoopMilliseconds": 393.579,
+            "fixtureToFocusMilliseconds": 936.6851,
+            "focusReadyMilliseconds": 421.3862,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0202,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.0091,
+            "sleepMilliseconds": 27.7555,
+            "synchronizedFrameMilliseconds": 426.5806,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "4ad65346ee05430481b2dfe15d3b9cdb537b90dd56c6c3c9a3184d82c20f4e20",
+            "events.jsonl": "f37216951b2b287a435ae9eec68c52b2323013bde954a8ebde94b3ca8f6e3782",
+            "process.log": "00b05a580781d645712f21001c5c1666568bf40dc0798b31f1738a4bd496352c"
+          }
+        },
+        {
+          "index": 96,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1223.5378,
+          "firstReveal": {
+            "eventLoopMilliseconds": 390.7647,
+            "fixtureToFocusMilliseconds": 929.2006,
+            "focusReadyMilliseconds": 418.8592,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.033,
+            "readinessIterations": 16,
+            "showReturnMilliseconds": 0.0104,
+            "sleepMilliseconds": 28.0255,
+            "synchronizedFrameMilliseconds": 419.1465,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "df45e333c225905dfe1700e171592a3d236454b19c3b432d18502ded5d8fa3f9",
+            "events.jsonl": "f9a900019202765bd8f743904b3e19ff75702cc6fc75b449711ee762d735c3cf",
+            "process.log": "1eb9c437067c53bdc5e990199a19ac160e72dee82495d558edc362586cdf50d4"
+          }
+        },
+        {
+          "index": 97,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1277.3434,
+          "firstReveal": {
+            "eventLoopMilliseconds": 434.3631,
+            "fixtureToFocusMilliseconds": 973.7632,
+            "focusReadyMilliseconds": 461.6386,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0366,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0123,
+            "sleepMilliseconds": 27.2001,
+            "synchronizedFrameMilliseconds": 468.7769,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "fb75ff1ee9990383d7d531859c35682ac83d442d26d98e3982a6fb5c889614b4",
+            "events.jsonl": "127f35487f76557a33b1a93ebddd71ebb45b0e12720ccf6fb6576d89bcb010a4",
+            "process.log": "7e4f8f47184d3d1fcc1875632d3a51d6979c10af75cec00aa89d8d04f7decc12"
+          }
+        },
+        {
+          "index": 98,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1235.7593,
+          "firstReveal": {
+            "eventLoopMilliseconds": 384.3894,
+            "fixtureToFocusMilliseconds": 937.712,
+            "focusReadyMilliseconds": 410.4604,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0208,
+            "readinessIterations": 15,
+            "showReturnMilliseconds": 0.0114,
+            "sleepMilliseconds": 26.0112,
+            "synchronizedFrameMilliseconds": 411.87,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "9ade1ac24a0769c55a619f2727c52cb4ca59bf9d7ad689b445a8c5b088401ecd",
+            "events.jsonl": "7e42de44a530741ce1b2141ec66c7eae254df3f76208f8696b8ba09683ac2aae",
+            "process.log": "55d0c7ad66f4fc9e20b146c4b70aed9fbb907f3bc334a14d912dbc11b70a4ba8"
+          }
+        },
+        {
+          "index": 99,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 1228.9865,
+          "firstReveal": {
+            "eventLoopMilliseconds": 383.0614,
+            "fixtureToFocusMilliseconds": 943.4467,
+            "focusReadyMilliseconds": 412.1843,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0159,
+            "readinessIterations": 18,
+            "showReturnMilliseconds": 0.0121,
+            "sleepMilliseconds": 29.0688,
+            "synchronizedFrameMilliseconds": 412.6964,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "480d69a83d0f001850cdbd052c4582baef4d1b45c4caa8610ac9c02d47eea331",
+            "events.jsonl": "83920d1317d748493c18ecc71d50ab19d3815fcf51ac242a2a0c7ab796766466",
+            "process.log": "de6b604f61e7a710f06c37021afad7fb76190096bf028cafe3067786bca44acc"
+          }
+        }
+      ]
+    },
+    "empty": {
+      "summary": {
+        "schemaVersion": 2,
+        "sampleCount": 100,
+        "binarySha256": "d24d30becc18d21a7718dd2bd41fe6d3aad651bbc1d75af3f86ddf8095a1a352",
+        "qpa": "offscreen",
+        "graphicsApi": "Software",
+        "qtVersion": "6.8.2",
+        "compiler": "MSVC 192930159",
+        "kernelVersion": "10.0.26300",
+        "releaseNdebug": true,
+        "tiles": 0,
+        "scope": "fresh synthetic test processes with a real host and simulated platform",
+        "boundary": "first reveal after QGuiApplication exists; fixture time includes QML and catalog setup; process lifetime includes teardown; OS caches are not cleared and no physical input or display is measured",
+        "firstFocus": {
+          "p50Milliseconds": 66.5589,
+          "p95Milliseconds": 73.2479,
+          "maximumMilliseconds": 77.569
+        },
+        "fixtureToFocus": {
+          "p50Milliseconds": 482.3641,
+          "p95Milliseconds": 545.2228,
+          "maximumMilliseconds": 634.0938
+        },
+        "processLifetime": {
+          "p50Milliseconds": 742.5811,
+          "p95Milliseconds": 839.2186,
+          "maximumMilliseconds": 938.9129
+        }
+      },
+      "eventsSha256": "dfa5e3ab68fbdb6d206bb60fc4f30f9514b8926dd52a0db3f886c6633475e32d",
+      "events": [
+        {
+          "index": 0,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 770.3404,
+          "firstReveal": {
+            "eventLoopMilliseconds": 31.8782,
+            "fixtureToFocusMilliseconds": 497.9992,
+            "focusReadyMilliseconds": 66.002,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0178,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0083,
+            "sleepMilliseconds": 34.0742,
+            "synchronizedFrameMilliseconds": 66.178,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "c1034b54bfef0ccef0fccee94ac5404541eeb2d7d684090f5fe2315577b8bd82",
+            "events.jsonl": "d000e892f21a16efb990f1282015e74b1388cb74660fdde28a942de3c922b739",
+            "process.log": "15b97adcd8972a127542e7eb644bcce2ed369e08675ea39005d9001ded89e2f4"
+          }
+        },
+        {
+          "index": 1,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 777.8013,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.3998,
+            "fixtureToFocusMilliseconds": 503.9426,
+            "focusReadyMilliseconds": 65.0399,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0183,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0069,
+            "sleepMilliseconds": 35.5947,
+            "synchronizedFrameMilliseconds": 65.2535,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "4c27f256a803e43b3b9de19cd09736ce47cd6e46d5c3306b40c41fe111071f33",
+            "events.jsonl": "8d3b55960eccf75fc49c98b219f84134b5324784d3f5dee5edb88128b6b185ab",
+            "process.log": "4694f7b1afe3ff900abcf824ff579820f157546fc2d5c6d1a010d348ab87df7f"
+          }
+        },
+        {
+          "index": 2,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 734.3085,
+          "firstReveal": {
+            "eventLoopMilliseconds": 27.7389,
+            "fixtureToFocusMilliseconds": 474.9908,
+            "focusReadyMilliseconds": 61.9908,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0196,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0112,
+            "sleepMilliseconds": 34.1994,
+            "synchronizedFrameMilliseconds": 62.1814,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "65e12ca0bcfb95950e585bff35a2bce0b273f1997a98ec46169bba19eba7d436",
+            "events.jsonl": "0a20ba1e055a41c588843c92b6a0caa67cef24a287dc9a03ce7d243e06da10e9",
+            "process.log": "dd3e7051c3f48fce3e1e67f8567bca1a76e8dbfd2e606c434a573d91c49c161b"
+          }
+        },
+        {
+          "index": 3,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 752.0594,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.6131,
+            "fixtureToFocusMilliseconds": 493.084,
+            "focusReadyMilliseconds": 65.4073,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0168,
+            "readinessIterations": 23,
+            "showReturnMilliseconds": 0.0081,
+            "sleepMilliseconds": 35.7472,
+            "synchronizedFrameMilliseconds": 65.6134,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "1afb7af5f1c8349ac2f67e11950f43815d7e429c859debdbbc2d231bc7610f5f",
+            "events.jsonl": "4a698935b187726f9ef0cb3afb45ada3b1d9e46369acfd32de2d5c869e5e736f",
+            "process.log": "a0ae7467add79e1252e3e91e4272363bf999c077fff7f28d75c124a70cb00829"
+          }
+        },
+        {
+          "index": 4,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 744.2616,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.9957,
+            "fixtureToFocusMilliseconds": 496.5472,
+            "focusReadyMilliseconds": 65.6018,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0231,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.007,
+            "sleepMilliseconds": 35.5538,
+            "synchronizedFrameMilliseconds": 65.8302,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "165b416eabaae76593525e2e9b322f79f60dc46fd00768dbc001c02c635365b6",
+            "events.jsonl": "dd17b3a0b45fb68cc7b3f67c52434bb1ee03bb964add995d2312956ad49b6706",
+            "process.log": "260b552668a277ec613623bb40c7b6ca0c77967d88ab3776d2876afa71695676"
+          }
+        },
+        {
+          "index": 5,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 768.4104,
+          "firstReveal": {
+            "eventLoopMilliseconds": 31.2428,
+            "fixtureToFocusMilliseconds": 477.2564,
+            "focusReadyMilliseconds": 65.7528,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0176,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0086,
+            "sleepMilliseconds": 34.462,
+            "synchronizedFrameMilliseconds": 65.9565,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "d530a9cd8a674033bcd31c21c212010e802c83aefb2db6cedd9c8a8420e4c2f8",
+            "events.jsonl": "90bd7f5933d2342186f7d06f91637b1a53cd89121a481f999b89e52b07625214",
+            "process.log": "0457f99e60b5a02effc85ae9b81ff80f701c4f6f3a118e3a3f9f54fa902aa5fb"
+          }
+        },
+        {
+          "index": 6,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 749.5106,
+          "firstReveal": {
+            "eventLoopMilliseconds": 28.3211,
+            "fixtureToFocusMilliseconds": 488.9097,
+            "focusReadyMilliseconds": 65.3555,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0233,
+            "readinessIterations": 22,
+            "showReturnMilliseconds": 0.0071,
+            "sleepMilliseconds": 36.9815,
+            "synchronizedFrameMilliseconds": 65.5829,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "bef28fa57421e0e75d42285ce29bcb9aea8d3a07ad315109d319a08c634aff67",
+            "events.jsonl": "440c7ff07243ede643ba0d4406167c793e62e209460e6e931926ac826d4def90",
+            "process.log": "44ec0b969e1764f7ffd01d0f6b3a6f645a3dd30df05c059c5c261dcf1ccc3761"
+          }
+        },
+        {
+          "index": 7,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 729.2007,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.1983,
+            "fixtureToFocusMilliseconds": 470.1058,
+            "focusReadyMilliseconds": 62.5397,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0182,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0093,
+            "sleepMilliseconds": 33.2889,
+            "synchronizedFrameMilliseconds": 62.7246,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "a2ee19835f263310ce099a660a1e8624c8d0d1d658463bf2cdae99e865a52d68",
+            "events.jsonl": "6e854af307cb97a243a7f47d76014e96cda0c07a75d17db9e61901edc36daa61",
+            "process.log": "cfe564a82f1506cfeb40681d7751586be25dd6a7e091258e520d0ce8d7252753"
+          }
+        },
+        {
+          "index": 8,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 738.6495,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.9117,
+            "fixtureToFocusMilliseconds": 480.2396,
+            "focusReadyMilliseconds": 64.0803,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0225,
+            "readinessIterations": 22,
+            "showReturnMilliseconds": 0.0069,
+            "sleepMilliseconds": 34.1188,
+            "synchronizedFrameMilliseconds": 64.4638,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "95a8a5dfb98747f4803ccf09312e8e5576f05beb22d3e59d4a2a3f3cfa3a850e",
+            "events.jsonl": "f36fd27fcc48e9915a2467fc99b8a3581981410f7f524567d06440303ecb4c33",
+            "process.log": "e56fdbaf8e011a5900bd22887c11f6c097a895269b99917b7fa27319511055c8"
+          }
+        },
+        {
+          "index": 9,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 754.7651,
+          "firstReveal": {
+            "eventLoopMilliseconds": 28.9081,
+            "fixtureToFocusMilliseconds": 488.7057,
+            "focusReadyMilliseconds": 64.7329,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0182,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0068,
+            "sleepMilliseconds": 35.7787,
+            "synchronizedFrameMilliseconds": 64.9552,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "b89ddbaba003b8b72a6d5f3ef7141c42c612e19b854d247dfbb2a7d42ac363a0",
+            "events.jsonl": "99b244e929cbb0343db3f306478d979c90cd9adcfdc4e5c162dea1ebc9a8aad5",
+            "process.log": "ae0d3302d78ffa88d06196d80614ceb23079f5c275fd376dbc7c6da9b69c5db5"
+          }
+        },
+        {
+          "index": 10,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 749.6568,
+          "firstReveal": {
+            "eventLoopMilliseconds": 44.146,
+            "fixtureToFocusMilliseconds": 489.0507,
+            "focusReadyMilliseconds": 75.422,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0289,
+            "readinessIterations": 17,
+            "showReturnMilliseconds": 0.01,
+            "sleepMilliseconds": 31.2068,
+            "synchronizedFrameMilliseconds": 75.6501,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "da256229858de72b7c1813b22a6d41724d731437a83239d45efed73d4a72d14f",
+            "events.jsonl": "16910d53bc4dc182e6ddc7a0ce7aea93f5511d581b20b137b169197bb17ea7c9",
+            "process.log": "b7de9dbf0116c3bcbf87a576204dba4b3bce369c6639c19bc41cc7a4916f1462"
+          }
+        },
+        {
+          "index": 11,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 938.9129,
+          "firstReveal": {
+            "eventLoopMilliseconds": 35.986,
+            "fixtureToFocusMilliseconds": 607.6512,
+            "focusReadyMilliseconds": 74.4522,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0191,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0076,
+            "sleepMilliseconds": 38.4188,
+            "synchronizedFrameMilliseconds": 75.2317,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "384eb88ca2f5ade306d7b094a5ebaa700f96b5d57d3394ce59f180dff05ddc19",
+            "events.jsonl": "f3cc5cd4e65181db17dd90ba9424308db08674ddf3134b4465516f6e655592d1",
+            "process.log": "29b7b9ed312246735faf7d45ffd8b7ba2bd05ed452833e7768165379fdb62b7f"
+          }
+        },
+        {
+          "index": 12,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 756.5448,
+          "firstReveal": {
+            "eventLoopMilliseconds": 36.5523,
+            "fixtureToFocusMilliseconds": 452.8997,
+            "focusReadyMilliseconds": 70.0332,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0539,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0072,
+            "sleepMilliseconds": 33.3954,
+            "synchronizedFrameMilliseconds": 70.3299,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "aa606679c6d03924473a92650a4ca3ace94ddbf32bb8990115379020ee1a8881",
+            "events.jsonl": "c4f2471480f00e58748df6b93aef0c759ebc8c553abd9f20d7bdd8d58ac97eed",
+            "process.log": "1996b140c7c8d6003267f502e181c117069797558991c3b30a8d48aed728128d"
+          }
+        },
+        {
+          "index": 13,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 745.3497,
+          "firstReveal": {
+            "eventLoopMilliseconds": 30.4155,
+            "fixtureToFocusMilliseconds": 481.2341,
+            "focusReadyMilliseconds": 65.9961,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0197,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0101,
+            "sleepMilliseconds": 35.5252,
+            "synchronizedFrameMilliseconds": 66.2348,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "972a724d1ca3d01423897c0d376f55fb59823db5bcfd7deb01ff772665e0659a",
+            "events.jsonl": "7fcefd17aaa7dfde2477b4af86a396aa9f49348fd3c225351627a098935b1582",
+            "process.log": "f718e97673dc09a8d561d07d6705c7c4cc68f1ae53473ce6a48449e4af82fff5"
+          }
+        },
+        {
+          "index": 14,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 740.3681,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.3194,
+            "fixtureToFocusMilliseconds": 485.0081,
+            "focusReadyMilliseconds": 67.0096,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0192,
+            "readinessIterations": 24,
+            "showReturnMilliseconds": 0.0067,
+            "sleepMilliseconds": 37.64,
+            "synchronizedFrameMilliseconds": 67.1871,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "d618ae0cb7f2359e3e9e72b5d88446d32b75d1cfce2ee9d73e14756005bc513d",
+            "events.jsonl": "6c982dbbbebb42a07f6509fc82316e6d0b793bcfd130c222fc0245d34e30d087",
+            "process.log": "ab1ad7ae85f8ad60c5df9be678f836c0e94ee2dd9f3d1602b887a4f9bd4edeeb"
+          }
+        },
+        {
+          "index": 15,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 741.5374,
+          "firstReveal": {
+            "eventLoopMilliseconds": 30.8329,
+            "fixtureToFocusMilliseconds": 482.661,
+            "focusReadyMilliseconds": 65.3276,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.025,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0066,
+            "sleepMilliseconds": 34.4429,
+            "synchronizedFrameMilliseconds": 65.9196,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "ccb3f1dc07479cd76b43d10bb43a66566db2ed3d41d65a7eef0486b3e8d73761",
+            "events.jsonl": "4078d5e4a048936d5d12871aae5f680d0a251fdb39dd4db8e679c1793b6ef4eb",
+            "process.log": "28d3f447fb9948de53821d5d997847a46073ec00b8506722c0a7c15d644aa37e"
+          }
+        },
+        {
+          "index": 16,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 729.6025,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.3907,
+            "fixtureToFocusMilliseconds": 471.5296,
+            "focusReadyMilliseconds": 65.5589,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0198,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0076,
+            "sleepMilliseconds": 36.1198,
+            "synchronizedFrameMilliseconds": 65.7254,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "79b744f3c314b31c8fc97de6cd97ca3ed342798712fe1054f5c120686ce6eb7b",
+            "events.jsonl": "0f3e9151c5b7db00c64f821db2c30cbf18da5dc5459471e1cb2785f26aece879",
+            "process.log": "1456b78284e77bd7341d5cca44401bbe48b988d7295543119a68537259f24aea"
+          }
+        },
+        {
+          "index": 17,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 737.8883,
+          "firstReveal": {
+            "eventLoopMilliseconds": 28.9516,
+            "fixtureToFocusMilliseconds": 479.6368,
+            "focusReadyMilliseconds": 66.3342,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0169,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0107,
+            "sleepMilliseconds": 37.3307,
+            "synchronizedFrameMilliseconds": 66.5446,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "166de90d0dec69e95e7c0888db09dff896ccd38ed4cb4f9a01c42d81b870dcc3",
+            "events.jsonl": "8931d07f85d09b386bc6722cb36188a318a98fdf85e129ff2d1abde2d1f3262e",
+            "process.log": "188b968052614491595b029060706baf57f537e7d26d49dbd404be8975f7dda1"
+          }
+        },
+        {
+          "index": 18,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 721.6222,
+          "firstReveal": {
+            "eventLoopMilliseconds": 30.1301,
+            "fixtureToFocusMilliseconds": 474.9213,
+            "focusReadyMilliseconds": 66.7678,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0204,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0091,
+            "sleepMilliseconds": 36.581,
+            "synchronizedFrameMilliseconds": 66.9235,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "2857bc226d8154db013a8bb24ae009969ef8a22596f6b70e85df69614755a66f",
+            "events.jsonl": "e034f3fa169f4b4abd7dfae2fc2bdaaae76afc04b6b3d8826f87f0e0968d6ec6",
+            "process.log": "e3a8dc0f3747a46c6732369d7b580776492e9676d321397400f33d8a73f57c1a"
+          }
+        },
+        {
+          "index": 19,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 724.5448,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.546,
+            "fixtureToFocusMilliseconds": 461.6438,
+            "focusReadyMilliseconds": 65.2791,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0206,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0072,
+            "sleepMilliseconds": 35.6837,
+            "synchronizedFrameMilliseconds": 65.4542,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "a16a96373164b10ed9a0846823d3f4305817b71ab0f6fb5f41278e050d77585e",
+            "events.jsonl": "26272f435052cb7a177b08ef969eee9211480ae6c7bd983b888da1533f37afc0",
+            "process.log": "070daf7beea26214bce3d5780a5eee53673eb16345b93b4c2c8cdad45f3ccd22"
+          }
+        },
+        {
+          "index": 20,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 723.7838,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.6765,
+            "fixtureToFocusMilliseconds": 443.8079,
+            "focusReadyMilliseconds": 67.0709,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0189,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0075,
+            "sleepMilliseconds": 37.3458,
+            "synchronizedFrameMilliseconds": 67.2157,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "f77a1ef5e7acf384628fd080b1690db201e87581bab1cc9871fb00cdc1587b90",
+            "events.jsonl": "eeb0cbae9a8c6a0dc0012e5ce34079ad26614b00cb6cab83f1db34251926e666",
+            "process.log": "e919b56a79f393acc9cab35878cae74bee1cc53d85045bb6858c6319f37d89a9"
+          }
+        },
+        {
+          "index": 21,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 733.8522,
+          "firstReveal": {
+            "eventLoopMilliseconds": 30.5487,
+            "fixtureToFocusMilliseconds": 455.5805,
+            "focusReadyMilliseconds": 64.3037,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.02,
+            "readinessIterations": 18,
+            "showReturnMilliseconds": 0.0082,
+            "sleepMilliseconds": 33.7036,
+            "synchronizedFrameMilliseconds": 64.4617,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "3b8a7029d89343a975d766e442f4a2c5a8e72e9af07499e562e29eb0476b0321",
+            "events.jsonl": "04adb9848d8bed94e006c20370eb0aeeebebd5df1eadc6aff2b74e0a60026c5d",
+            "process.log": "1270a43fce09498f7e66b57a3a01d1e41694f55a84a49ca2ad44daa1ee977a43"
+          }
+        },
+        {
+          "index": 22,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 742.5811,
+          "firstReveal": {
+            "eventLoopMilliseconds": 28.9729,
+            "fixtureToFocusMilliseconds": 476.6059,
+            "focusReadyMilliseconds": 65.1995,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0206,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0069,
+            "sleepMilliseconds": 36.1767,
+            "synchronizedFrameMilliseconds": 65.3938,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "e6f05984e734edeff195d37f93b4c1ce6d0353201575b3b45aaa6d9b6ab9c4ad",
+            "events.jsonl": "5f36e602238e9c43d1c8ee3675f27da16d55fc076535c125e42f161d33c61893",
+            "process.log": "59c9439b079c27f144556d517123980a688c9c3e3a9f963b29ad4999b0425504"
+          }
+        },
+        {
+          "index": 23,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 772.6997,
+          "firstReveal": {
+            "eventLoopMilliseconds": 31.2355,
+            "fixtureToFocusMilliseconds": 478.602,
+            "focusReadyMilliseconds": 69.7335,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.017,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0122,
+            "sleepMilliseconds": 38.4414,
+            "synchronizedFrameMilliseconds": 69.8964,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "c78a615d7fc91948e0fd8ec5ba979a93385c739d059f3e79d2c56ae21b1973b3",
+            "events.jsonl": "8912c86d7a76543446e0949acd746c6eb292275b179b4e970c375dfdc7cc58e0",
+            "process.log": "1c0a731e53be543e49c49725a24c1f28481bbde7b3f278ed07ab1627478af17b"
+          }
+        },
+        {
+          "index": 24,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 708.3385,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.4144,
+            "fixtureToFocusMilliseconds": 445.9209,
+            "focusReadyMilliseconds": 66.4089,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0271,
+            "readinessIterations": 22,
+            "showReturnMilliseconds": 0.0068,
+            "sleepMilliseconds": 36.9363,
+            "synchronizedFrameMilliseconds": 66.613,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "8f19140262382234116eff03fc515e5d9bbe5aab5677f72802ad6de3bddf6f15",
+            "events.jsonl": "490b1a10906b9698eaa46e8279437c9ee6ea880ba6e03eefd9d2f6f4167daef1",
+            "process.log": "bf4c04c5820f40f86c59ab160459d5083cff073a9b8c17abb77ab8dbbe8bb05b"
+          }
+        },
+        {
+          "index": 25,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 721.9135,
+          "firstReveal": {
+            "eventLoopMilliseconds": 31.2811,
+            "fixtureToFocusMilliseconds": 447.567,
+            "focusReadyMilliseconds": 67.4605,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.037,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0079,
+            "sleepMilliseconds": 36.111,
+            "synchronizedFrameMilliseconds": 67.7389,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "ce12d60a0554a50be0d7f692c2f16bed50b2e1adc790d69f66a5b46dde262814",
+            "events.jsonl": "a80c7cc8d74e3bff3e40a128dc3d9613210716875a4648992154b1d8433f5f2c",
+            "process.log": "838021901e831cac28f5174c0d41200a562c5421f0ad1dc82d0355de070f4e8b"
+          }
+        },
+        {
+          "index": 26,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 759.0798,
+          "firstReveal": {
+            "eventLoopMilliseconds": 31.3701,
+            "fixtureToFocusMilliseconds": 494.3322,
+            "focusReadyMilliseconds": 68.9334,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0211,
+            "readinessIterations": 22,
+            "showReturnMilliseconds": 0.0117,
+            "sleepMilliseconds": 37.5051,
+            "synchronizedFrameMilliseconds": 69.1555,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "3ef1432696fc1b4835e2f8e4465e4a61f9e1cd3e919748f41aab45d33c26bef1",
+            "events.jsonl": "06e48341323012cc266ccb59e19175f4a55aab732313b90f6cd3423b7a661695",
+            "process.log": "71aa4b80e3cfbb05e24acb0d0e9c19649f64ada814863ab2f4c0745992f0df15"
+          }
+        },
+        {
+          "index": 27,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 740.9671,
+          "firstReveal": {
+            "eventLoopMilliseconds": 31.3162,
+            "fixtureToFocusMilliseconds": 484.8033,
+            "focusReadyMilliseconds": 66.3959,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0212,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0083,
+            "sleepMilliseconds": 35.0239,
+            "synchronizedFrameMilliseconds": 66.6058,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "f3fc979731d22dbf4d2fa1715779501525ae13581bde8a40b9bd4bfaf6cb7e95",
+            "events.jsonl": "c40f62c24fad04ec3cc049d7ce15f5cf991843af6d7b2614b1fe574eee4eab3c",
+            "process.log": "df42d571f89e13d5184b163f7a7ef638597d9cf67c79cb754b061b6101faab0f"
+          }
+        },
+        {
+          "index": 28,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 763.0575,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.8614,
+            "fixtureToFocusMilliseconds": 493.5625,
+            "focusReadyMilliseconds": 66.1615,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0185,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0129,
+            "sleepMilliseconds": 36.2418,
+            "synchronizedFrameMilliseconds": 66.3516,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "11abee4c707dca7d75e0138e223f505201cb6d567ca0bd9bd4003d911c8773d1",
+            "events.jsonl": "629f81d61ab11aca2f9271f847ba070fe04b35fe2c2ae991121788a9709affa8",
+            "process.log": "8a398a39c42c73f6dc84cf7b56c351b7b0cba9e3bf1bf4082b52b7ead6f3ada9"
+          }
+        },
+        {
+          "index": 29,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 739.8722,
+          "firstReveal": {
+            "eventLoopMilliseconds": 31.6212,
+            "fixtureToFocusMilliseconds": 483.5444,
+            "focusReadyMilliseconds": 69.4962,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0187,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0087,
+            "sleepMilliseconds": 37.8269,
+            "synchronizedFrameMilliseconds": 69.6934,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "0beca14faa9afef1c42e6079aa945736d892a36262b4644069eea8a1ed42cfed",
+            "events.jsonl": "248471e8bfec5b8b272289f4b8908671dac660ff9f2634aa2ac774a46520ed1a",
+            "process.log": "3d85fa5e90a7d0ad2253cdc92567633aeb97966bdf24b9935637e2895049de95"
+          }
+        },
+        {
+          "index": 30,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 728.4238,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.6445,
+            "fixtureToFocusMilliseconds": 472.4455,
+            "focusReadyMilliseconds": 64.0396,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0207,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0098,
+            "sleepMilliseconds": 34.3408,
+            "synchronizedFrameMilliseconds": 64.2319,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "6a7b242051949005747d6074ede9973584076b3ade41a9cfa4db279dd0f9c7c2",
+            "events.jsonl": "9d83908efc6f6abd3e5c0b90576baab95fefce27a6c61ffacf4d4de14691cf07",
+            "process.log": "3da12fb44b888b380df82fc5847b9d77db4633a28cbda0439b5b4461f5d05879"
+          }
+        },
+        {
+          "index": 31,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 752.0688,
+          "firstReveal": {
+            "eventLoopMilliseconds": 30.0475,
+            "fixtureToFocusMilliseconds": 478.5205,
+            "focusReadyMilliseconds": 66.8674,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0221,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0073,
+            "sleepMilliseconds": 36.7674,
+            "synchronizedFrameMilliseconds": 67.0436,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "a288b2a1be1ed20a15fb7c3905f6ab58fe4958ca54a3054fcd5cc56916119eb6",
+            "events.jsonl": "2e89f943dd953219d1888580f83909da6343d81efdaaabe5ea2ff9ea5a4116da",
+            "process.log": "82aed3fc734d9145cbed79a97f8aae67665d5357a0df61f4807abf21e3f9619f"
+          }
+        },
+        {
+          "index": 32,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 729.5927,
+          "firstReveal": {
+            "eventLoopMilliseconds": 33.7849,
+            "fixtureToFocusMilliseconds": 481.0814,
+            "focusReadyMilliseconds": 70.5915,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.02,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0066,
+            "sleepMilliseconds": 36.7584,
+            "synchronizedFrameMilliseconds": 70.7884,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "03be3339f195b22068c299ae168880c6e818615123bfc64a839e5112df013028",
+            "events.jsonl": "4512f34054e4477f0c3f1544d7071dfd52003f1a20cd3d95fc5f92b5d8bcadb7",
+            "process.log": "15042fde97f426afb6d91d4bc1b35bf59ac88b6f10bfe2145cad81e06f4ee147"
+          }
+        },
+        {
+          "index": 33,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 746.273,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.6629,
+            "fixtureToFocusMilliseconds": 493.0528,
+            "focusReadyMilliseconds": 64.6281,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0214,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0075,
+            "sleepMilliseconds": 34.9121,
+            "synchronizedFrameMilliseconds": 64.8566,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "910965f2a2ee1e9876ec6b66551ce3ee649c104601457364a02197fce8427b31",
+            "events.jsonl": "f02061924046085c4bd7948d821e8f034ece8e56f7eb909a674628535b3cc6dc",
+            "process.log": "7ba310a14b565e36db582621294c7a5ed130f486e7d59c346d2dbacfd5463937"
+          }
+        },
+        {
+          "index": 34,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 742.3758,
+          "firstReveal": {
+            "eventLoopMilliseconds": 33.4771,
+            "fixtureToFocusMilliseconds": 491.0336,
+            "focusReadyMilliseconds": 66.6196,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.022,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0118,
+            "sleepMilliseconds": 33.0782,
+            "synchronizedFrameMilliseconds": 66.8265,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "9d16867755c7f612a08345ead1ddf0d127107b15cd2a116a2d06e20c8ca85c79",
+            "events.jsonl": "4034a0b76e29708a930888118e40b4a57da921239601ab5bad5bbfbc82ec838e",
+            "process.log": "5a5eaf5a0fe3875e83abd17a91ec917bae19446d960fca0fd45f66bca7e8ace3"
+          }
+        },
+        {
+          "index": 35,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 767.251,
+          "firstReveal": {
+            "eventLoopMilliseconds": 32.9632,
+            "fixtureToFocusMilliseconds": 505.9068,
+            "focusReadyMilliseconds": 68.1317,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0201,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0104,
+            "sleepMilliseconds": 35.1098,
+            "synchronizedFrameMilliseconds": 68.9756,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "98d594b5ce34ab9ada6bf8d8b844392a2e7de0c88e4155e6a27675a0b8196504",
+            "events.jsonl": "ecdf07b5cafe0316bcd4e16b914ebff9bc62f89cb7b90d42399b6ba87486d474",
+            "process.log": "e81a27880c59589f1138541bd72cce506d3c4d8341d363a3bff77c71823e8891"
+          }
+        },
+        {
+          "index": 36,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 789.8072,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.6973,
+            "fixtureToFocusMilliseconds": 494.2273,
+            "focusReadyMilliseconds": 66.0347,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0191,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0089,
+            "sleepMilliseconds": 36.281,
+            "synchronizedFrameMilliseconds": 66.209,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "92ed9d1b882faf6cc8898fae5afb886f749640f500a32a54bc4ca9c97c3839c2",
+            "events.jsonl": "97c2c822a082b9f48d6816713f632032e9c1688216e97c99d675306468593eb5",
+            "process.log": "1c2a11890a5ba0d6deaa301d5f14f07c5faeb7afb0e8fe2fdeecb29a070af052"
+          }
+        },
+        {
+          "index": 37,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 741.096,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.8775,
+            "fixtureToFocusMilliseconds": 477.1266,
+            "focusReadyMilliseconds": 67.636,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0183,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0074,
+            "sleepMilliseconds": 37.7086,
+            "synchronizedFrameMilliseconds": 67.7812,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "59d45ffb5e86a032a6d97262c851bd5a44ecd21302d8da3eb4afad9f065d45a6",
+            "events.jsonl": "ed506496bf94bd09839b20220e26c79ec6aaa8e38e6648a1683d8557f81283ad",
+            "process.log": "3ba36ea1390022a14b1c6468af8149949c176b3af1d406ac7291dfcf76ee6f5d"
+          }
+        },
+        {
+          "index": 38,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 732.4506,
+          "firstReveal": {
+            "eventLoopMilliseconds": 30.2928,
+            "fixtureToFocusMilliseconds": 488.5871,
+            "focusReadyMilliseconds": 66.0383,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0175,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0112,
+            "sleepMilliseconds": 35.6906,
+            "synchronizedFrameMilliseconds": 66.1902,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "9ab73d9ce34baf6440590c6f99be3e396ed5171819bbb0c363ba2a2c2e3687a1",
+            "events.jsonl": "70a8a174ffb69907fc6f4c54d06c389a391558e8dafee468daf7b511c2b7f6f9",
+            "process.log": "6bd9f44aad5969f84d945b51167746026bb52ecbe8a64347d77412b256a59050"
+          }
+        },
+        {
+          "index": 39,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 738.3612,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.344,
+            "fixtureToFocusMilliseconds": 472.4098,
+            "focusReadyMilliseconds": 65.014,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0212,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0066,
+            "sleepMilliseconds": 35.6207,
+            "synchronizedFrameMilliseconds": 65.217,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "3a79fc79358c5505c7c94212fc79ce7d51be2b77b3fd1a47162ca2b6df4b5770",
+            "events.jsonl": "e2f0c0bf9e08b0c3cf91693ce7dc011e39fd5d3eef17b1db44d88c505c1964a2",
+            "process.log": "8ad83be1dcefbccfdaf902c55716e88a14a64a9f096cb52181b8f919d2bdcea7"
+          }
+        },
+        {
+          "index": 40,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 765.8811,
+          "firstReveal": {
+            "eventLoopMilliseconds": 37.2859,
+            "fixtureToFocusMilliseconds": 495.8444,
+            "focusReadyMilliseconds": 73.2479,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0236,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0087,
+            "sleepMilliseconds": 35.9004,
+            "synchronizedFrameMilliseconds": 73.4709,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "3c004e7556b3beef20e551ef9ef084cd24154570def32d26e994036429cc8fcc",
+            "events.jsonl": "6ee5bb9422219799fde692da42232a5152e0964c0fa5987c8151750ac526bf52",
+            "process.log": "c69f0ecac5c5d169785cb9ab6300fe290f1bfd5c7ee3f8e285d72e4691b0991c"
+          }
+        },
+        {
+          "index": 41,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 760.4435,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.7962,
+            "fixtureToFocusMilliseconds": 483.8386,
+            "focusReadyMilliseconds": 64.6204,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0186,
+            "readinessIterations": 18,
+            "showReturnMilliseconds": 0.0087,
+            "sleepMilliseconds": 34.7731,
+            "synchronizedFrameMilliseconds": 64.8844,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "457194c7de36f0c83c3a06eae716f725073851b2beef2ac1ac823f363807bd3e",
+            "events.jsonl": "f9fd5cbc1f7215a255d906e115045af1e283be94d8531d76f628284c11c1beef",
+            "process.log": "f05ec7383fe0b76f4df0d8a28ba66a9a9eb0b7e4c7c383cbd298bcd60a5e93d7"
+          }
+        },
+        {
+          "index": 42,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 799.2804,
+          "firstReveal": {
+            "eventLoopMilliseconds": 38.2727,
+            "fixtureToFocusMilliseconds": 528.7609,
+            "focusReadyMilliseconds": 73.4864,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.1348,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.011,
+            "sleepMilliseconds": 35.0362,
+            "synchronizedFrameMilliseconds": 73.9167,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "e78a2425e8fbe20763ca6503c68944f076b28971d65f91d9f25b40d006c9b162",
+            "events.jsonl": "746bc4f5abc8c2718207978f0e146801117ec396ee050f098bfc87b44bd2add8",
+            "process.log": "ab4692c36ef0269dd17eb9ba97ace8dae2a60623c690680a8f3bb0818a0bb540"
+          }
+        },
+        {
+          "index": 43,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 938.3577,
+          "firstReveal": {
+            "eventLoopMilliseconds": 34.7291,
+            "fixtureToFocusMilliseconds": 634.0938,
+            "focusReadyMilliseconds": 71.6559,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0217,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0127,
+            "sleepMilliseconds": 36.8647,
+            "synchronizedFrameMilliseconds": 71.8223,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "211978b0bef2aa584fdcf231bffae42b607af9b5b4cb21bacd3611a50f597e6b",
+            "events.jsonl": "8d2b53c36b6128253a9bdd8b064e6b089f499ba4e5beb1106ba2bce852eb3cd9",
+            "process.log": "7ba49d562c242b137008b892b05344b7550b9816c22fd486f5603e2ee05237e9"
+          }
+        },
+        {
+          "index": 44,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 754.9783,
+          "firstReveal": {
+            "eventLoopMilliseconds": 31.7733,
+            "fixtureToFocusMilliseconds": 486.8514,
+            "focusReadyMilliseconds": 68.1886,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0239,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0082,
+            "sleepMilliseconds": 36.3575,
+            "synchronizedFrameMilliseconds": 68.3705,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "95b82d3553853d51b4f423d60819babc1a1f8917652d2333df237ea4349fc8a3",
+            "events.jsonl": "a74339a06ba132c33be294a8acd2e7a4acc84ceb28db3df7fd3f6fafecd086ba",
+            "process.log": "900e82b243cc5b9d62241aadf3305deed7cc50222ff490043109f0eb0bd01e42"
+          }
+        },
+        {
+          "index": 45,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 742.4087,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.1402,
+            "fixtureToFocusMilliseconds": 476.0036,
+            "focusReadyMilliseconds": 63.2643,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0176,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0075,
+            "sleepMilliseconds": 34.0787,
+            "synchronizedFrameMilliseconds": 63.4612,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "a9c0732d62c4c1400161771c6bba793a2bf6a23c484cbdccd405cad33118fe90",
+            "events.jsonl": "768738581d86a4edfd5d399f85b4f1399529b6a358cd1bd94644f5704031c95c",
+            "process.log": "a7db9d8388d862af5a13b5cdd8e7c5afe8da1afdf9e6d1e7d76868ec9c16dab8"
+          }
+        },
+        {
+          "index": 46,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 763.8511,
+          "firstReveal": {
+            "eventLoopMilliseconds": 28.3264,
+            "fixtureToFocusMilliseconds": 491.6754,
+            "focusReadyMilliseconds": 62.5329,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0203,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0072,
+            "sleepMilliseconds": 34.1551,
+            "synchronizedFrameMilliseconds": 62.764,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "cd0e106edae0c00f092d830084bedd3e61210e509a1a348fe7a783a6ffadee99",
+            "events.jsonl": "9cdf100c266f4f07ea0967657e44451dce29efe7e4d7ea7697278e5d2d60557f",
+            "process.log": "1f6783d0fa2cd4133238889ec2055af9301dbef67aaa36c6997edba846abf9da"
+          }
+        },
+        {
+          "index": 47,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 768.4214,
+          "firstReveal": {
+            "eventLoopMilliseconds": 32.1934,
+            "fixtureToFocusMilliseconds": 483.2853,
+            "focusReadyMilliseconds": 68.1961,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0259,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0084,
+            "sleepMilliseconds": 35.9405,
+            "synchronizedFrameMilliseconds": 68.4164,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "b46fb03b6657241ae466feb26b5223ee59a40f070790113ab0aad5c026b5d2d5",
+            "events.jsonl": "32c7af149a5661a6ae7567387ff1a9c5ed9b71c582f9ec591e3c3a1b32afeb50",
+            "process.log": "0834e19799218a3052d9093ef09c9472658e8f2e9cefe6826f55000fc4af1f50"
+          }
+        },
+        {
+          "index": 48,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 821.8195,
+          "firstReveal": {
+            "eventLoopMilliseconds": 30.4407,
+            "fixtureToFocusMilliseconds": 537.9119,
+            "focusReadyMilliseconds": 68.0539,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0173,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0081,
+            "sleepMilliseconds": 37.5676,
+            "synchronizedFrameMilliseconds": 68.2149,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "020471508bc663e27c737bd973cb8a39efd550b35b78c6b1edb653304618d7ce",
+            "events.jsonl": "693458b9d6870cf82ca56b8a3ffbc0916a15c70f5a53f685594e11ccf96179b0",
+            "process.log": "7f8810ded0010153735a6290cb6cc29d4969801bdd18d4a16a2bf0060d429149"
+          }
+        },
+        {
+          "index": 49,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 717.1807,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.2982,
+            "fixtureToFocusMilliseconds": 460.4972,
+            "focusReadyMilliseconds": 64.1474,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0171,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0086,
+            "sleepMilliseconds": 34.7972,
+            "synchronizedFrameMilliseconds": 64.2976,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "4c76919df72f390d913d1175abd83e86e433bdf821d90afb743e063285232f99",
+            "events.jsonl": "d474d1b26e81f308f6c1fad167e44d09d80d93c6333f272fdd6cbdcfc2b545c1",
+            "process.log": "68f9c2c7a922d2518972cb7ab313e1e16db3bb4a11eef6cd45c53806bb09a6d5"
+          }
+        },
+        {
+          "index": 50,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 721.6445,
+          "firstReveal": {
+            "eventLoopMilliseconds": 31.6584,
+            "fixtureToFocusMilliseconds": 472.7867,
+            "focusReadyMilliseconds": 68.6368,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0187,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0076,
+            "sleepMilliseconds": 36.929,
+            "synchronizedFrameMilliseconds": 68.8432,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "966ee36d67d2572e5b905ef81d9703f50b0963f6d6ca4cf8e1efb8315b8b11e0",
+            "events.jsonl": "484ce6eae2cdcb9e5ae25498b0662f5c97eb181ea1806956a6fe52c705611658",
+            "process.log": "f3432a2440acc47db603a5f5ba91e4973a6703187f88572eb8f8c92c4817cc95"
+          }
+        },
+        {
+          "index": 51,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 800.3746,
+          "firstReveal": {
+            "eventLoopMilliseconds": 31.69,
+            "fixtureToFocusMilliseconds": 498.1359,
+            "focusReadyMilliseconds": 67.2162,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0216,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.008,
+            "sleepMilliseconds": 35.4693,
+            "synchronizedFrameMilliseconds": 67.3983,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "dc9a2c3f6fa3f79a1bf350b42e66981cd26feebb9745b743ea54870f48aefec7",
+            "events.jsonl": "041c0489dfd6173c3a529d396276a5a0adc6fbff8fa917e449f8aa8080bd1b61",
+            "process.log": "2c51a9b73f9cc65754b80772c1889e58c879be01e9276e64a2f961ad6095bf20"
+          }
+        },
+        {
+          "index": 52,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 790.9909,
+          "firstReveal": {
+            "eventLoopMilliseconds": 34.7453,
+            "fixtureToFocusMilliseconds": 518.9258,
+            "focusReadyMilliseconds": 70.2132,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0173,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0113,
+            "sleepMilliseconds": 35.4142,
+            "synchronizedFrameMilliseconds": 70.3964,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "0eeacc20acc1b22b315140556bdd25e0f96f7cfa048127b00ccc6a7c2ac913a2",
+            "events.jsonl": "5ad7bbd84bf22b5ea4e0391f03919a929a4f3e4721811da2c620192a9915ad9c",
+            "process.log": "e89624d7641bcbfb6549eff284dbce36a0a605aef15b990a93f32cf8ee23fc53"
+          }
+        },
+        {
+          "index": 53,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 864.6315,
+          "firstReveal": {
+            "eventLoopMilliseconds": 32.1467,
+            "fixtureToFocusMilliseconds": 558.7956,
+            "focusReadyMilliseconds": 65.4153,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0202,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0104,
+            "sleepMilliseconds": 33.2084,
+            "synchronizedFrameMilliseconds": 65.6197,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "c0d84ef84094e072b1f934da4bd4da138121d05375839bac02283e1543dd5b10",
+            "events.jsonl": "fc661875fff1a6699d20be1ae4149facb5af8076a549d8cebc38d7eb229dc992",
+            "process.log": "ea78ecd5e93ae7ce26e50d0605470c7ea6e8c1184312022908f4c4e1a4a52286"
+          }
+        },
+        {
+          "index": 54,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 811.9956,
+          "firstReveal": {
+            "eventLoopMilliseconds": 32.0819,
+            "fixtureToFocusMilliseconds": 526.1958,
+            "focusReadyMilliseconds": 65.1598,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.021,
+            "readinessIterations": 29,
+            "showReturnMilliseconds": 0.0092,
+            "sleepMilliseconds": 33.0199,
+            "synchronizedFrameMilliseconds": 65.3911,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "47af9afc9e8744fadddcc956c1ff166a2d32cb49248706c1b6bd3b66432917f3",
+            "events.jsonl": "8085bc4f46f6fcb76d4743fd775e6fe21abfdb706e6b9c250620d906ecd3896f",
+            "process.log": "c06a91fb59a490bef4946eb317b6c3fa5c28fcd280fec62bad0c3331c2b42dfb"
+          }
+        },
+        {
+          "index": 55,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 834.9014,
+          "firstReveal": {
+            "eventLoopMilliseconds": 36.9604,
+            "fixtureToFocusMilliseconds": 555.5336,
+            "focusReadyMilliseconds": 72.2747,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0205,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0098,
+            "sleepMilliseconds": 35.2267,
+            "synchronizedFrameMilliseconds": 72.5276,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "95a64ea39ff1e2099c4abc3d959f311ca0ba3f7c7ae98131fb442c9ebcd1fd96",
+            "events.jsonl": "204df6ec25fd688a263b32a5b646e507a707a8f4633cffe50bf430b50ec780c0",
+            "process.log": "a35c27cffc6fdd8924a92e5abf09057ad6c3e6c94a001d84bd2a5fcca511bcd3"
+          }
+        },
+        {
+          "index": 56,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 799.4074,
+          "firstReveal": {
+            "eventLoopMilliseconds": 30.4255,
+            "fixtureToFocusMilliseconds": 498.9682,
+            "focusReadyMilliseconds": 68.2055,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0653,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0109,
+            "sleepMilliseconds": 37.6727,
+            "synchronizedFrameMilliseconds": 68.5966,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "bebcb3193c1e261d350c5ae8e51752ce2cf574f9d15b805db5112fffb5607852",
+            "events.jsonl": "c77af8f2b0c1877dbb626e80c51acfe40e45b729bb5693208b7b9c6cc580deed",
+            "process.log": "401a647dfe5486823b1708162f86c4dee12e8045c2b0e31dc7a158b77836e792"
+          }
+        },
+        {
+          "index": 57,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 799.731,
+          "firstReveal": {
+            "eventLoopMilliseconds": 39.7665,
+            "fixtureToFocusMilliseconds": 515.2208,
+            "focusReadyMilliseconds": 75.2196,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.026,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0146,
+            "sleepMilliseconds": 35.3781,
+            "synchronizedFrameMilliseconds": 75.433,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "70367c056f8aee866466d67375ac80049ca6d1f154fa1936e50b71989cbd8dc6",
+            "events.jsonl": "24a9cfa5b3d774162300fbc630ac4decd56e3e439f0df0eec4e5c8c2d50ee992",
+            "process.log": "ca3cd9950544e6c23bd7e5711e4d7d92cbd0535a6fc6553f0943320a843eae49"
+          }
+        },
+        {
+          "index": 58,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 839.2186,
+          "firstReveal": {
+            "eventLoopMilliseconds": 32.4866,
+            "fixtureToFocusMilliseconds": 517.0985,
+            "focusReadyMilliseconds": 66.5589,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0308,
+            "readinessIterations": 18,
+            "showReturnMilliseconds": 0.0111,
+            "sleepMilliseconds": 34.0031,
+            "synchronizedFrameMilliseconds": 66.729,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "1ab964bffd828c2e64c94e3949ed75587ed2a45f69f9053317704f6cc66934bd",
+            "events.jsonl": "7c95180242d59d8240f6db4b45bd0ae4c6593791c75dea2f70c28adcabf1bb94",
+            "process.log": "d63a5e970620eb5e6936b54a068b461d8aaf84247c208af1e8dc8a2187569b87"
+          }
+        },
+        {
+          "index": 59,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 825.8966,
+          "firstReveal": {
+            "eventLoopMilliseconds": 31.0689,
+            "fixtureToFocusMilliseconds": 545.2228,
+            "focusReadyMilliseconds": 66.6019,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.021,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0136,
+            "sleepMilliseconds": 35.4681,
+            "synchronizedFrameMilliseconds": 66.7922,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "4be1ab7d065ef68a74ac8137daff28561bb33861083d1c94988ca26263e4cafb",
+            "events.jsonl": "9d1aa4152733c9d2c0ddab37da0100b7f2f6e674cddbee04873ca2999c1c3d09",
+            "process.log": "6ff13017702f7420b250b52d7ff264a2d4912e8736ea3c3fc39df545b142cd9b"
+          }
+        },
+        {
+          "index": 60,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 796.0278,
+          "firstReveal": {
+            "eventLoopMilliseconds": 36.3012,
+            "fixtureToFocusMilliseconds": 521.6843,
+            "focusReadyMilliseconds": 69.6662,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0201,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0107,
+            "sleepMilliseconds": 33.31,
+            "synchronizedFrameMilliseconds": 69.9029,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "5e1d64e3730f37623515fdf576008e8937d4021f60ca081bd62bcb759a5f1fe9",
+            "events.jsonl": "707c1a51fa312e30515cfd7f3cb9eed6585726b5258bb0fe4c67c8b2fadf263d",
+            "process.log": "39bf300d5b40e6fd993a6d8ae67013f47ec7ec5b6ce2d29f35debf7232501e7c"
+          }
+        },
+        {
+          "index": 61,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 854.4766,
+          "firstReveal": {
+            "eventLoopMilliseconds": 32.2652,
+            "fixtureToFocusMilliseconds": 503.4803,
+            "focusReadyMilliseconds": 67.388,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0174,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0103,
+            "sleepMilliseconds": 35.0686,
+            "synchronizedFrameMilliseconds": 67.5919,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "f1fbef1d0f3592a1084711def00308981a3ea82f4df09dd98597769bc12a318a",
+            "events.jsonl": "06e996b2812747936d6b7bf38a782d3e8e039702b994cdb597631e1d35862e89",
+            "process.log": "47ae17de8a1a66b9c8a68d9d43d66222ca72b3f98f015afea3d47ca3099ef73c"
+          }
+        },
+        {
+          "index": 62,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 715.4369,
+          "firstReveal": {
+            "eventLoopMilliseconds": 33.3492,
+            "fixtureToFocusMilliseconds": 465.4327,
+            "focusReadyMilliseconds": 68.4879,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0199,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0094,
+            "sleepMilliseconds": 35.082,
+            "synchronizedFrameMilliseconds": 68.693,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "201cc985199d9288113a2d36295657c2e8b3fcf897da4a9a6967407ea4383bf6",
+            "events.jsonl": "3680704468afee4eb0933434d3941e7c78a5dc81395e514377aebc81948424e6",
+            "process.log": "4a6e74070c223f354fafbe9f202621edf4f7cbbb0593e22eba07b96fb9675544"
+          }
+        },
+        {
+          "index": 63,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 750.6175,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.3071,
+            "fixtureToFocusMilliseconds": 485.9278,
+            "focusReadyMilliseconds": 63.8127,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.014,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.02,
+            "sleepMilliseconds": 34.447,
+            "synchronizedFrameMilliseconds": 63.9474,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "bf895bac66c5ac62d5fbc331c3a00a39790132a8728448af372794fe1151c0ec",
+            "events.jsonl": "76af52ee0b712116b4457f00823d1d822479fab9c8ddafa808f11ead6b0fbee1",
+            "process.log": "75564fb5d12aa77b4ed592fa109a3785559d7fddfeb693bc586b5d3d19aaf8ca"
+          }
+        },
+        {
+          "index": 64,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 738.4736,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.5399,
+            "fixtureToFocusMilliseconds": 475.8199,
+            "focusReadyMilliseconds": 65.7866,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0328,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0066,
+            "sleepMilliseconds": 36.1873,
+            "synchronizedFrameMilliseconds": 65.9403,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "9861f9cb76b9af6f445da1529fbdd77a058745ed81affe8310b02812bc6c8ee6",
+            "events.jsonl": "26c7655759309327aa9e785c1b0a4c2f7e2b411dfe1b4de383d3da9e55f17f70",
+            "process.log": "d64500a5a1875f6b293d4286539bbb665ebfad448acdc95dc2ff3d4cdea5ca55"
+          }
+        },
+        {
+          "index": 65,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 741.9668,
+          "firstReveal": {
+            "eventLoopMilliseconds": 31.0657,
+            "fixtureToFocusMilliseconds": 485.5238,
+            "focusReadyMilliseconds": 67.4432,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0262,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0092,
+            "sleepMilliseconds": 36.3162,
+            "synchronizedFrameMilliseconds": 67.6674,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "79a5b3b596f267ab77fe0f1f93b78dca10f546273cb9c32709112da7d42df45c",
+            "events.jsonl": "b6a31907921612c8db37f6935bc21fba379167ee69f1e74ce81acbe08be1eb60",
+            "process.log": "dc6507dd2af0d21cd0d1e8251428e76789c7d8ed09da83d19176362b167cb8e8"
+          }
+        },
+        {
+          "index": 66,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 731.1308,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.136,
+            "fixtureToFocusMilliseconds": 471.7717,
+            "focusReadyMilliseconds": 64.8863,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0171,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0072,
+            "sleepMilliseconds": 35.7045,
+            "synchronizedFrameMilliseconds": 65.1051,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "8c9ec231362bd8e9a7c13653b9a25492e023b23a6c7be1a434e53f88a1fca71c",
+            "events.jsonl": "3584c434d96cb07a933f6c55668f8a6e8e02d70de41dc345b46428b40475e0cd",
+            "process.log": "c2a81ae29f5830d939f3f8fac577c2b4a671d60c6e3f335f08d41a4818729510"
+          }
+        },
+        {
+          "index": 67,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 737.2421,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.2554,
+            "fixtureToFocusMilliseconds": 482.3641,
+            "focusReadyMilliseconds": 64.5264,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0186,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0087,
+            "sleepMilliseconds": 35.2178,
+            "synchronizedFrameMilliseconds": 64.7233,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "b6b4e1c095bcdf5919de61d48f74eeec4cd61552be76588e8f38a70ea8dece04",
+            "events.jsonl": "26816dd872b9fca487e6d1f0a6e2059585e754a36da5ca558f30a703ed235df0",
+            "process.log": "6001d84d3c9887f80e2a177bd112b515bb6f08e4a107aa05a50e01e7bccc33fa"
+          }
+        },
+        {
+          "index": 68,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 739.3719,
+          "firstReveal": {
+            "eventLoopMilliseconds": 32.6969,
+            "fixtureToFocusMilliseconds": 470.0136,
+            "focusReadyMilliseconds": 70.7695,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0201,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0068,
+            "sleepMilliseconds": 38.0243,
+            "synchronizedFrameMilliseconds": 70.9448,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "42c87e95cc278a3321e55f72feaf9c639fdeca19919ae45dcfc3b3ef95c49b42",
+            "events.jsonl": "036ce77dea2d23e1fc8a2b9483bf3e1a78e4acacfc5325115bc4234fd269f86d",
+            "process.log": "7d48c4d1625723dedb8430d80ee27860bc201c4cb361bdb676a4c6082977f3a4"
+          }
+        },
+        {
+          "index": 69,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 754.8629,
+          "firstReveal": {
+            "eventLoopMilliseconds": 30.1095,
+            "fixtureToFocusMilliseconds": 486.1356,
+            "focusReadyMilliseconds": 63.9611,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0253,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0117,
+            "sleepMilliseconds": 33.7813,
+            "synchronizedFrameMilliseconds": 64.1596,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "5ac109a6f32315d4103c632069eec9320b404720e17b9630a0b67f797c2b40dc",
+            "events.jsonl": "2cba1013078ef7ade316d989eee02ca0368ba22395124b4c49af8d9e9a0391d5",
+            "process.log": "4e57de634157eaf416fa4937c63e6302bb921fae4c5eba7906b2b95f0345e169"
+          }
+        },
+        {
+          "index": 70,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 765.0857,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.7406,
+            "fixtureToFocusMilliseconds": 474.5939,
+            "focusReadyMilliseconds": 65.946,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0184,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0067,
+            "sleepMilliseconds": 36.1558,
+            "synchronizedFrameMilliseconds": 66.1193,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "acfedcb1c440e5c1c0767fdf169ec73af34de58cbf62b94caf94ac788e768994",
+            "events.jsonl": "8453fae3320c95dae83b108f42cb47196ea95c176f3cccf43f64d685984413bb",
+            "process.log": "79ac48cc15317dd58849653bbc2784d91e1b8bdbf1aff4c33521a3099ad68b52"
+          }
+        },
+        {
+          "index": 71,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 732.4878,
+          "firstReveal": {
+            "eventLoopMilliseconds": 31.9774,
+            "fixtureToFocusMilliseconds": 488.8871,
+            "focusReadyMilliseconds": 67.5981,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0189,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0098,
+            "sleepMilliseconds": 35.5646,
+            "synchronizedFrameMilliseconds": 67.8208,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "03103daa882dc75640f9bb419054473ba34b02afdd23a50e69efc54cbbf2d146",
+            "events.jsonl": "8678739403e3f52705e4d4bb959f4b506bfa03b741d4d90147b6435fe9964e72",
+            "process.log": "85090277337eca7e8272d18314cbd411a333b4dae734c022e0961970406dd2b5"
+          }
+        },
+        {
+          "index": 72,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 744.8806,
+          "firstReveal": {
+            "eventLoopMilliseconds": 30.2299,
+            "fixtureToFocusMilliseconds": 497.0414,
+            "focusReadyMilliseconds": 69.3692,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0198,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0097,
+            "sleepMilliseconds": 39.0834,
+            "synchronizedFrameMilliseconds": 69.5918,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "74f0b7d71e1c8b92435d2e84ce5b3afa8532ad6ee789ea8832ced4117b6ce739",
+            "events.jsonl": "da556669e2776ecf3e63e299ac48c49e4ab1e279d8c99210713ae281457ad50f",
+            "process.log": "669be3e7a5992906fa76d9d4007bd6158e90d15f7b91650c0a86c0545704cc71"
+          }
+        },
+        {
+          "index": 73,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 910.7604,
+          "firstReveal": {
+            "eventLoopMilliseconds": 37.5321,
+            "fixtureToFocusMilliseconds": 609.3559,
+            "focusReadyMilliseconds": 77.569,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0318,
+            "readinessIterations": 30,
+            "showReturnMilliseconds": 0.0119,
+            "sleepMilliseconds": 39.9535,
+            "synchronizedFrameMilliseconds": 77.8232,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "03080f712211327c4105dc7b75b595d7dba69c92d0a8843e3c162eb54a945bd7",
+            "events.jsonl": "497e39b32ef84078a9b16f829215568bcfc01f7cd9a4234770637790a5b7454f",
+            "process.log": "61a1be154c507f8d238b3f27a4b52338c896e8d2c1c556358155ad86cabe1cb1"
+          }
+        },
+        {
+          "index": 74,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 785.2663,
+          "firstReveal": {
+            "eventLoopMilliseconds": 32.8328,
+            "fixtureToFocusMilliseconds": 476.8907,
+            "focusReadyMilliseconds": 65.8949,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0189,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0072,
+            "sleepMilliseconds": 33.0128,
+            "synchronizedFrameMilliseconds": 66.0586,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "aa72981cad68e67776ca41d988f60057125bb1181a43a1dab9fc491714457397",
+            "events.jsonl": "910eeac382ec46d7c7e2c6e0038fcd570ed74ecf4c91b9e972cc39bc20ae143e",
+            "process.log": "2fff942d4f98999871e03094727ef14972dedab2081458895cd9cabc883b7251"
+          }
+        },
+        {
+          "index": 75,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 734.6559,
+          "firstReveal": {
+            "eventLoopMilliseconds": 31.4295,
+            "fixtureToFocusMilliseconds": 477.0289,
+            "focusReadyMilliseconds": 68.1824,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0308,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0077,
+            "sleepMilliseconds": 36.6887,
+            "synchronizedFrameMilliseconds": 68.5216,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "eb04e4fdcbc2e501c592b3eaf4d5688b63aeff9c5ab4e98f07b42492002f7509",
+            "events.jsonl": "5296bc3c799eaae773df78a952be3243e0b5e64d66f7cad07b00ec90695bcd77",
+            "process.log": "9c998d6f3e3e0612c7953784fa29f8bc0083e344c28c058f5b79a4ea00b638c9"
+          }
+        },
+        {
+          "index": 76,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 734.2774,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.2613,
+            "fixtureToFocusMilliseconds": 460.5309,
+            "focusReadyMilliseconds": 64.414,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0513,
+            "readinessIterations": 22,
+            "showReturnMilliseconds": 0.0078,
+            "sleepMilliseconds": 35.0666,
+            "synchronizedFrameMilliseconds": 65.0003,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "027c2a1c9980c93ce491bd53c6850c3e7bd648736fa3aa83782d8622629b6562",
+            "events.jsonl": "62f99a98487b09750c7a046af616eb60df75ec07f4335db766035d1d2907c387",
+            "process.log": "9678d20394d3dbe74058e77f1b5e14ebadd4a20cdaf3322aa8b8bcf4949b12c8"
+          }
+        },
+        {
+          "index": 77,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 726.9649,
+          "firstReveal": {
+            "eventLoopMilliseconds": 35.3876,
+            "fixtureToFocusMilliseconds": 472.0527,
+            "focusReadyMilliseconds": 71.4959,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0282,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0073,
+            "sleepMilliseconds": 36.0441,
+            "synchronizedFrameMilliseconds": 71.7114,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "064772912b2ae7705b0148f4aa1c46c4c70e34a8bb196b32b84d1eec13eb5d98",
+            "events.jsonl": "6fb8cd8b156840a7a98ad6f7952dc66a35c540b66f14d9293bb504c3e711119a",
+            "process.log": "2ac5035559868b0c3e583b14a97a767fc9890595467bad02b2b4723eb2d84e81"
+          }
+        },
+        {
+          "index": 78,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 718.6282,
+          "firstReveal": {
+            "eventLoopMilliseconds": 28.9298,
+            "fixtureToFocusMilliseconds": 474.8852,
+            "focusReadyMilliseconds": 64.6863,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0223,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0083,
+            "sleepMilliseconds": 35.7012,
+            "synchronizedFrameMilliseconds": 64.9,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "b81f376317ec5f046cebe62297f79d7925e6edcafcc4996a5d0ceb258071ac9b",
+            "events.jsonl": "1e4ee4bf420060a699b48ea936c4b9b38a6a185d522a9c2577a1061543e1b52a",
+            "process.log": "a3225cba7e73f87d9525396f9c83af522df2e7a15fd948b23b8fd272506b595b"
+          }
+        },
+        {
+          "index": 79,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 739.2523,
+          "firstReveal": {
+            "eventLoopMilliseconds": 31.7008,
+            "fixtureToFocusMilliseconds": 468.464,
+            "focusReadyMilliseconds": 66.6666,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0283,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0151,
+            "sleepMilliseconds": 34.8919,
+            "synchronizedFrameMilliseconds": 66.8421,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "5c60226c082b9aa36e53f882dc1ebe344eaaba43265a80eb1ae7cbe8db2073a7",
+            "events.jsonl": "57ef34e66373981739d8479036583e8837c09e62ee1fd602ff44549ac5b703b0",
+            "process.log": "2b64cd18ae86d59cd12a57bea7594cd39aad4cfdfb02a1180085a1502647ebce"
+          }
+        },
+        {
+          "index": 80,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 738.2773,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.7271,
+            "fixtureToFocusMilliseconds": 483.9048,
+            "focusReadyMilliseconds": 64.6816,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0377,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.01,
+            "sleepMilliseconds": 34.8809,
+            "synchronizedFrameMilliseconds": 64.9097,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "7c2b4e2740b5635374d67a4059a52c738648eb580b1dfafaf5568a9707859772",
+            "events.jsonl": "000e9193e04274199cbabd1d7456483a7b2f6c8e3b27650f513cf83a3e7881ec",
+            "process.log": "7652d5888b600ea56d332e80f06738be7bfec700ffaaeae46379a41267c474a9"
+          }
+        },
+        {
+          "index": 81,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 732.1212,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.5714,
+            "fixtureToFocusMilliseconds": 470.8511,
+            "focusReadyMilliseconds": 66.9325,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0198,
+            "readinessIterations": 23,
+            "showReturnMilliseconds": 0.0072,
+            "sleepMilliseconds": 37.3107,
+            "synchronizedFrameMilliseconds": 67.1032,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "5d190cab889c14d4ab5046c8ab56ce3a53336dd7ff4b159e513ec7042c301e96",
+            "events.jsonl": "945c5dee7597805160c5f908a4b1e28bbc0beacd222dc0de8c5a306f6dc7dbd3",
+            "process.log": "bb31696ce2e5e50ce6fc735468c677388543beef1c73e51962706cf5cc2618c0"
+          }
+        },
+        {
+          "index": 82,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 732.6744,
+          "firstReveal": {
+            "eventLoopMilliseconds": 31.2472,
+            "fixtureToFocusMilliseconds": 456.5288,
+            "focusReadyMilliseconds": 67.0046,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0216,
+            "readinessIterations": 22,
+            "showReturnMilliseconds": 0.0067,
+            "sleepMilliseconds": 35.7079,
+            "synchronizedFrameMilliseconds": 67.2013,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "352bf18453f9626b59d6437ce945997f429651b8752055dfa735a04d27cd3c52",
+            "events.jsonl": "a12ebf796d7eebaadb65862a61f8e48391f126429e8fce8a9d2caacbc0856b92",
+            "process.log": "8da2170baa92693c1770dfd81ace6c6a26d948923f15d157e59f8c344eda2431"
+          }
+        },
+        {
+          "index": 83,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 750.5111,
+          "firstReveal": {
+            "eventLoopMilliseconds": 34.0194,
+            "fixtureToFocusMilliseconds": 490.4921,
+            "focusReadyMilliseconds": 70.3309,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0209,
+            "readinessIterations": 22,
+            "showReturnMilliseconds": 0.0074,
+            "sleepMilliseconds": 36.2594,
+            "synchronizedFrameMilliseconds": 70.5814,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "2981a00a6229f2c0008d0d698c795703db48747e669a2c1412914ad73dbdc9b4",
+            "events.jsonl": "922cde47271dfbdda5f3dfaefa324fe6f7a7cf949b6082712b6ee5d5509deea0",
+            "process.log": "4002d65fbd71f24d04f1b939d55c22006d77fea0726526c7a108b3f5d7f28506"
+          }
+        },
+        {
+          "index": 84,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 729.2829,
+          "firstReveal": {
+            "eventLoopMilliseconds": 34.3949,
+            "fixtureToFocusMilliseconds": 467.4243,
+            "focusReadyMilliseconds": 69.0719,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0202,
+            "readinessIterations": 25,
+            "showReturnMilliseconds": 0.0068,
+            "sleepMilliseconds": 34.628,
+            "synchronizedFrameMilliseconds": 69.3156,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "deb17466ee8e6ad735b208f3552df218f8ac754b0619252298a9ca85ba1f0bf1",
+            "events.jsonl": "df9b86631dfbfa528b57efd4055fb3438813200d7ea6b6fc7b63dbad80b0c130",
+            "process.log": "dcfeb9d3efd0a5b8063439a5c0ea6529407e59eeaccbf632909617fb468300e5"
+          }
+        },
+        {
+          "index": 85,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 701.6751,
+          "firstReveal": {
+            "eventLoopMilliseconds": 33.5121,
+            "fixtureToFocusMilliseconds": 449.8705,
+            "focusReadyMilliseconds": 69.767,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0341,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0114,
+            "sleepMilliseconds": 36.1793,
+            "synchronizedFrameMilliseconds": 69.9999,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "bb1c1afefe88c378d22fba61e247fd73a762e9fc62c636f673254acdadaa1199",
+            "events.jsonl": "4c4cde2245e70d5395c152dbecdaa2b8fc863a2caf71d13fed8037c3091ec04e",
+            "process.log": "40c936c3e86171870acff3751d37458c0a64305529fd3e68045184088b3ba0d1"
+          }
+        },
+        {
+          "index": 86,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 756.1664,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.7245,
+            "fixtureToFocusMilliseconds": 489.7042,
+            "focusReadyMilliseconds": 66.4036,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0337,
+            "readinessIterations": 22,
+            "showReturnMilliseconds": 0.0077,
+            "sleepMilliseconds": 36.6142,
+            "synchronizedFrameMilliseconds": 66.6291,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "7113689626b3002188cceb1b640c6894ae05d7c4f938ec729c356e094d913f99",
+            "events.jsonl": "6b397e2340174b821e2d267bf104e8f14d6aab7322c855635f5f5b3d12c48e0c",
+            "process.log": "6f033d851c04e301aadf86c2f7bd7c33ec437e330515af5de91b2d3ba6048210"
+          }
+        },
+        {
+          "index": 87,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 743.3633,
+          "firstReveal": {
+            "eventLoopMilliseconds": 30.0879,
+            "fixtureToFocusMilliseconds": 471.4538,
+            "focusReadyMilliseconds": 67.8741,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0346,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0114,
+            "sleepMilliseconds": 37.712,
+            "synchronizedFrameMilliseconds": 68.0825,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "e050219c490586a1c43f80b7452786caf78a39e1fbfecf02f23e0563f2582859",
+            "events.jsonl": "2b99c2fcc751eca45c8c53a849a590e09c5e28dbd055fb4798b230b1991e9d12",
+            "process.log": "8d883de7f8a37d7116c0441b9890d388722e747d3c951c254df242e02cfad0c0"
+          }
+        },
+        {
+          "index": 88,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 721.6836,
+          "firstReveal": {
+            "eventLoopMilliseconds": 30.2823,
+            "fixtureToFocusMilliseconds": 459.784,
+            "focusReadyMilliseconds": 65.2998,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0226,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0081,
+            "sleepMilliseconds": 34.9633,
+            "synchronizedFrameMilliseconds": 65.4931,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "d6f2011428a34287f694c67f19ddc67e543954e76ea13f2f6fc2b60454cdbb91",
+            "events.jsonl": "51adfc88b93a41ee01b90f9bbe0f4faecd2a232977b6f0462e94e8646ac7a2dd",
+            "process.log": "932ce5760c42868fd4f9f3eac6b43303a53559d2c04e57f0e18cd5f380398a4b"
+          }
+        },
+        {
+          "index": 89,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 753.9654,
+          "firstReveal": {
+            "eventLoopMilliseconds": 33.4331,
+            "fixtureToFocusMilliseconds": 497.1177,
+            "focusReadyMilliseconds": 69.7356,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0384,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0067,
+            "sleepMilliseconds": 36.234,
+            "synchronizedFrameMilliseconds": 69.9755,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "d4a04b0cd6db22a1e4b25247004648cb5f9212b016ef91d7b0ed32f88856ce09",
+            "events.jsonl": "edaa46b3be415e42591c9e0c3686222d08a6ff21678d7f6632509e31709dda39",
+            "process.log": "49a0ead2ae22a7679ab086edafb77b44a4135cf7e9247416505ff5208da0dc44"
+          }
+        },
+        {
+          "index": 90,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 716.0564,
+          "firstReveal": {
+            "eventLoopMilliseconds": 28.0746,
+            "fixtureToFocusMilliseconds": 451.3234,
+            "focusReadyMilliseconds": 65.4668,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0317,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.007,
+            "sleepMilliseconds": 37.3309,
+            "synchronizedFrameMilliseconds": 65.6344,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "39e5d00df967162668b2b26f475c45e2371ff3de6a6cff59cd1951f35bafb1a6",
+            "events.jsonl": "04a2fdbd9207505d3b2dac53cc7774bf594e5ffac8476b79d4ccd88429e14b91",
+            "process.log": "30ba8734bef4d8d3bf58c915f9ae4d3725ad99c0b9d6309b23753ad9f90d1218"
+          }
+        },
+        {
+          "index": 91,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 721.6472,
+          "firstReveal": {
+            "eventLoopMilliseconds": 32.7982,
+            "fixtureToFocusMilliseconds": 472.7396,
+            "focusReadyMilliseconds": 70.2955,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0217,
+            "readinessIterations": 22,
+            "showReturnMilliseconds": 0.0135,
+            "sleepMilliseconds": 37.4329,
+            "synchronizedFrameMilliseconds": 70.501,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "76f1c02e28b2668fc305dfea0ad4d4a7fff3a1f618418cc48fe2b4e9faa4844f",
+            "events.jsonl": "970e8010757dc9c22e1a890637740fcec62ec38ce3f443f1220ad565556bcfe9",
+            "process.log": "436405cafc7497b876e70880c624b851bce0fb23519661687d0bcbc66148dc89"
+          }
+        },
+        {
+          "index": 92,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 712.3248,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.4274,
+            "fixtureToFocusMilliseconds": 463.7492,
+            "focusReadyMilliseconds": 64.7513,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0201,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0092,
+            "sleepMilliseconds": 35.2695,
+            "synchronizedFrameMilliseconds": 64.9468,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "ad5ba881d37d0ba922d6d3bde4ce8d2cef82025c01e86a5edb775d08f894b755",
+            "events.jsonl": "a1e10f0848543f5f2bbf8bc178f90d9d342584aad20c956526a35ff3c8b7cb03",
+            "process.log": "ef13d75b1f1a9716ec84a05b88349c9395f64e43ee4ae7c953352a4f1a5d2c17"
+          }
+        },
+        {
+          "index": 93,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 719.3489,
+          "firstReveal": {
+            "eventLoopMilliseconds": 33.4729,
+            "fixtureToFocusMilliseconds": 471.9795,
+            "focusReadyMilliseconds": 68.713,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.044,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0073,
+            "sleepMilliseconds": 35.1633,
+            "synchronizedFrameMilliseconds": 69.5611,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "6796dae61d4e833a482c7c609dd7c21d9335c07c658d1cc415378c857622219d",
+            "events.jsonl": "3ef8898836c7d55797da02a5c31de4c9e4000bd635d4f8044daf19aef89dae82",
+            "process.log": "f057fef510373c3ad434a78de49a3e7020ceb28d75faccbf067e4e87dde58873"
+          }
+        },
+        {
+          "index": 94,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 725.2304,
+          "firstReveal": {
+            "eventLoopMilliseconds": 28.9202,
+            "fixtureToFocusMilliseconds": 473.0619,
+            "focusReadyMilliseconds": 62.671,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0152,
+            "readinessIterations": 19,
+            "showReturnMilliseconds": 0.0066,
+            "sleepMilliseconds": 33.7073,
+            "synchronizedFrameMilliseconds": 62.8758,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "2aa780db0de16746a59ca01e17b8c94b4e471cb52bbe0dce04e989dd40aca911",
+            "events.jsonl": "d68588c6d7bc2934c66f1ad9a9bc3e491100d531714ba79512c7ad2a931ce134",
+            "process.log": "a7d37366585a0993a3f5252cdad28b10390a0cbd86e30ca2e5132422c1e051b5"
+          }
+        },
+        {
+          "index": 95,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 763.0289,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.502,
+            "fixtureToFocusMilliseconds": 487.8328,
+            "focusReadyMilliseconds": 63.9146,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0222,
+            "readinessIterations": 24,
+            "showReturnMilliseconds": 0.0112,
+            "sleepMilliseconds": 34.3506,
+            "synchronizedFrameMilliseconds": 64.1579,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "db0a4ea02a92fe73937208db936b1fa4892708d70171c2d4df7481a0f7889b94",
+            "events.jsonl": "6415284b3788e039617f256978f315e3737c82219badf0c36ade73a47b5ed812",
+            "process.log": "aef193150d9bc04e391fc8b3e61fa5fce265850954b58d8ffbeda502f36d954a"
+          }
+        },
+        {
+          "index": 96,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 749.6361,
+          "firstReveal": {
+            "eventLoopMilliseconds": 32.4611,
+            "fixtureToFocusMilliseconds": 493.449,
+            "focusReadyMilliseconds": 68.007,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0499,
+            "readinessIterations": 21,
+            "showReturnMilliseconds": 0.0088,
+            "sleepMilliseconds": 35.4606,
+            "synchronizedFrameMilliseconds": 68.2308,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "a77e0b39502ae01fe2a056d151a627c9c0cc5675017315bfe986bd497700dcc3",
+            "events.jsonl": "475dec30ede0a24b4b8b763a24b2bdc00a371b0af300e1505f8a9a64a9e54ae5",
+            "process.log": "c7ea4e3757f0f98a7a1379b0b36510bbeb50128b95befae88fe406461bb2cd72"
+          }
+        },
+        {
+          "index": 97,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 732.1824,
+          "firstReveal": {
+            "eventLoopMilliseconds": 28.628,
+            "fixtureToFocusMilliseconds": 468.9408,
+            "focusReadyMilliseconds": 65.4597,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0177,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.0069,
+            "sleepMilliseconds": 36.7867,
+            "synchronizedFrameMilliseconds": 65.6674,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "510c54800184f0404c96e2ab9d3fb8b673d6c3e5c94ad0a0afdd79b911a421f6",
+            "events.jsonl": "249dbe7133cce39839437d6b57edadede6a107fe0b3f4dccf93b6f15cc6808b3",
+            "process.log": "a0abeb0083f8780d5b7a138d6b11187b0f372f921497ce3a10279168c60254b6"
+          }
+        },
+        {
+          "index": 98,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 742.1757,
+          "firstReveal": {
+            "eventLoopMilliseconds": 30.8721,
+            "fixtureToFocusMilliseconds": 473.8509,
+            "focusReadyMilliseconds": 68.4169,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0193,
+            "readinessIterations": 23,
+            "showReturnMilliseconds": 0.0073,
+            "sleepMilliseconds": 37.4934,
+            "synchronizedFrameMilliseconds": 68.6245,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "2ad544777c53e949031dd31794f58950e74772919b9de11928b841e0670593da",
+            "events.jsonl": "37dcd4515877131b9b36dbcfb3d02bc4c414bb7059b552ed35f97a475c6f1034",
+            "process.log": "d06a29e1e1da1fd0c38f8bd721cb987f45b1808311aba21a8bb1bc40d44597bd"
+          }
+        },
+        {
+          "index": 99,
+          "exitCode": 0,
+          "processLifetimeMilliseconds": 744.7275,
+          "firstReveal": {
+            "eventLoopMilliseconds": 29.815,
+            "fixtureToFocusMilliseconds": 478.0593,
+            "focusReadyMilliseconds": 65.48,
+            "index": 0,
+            "phase": "first",
+            "predicateMilliseconds": 0.0215,
+            "readinessIterations": 20,
+            "showReturnMilliseconds": 0.007,
+            "sleepMilliseconds": 35.6149,
+            "synchronizedFrameMilliseconds": 65.6768,
+            "syntheticKeyAccepted": true
+          },
+          "childHashes": {
+            "reveal.json": "19e682a2c209cf9c0d1067360d428241c4f796f56c2dc96e61e887b3adceeaac",
+            "events.jsonl": "f20d7ad3faf13f8d51f2df7a519c8ae3646bffc8614de8ee8139d00199ad1118",
+            "process.log": "b70b377099680f1a0d06ba9af8ea7896c7271919b4a78be96de99c7713e5c2b1"
+          }
+        }
+      ]
+    }
+  }
+}
