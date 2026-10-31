@@ -75,15 +75,16 @@ def validate_observation(case, require_path_facts=False):
 
 
 def validate(report, expected_identity=None, require_parent_cases=False, require_acl_cases=False,
-             expected_module_sha256=None, require_path_facts=False):
+             expected_module_sha256=None, require_path_facts=False, require_junction_cases=False):
     require(isinstance(report, dict) and type(report.get('schemaVersion')) is int and
-            report['schemaVersion'] in (1, 2, 3, 4) and
+            report['schemaVersion'] in (1, 2, 3, 4, 5) and
             report.get('status') == 'passed' and report.get('cleanupComplete') is True and
             report.get('errors') == [] and type(report.get('comInitializationResult')) is int and
             report['comInitializationResult'] >= 0, 'incomplete-shell-matrix')
     require(not require_parent_cases or report['schemaVersion'] >= 2, 'missing-parent-matrix')
     require(not require_acl_cases or report['schemaVersion'] >= 3, 'missing-acl-matrix')
     require(not require_path_facts or report['schemaVersion'] >= 4, 'missing-shell-path-facts')
+    require(not require_junction_cases or report['schemaVersion'] >= 5, 'missing-junction-matrix')
     identity = report.get('identity')
     require(isinstance(identity, dict) and isinstance(identity.get('sha'), str) and
             re.fullmatch(r'[0-9a-f]{40}', identity['sha']) is not None and
@@ -130,7 +131,38 @@ def validate(report, expected_identity=None, require_parent_cases=False, require
         validate_parent_cases(report, locations, modules, module_paths['workspace'])
     if report['schemaVersion'] >= 3:
         validate_acl_cases(report, locations, modules, module_paths['workspace'])
+    if report['schemaVersion'] >= 5:
+        validate_junction_cases(report)
     return report
+
+
+def validate_junction_cases(report):
+    cases = report.get('junctionCases')
+    require(isinstance(cases, list) and len(cases) == 4 and all(isinstance(c, dict) for c in cases),
+            'incomplete-junction-matrix')
+    seen = set()
+    target_identities = {}
+    for case in cases:
+        host, target = case.get('hostLocation'), case.get('targetLocation')
+        pair = (host, target)
+        require(host in ('workspace', 'profile') and target in ('workspace', 'profile') and pair not in seen,
+                'invalid-junction-pair')
+        seen.add(pair)
+        require(case.get('physicalName') == f'parent-{target}', 'invalid-junction-target')
+        folder, alias_folder, ini, alias_ini = (case.get(key) for key in (
+            'folderIdentitySha256', 'aliasFolderIdentitySha256', 'iniIdentitySha256', 'aliasIniIdentitySha256'))
+        require(all(is_hash(value) for value in (folder, alias_folder, ini, alias_ini)) and
+                folder == alias_folder and ini == alias_ini, 'junction-object-identity-mismatch')
+        identity = (folder, ini)
+        require(target not in target_identities or target_identities[target] == identity,
+                'inconsistent-junction-target-identity')
+        target_identities[target] = identity
+        validate_path_facts(case.get('aliasPathFacts'))
+        for key in ('directBefore', 'alias', 'directAfter'):
+            value = case.get(key)
+            require(isinstance(value, dict) and type(value.get('available')) is bool and
+                    (isinstance(value.get('name'), str) or value.get('name') is None) and
+                    (not value['available'] or bool(value.get('name'))), 'invalid-junction-shell-observation')
 
 
 def validate_acl_cases(report, locations, modules, workspace_module_path):
@@ -223,7 +255,7 @@ def main():
     parser.add_argument('report', type=Path)
     parser.add_argument('--helper', type=Path, help='verify the preserved resource module against the report')
     parser.add_argument('--allow-legacy', action='store_true',
-                        help='read a schema 1, 2 or 3 report without the latest observations')
+                        help='read a schema 1, 2, 3 or 4 report without the latest observations')
     args = parser.parse_args()
     helper_sha256 = None
     if args.helper is not None:
@@ -233,13 +265,15 @@ def main():
     report = validate(json.loads(args.report.read_text(encoding='utf-8')),
                       require_parent_cases=not args.allow_legacy,
                       require_acl_cases=not args.allow_legacy, expected_module_sha256=helper_sha256,
-                      require_path_facts=not args.allow_legacy)
+                      require_path_facts=not args.allow_legacy, require_junction_cases=not args.allow_legacy)
     if report['schemaVersion'] == 1:
         print('Legacy Shell cross-location observations verified; parent observations unavailable.')
     elif report['schemaVersion'] == 2:
         print('Legacy Shell cross-location and parent observations verified; access observations unavailable.')
     elif report['schemaVersion'] == 3:
         print('Legacy Shell cross-location, parent and access observations verified; path facts unavailable.')
+    elif report['schemaVersion'] == 4:
+        print('Legacy Shell path observations verified; junction observations unavailable.')
     else:
         print('Shell cross-location, parent, access and path observations and cleanup verified.')
 

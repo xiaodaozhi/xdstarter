@@ -11,6 +11,7 @@ if (!$IsWindows -or $env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -
 }
 . (Join-Path $PSScriptRoot 'windows_access_descriptor.ps1')
 . (Join-Path $PSScriptRoot 'shell_path_facts.ps1')
+. (Join-Path $PSScriptRoot 'shell_junction_probe.ps1')
 
 $workspace = (Resolve-Path -LiteralPath $env:GITHUB_WORKSPACE).Path
 $workParent = (Resolve-Path -LiteralPath (Join-Path $workspace 'build')).Path
@@ -224,6 +225,37 @@ function Remove-OwnedRoot([string]$Root, [string]$Parent, [string]$Leaf) {
     Remove-Item -LiteralPath $resolved -Recurse -Force
 }
 
+function Get-ShellDisplay([string]$Path) {
+    $info = [XDStarterShellMatrix+SHFILEINFO]::new()
+    $size = [Runtime.InteropServices.Marshal]::SizeOf([type][XDStarterShellMatrix+SHFILEINFO])
+    $result = [XDStarterShellMatrix]::SHGetFileInfoW($Path, 0, [ref]$info, $size, 0x200)
+    return @{ available = ($result -ne [IntPtr]::Zero); name = $info.displayName }
+}
+
+function Get-JunctionObservation($Spec) {
+    Confirm-XDStarterFixtureJunction $Spec
+    $physical = 'parent-' + $Spec.target.name
+    $direct = Join-Path $Spec.targetPath $physical
+    $alias = Join-Path $Spec.path $physical
+    $directFolderIdentity = Get-XDStarterIdentityHash $direct
+    $aliasFolderIdentity = Get-XDStarterIdentityHash $alias
+    $directIniIdentity = Get-XDStarterIdentityHash (Join-Path $direct 'desktop.ini')
+    $aliasIniIdentity = Get-XDStarterIdentityHash (Join-Path $alias 'desktop.ini')
+    if ($directFolderIdentity -ne $aliasFolderIdentity -or $directIniIdentity -ne $aliasIniIdentity) {
+        throw 'Direct and junction paths do not identify the same fixture objects.'
+    }
+    # Observe the direct spelling on both sides of each alias query so a change
+    # during the sequence remains visible in the raw evidence.
+    $before = Get-ShellDisplay $direct
+    $viaJunction = Get-ShellDisplay $alias
+    $after = Get-ShellDisplay $direct
+    return @{ hostLocation = $Spec.host.name; targetLocation = $Spec.target.name;
+              physicalName = $physical; folderIdentitySha256 = $directFolderIdentity;
+              aliasFolderIdentitySha256 = $aliasFolderIdentity; iniIdentitySha256 = $directIniIdentity;
+              aliasIniIdentitySha256 = $aliasIniIdentity; aliasPathFacts = (Get-XDStarterPathFacts $alias);
+              directBefore = $before; alias = $viaJunction; directAfter = $after }
+}
+
 $leaf = 'xdstarter-shell-matrix-' + $env:GITHUB_RUN_ID + '-' + $env:GITHUB_RUN_ATTEMPT + '-' + [Guid]::NewGuid().ToString('N')
 function New-RootSpec([string]$Name, [string]$Parent) {
     $rootLeaf = $leaf + '-' + $Name
@@ -237,6 +269,8 @@ $cases = @()
 $parentCases = @()
 $parentComparisons = @()
 $aclCases = @()
+$junctionCases = @()
+$junctions = @()
 $aclTemplates = @{}
 $errors = @()
 $cleanupErrors = @()
@@ -304,9 +338,26 @@ try {
             $aclCases += $observation
         }
     }
+    # Each alias names an already-owned target through a parent junction.
+    # Same-volume junctions control for the reparse point itself; cross-volume
+    # aliases change the visible path prefix without changing either object.
+    foreach ($hostRoot in $roots) {
+        foreach ($targetRoot in $roots) {
+            $spec = New-XDStarterJunctionSpec $hostRoot $targetRoot
+            $junctions += $spec # Register before creation, including on failure.
+            Install-XDStarterFixtureJunction $spec
+            $junctionCases += Get-JunctionObservation $spec
+        }
+    }
 } catch { $errors += $_.Exception.Message }
 finally {
     if ($null -ne $comResult -and $comResult -ge 0) { [XDStarterShellMatrix]::CoUninitialize() }
+    foreach ($junction in $junctions) {
+        try { Remove-XDStarterFixtureJunction $junction } catch {
+            $cleanupErrors += $_.Exception.Message
+            $errors += $_.Exception.Message
+        }
+    }
     foreach ($root in $created) {
         try { Remove-OwnedRoot $root.path $root.parent $root.leaf } catch {
             $cleanupErrors += $_.Exception.Message
@@ -315,8 +366,9 @@ finally {
     }
 }
 $remaining = @($created | Where-Object { Test-Path -LiteralPath $_.path })
-$report = @{ schemaVersion = 4; cases = $cases; parentCases = $parentCases; parentComparisons = $parentComparisons;
+$report = @{ schemaVersion = 5; cases = $cases; parentCases = $parentCases; parentComparisons = $parentComparisons;
              aclCases = $aclCases;
+             junctionCases = $junctionCases;
              comInitializationResult = $comResult;
              cleanupComplete = ($cleanupErrors.Count -eq 0 -and $remaining.Count -eq 0);
              identity = @{ sha = $env:GITHUB_SHA; runId = $env:GITHUB_RUN_ID; attempt = $env:GITHUB_RUN_ATTEMPT;
@@ -324,9 +376,10 @@ $report = @{ schemaVersion = 4; cases = $cases; parentCases = $parentCases; pare
              osVersion = [Environment]::OSVersion.VersionString;
              errors = $errors; status = $(if ($errors.Count -eq 0 -and $cases.Count -eq 4 -and
                                              $parentCases.Count -eq 4 -and $parentComparisons.Count -eq 2 -and
-                                             $aclCases.Count -eq 4) { 'passed' } else { 'failed' });
+                                             $aclCases.Count -eq 4 -and $junctionCases.Count -eq 4) { 'passed' } else { 'failed' });
              limitations = @('Fixture compares native Shell observations, not the cause of historical failures.',
                              'URL zone mapping is not a documented equivalent of the Shell desktop.ini trust decision.',
+                             'Junction paths may themselves affect Shell behavior; file identity alone does not identify the cause.',
                              'A volume GUID comparison identifies a mounted volume, not a physical disk or trust policy.',
                              'Volume roots and resolved parent path spellings do not establish physical volume or directory identity.',
                              'ACL summaries do not establish effective permissions or parent-path effects.',
@@ -334,4 +387,4 @@ $report = @{ schemaVersion = 4; cases = $cases; parentCases = $parentCases; pare
                              'Descriptor hashes do not prove that Windows evaluates two access tokens identically.') }
 $report | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $outputPath -Encoding utf8NoBOM
 if ($report.status -ne 'passed') { throw ('Shell cross-location fixture failed: ' + ($errors -join '; ')) }
-Write-Host "Shell fixture collected $($cases.Count) cross-location, $($parentCases.Count) parent and $($aclCases.Count) access observations."
+Write-Host "Shell fixture collected $($cases.Count) cross-location, $($parentCases.Count) parent, $($aclCases.Count) access and $($junctionCases.Count) junction observations."

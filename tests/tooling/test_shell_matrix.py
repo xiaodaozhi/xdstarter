@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import uuid
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
 import verify_shell_matrix
@@ -61,14 +62,133 @@ def sample_report():
                         iniAccessSha256=ini_access, iniTemplateSha256=ini_access)
             case['ini']['aclProtected'] = True
             acl_cases.append(case)
-    return {'schemaVersion': 4, 'status': 'passed', 'cleanupComplete': True, 'errors': [],
+    junction_cases = []
+    for host in ('workspace', 'profile'):
+        for target in ('workspace', 'profile'):
+            folder_id = ('a' if target == 'workspace' else 'b') * 64
+            ini_id = ('c' if target == 'workspace' else 'd') * 64
+            observation = {'available': True, 'name': '本地化工具'}
+            junction_cases.append({'hostLocation': host, 'targetLocation': target,
+                                   'physicalName': f'parent-{target}',
+                                   'folderIdentitySha256': folder_id, 'aliasFolderIdentitySha256': folder_id,
+                                   'iniIdentitySha256': ini_id, 'aliasIniIdentitySha256': ini_id,
+                                   'aliasPathFacts': copy.deepcopy(path_facts),
+                                   'directBefore': dict(observation), 'alias': dict(observation),
+                                   'directAfter': dict(observation)})
+    return {'schemaVersion': 5, 'status': 'passed', 'cleanupComplete': True, 'errors': [],
             'comInitializationResult': 0, 'osVersion': 'synthetic Windows',
             'identity': {'sha': 'd' * 40, 'runId': '123', 'attempt': '1',
                          'runnerOs': 'Windows', 'runnerArch': 'X64'}, 'cases': cases,
-            'parentCases': parents, 'parentComparisons': comparisons, 'aclCases': acl_cases}
+            'parentCases': parents, 'parentComparisons': comparisons, 'aclCases': acl_cases,
+            'junctionCases': junction_cases}
 
 
 class ShellMatrixTests(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == 'win32' and shutil.which('pwsh'), 'requires Windows PowerShell 7')
+    def test_owned_junction_identity_and_non_recursive_cleanup(self):
+        root = Path(verify_shell_matrix.__file__).resolve().parents[1]
+        build = root / 'build'
+        build.mkdir(exist_ok=True)
+        base = build / f'junction-test-{uuid.uuid4().hex}'
+        base.mkdir()
+        suffix = uuid.uuid4().hex
+        host = base / f'xdstarter-shell-matrix-1-1-{suffix}-workspace'
+        target = base / f'xdstarter-shell-matrix-1-1-{suffix}-profile'
+        child = target / 'parent-profile'
+        marker = child / 'desktop.ini'
+        host.mkdir()
+        child.mkdir(parents=True)
+        marker.write_bytes(b'owned fixture')
+        env = os.environ.copy()
+        env.update(XDSTARTER_TEST_JUNCTION_SCRIPT=str(root / 'scripts/shell_junction_probe.ps1'),
+                   XDSTARTER_TEST_JUNCTION_PARENT=str(base), XDSTARTER_TEST_JUNCTION_HOST=str(host),
+                   XDSTARTER_TEST_JUNCTION_TARGET=str(target))
+        command = r'''
+            $ErrorActionPreference = 'Stop'
+            . $env:XDSTARTER_TEST_JUNCTION_SCRIPT
+            $hostRoot = @{ name='workspace'; parent=$env:XDSTARTER_TEST_JUNCTION_PARENT;
+                           leaf=[IO.Path]::GetFileName($env:XDSTARTER_TEST_JUNCTION_HOST);
+                           path=$env:XDSTARTER_TEST_JUNCTION_HOST }
+            $targetRoot = @{ name='profile'; parent=$env:XDSTARTER_TEST_JUNCTION_PARENT;
+                             leaf=[IO.Path]::GetFileName($env:XDSTARTER_TEST_JUNCTION_TARGET);
+                             path=$env:XDSTARTER_TEST_JUNCTION_TARGET }
+            $spec = New-XDStarterJunctionSpec $hostRoot $targetRoot
+            try {
+                try { Install-XDStarterFixtureJunction $spec } catch {
+                    $cause = $_.Exception.GetBaseException()
+                    if (!$spec.created -and ($cause -is [UnauthorizedAccessException] -or
+                        ($cause -is [ComponentModel.Win32Exception] -and $cause.NativeErrorCode -eq 5))) {
+                        Write-Output 'junction creation denied'; exit 77
+                    }
+                    throw
+                }
+                $direct = Join-Path $targetRoot.path 'parent-profile'
+                $alias = Join-Path $spec.path 'parent-profile'
+                if ((Get-XDStarterIdentityHash $direct) -ne (Get-XDStarterIdentityHash $alias) -or
+                    (Get-XDStarterIdentityHash (Join-Path $direct 'desktop.ini')) -ne
+                    (Get-XDStarterIdentityHash (Join-Path $alias 'desktop.ini'))) {
+                    throw 'Junction and direct paths do not identify the same objects.'
+                }
+                $unowned = New-XDStarterJunctionSpec $hostRoot $targetRoot
+                $rejected = $false
+                try { Install-XDStarterFixtureJunction $unowned } catch { $rejected = $true }
+                Remove-XDStarterFixtureJunction $unowned
+                if (!$rejected -or !(Test-Path -LiteralPath $spec.path)) { throw 'Existing junction was not preserved.' }
+                $tampered = @{} + $spec
+                $tampered.targetPath = $hostRoot.path
+                $rejected = $false
+                try { Remove-XDStarterFixtureJunction $tampered } catch { $rejected = $true }
+                if (!$rejected -or !(Test-Path -LiteralPath $spec.path)) { throw 'Changed target was not rejected.' }
+            } finally {
+                Remove-XDStarterFixtureJunction $spec
+            }
+            if (!(Test-Path -LiteralPath (Join-Path $targetRoot.path 'parent-profile/desktop.ini'))) {
+                throw 'Target was removed with the junction.'
+            }
+        '''
+        try:
+            result = subprocess.run([shutil.which('pwsh'), '-NoProfile', '-NonInteractive', '-Command', command],
+                                    capture_output=True, text=True, encoding='utf-8', env=env, timeout=30)
+            if result.returncode == 77:
+                self.skipTest('sandbox denied creation of an owned junction')
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(marker.read_bytes(), b'owned fixture')
+        finally:
+            # These non-recursive operations cannot follow a surviving junction.
+            marker.unlink(missing_ok=True)
+            child.rmdir()
+            target.rmdir()
+            host.rmdir()
+            base.rmdir()
+
+    def test_junction_observations_require_matching_objects_and_complete_pairs(self):
+        for change in ('missing', 'duplicate', 'wrong-target', 'folder-mismatch', 'ini-mismatch',
+                       'inconsistent-target', 'missing-path-facts', 'incomplete-shell'):
+            with self.subTest(change=change):
+                report = sample_report()
+                cases = report['junctionCases']
+                if change == 'missing':
+                    cases.pop()
+                elif change == 'duplicate':
+                    cases[1] = copy.deepcopy(cases[0])
+                elif change == 'wrong-target':
+                    cases[0]['physicalName'] = 'parent-other'
+                elif change == 'folder-mismatch':
+                    cases[0]['aliasFolderIdentitySha256'] = 'f' * 64
+                elif change == 'ini-mismatch':
+                    cases[0]['aliasIniIdentitySha256'] = 'f' * 64
+                elif change == 'inconsistent-target':
+                    cases[2].update(folderIdentitySha256='f' * 64, aliasFolderIdentitySha256='f' * 64)
+                elif change == 'missing-path-facts':
+                    cases[0].pop('aliasPathFacts')
+                else:
+                    cases[0]['alias'] = {'available': True, 'name': ''}
+                with self.assertRaises(ValueError):
+                    verify_shell_matrix.validate(report, require_junction_cases=True)
+        report = sample_report()
+        report['junctionCases'][0]['alias'] = {'available': False, 'name': None}
+        verify_shell_matrix.validate(report, require_junction_cases=True)
+
     @unittest.skipUnless(sys.platform == 'win32' and shutil.which('pwsh'), 'requires Windows PowerShell 7')
     def test_read_only_path_facts_on_owned_file(self):
         root = Path(verify_shell_matrix.__file__).resolve().parents[1]
@@ -292,6 +412,11 @@ class ShellMatrixTests(unittest.TestCase):
 
     def test_legacy_reports_remain_readable_but_not_sufficient_for_new_ci(self):
         report = sample_report()
+        report['schemaVersion'] = 4
+        report.pop('junctionCases')
+        verify_shell_matrix.validate(report, require_path_facts=True)
+        with self.assertRaisesRegex(ValueError, 'missing-junction-matrix'):
+            verify_shell_matrix.validate(report, require_junction_cases=True)
         report['schemaVersion'] = 3
         verify_shell_matrix.validate(report, require_acl_cases=True)
         with self.assertRaisesRegex(ValueError, 'missing-shell-path-facts'):
