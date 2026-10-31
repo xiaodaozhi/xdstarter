@@ -287,6 +287,12 @@ class EvidenceTests(TemporaryRepository):
                                  'shellDisplay': {'displayAssertionPassed': True, 'matchesNativeShell': True,
                                                   'strictLocalizedDistinctPaths': fixture == 'profile',
                                                   'mode': 'system' if fixture == 'workspace' else 'strict-localized'}}
+                        shell['shellLocalizationControls'] = [
+                            {'case': i, 'kind': kind, 'configured': True, 'asciiModuleCopied': True,
+                             'reference': 'synthetic', 'indirectResultHex': '0', 'indirectName': 'synthetic',
+                             'localizedResultHex': '0', 'localizedModule': 'synthetic',
+                             'localizedResourceId': 5301, 'displayAvailable': True, 'displayName': 'synthetic'}
+                            for i, kind in enumerate(('literal', 'unicode-module', 'ascii-module', 'system-module'))]
                         path = self.root / ci_evidence.COPIES[f'shell-{fixture}-{run}.json']
                         path.write_text(json.dumps(shell), encoding='utf-8')
                 matrix = sample_shell_matrix()
@@ -621,6 +627,55 @@ class EvidenceTests(TemporaryRepository):
             path.write_text(original, encoding='utf-8')
             report['files'][name] = ci_evidence.checksum(path)
             manifest.write_text(json.dumps(report), encoding='utf-8')
+
+    def test_workspace_shell_controls_reject_missing_or_misattributed_cases(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'shell-workspace-initial.json'
+        original = json.loads(path.read_text(encoding='utf-8'))
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        for mutation in ('missing', 'duplicate', 'failed-copy', 'missing-status'):
+            evidence = json.loads(json.dumps(original))
+            controls = evidence['shellLocalizationControls']
+            if mutation == 'missing':
+                controls.pop()
+            elif mutation == 'duplicate':
+                controls[1]['kind'] = controls[0]['kind']
+            elif mutation == 'failed-copy':
+                controls[2]['asciiModuleCopied'] = False
+            else:
+                del controls[1]['localizedResultHex']
+            path.write_text(json.dumps(evidence), encoding='utf-8')
+            report['files'][path.name] = ci_evidence.checksum(path)
+            manifest.write_text(json.dumps(report), encoding='utf-8')
+            with self.subTest(mutation=mutation), self.assertRaisesRegex(ValueError, 'shell-localization-controls'):
+                ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_workspace_shell_controls_preserve_failed_resource_observations(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'shell-workspace-initial.json'
+        evidence = json.loads(path.read_text(encoding='utf-8'))
+        control = evidence['shellLocalizationControls'][1]
+        control.update(localizedResultHex='80070002', localizedModule='', displayName='physical-name')
+        path.write_text(json.dumps(evidence), encoding='utf-8')
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        report['files'][path.name] = ci_evidence.checksum(path)
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_profile_shell_controls_required_when_name_is_localized(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'shell-profile-initial.json'
+        evidence = json.loads(path.read_text(encoding='utf-8'))
+        evidence.pop('shellLocalizationControls')
+        path.write_text(json.dumps(evidence), encoding='utf-8')
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        report['files'][path.name] = ci_evidence.checksum(path)
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'missing-shell-localization-controls'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
 
     def test_frame_backend_cannot_be_misattributed_even_with_updated_checksum(self):
         directory = self.root / 'build/ci-evidence/windows'

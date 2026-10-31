@@ -194,9 +194,9 @@ QJsonObject nativeOsDiagnostics() {
 
 QJsonArray localizationControlDiagnostics(const QString& root, const QString& helper,
                                           const QString& unicodeModule) {
-    // Failure-only controls stay outside catalog roots and never alter trust policy.
+    // Controls stay outside catalog roots and never alter trust policy.
     const auto asciiModule = QDir(root).filePath(QStringLiteral("localization-control.exe"));
-    QFile::copy(helper, asciiModule);
+    const bool asciiModuleCopied = QFile::copy(helper, asciiModule);
     wchar_t systemDirectory[32768]{};
     GetSystemDirectoryW(systemDirectory, 32768);
     const auto systemModule =
@@ -206,6 +206,8 @@ QJsonArray localizationControlDiagnostics(const QString& root, const QString& he
         QStringLiteral("@%1,-5301").arg(QDir::toNativeSeparators(unicodeModule)),
         QStringLiteral("@%1,-5301").arg(QDir::toNativeSeparators(asciiModule)),
         QStringLiteral("@%1,-21799").arg(QDir::toNativeSeparators(systemModule))};
+    const QStringList kinds{QStringLiteral("literal"), QStringLiteral("unicode-module"),
+                            QStringLiteral("ascii-module"), QStringLiteral("system-module")};
     QJsonArray result;
     const auto initialized = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     for (int index = 0; index < references.size(); ++index) {
@@ -240,7 +242,9 @@ QJsonArray localizationControlDiagnostics(const QString& root, const QString& he
                                             sizeof(info), SHGFI_DISPLAYNAME);
         result.append(QJsonObject{
             {QStringLiteral("case"), index},
+            {QStringLiteral("kind"), kinds[index]},
             {QStringLiteral("reference"), references[index]},
+            {QStringLiteral("asciiModuleCopied"), asciiModuleCopied},
             {QStringLiteral("configured"), attributes},
             {QStringLiteral("indirectResultHex"), QString::number(quint32(indirect), 16)},
             {QStringLiteral("indirectName"), QString::fromWCharArray(resolved)},
@@ -867,6 +871,19 @@ int main(int argc, char* argv[]) {
     evidence.insert(QStringLiteral("shellSourceDiagnostics"),
                     localizationSourceDiagnostics(QDir(userFolder).filePath(QStringLiteral("desktop.ini"))));
     evidence.insert(QStringLiteral("shellNativeOs"), nativeOsDiagnostics());
+    const auto isolatedControls = localizationControlDiagnostics(fixture.path(), helper, resourceModule);
+    bool controlsAvailable = isolatedControls.size() == 4;
+    for (int index = 0; index < isolatedControls.size(); ++index) {
+        const auto control = isolatedControls[index].toObject();
+        controlsAvailable = controlsAvailable && control.value(QStringLiteral("case")).toInt(-1) == index &&
+                            control.value(QStringLiteral("configured")).toBool() &&
+                            control.value(QStringLiteral("asciiModuleCopied")).toBool() &&
+                            control.value(QStringLiteral("displayAvailable")).toBool() &&
+                            !control.value(QStringLiteral("indirectResultHex")).toString().isEmpty() &&
+                            !control.value(QStringLiteral("localizedResultHex")).toString().isEmpty();
+    }
+    test.expect(controlsAvailable, "owned Shell localization controls configured and observed");
+    evidence.insert(QStringLiteral("shellLocalizationControls"), isolatedControls);
     if (!displayNamesValid) {
         QJsonArray folderNames;
         for (const auto& entry : merged.applications) {
@@ -919,8 +936,7 @@ int main(int argc, char* argv[]) {
             {QStringLiteral("nativeFolders"), nativeFolders},
             {QStringLiteral("localizationSetup"), localizationSetup},
             {QStringLiteral("sourceTrustDiagnostics"), sources},
-            {QStringLiteral("isolatedControls"),
-             localizationControlDiagnostics(fixture.path(), helper, resourceModule)},
+            {QStringLiteral("isolatedControls"), isolatedControls},
             {QStringLiteral("nativeOs"), nativeOsDiagnostics()},
             {QStringLiteral("diagnosticComResultHex"),
              QString::number(static_cast<quint32>(diagnosticCom), 16)},
