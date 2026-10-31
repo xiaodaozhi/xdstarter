@@ -871,23 +871,19 @@ int main(int argc, char* argv[]) {
     evidence.insert(QStringLiteral("shellSourceDiagnostics"),
                     localizationSourceDiagnostics(QDir(userFolder).filePath(QStringLiteral("desktop.ini"))));
     evidence.insert(QStringLiteral("shellNativeOs"), nativeOsDiagnostics());
-    QJsonArray isolatedControls;
-    if (compareShellDisplay || !displayNamesValid) {
-        isolatedControls = localizationControlDiagnostics(fixture.path(), helper, resourceModule);
-        bool controlsAvailable = isolatedControls.size() == 4;
-        for (int index = 0; index < isolatedControls.size(); ++index) {
-            const auto control = isolatedControls[index].toObject();
-            controlsAvailable = controlsAvailable && control.value(QStringLiteral("case")).toInt(-1) == index &&
-                                control.value(QStringLiteral("configured")).toBool() &&
-                                control.value(QStringLiteral("asciiModuleCopied")).toBool() &&
-                                control.value(QStringLiteral("displayAvailable")).toBool() &&
-                                !control.value(QStringLiteral("indirectResultHex")).toString().isEmpty() &&
-                                !control.value(QStringLiteral("localizedResultHex")).toString().isEmpty();
-        }
-        test.expect(controlsAvailable, "owned Shell localization controls configured and observed");
-        if (compareShellDisplay)
-            evidence.insert(QStringLiteral("shellLocalizationControls"), isolatedControls);
+    const auto isolatedControls = localizationControlDiagnostics(fixture.path(), helper, resourceModule);
+    bool controlsAvailable = isolatedControls.size() == 4;
+    for (int index = 0; index < isolatedControls.size(); ++index) {
+        const auto control = isolatedControls[index].toObject();
+        controlsAvailable = controlsAvailable && control.value(QStringLiteral("case")).toInt(-1) == index &&
+                            control.value(QStringLiteral("configured")).toBool() &&
+                            control.value(QStringLiteral("asciiModuleCopied")).toBool() &&
+                            control.value(QStringLiteral("displayAvailable")).toBool() &&
+                            !control.value(QStringLiteral("indirectResultHex")).toString().isEmpty() &&
+                            !control.value(QStringLiteral("localizedResultHex")).toString().isEmpty();
     }
+    test.expect(controlsAvailable, "owned Shell localization controls configured and observed");
+    evidence.insert(QStringLiteral("shellLocalizationControls"), isolatedControls);
     if (!displayNamesValid) {
         QJsonArray folderNames;
         for (const auto& entry : merged.applications) {

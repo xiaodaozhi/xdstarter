@@ -313,8 +313,7 @@ def validate_role(directory, role, expected):
                         type(localized) is bool and (fixture == 'workspace' or localized is True) and
                         display.get('mode') == ('system' if fixture == 'workspace' else 'strict-localized'),
                         'incomplete-or-misattributed-shell-evidence')
-                if fixture == 'workspace':
-                    validate_shell_localization_controls(shell.get('shellLocalizationControls'))
+                validate_shell_localization_controls(shell.get('shellLocalizationControls'))
         matrix = json.loads((directory / 'shell-matrix.json').read_text(encoding='utf-8'))
         verify_shell_matrix.validate(matrix, {'sha': expected['GITHUB_SHA'], 'runId': expected['GITHUB_RUN_ID'],
                                                'attempt': expected['GITHUB_RUN_ATTEMPT'],
