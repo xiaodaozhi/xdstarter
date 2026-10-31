@@ -1300,12 +1300,33 @@ void PrototypeWindowTest::highContrastTracksSystemPalette() {
         frameTrace = std::make_unique<ContrastFrameTrace>(window_, traceDirectory);
     }
     const auto frameState = [&]() -> QJsonObject {
+        const auto geometries = tileGeometries();
+        QJsonArray tileHints;
+        bool tileHintsComplete = true;
+        for (auto it = geometries.cbegin(); it != geometries.cend(); ++it) {
+            auto* candidate = item(it.key());
+            auto* hint = candidate ? candidate->findChild<QObject*>(QStringLiteral("tileToolTip")) : nullptr;
+            const auto hovered = candidate ? candidate->property("pointerHovered") : QVariant();
+            const auto visible = hint ? hint->property("visible") : QVariant();
+            const auto opened = hint ? hint->property("opened") : QVariant();
+            if (hovered.typeId() != QMetaType::Bool || visible.typeId() != QMetaType::Bool ||
+                opened.typeId() != QMetaType::Bool) {
+                tileHintsComplete = false;
+                continue;
+            }
+            tileHints.append(QJsonObject{{QStringLiteral("tileId"), it.key().mid(QStringLiteral("tile-").size())},
+                                         {QStringLiteral("hovered"), hovered.toBool()},
+                                         {QStringLiteral("visible"), visible.toBool()},
+                                         {QStringLiteral("opened"), opened.toBool()}});
+        }
         return {{QStringLiteral("highContrast"), window_->property("highContrast").toBool()},
                 {QStringLiteral("sceneGraphInitialized"), window_->isSceneGraphInitialized()},
                 {QStringLiteral("windowVisible"), window_->isVisible()},
                 {QStringLiteral("windowExposed"), window_->isExposed()},
                 {QStringLiteral("catalogRows"), catalog_->applicationsModel()->rowCount()},
-                {QStringLiteral("tileCount"), int(tileGeometries().size())},
+                {QStringLiteral("tileCount"), int(geometries.size())},
+                {QStringLiteral("tileHintsComplete"), tileHintsComplete},
+                {QStringLiteral("tileHints"), tileHints},
                 {QStringLiteral("tileGeometry"), rectangleJson(itemGeometry(tile))},
                 {QStringLiteral("tileVisible"), tile->isVisible()},
                 {QStringLiteral("tileLabelVisible"), tileLabel->isVisible()},
@@ -1427,6 +1448,19 @@ void PrototypeWindowTest::highContrastTracksSystemPalette() {
     auto* tileTip = tile->findChild<QObject*>(QStringLiteral("tileToolTip"));
     QVERIFY(tileTip);
     QTRY_VERIFY_WITH_TIMEOUT(tileTip->property("visible").toBool(), 1500);
+    if (frameTrace) {
+        const auto state = frameState();
+        QVERIFY(state.value(QStringLiteral("tileHintsComplete")).toBool());
+        bool foundFocusedHint = false;
+        for (const auto& entry : state.value(QStringLiteral("tileHints")).toArray()) {
+            const auto hintState = entry.toObject();
+            if (hintState.value(QStringLiteral("tileId")).toString() == QStringLiteral("work-standard-1")) {
+                foundFocusedHint = true;
+                QVERIFY(hintState.value(QStringLiteral("visible")).toBool());
+            }
+        }
+        QVERIFY(foundFocusedHint);
+    }
     auto* tipBackground = tileTip->property("background").value<QQuickItem*>();
     auto* tipText = tileTip->property("contentItem").value<QQuickItem*>();
     QVERIFY(tipBackground && tipText);

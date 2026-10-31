@@ -209,7 +209,7 @@ def validate_role(directory, role, expected):
         require({key: resident['ci'].get(key) for key in expected} == expected, 'resident-identity-mismatch')
         for mode, (qpa, graphics_api) in FRAME_MODES.items():
             try:
-                frame_trace.inspect(directory / f'frame-{mode}', qpa, graphics_api)
+                frame_trace.inspect(directory / f'frame-{mode}', qpa, graphics_api, require_hints=True)
             except (OSError, ValueError, KeyError, TypeError) as error:
                 raise ValueError('incomplete-frame-trace:' + mode) from error
         for name, functions in QT_LOGS.items():

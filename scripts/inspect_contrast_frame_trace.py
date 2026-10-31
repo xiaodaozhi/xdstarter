@@ -16,7 +16,25 @@ STAGES = ('early', 'ready', 'first', 'later')
 PNG_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 
 
-def inspect(directory: Path, expected_qpa: str | None = None, expected_graphics_api: int | None = None) -> dict:
+def tile_hints(state: dict) -> dict:
+    hints, count = state.get('tileHints'), state.get('tileCount')
+    if (state.get('tileHintsComplete') is not True or type(count) is not int or count <= 0 or
+            not isinstance(hints, list) or len(hints) != count):
+        raise ValueError('missing tile hint state')
+    result = {}
+    for hint in hints:
+        if not isinstance(hint, dict):
+            raise ValueError('invalid tile hint state')
+        tile_id = hint.get('tileId')
+        if (not isinstance(tile_id, str) or not tile_id or tile_id in result or
+                any(type(hint.get(key)) is not bool for key in ('hovered', 'visible', 'opened'))):
+            raise ValueError('invalid tile hint state')
+        result[tile_id] = {key: hint[key] for key in ('hovered', 'visible', 'opened')}
+    return result
+
+
+def inspect(directory: Path, expected_qpa: str | None = None, expected_graphics_api: int | None = None,
+            require_hints: bool = False) -> dict:
     log = (directory / 'test.log').read_text(encoding='utf-8', errors='replace')
     passes = re.findall(r'(?m)^PASS\s*:\s*PrototypeWindowTest::([^\r\n]+)', log)
     totals = re.findall(r'Totals:\s*(\d+) passed,\s*(\d+) failed,\s*(\d+) skipped,\s*(\d+) blacklisted', log)
@@ -24,10 +42,13 @@ def inspect(directory: Path, expected_qpa: str | None = None, expected_graphics_
             totals != [('3', '0', '0', '0')] or re.search(r'Q(?:CRITICAL|FATAL)\s*:|FAIL\s*!', log, re.IGNORECASE)):
         raise ValueError('failed or incomplete contrast QtTest log')
     trace = json.loads((directory / 'frame-trace.json').read_text(encoding='utf-8'))
-    if (trace.get('schemaVersion') != 1 or trace.get('observerIsInstrumented') is not True or
+    version = trace.get('schemaVersion')
+    if (type(version) is not int or version not in (1, 2) or trace.get('observerIsInstrumented') is not True or
             trace.get('eventLimitReached') is not False or not trace.get('qpa') or
             not isinstance(trace.get('graphicsApi'), int) or not trace.get('qtVersion')):
         raise ValueError('invalid or truncated trace metadata')
+    if require_hints and version != 2:
+        raise ValueError('missing tile hint trace')
     if ((expected_qpa is not None and trace['qpa'] != expected_qpa) or
             (expected_graphics_api is not None and trace['graphicsApi'] != expected_graphics_api)):
         raise ValueError('trace backend does not match the requested scenario')
@@ -48,6 +69,8 @@ def inspect(directory: Path, expected_qpa: str | None = None, expected_graphics_
         if event['event'] == 'gui-state':
             if not isinstance(event.get('state'), dict):
                 raise ValueError('missing GUI state')
+            if version == 2:
+                tile_hints(event['state'])
             phases.add(event['phase'])
     required_phases = {f'{scene}:{suffix}' for scene in SCENES for suffix in
                        ('request-update', 'before-early-grab', 'before-ready-grab',
@@ -59,6 +82,7 @@ def inspect(directory: Path, expected_qpa: str | None = None, expected_graphics_
         raise ValueError('missing capture records')
     hashes = {}
     dimensions = {}
+    hint_snapshots = {}
     last_capture = -1
     for capture in captures:
         scene, stage = capture.get('scene'), capture.get('stage')
@@ -69,6 +93,8 @@ def inspect(directory: Path, expected_qpa: str | None = None, expected_graphics_
                 not isinstance(instant, (float, int)) or isinstance(instant, bool) or instant < last_capture):
             raise ValueError('invalid or repeated capture')
         state = capture['state']
+        if version == 2:
+            hint_snapshots[key] = tile_hints(state)
         if (state.get('highContrast') is not True or state.get('searchGlyphVisible') is not True or
                 type(state.get('searchGlyphStatus')) is not int or state['searchGlyphStatus'] not in (0, 1, 2, 3) or
                 (stage in ('ready', 'first', 'later') and state['searchGlyphStatus'] != 1)):
@@ -115,13 +141,26 @@ def inspect(directory: Path, expected_qpa: str | None = None, expected_graphics_
                     bounds['x'] + bounds['width'] > width or bounds['y'] + bounds['height'] > height):
                 raise ValueError('invalid changed pixel bounds')
         observed[key] = comparison
-    return {'qpa': trace['qpa'], 'graphicsApi': trace['graphicsApi'], 'qtVersion': trace['qtVersion'],
-            'observerIsInstrumented': True, 'eventCounts': dict(sorted(counts.items())),
-            'captures': len(captures),
-            'comparisons': {scene: {'earlyToReady': observed[(scene, 'early', 'ready')],
-                                    'readyToFirst': observed[(scene, 'ready', 'first')],
-                                    'firstToLater': observed[(scene, 'first', 'later')]}
-                            for scene in SCENES}}
+    result = {'qpa': trace['qpa'], 'graphicsApi': trace['graphicsApi'], 'qtVersion': trace['qtVersion'],
+              'observerIsInstrumented': True, 'eventCounts': dict(sorted(counts.items())),
+              'captures': len(captures),
+              'comparisons': {scene: {'earlyToReady': observed[(scene, 'early', 'ready')],
+                                      'readyToFirst': observed[(scene, 'ready', 'first')],
+                                      'firstToLater': observed[(scene, 'first', 'later')]}
+                              for scene in SCENES}}
+    if version == 2:
+        changes = {}
+        for scene in SCENES:
+            changes[scene] = {}
+            for label, before, after in (('earlyToReady', 'early', 'ready'),
+                                         ('readyToFirst', 'ready', 'first'),
+                                         ('firstToLater', 'first', 'later')):
+                old, new = hint_snapshots[(scene, before)], hint_snapshots[(scene, after)]
+                changes[scene][label] = [{'tileId': tile_id, 'before': old.get(tile_id), 'after': new.get(tile_id)}
+                                         for tile_id in sorted(old.keys() | new.keys())
+                                         if old.get(tile_id) != new.get(tile_id)]
+        result['tileHintChanges'] = changes
+    return result
 
 
 def main() -> int:
@@ -129,9 +168,10 @@ def main() -> int:
     parser.add_argument('directory', type=Path)
     parser.add_argument('--qpa')
     parser.add_argument('--graphics-api', type=int)
+    parser.add_argument('--allow-legacy', action='store_true', help='read a trace without tile hint states')
     args = parser.parse_args()
     try:
-        result = inspect(args.directory, args.qpa, args.graphics_api)
+        result = inspect(args.directory, args.qpa, args.graphics_api, require_hints=not args.allow_legacy)
     except (OSError, ValueError, KeyError, TypeError) as error:
         print(f'Contrast frame trace incomplete: {error}')
         return 1
