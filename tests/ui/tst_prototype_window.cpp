@@ -537,6 +537,8 @@ class PrototypeWindowTest : public QObject {
     void equivalentShortcutsPreserveOldTilesAndSearch();
     void applicationLaunchLifecycle();
     void searchFocusCompositionAndEscape();
+    void textFieldAccessibleDescriptionSurvivesActivation_data();
+    void textFieldAccessibleDescriptionSurvivesActivation();
     void searchPreservesBrowsing();
     void searchKeyboardAndLaunchLifecycle();
     void searchRefreshAliasesAndRestart();
@@ -3837,6 +3839,49 @@ void PrototypeWindowTest::applicationLaunchLifecycle() {
     QTRY_VERIFY(!window_->isVisible());
     QCOMPARE(state->launches.load(), 3);
     QVERIFY(state->workerOnly);
+}
+
+void PrototypeWindowTest::textFieldAccessibleDescriptionSurvivesActivation_data() {
+    QTest::addColumn<QString>("fieldName");
+    QTest::addColumn<QString>("expectedName");
+    QTest::addColumn<QString>("expected");
+    QTest::newRow("search") << QStringLiteral("searchField")
+                            << QStringLiteral("搜索应用")
+                            << QStringLiteral("输入名称、拼音或首字母。向下键选择结果，Enter 启动，Esc 清空搜索。");
+    QTest::newRow("group-name") << QStringLiteral("groupNameField")
+                                << QStringLiteral("分组名称")
+                                << QStringLiteral("输入名称后按 Enter 保存，Esc 取消。允许重名。");
+    QTest::newRow("tile-name") << QStringLiteral("tileNameField")
+                               << QStringLiteral("磁贴显示名称")
+                               << QStringLiteral("输入名称后按 Enter 保存，Esc 取消。原名称保留为搜索别名。");
+}
+
+void PrototypeWindowTest::textFieldAccessibleDescriptionSurvivesActivation() {
+    QFETCH(QString, fieldName);
+    QFETCH(QString, expectedName);
+    QFETCH(QString, expected);
+    auto* field = item(fieldName);
+    QVERIFY(field);
+    auto* accessible = QAccessible::queryAccessibleInterface(field);
+    QVERIFY(accessible);
+    QCOMPARE(accessible->text(QAccessible::Name), expectedName);
+    QCOMPARE(accessible->role(), QAccessible::EditableText);
+    QCOMPARE(accessible->text(QAccessible::Description), expected);
+
+    // Qt 6.8.2's in-process observer notification, not a system setting.
+    for (int i = 0; i < 2; ++i) {
+        QAccessible::setActive(true);
+        QCOMPARE(accessible->text(QAccessible::Description), expected);
+    }
+
+    // Reinstalling the binding must not freeze subsequent guidance changes.
+    const auto updated = expected + QStringLiteral(" 测试变更。");
+    QVERIFY(field->setProperty("instruction", updated));
+    QCOMPARE(accessible->text(QAccessible::Description), updated);
+    QVERIFY(field->setProperty("placeholderText", QStringLiteral("更新后的占位文字")));
+    QCOMPARE(accessible->text(QAccessible::Description), updated);
+    QAccessible::setActive(true);
+    QCOMPARE(accessible->text(QAccessible::Description), updated);
 }
 
 void PrototypeWindowTest::searchFocusCompositionAndEscape() {
