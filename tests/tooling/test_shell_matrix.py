@@ -69,7 +69,7 @@ class ShellMatrixTests(unittest.TestCase):
             . $env:XDSTARTER_TEST_ACCESS_DESCRIPTOR_SCRIPT
             $cases = @(
                 @{a='D:(A;;FA;;;SY)'; b='D:AI(A;;FA;;;SY)'; expected=$true},
-                @{a='D:AI(A;;FA;;;SY)'; b='D:(A;;FA;;;SY)'; expected=$true},
+                @{a='D:AI(A;;FA;;;SY)'; b='D:(A;;FA;;;SY)'; expected=$false},
                 @{a='D:(A;;FA;;;SY)'; b='D:P(A;;FA;;;SY)'; expected=$false},
                 @{a='D:(A;;FA;;;SY)'; b='D:(A;;FR;;;SY)'; expected=$false},
                 @{a='D:(A;;FA;;;SY)'; b='D:(D;;FA;;;SY)'; expected=$false},
