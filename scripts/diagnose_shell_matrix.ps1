@@ -235,6 +235,7 @@ $cases = @()
 $parentCases = @()
 $parentComparisons = @()
 $aclCases = @()
+$parentAccessCases = @()
 $aclTemplates = @{}
 $errors = @()
 $cleanupErrors = @()
@@ -302,6 +303,36 @@ try {
             $aclCases += $observation
         }
     }
+    # One-off branch-only experiment: the intermediate parent and child are
+    # owned fixtures. Keep the child's template fixed while changing the
+    # immediate parent's protected rules within each target root.
+    if ($env:XDSTARTER_SHELL_PARENT_ACCESS_PROBE -eq '1') {
+        foreach ($target in $roots) {
+            foreach ($source in $roots) {
+                $intermediate = Join-Path $target.path ('probe-parent-' + $source.name)
+                New-Item -ItemType Directory -Path $intermediate | Out-Null
+                $original = Get-AccessDescriptor $intermediate
+                try {
+                    Set-OwnedAccess $intermediate $target.path $aclTemplates[$source.name].folder.descriptor
+                    $actual = Get-DescriptorHash (Get-AccessDescriptor $intermediate)
+                    if ($actual -ne $aclTemplates[$source.name].folder.sha256) {
+                        throw 'Intermediate parent template did not persist.'
+                    }
+                    $observation = New-ShellObservation @{ path = $intermediate } $roots[0] 'child' $aclTemplates['workspace']
+                    $observation.targetLocation = $target.name
+                    $observation.parentTemplateLocation = $source.name
+                    $observation.parentAccessSha256 = $actual
+                    $observation.parentTemplateSha256 = $aclTemplates[$source.name].folder.sha256
+                    $parentAccessCases += $observation
+                } finally {
+                    Set-OwnedAccess $intermediate $target.path $original
+                    if (!(Test-RestoredAccess $original (Get-AccessDescriptor $intermediate))) {
+                        throw 'Intermediate parent access rules were not restored.'
+                    }
+                }
+            }
+        }
+    }
 } catch { $errors += $_.Exception.Message }
 finally {
     if ($null -ne $comResult -and $comResult -ge 0) { [XDStarterShellMatrix]::CoUninitialize() }
@@ -314,7 +345,7 @@ finally {
 }
 $remaining = @($created | Where-Object { Test-Path -LiteralPath $_.path })
 $report = @{ schemaVersion = 3; cases = $cases; parentCases = $parentCases; parentComparisons = $parentComparisons;
-             aclCases = $aclCases;
+             aclCases = $aclCases; parentAccessCases = $parentAccessCases;
              comInitializationResult = $comResult;
              cleanupComplete = ($cleanupErrors.Count -eq 0 -and $remaining.Count -eq 0);
              identity = @{ sha = $env:GITHUB_SHA; runId = $env:GITHUB_RUN_ID; attempt = $env:GITHUB_RUN_ATTEMPT;
@@ -322,7 +353,9 @@ $report = @{ schemaVersion = 3; cases = $cases; parentCases = $parentCases; pare
              osVersion = [Environment]::OSVersion.VersionString;
              errors = $errors; status = $(if ($errors.Count -eq 0 -and $cases.Count -eq 4 -and
                                              $parentCases.Count -eq 4 -and $parentComparisons.Count -eq 2 -and
-                                             $aclCases.Count -eq 4) { 'passed' } else { 'failed' });
+                                             $aclCases.Count -eq 4 -and
+                                             ($env:XDSTARTER_SHELL_PARENT_ACCESS_PROBE -ne '1' -or
+                                              $parentAccessCases.Count -eq 4)) { 'passed' } else { 'failed' });
              limitations = @('Fixture compares native Shell observations, not the cause of historical failures.',
                              'Volume roots and resolved parent path spellings do not establish physical volume or directory identity.',
                              'ACL summaries do not establish effective permissions or parent-path effects.',

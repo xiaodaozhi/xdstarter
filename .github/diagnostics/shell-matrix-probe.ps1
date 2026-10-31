@@ -26,6 +26,7 @@ try {
 
 $output = Join-Path $history 'cross-matrix.json'
 try {
+    $env:XDSTARTER_SHELL_PARENT_ACCESS_PROBE = '1'
     & (Join-Path $workspace 'scripts/diagnose_shell_matrix.ps1') -Helper $helper -Output $output
     & python (Join-Path $workspace 'scripts/verify_shell_matrix.py') $output
     if ($LASTEXITCODE -ne 0) { throw 'Shell matrix validation failed.' }
@@ -38,6 +39,14 @@ try {
                   folderMatches = ($_.folderAccessSha256 -eq $_.folderTemplateSha256);
                   iniMatches = ($_.iniAccessSha256 -eq $_.iniTemplateSha256);
                   folderTemplate = $_.folderTemplateSha256; iniTemplate = $_.iniTemplateSha256 }
+           }); parentCases = @($report.parentAccessCases | ForEach-Object {
+               @{ target = $_.targetLocation; source = $_.parentTemplateLocation; name = $_.shellDisplayName;
+                  parentMatches = ($_.parentAccessSha256 -eq $_.parentTemplateSha256);
+                  parentTemplate = $_.parentTemplateSha256;
+                  childMatches = ($_.folderAccessSha256 -eq $_.folderTemplateSha256);
+                  childTemplate = $_.folderTemplateSha256;
+                  iniMatches = ($_.iniAccessSha256 -eq $_.iniTemplateSha256); iniTemplate = $_.iniTemplateSha256;
+                  module = $_.moduleSha256; indirect = $_.indirectName }
            }) } | ConvertTo-Json -Depth 8 -Compress | Write-Output
     }
 }
