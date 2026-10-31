@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -92,6 +93,30 @@ class ShellMatrixTests(unittest.TestCase):
         report['cases'][0].update(indirectResult=-1, indirectName='', shellDisplayName='matrix-workspace-workspace')
         report['cases'][1]['module']['zonePresent'] = True
         verify_shell_matrix.validate(report, report['identity'])
+
+    def test_preserved_helper_must_match_the_matrix(self):
+        report = sample_report()
+        verify_shell_matrix.validate(report, expected_module_sha256='a' * 64)
+        with self.assertRaisesRegex(ValueError, 'shell-matrix-helper-mismatch'):
+            verify_shell_matrix.validate(report, expected_module_sha256='b' * 64)
+
+        with tempfile.TemporaryDirectory() as directory:
+            helper = Path(directory) / 'helper.exe'
+            helper.write_bytes(b'synthetic helper for matrix verification')
+            digest = hashlib.sha256(helper.read_bytes()).hexdigest()
+            for group in ('cases', 'parentCases', 'aclCases'):
+                for case in report[group]:
+                    case['moduleSha256'] = digest
+            matrix = Path(directory) / 'matrix.json'
+            matrix.write_text(json.dumps(report), encoding='utf-8')
+            script = Path(verify_shell_matrix.__file__)
+            command = [sys.executable, str(script), str(matrix), '--helper', str(helper)]
+            result = subprocess.run(command, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            helper.write_bytes(b'different helper')
+            result = subprocess.run(command, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('shell-matrix-helper-mismatch', result.stderr)
 
     def test_rejects_missing_duplicate_or_mismatched_cases(self):
         for change in ('missing', 'duplicate', 'different-module', 'wrong-volume'):

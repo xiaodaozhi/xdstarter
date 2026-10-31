@@ -147,7 +147,7 @@
           "name": "Observe cross-location Shell resource matrix",
           "id": "shell_matrix",
           "shell": "pwsh",
-          "run": "$ErrorActionPreference = 'Stop'\n$helper = Join-Path $PWD 'build/app-release/xdstarter_launch_fixture.exe'\n$output = Join-Path $PWD 'build/app-release/shell-localization-history/cross-matrix.json'\n& ./scripts/diagnose_shell_matrix.ps1 -Helper $helper -Output $output\n& ./build/tooling/Scripts/python.exe scripts/verify_shell_matrix.py $output\nif ($LASTEXITCODE -ne 0) { throw 'Shell cross-location evidence invalid.' }"
+          "run": "$ErrorActionPreference = 'Stop'\n$helper = Join-Path $PWD 'build/app-release/xdstarter_launch_fixture.exe'\n$output = Join-Path $PWD 'build/app-release/shell-localization-history/cross-matrix.json'\n& ./scripts/diagnose_shell_matrix.ps1 -Helper $helper -Output $output\n& ./build/tooling/Scripts/python.exe scripts/verify_shell_matrix.py $output --helper $helper\nif ($LASTEXITCODE -ne 0) { throw 'Shell cross-location evidence invalid.' }"
         },
         {
           "name": "Validate synthetic search benchmark evidence",
@@ -251,7 +251,7 @@
           "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
           "with": {
             "name": "xdstarter-shell-localization-${{ github.sha }}",
-            "path": "build/app-release/shell-localization-evidence/**/*.json\nbuild/app-release/shell-localization-history/*.json",
+            "path": "build/app-release/shell-localization-evidence/**/*.json\nbuild/app-release/shell-localization-history/*.json\nbuild/app-release/xdstarter_launch_fixture.exe",
             "if-no-files-found": "warn",
             "retention-days": 7
           }
