@@ -249,11 +249,21 @@ function Get-JunctionObservation($Spec) {
     $before = Get-ShellDisplay $direct
     $viaJunction = Get-ShellDisplay $alias
     $after = Get-ShellDisplay $direct
+    $probeScript = Join-Path $PSScriptRoot 'shell_name_probe.ps1'
+    $directFresh = Get-XDStarterFreshShellName $direct $probeScript
+    $aliasFresh = Get-XDStarterFreshShellName $alias $probeScript
+    if ($directFresh.folderIdentitySha256 -ne $directFolderIdentity -or
+        $aliasFresh.folderIdentitySha256 -ne $directFolderIdentity -or
+        $directFresh.iniIdentitySha256 -ne $directIniIdentity -or
+        $aliasFresh.iniIdentitySha256 -ne $directIniIdentity) {
+        throw 'Fresh Shell name probes did not read the same fixture objects.'
+    }
     return @{ hostLocation = $Spec.host.name; targetLocation = $Spec.target.name;
               physicalName = $physical; folderIdentitySha256 = $directFolderIdentity;
               aliasFolderIdentitySha256 = $aliasFolderIdentity; iniIdentitySha256 = $directIniIdentity;
               aliasIniIdentitySha256 = $aliasIniIdentity; aliasPathFacts = (Get-XDStarterPathFacts $alias);
-              directBefore = $before; alias = $viaJunction; directAfter = $after }
+              directBefore = $before; alias = $viaJunction; directAfter = $after;
+              directFresh = $directFresh; aliasFresh = $aliasFresh }
 }
 
 $leaf = 'xdstarter-shell-matrix-' + $env:GITHUB_RUN_ID + '-' + $env:GITHUB_RUN_ATTEMPT + '-' + [Guid]::NewGuid().ToString('N')
@@ -366,7 +376,7 @@ finally {
     }
 }
 $remaining = @($created | Where-Object { Test-Path -LiteralPath $_.path })
-$report = @{ schemaVersion = 5; cases = $cases; parentCases = $parentCases; parentComparisons = $parentComparisons;
+$report = @{ schemaVersion = 6; cases = $cases; parentCases = $parentCases; parentComparisons = $parentComparisons;
              aclCases = $aclCases;
              junctionCases = $junctionCases;
              comInitializationResult = $comResult;
@@ -380,6 +390,7 @@ $report = @{ schemaVersion = 5; cases = $cases; parentCases = $parentCases; pare
              limitations = @('Fixture compares native Shell observations, not the cause of historical failures.',
                              'URL zone mapping is not a documented equivalent of the Shell desktop.ini trust decision.',
                              'Junction paths may themselves affect Shell behavior; file identity alone does not identify the cause.',
+                             'Fresh processes can still observe shared system Shell caches and follow earlier parent queries.',
                              'A volume GUID comparison identifies a mounted volume, not a physical disk or trust policy.',
                              'Volume roots and resolved parent path spellings do not establish physical volume or directory identity.',
                              'ACL summaries do not establish effective permissions or parent-path effects.',

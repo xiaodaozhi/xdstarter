@@ -3,6 +3,7 @@
 Add-Type -TypeDefinition @'
 using System;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
 
@@ -29,7 +30,10 @@ public static class XDStarterFileIdentity {
     private static extern bool GetFileInformationByHandle(SafeFileHandle handle, out FileInformation info);
 
     public static string Read(string path) {
-        using (var handle = CreateFileW(path, 0, 7, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero)) {
+        if (!Path.IsPathFullyQualified(path)) throw new ArgumentException("A fully qualified path is required.");
+        string extendedPath = path.StartsWith(@"\\?\", StringComparison.Ordinal) ? path :
+            path.StartsWith(@"\\", StringComparison.Ordinal) ? @"\\?\UNC\" + path.Substring(2) : @"\\?\" + path;
+        using (var handle = CreateFileW(extendedPath, 0, 7, IntPtr.Zero, 3, 0x02000000, IntPtr.Zero)) {
             if (handle.IsInvalid) throw new Win32Exception(Marshal.GetLastWin32Error());
             FileInformation info;
             if (!GetFileInformationByHandle(handle, out info))
@@ -109,4 +113,60 @@ function Get-XDStarterIdentityHash([string]$Path) {
     $identity = [XDStarterFileIdentity]::Read($Path)
     return [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData(
         [Text.Encoding]::UTF8.GetBytes($identity))).ToLowerInvariant()
+}
+
+function Get-XDStarterFreshShellName([string]$Path, [string]$ProbeScript, [int]$TimeoutMilliseconds = 30000) {
+    if (![IO.Path]::IsPathFullyQualified($Path) -or ![IO.Directory]::Exists($Path)) {
+        throw 'A fully qualified fixture directory is required for the fresh process.'
+    }
+    if ($TimeoutMilliseconds -lt 1 -or $TimeoutMilliseconds -gt 30000) {
+        throw 'Fresh Shell name probe timeout is outside the allowed range.'
+    }
+    $script = (Resolve-Path -LiteralPath $ProbeScript).Path
+    $start = [Diagnostics.ProcessStartInfo]::new((Get-Process -Id $PID).Path)
+    $start.UseShellExecute = $false
+    $start.CreateNoWindow = $true
+    $start.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
+    $start.RedirectStandardOutput = $true
+    $start.RedirectStandardError = $true
+    $start.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)
+    $start.StandardErrorEncoding = [Text.UTF8Encoding]::new($false)
+    foreach ($argument in @('-NoLogo', '-NoProfile', '-NonInteractive', '-File', $script)) {
+        $start.ArgumentList.Add($argument)
+    }
+    $start.Environment['XDSTARTER_SHELL_NAME_PROBE_PATH'] = $Path
+    $process = [Diagnostics.Process]::new()
+    $process.StartInfo = $start
+    $started = $false
+    try {
+        if (!$process.Start()) { throw 'Cannot start the fresh Shell name probe.' }
+        $started = $true
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        if (!$process.WaitForExit($TimeoutMilliseconds)) {
+            $process.Kill($true)
+            if (!$process.WaitForExit(5000)) { throw 'Timed-out Shell probe did not exit after termination.' }
+            throw 'Fresh Shell name probe timed out.'
+        }
+        $stdout = $stdoutTask.GetAwaiter().GetResult()
+        $stderr = $stderrTask.GetAwaiter().GetResult()
+        if ($process.ExitCode -ne 0 -or ![string]::IsNullOrWhiteSpace($stderr)) {
+            throw "Fresh Shell name probe failed with exit code $($process.ExitCode): $stderr"
+        }
+        $observation = $stdout | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+        if ($observation.processId -ne $process.Id -or $observation.processId -eq $PID) {
+            throw 'Fresh Shell name probe did not report its child process identity.'
+        }
+        $observation.parentProcessId = $PID
+        return $observation
+    } finally {
+        try {
+            if ($started -and !$process.HasExited) {
+                $process.Kill($true)
+                if (!$process.WaitForExit(5000)) { throw 'Fresh Shell probe remained running during cleanup.' }
+            }
+        } finally {
+            $process.Dispose()
+        }
+    }
 }
