@@ -178,6 +178,8 @@ struct CatalogTestState {
                       QStringLiteral("packaged"))};
     QHash<QString, QString> equivalentTargetIds;
     std::atomic_bool includeApplications{true};
+    std::atomic_bool firstUnavailable{false};
+    std::atomic_bool alternateUnavailableReason{false};
     std::atomic_bool scanSucceeds{true};
     std::atomic_bool scanWarns{false};
     std::atomic_bool launchSucceeds{false};
@@ -218,11 +220,15 @@ class CatalogTestPlatform final : public xdstarter::ApplicationPlatform {
                                               QStringLiteral("fixture_launch_failed")};
     }
 
-    xdstarter::LaunchResult checkAvailability(const xdstarter::LaunchTarget&) override {
+    xdstarter::LaunchResult checkAvailability(const xdstarter::LaunchTarget& target) override {
         recordThread();
-        return state_->includeApplications
+        const bool available = state_->includeApplications &&
+            !(state_->firstUnavailable && target.id == state_->applications.first().id);
+        return available
                    ? xdstarter::LaunchResult{true, {}, {}}
-                   : xdstarter::LaunchResult{false, QStringLiteral("测试目标已移除"),
+                   : xdstarter::LaunchResult{false, state_->alternateUnavailableReason
+                                                       ? QStringLiteral("测试目标访问受限")
+                                                       : QStringLiteral("测试目标已移除"),
                                               QStringLiteral("fixture_missing")};
     }
 
@@ -560,6 +566,7 @@ class PrototypeWindowTest : public QObject {
     void groupNameCompositionAndCancellation();
     void groupCatalogMoveAndRestart();
     void groupChangesPreserveSearchFocus();
+    void targetAvailabilityPreservesOtherTiles();
     void applicationLayoutRestoresUnavailableTarget();
     void unrelatedApplicationIconPreservesPinnedTile();
     void iconUpdatesAreScopedAndRetired();
@@ -4969,6 +4976,127 @@ void PrototypeWindowTest::groupCatalogMoveAndRestart() {
     QCOMPARE(tileData(tileId), savedTile);
     QCOMPARE(state->launches.load(), 0);
     destroyWindow();
+}
+
+void PrototypeWindowTest::targetAvailabilityPreservesOtherTiles() {
+    const auto state = std::make_shared<CatalogTestState>();
+    destroyWindow();
+    createWindow({}, false, state);
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), 2);
+    controller_->setEditMode(true);
+    const auto firstId = state->applications.first().id;
+    const auto secondId = state->applications.last().id;
+    QVERIFY(controller_->pinApplication(firstId, QStringLiteral("default")));
+    QVERIFY(controller_->pinApplication(secondId, QStringLiteral("default")));
+    QTRY_COMPARE(tileGeometries().size(), 2);
+    QString changedId;
+    QString unchangedId;
+    for (const auto& tile : service_->previewGroups().first().tiles) {
+        if (tile.targetId == firstId)
+            changedId = tile.id;
+        if (tile.targetId == secondId)
+            unchangedId = tile.id;
+    }
+    QVERIFY(!changedId.isEmpty() && !unchangedId.isEmpty());
+    QTRY_VERIFY(tileData(changedId).value(QStringLiteral("available")).toBool());
+    QTRY_VERIFY(tileData(unchangedId).value(QStringLiteral("available")).toBool());
+    const auto unchangedData = tileData(unchangedId);
+    QPointer<QQuickItem> changedTile(item(QStringLiteral("tile-") + changedId));
+    QPointer<QQuickItem> unchangedTile(item(QStringLiteral("tile-") + unchangedId));
+    QPointer<QQuickItem> group(item(QStringLiteral("group-default")));
+    QVERIFY(changedTile && unchangedTile && group);
+    QPointer<QObject> changedState(controller_->tileAvailabilityState(firstId));
+    QPointer<QObject> unchangedState(controller_->tileAvailabilityState(secondId));
+    QVERIFY(changedState && unchangedState && changedState != unchangedState);
+    QSignalSpy changedStateSignals(changedState, SIGNAL(changed()));
+    QSignalSpy unchangedStateSignals(unchangedState, SIGNAL(changed()));
+    unchangedTile->forceActiveFocus(Qt::TabFocusReason);
+    QTRY_VERIFY(unchangedTile->hasActiveFocus());
+    QSignalSpy availabilityChanged(catalog_.get(), &xdstarter::ApplicationCatalog::availabilityChanged);
+    state->firstUnavailable = true;
+    controller_->refreshApplications();
+    QTRY_VERIFY(availabilityChanged.count() > 0);
+    QTRY_VERIFY(tileData(changedId).value(QStringLiteral("unavailableReason")).toString().contains(
+        QStringLiteral("测试目标已移除")));
+    QVERIFY2(changedTile && unchangedTile && group, "An availability-only update recreated a delegate");
+    QCOMPARE(item(QStringLiteral("tile-") + changedId), changedTile.data());
+    QCOMPARE(item(QStringLiteral("tile-") + unchangedId), unchangedTile.data());
+    QCOMPARE(item(QStringLiteral("group-default")), group.data());
+    QCOMPARE(tileData(unchangedId), unchangedData);
+    QCOMPARE(controller_->tileAvailabilityState(firstId), changedState.data());
+    QVERIFY(changedStateSignals.count() > 0);
+    QCOMPARE(unchangedStateSignals.count(), 0);
+    QTRY_VERIFY(unchangedTile->hasActiveFocus());
+    QTRY_VERIFY(!changedTile->property("targetAvailable").toBool());
+    auto* marker = visualItem(changedTile, QStringLiteral("unavailableMarker"));
+    QVERIFY(marker);
+    QTRY_VERIFY(marker->isVisible());
+    auto* tooltip = changedTile->findChild<QObject*>(QStringLiteral("tileToolTip"));
+    QVERIFY(tooltip);
+    QTRY_VERIFY(tooltip->property("text").toString().contains(QStringLiteral("测试目标已移除")));
+    auto* accessible = QAccessible::queryAccessibleInterface(changedTile);
+    QVERIFY(accessible);
+    QTRY_VERIFY(accessible->text(QAccessible::Description).contains(QStringLiteral("测试目标已移除")));
+
+    const auto beforeReasonUpdate = availabilityChanged.count();
+    state->alternateUnavailableReason = true;
+    controller_->refreshApplications();
+    QTRY_VERIFY(availabilityChanged.count() > beforeReasonUpdate);
+    QTRY_VERIFY(tileData(changedId).value(QStringLiteral("unavailableReason")).toString().contains(
+        QStringLiteral("测试目标访问受限")));
+    QTRY_VERIFY(tooltip->property("text").toString().contains(QStringLiteral("测试目标访问受限")));
+    QTRY_VERIFY(accessible->text(QAccessible::Description).contains(QStringLiteral("测试目标访问受限")));
+    QCOMPARE(item(QStringLiteral("tile-") + unchangedId), unchangedTile.data());
+    QCOMPARE(unchangedStateSignals.count(), 0);
+
+    beginMouseDrag(unchangedId);
+    const auto beforeRecovery = availabilityChanged.count();
+    state->firstUnavailable = false;
+    controller_->refreshApplications();
+    QTRY_VERIFY(availabilityChanged.count() > beforeRecovery);
+    QTRY_VERIFY(tileData(changedId).value(QStringLiteral("available")).toBool());
+    QTRY_VERIFY(changedTile->property("targetAvailable").toBool());
+    QVERIFY(!marker->isVisible());
+    QVERIFY(window_->property("dragActive").toBool());
+    QCOMPARE(item(QStringLiteral("tile-") + unchangedId), unchangedTile.data());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTest::mouseRelease(window_, Qt::LeftButton, Qt::NoModifier, QPoint(1, 1));
+    QTRY_VERIFY(!window_->property("dragActive").toBool());
+
+    openSizeMenu(unchangedId, false);
+    QTRY_VERIFY(sizeMenu()->property("opened").toBool());
+    const auto beforeMenuUpdate = availabilityChanged.count();
+    state->firstUnavailable = true;
+    controller_->refreshApplications();
+    QTRY_VERIFY(availabilityChanged.count() > beforeMenuUpdate);
+    QTRY_VERIFY(!tileData(changedId).value(QStringLiteral("available")).toBool());
+    QTRY_VERIFY(!changedTile->property("targetAvailable").toBool());
+    QVERIFY(sizeMenu()->property("opened").toBool());
+    QCOMPARE(item(QStringLiteral("tile-") + unchangedId), unchangedTile.data());
+    QTest::keyClick(window_, Qt::Key_Escape);
+    QTRY_VERIFY(!sizeMenu()->property("opened").toBool());
+    QVERIFY(controller_->unpinTile(changedId));
+    QVERIFY(!controller_->tileAvailabilityState(firstId));
+    QVERIFY(controller_->pinApplication(firstId, QStringLiteral("default")));
+    auto* repinnedState = controller_->tileAvailabilityState(firstId);
+    QVERIFY(repinnedState && repinnedState != changedState.data());
+    QTRY_VERIFY(changedState.isNull());
+    QCOMPARE(controller_->tileAvailabilityState(secondId), unchangedState.data());
+    QCOMPARE(unchangedStateSignals.count(), 0);
+    QTRY_COMPARE(tileGeometries().size(), 2);
+    QString repinnedId;
+    for (const auto& tile : service_->previewGroups().first().tiles)
+        if (tile.targetId == firstId)
+            repinnedId = tile.id;
+    QVERIFY(!repinnedId.isEmpty());
+    QTRY_VERIFY(!tileData(repinnedId).value(QStringLiteral("available")).toBool());
+    QTRY_VERIFY(item(QStringLiteral("tile-") + repinnedId));
+    QTRY_VERIFY(!item(QStringLiteral("tile-") + repinnedId)->property("targetAvailable").toBool());
+    state->firstUnavailable = false;
+    controller_->refreshApplications();
+    QTRY_VERIFY(tileData(repinnedId).value(QStringLiteral("available")).toBool());
+    QTRY_VERIFY(item(QStringLiteral("tile-") + repinnedId)->property("targetAvailable").toBool());
+    QVERIFY(state->workerOnly);
 }
 
 void PrototypeWindowTest::groupChangesPreserveSearchFocus() {

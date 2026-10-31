@@ -683,7 +683,8 @@ class Workflow:
                              'layoutImportFilePickerOwnership', 'layoutImportDialogThemeAndKeyboard']
                 if warp:
                     selection = selection[:2]
-                selection.extend(['iconUpdatesAreScopedAndRetired', 'dragPreviewFrameState'])
+                selection.extend(['iconUpdatesAreScopedAndRetired', 'targetAvailabilityPreservesOtherTiles',
+                                  'dragPreviewFrameState'])
                 command(runtime / 'xdstarter_ui_tests.exe', *selection, '-o',
                     str(logs / (name + '.log')) + ',txt',
                     env=env, cwd=harness, timeout=180)

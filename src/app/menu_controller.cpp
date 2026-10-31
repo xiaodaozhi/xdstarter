@@ -247,8 +247,13 @@ void MenuController::refreshGroups() {
     previewWidth_ = 0;
     previewHeight_ = 0;
     groups_.reserve(groups.size());
+    QVariantList nextPresentationGroups;
+    nextPresentationGroups.reserve(groups.size());
+    QHash<QString, QPair<bool, QString>> nextAvailability;
     for (const auto& group : groups) {
         auto tiles = tileValues(group.tiles);
+        QVariantList presentationTiles;
+        presentationTiles.reserve(tiles.size());
         for (auto& tileValue : tiles) {
             auto tile = tileValue.toMap();
             const auto previous = previousTiles.value(tile.value(QStringLiteral("id")).toString());
@@ -280,20 +285,53 @@ void MenuController::refreshGroups() {
             tile.insert(QStringLiteral("available"), available.success);
             tile.insert(QStringLiteral("unavailableReason"), available.message);
             tileValue = tile;
+            auto presentationTile = tile;
+            if (catalog_ && real) {
+                const auto id = tile.value(QStringLiteral("targetId")).toString();
+                nextAvailability.insert(id, qMakePair(available.success, available.message));
+                presentationTile.remove(QStringLiteral("available"));
+                presentationTile.remove(QStringLiteral("unavailableReason"));
+            }
+            presentationTiles.append(presentationTile);
         }
-        groups_.append(QVariantMap{
+        QVariantMap groupValue{
             {QStringLiteral("id"), group.id},
             {QStringLiteral("name"), group.name},
             {QStringLiteral("tiles"), tiles},
             {QStringLiteral("width"), group.width},
             {QStringLiteral("height"), group.height},
-        });
+        };
+        groups_.append(groupValue);
+        groupValue.insert(QStringLiteral("tiles"), presentationTiles);
+        nextPresentationGroups.append(groupValue);
         previewWidth_ = std::max(previewWidth_, group.width);
     }
     if (!groups.isEmpty()) {
         tiles_ = groups_.front().toMap().value(QStringLiteral("tiles")).toList();
         previewHeight_ = groups.front().height;
     }
+    // Keep availability separate from the Repeater model: changing one target
+    // must not destroy unrelated group and tile delegates. The public groups
+    // and tiles values above continue to include their current status.
+    for (auto it = tileAvailabilityStates_.begin(); it != tileAvailabilityStates_.end();) {
+        if (!nextAvailability.contains(it.key())) {
+            it.value()->deleteLater();
+            it = tileAvailabilityStates_.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    for (auto it = nextAvailability.cbegin(); it != nextAvailability.cend(); ++it) {
+        if (auto* state = tileAvailabilityStates_.value(it.key(), nullptr)) {
+            state->setAvailability(it.value().first, it.value().second);
+        } else {
+            auto* newState = new TileAvailabilityState(it.value().first, it.value().second, this);
+            QQmlEngine::setObjectOwnership(newState, QQmlEngine::CppOwnership);
+            tileAvailabilityStates_.insert(it.key(), newState);
+        }
+    }
+    const bool presentationChanged = presentationGroups_ != nextPresentationGroups;
+    presentationGroups_ = std::move(nextPresentationGroups);
     QSet<QString> pinned;
     for (const auto& group : groups)
         for (const auto& tile : group.tiles)
@@ -323,6 +361,8 @@ void MenuController::refreshGroups() {
         catalog_->registerTargets(snapshot.value(QStringLiteral("targets")).toArray());
         catalog_->setPinnedIds(pinnedTargetIds_);
     }
+    if (presentationChanged)
+        emit presentationGroupsChanged();
     emit groupsChanged();
     rebuildSearchEntries();
     refreshSearchResults();
@@ -392,6 +432,10 @@ int MenuController::iconRevision() const { return iconRevision_; }
 QVariantMap MenuController::iconVersions() const { return iconVersions_; }
 QObject* MenuController::iconVersionState(const QString& id) const {
     return iconVersionStates_.value(id, nullptr);
+}
+
+QObject* MenuController::tileAvailabilityState(const QString& id) const {
+    return tileAvailabilityStates_.value(id, nullptr);
 }
 
 void MenuController::advanceIconVersion(const QString& id) {

@@ -730,6 +730,8 @@ python scripts/benchmark_ui_search.py --executable build/app-release/bin/xdstart
 
 2026-11-01 对 [#126](https://github.com/xiaodaozhi/xdstarter/issues/126) 的图标版本通知进行[离屏前后对照](validation/issue-35/icon-binding-comparison-offscreen-2026-11-01.json)：各 100 个新进程、100 磁贴及 1000 个匿名目录项，使用相同测试夹具和事件循环计时插桩，顺序运行修复前后两种程序。首次唤起至搜索框获得焦点的 P95 分别为 488.47 和 209.15 ms；系统负载和缓存未隔离，不能把差值全归因于该修复，也不能视为真实桌面性能达标。另在独立启用 QML 调试的测试构建中各采集一轮完整进程轨迹，磁贴图标 source 绑定记录从 20300 次降至 500 次，组内版本传递从 20200 次降至 200 次；跟踪区间可能嵌套，不能累加为墙钟时间。JSON 保存程序和轨迹哈希、各样本及子日志哈希，原始子日志与剖析文件仅保留在本机 build 目录；不涉及发行构建或物理屏幕测量。
 
+针对 [#132](https://github.com/xiaodaozhi/xdstarter/issues/132)，匿名双磁贴回归只改变一个目标的可用性，检查另一磁贴及分组的对象身份和焦点，并核对失效标记、原因、无障碍说明、拖动中与菜单打开时更新、状态恢复和重新固定。原始公开分组数据仍用于检查状态，发行包验证分别运行软件渲染、D3D11 和 WARP 版本的该用例；这些受控输入与后端检查不等同真人操作或真实设备性能验收。
+
 ```powershell
 python scripts/benchmark_ui_reveal.py --executable build/app-release/bin/xdstarter_ui_tests.exe --output-dir build/validation/ui-reveal-local
 python scripts/benchmark_ui_reveal_fresh.py --executable build/app-release/bin/xdstarter_ui_tests.exe --output-dir build/validation/ui-reveal-fresh-local

@@ -16,6 +16,7 @@
 
 #include <atomic>
 #include <memory>
+#include <utility>
 
 namespace xdstarter {
 
@@ -52,6 +53,32 @@ class IconVersionState final : public QObject {
     quint64 version_;
 };
 
+class TileAvailabilityState final : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(bool available READ available NOTIFY changed)
+    Q_PROPERTY(QString reason READ reason NOTIFY changed)
+
+  public:
+    TileAvailabilityState(bool available, QString reason, QObject* parent = nullptr)
+        : QObject(parent), available_(available), reason_(std::move(reason)) {}
+    [[nodiscard]] bool available() const { return available_; }
+    [[nodiscard]] QString reason() const { return reason_; }
+    void setAvailability(bool available, const QString& reason) {
+        if (available_ == available && reason_ == reason)
+            return;
+        available_ = available;
+        reason_ = reason;
+        emit changed();
+    }
+
+  signals:
+    void changed();
+
+  private:
+    bool available_;
+    QString reason_;
+};
+
 class MenuController : public QObject {
     Q_OBJECT
     QML_ELEMENT
@@ -59,6 +86,7 @@ class MenuController : public QObject {
 
     Q_PROPERTY(QVariantList tiles READ tiles NOTIFY groupsChanged)
     Q_PROPERTY(QVariantList groups READ groups NOTIFY groupsChanged)
+    Q_PROPERTY(QVariantList presentationGroups READ presentationGroups NOTIFY presentationGroupsChanged)
     Q_PROPERTY(QVariantMap tileTransitions READ tileTransitions NOTIFY groupsChanged)
     Q_PROPERTY(QVariantMap visualTokens READ visualTokens CONSTANT)
     Q_PROPERTY(QString platformName READ platformName CONSTANT)
@@ -120,6 +148,7 @@ class MenuController : public QObject {
 
     [[nodiscard]] QVariantList tiles() const;
     [[nodiscard]] QVariantList groups() const;
+    [[nodiscard]] QVariantList presentationGroups() const { return presentationGroups_; }
     [[nodiscard]] QVariantMap tileTransitions() const { return tileTransitions_; }
     [[nodiscard]] QVariantMap visualTokens() const;
     [[nodiscard]] QString platformName() const;
@@ -174,6 +203,7 @@ class MenuController : public QObject {
     [[nodiscard]] int iconRevision() const;
     [[nodiscard]] QVariantMap iconVersions() const;
     Q_INVOKABLE QObject* iconVersionState(const QString& id) const;
+    Q_INVOKABLE QObject* tileAvailabilityState(const QString& id) const;
     [[nodiscard]] QString searchQuery() const;
     void setSearchQuery(const QString& query);
     [[nodiscard]] bool searchActive() const;
@@ -211,6 +241,7 @@ class MenuController : public QObject {
   signals:
     void keyboardNavigationChanged();
     void groupsChanged();
+    void presentationGroupsChanged();
     void editModeChanged();
     void darkThemeChanged();
     void themePreferenceChanged();
@@ -266,6 +297,7 @@ class MenuController : public QObject {
     PrototypeService& prototypeService_;
     QVariantList tiles_;
     QVariantList groups_;
+    QVariantList presentationGroups_;
     QVariantMap tileTransitions_;
     QVariantMap visualTokens_;
     QString platformName_;
@@ -312,6 +344,7 @@ class MenuController : public QObject {
     int iconRevision_ = 0;
     QVariantMap iconVersions_;
     QHash<QString, IconVersionState*> iconVersionStates_;
+    QHash<QString, TileAvailabilityState*> tileAvailabilityStates_;
     QSet<QString> pinnedTargetIds_;
     quint64 nextIconVersion_ = 0;
 };
