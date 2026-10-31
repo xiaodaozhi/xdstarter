@@ -110,3 +110,47 @@ function Get-XDStarterIdentityHash([string]$Path) {
     return [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData(
         [Text.Encoding]::UTF8.GetBytes($identity))).ToLowerInvariant()
 }
+
+function Get-XDStarterFreshShellName([string]$Path, [string]$ProbeScript) {
+    if (![IO.Path]::IsPathFullyQualified($Path) -or ![IO.Directory]::Exists($Path)) {
+        throw 'A fully qualified fixture directory is required for the fresh process.'
+    }
+    $script = (Resolve-Path -LiteralPath $ProbeScript).Path
+    $start = [Diagnostics.ProcessStartInfo]::new((Get-Process -Id $PID).Path)
+    $start.UseShellExecute = $false
+    $start.CreateNoWindow = $true
+    $start.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
+    $start.RedirectStandardOutput = $true
+    $start.RedirectStandardError = $true
+    $start.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)
+    $start.StandardErrorEncoding = [Text.UTF8Encoding]::new($false)
+    foreach ($argument in @('-NoLogo', '-NoProfile', '-NonInteractive', '-File', $script)) {
+        $start.ArgumentList.Add($argument)
+    }
+    $start.Environment['XDSTARTER_SHELL_NAME_PROBE_PATH'] = $Path
+    $process = [Diagnostics.Process]::new()
+    $process.StartInfo = $start
+    try {
+        if (!$process.Start()) { throw 'Cannot start the fresh Shell name probe.' }
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        if (!$process.WaitForExit(30000)) {
+            $process.Kill($true)
+            if (!$process.WaitForExit(5000)) { throw 'Timed-out Shell probe did not exit after termination.' }
+            throw 'Fresh Shell name probe timed out.'
+        }
+        $stdout = $stdoutTask.GetAwaiter().GetResult()
+        $stderr = $stderrTask.GetAwaiter().GetResult()
+        if ($process.ExitCode -ne 0 -or ![string]::IsNullOrWhiteSpace($stderr)) {
+            throw "Fresh Shell name probe failed with exit code $($process.ExitCode): $stderr"
+        }
+        $observation = $stdout | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+        if ($observation.processId -ne $process.Id -or $observation.processId -eq $PID) {
+            throw 'Fresh Shell name probe did not report its child process identity.'
+        }
+        $observation.parentProcessId = $PID
+        return $observation
+    } finally {
+        $process.Dispose()
+    }
+}

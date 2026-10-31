@@ -68,14 +68,19 @@ def sample_report():
             folder_id = ('a' if target == 'workspace' else 'b') * 64
             ini_id = ('c' if target == 'workspace' else 'd') * 64
             observation = {'available': True, 'name': '本地化工具'}
+            fresh = {'processId': 101, 'parentProcessId': 100, 'comInitializationResult': 0,
+                     'folderIdentitySha256': folder_id,
+                     'iniIdentitySha256': ini_id, 'display': dict(observation),
+                     'localized': {'hresult': 0, 'resourceModuleSha256': 'e' * 64, 'resourceId': 5301}}
             junction_cases.append({'hostLocation': host, 'targetLocation': target,
                                    'physicalName': f'parent-{target}',
                                    'folderIdentitySha256': folder_id, 'aliasFolderIdentitySha256': folder_id,
                                    'iniIdentitySha256': ini_id, 'aliasIniIdentitySha256': ini_id,
                                    'aliasPathFacts': copy.deepcopy(path_facts),
                                    'directBefore': dict(observation), 'alias': dict(observation),
-                                   'directAfter': dict(observation)})
-    return {'schemaVersion': 5, 'status': 'passed', 'cleanupComplete': True, 'errors': [],
+                                   'directAfter': dict(observation), 'directFresh': copy.deepcopy(fresh),
+                                   'aliasFresh': copy.deepcopy(fresh)})
+    return {'schemaVersion': 6, 'status': 'passed', 'cleanupComplete': True, 'errors': [],
             'comInitializationResult': 0, 'osVersion': 'synthetic Windows',
             'identity': {'sha': 'd' * 40, 'runId': '123', 'attempt': '1',
                          'runnerOs': 'Windows', 'runnerArch': 'X64'}, 'cases': cases,
@@ -84,6 +89,88 @@ def sample_report():
 
 
 class ShellMatrixTests(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == 'win32' and shutil.which('pwsh'), 'requires Windows PowerShell 7')
+    def test_fresh_shell_name_probe_reads_only_its_owned_fixture(self):
+        root = Path(verify_shell_matrix.__file__).resolve().parents[1]
+        build = root / 'build'
+        build.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix='自有 shell & ', dir=build) as directory:
+            self.assertTrue(Path(directory).resolve().is_relative_to(build.resolve()))
+            fixture = Path(directory) / 'desktop.ini'
+            fixture.write_bytes(b'owned fixture')
+            env = os.environ.copy()
+            env.update(XDSTARTER_TEST_JUNCTION_SCRIPT=str(root / 'scripts/shell_junction_probe.ps1'),
+                       XDSTARTER_TEST_NAME_PROBE=str(root / 'scripts/shell_name_probe.ps1'),
+                       XDSTARTER_TEST_NAME_DIRECTORY=directory, TEMP=str(build), TMP=str(build))
+            command = r'''
+                $ErrorActionPreference = 'Stop'
+                . $env:XDSTARTER_TEST_JUNCTION_SCRIPT
+                Get-XDStarterFreshShellName $env:XDSTARTER_TEST_NAME_DIRECTORY $env:XDSTARTER_TEST_NAME_PROBE |
+                    ConvertTo-Json -Depth 6 -Compress
+            '''
+            result = subprocess.run([shutil.which('pwsh'), '-NoProfile', '-NonInteractive', '-Command', command],
+                                    capture_output=True, text=True, encoding='utf-8', env=env, timeout=45)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            value = json.loads(result.stdout)
+            verify_shell_matrix.validate_fresh_shell_name(value, value['folderIdentitySha256'],
+                                                          value['iniIdentitySha256'])
+            self.assertTrue(value['display']['available'])
+            self.assertEqual(value['display']['name'], Path(directory).name)
+            self.assertEqual(fixture.read_bytes(), b'owned fixture')
+
+    @unittest.skipUnless(sys.platform == 'win32' and shutil.which('pwsh'), 'requires Windows PowerShell 7')
+    def test_fresh_shell_name_probe_reads_localized_resource_metadata(self):
+        root = Path(verify_shell_matrix.__file__).resolve().parents[1]
+        build = root / 'build'
+        build.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix='自有 资源 & ', dir=build) as directory:
+            self.assertTrue(Path(directory).resolve().is_relative_to(build.resolve()))
+            env = os.environ.copy()
+            env.update(XDSTARTER_TEST_JUNCTION_SCRIPT=str(root / 'scripts/shell_junction_probe.ps1'),
+                       XDSTARTER_TEST_NAME_PROBE=str(root / 'scripts/shell_name_probe.ps1'),
+                       XDSTARTER_TEST_NAME_DIRECTORY=directory, TEMP=str(build), TMP=str(build))
+            command = r'''
+                $ErrorActionPreference = 'Stop'
+                [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+                Add-Type -TypeDefinition @'
+                using System;
+                using System.Runtime.InteropServices;
+                public static class XDStarterNameFixtureSetup {
+                    [DllImport("shlwapi.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+                    [return: MarshalAs(UnmanagedType.Bool)] public static extern bool PathMakeSystemFolderW(string path);
+                    [DllImport("shell32.dll", CharSet=CharSet.Unicode)]
+                    public static extern int SHSetLocalizedName(string path, string module, int id);
+                }
+'@
+                $path = $env:XDSTARTER_TEST_NAME_DIRECTORY
+                $ini = Join-Path $path 'desktop.ini'
+                try {
+                    if (![XDStarterNameFixtureSetup]::PathMakeSystemFolderW($path)) { throw 'Fixture attributes failed.' }
+                    $module = Join-Path $env:WINDIR 'System32/shell32.dll'
+                    $result = [XDStarterNameFixtureSetup]::SHSetLocalizedName($path, $module, 21799)
+                    if ($result -lt 0) { throw "Fixture setup failed: $result" }
+                    $before = (Get-FileHash -LiteralPath $ini -Algorithm SHA256).Hash
+                    . $env:XDSTARTER_TEST_JUNCTION_SCRIPT
+                    $observation = Get-XDStarterFreshShellName $path $env:XDSTARTER_TEST_NAME_PROBE
+                    $observation.iniUnchanged = $before -eq (Get-FileHash -LiteralPath $ini -Algorithm SHA256).Hash
+                    $observation | ConvertTo-Json -Depth 6 -Compress
+                } finally {
+                    if (Test-Path -LiteralPath $ini) {
+                        [IO.File]::SetAttributes($ini, [IO.FileAttributes]::Normal)
+                    }
+                    [IO.File]::SetAttributes($path, [IO.FileAttributes]::Normal)
+                }
+            '''
+            result = subprocess.run([shutil.which('pwsh'), '-NoProfile', '-NonInteractive', '-Command', command],
+                                    capture_output=True, text=True, encoding='utf-8', env=env, timeout=45)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            value = json.loads(result.stdout)
+            verify_shell_matrix.validate_fresh_shell_name(value, value['folderIdentitySha256'],
+                                                          value['iniIdentitySha256'])
+            self.assertEqual(value['localized']['hresult'], 0)
+            self.assertEqual(value['localized']['resourceId'], 21799)
+            self.assertTrue(value['iniUnchanged'])
+
     @unittest.skipUnless(sys.platform == 'win32' and shutil.which('pwsh'), 'requires Windows PowerShell 7')
     def test_owned_junction_identity_and_non_recursive_cleanup(self):
         root = Path(verify_shell_matrix.__file__).resolve().parents[1]
@@ -128,6 +215,13 @@ class ShellMatrixTests(unittest.TestCase):
                     (Get-XDStarterIdentityHash (Join-Path $direct 'desktop.ini')) -ne
                     (Get-XDStarterIdentityHash (Join-Path $alias 'desktop.ini'))) {
                     throw 'Junction and direct paths do not identify the same objects.'
+                }
+                $probeScript = Join-Path (Split-Path $env:XDSTARTER_TEST_JUNCTION_SCRIPT) 'shell_name_probe.ps1'
+                $directFresh = Get-XDStarterFreshShellName $direct $probeScript
+                $aliasFresh = Get-XDStarterFreshShellName $alias $probeScript
+                if ($directFresh.folderIdentitySha256 -ne $aliasFresh.folderIdentitySha256 -or
+                    $directFresh.iniIdentitySha256 -ne $aliasFresh.iniIdentitySha256) {
+                    throw 'Fresh processes did not observe the same directory and file.'
                 }
                 $unowned = New-XDStarterJunctionSpec $hostRoot $targetRoot
                 $rejected = $false
@@ -188,6 +282,39 @@ class ShellMatrixTests(unittest.TestCase):
         report = sample_report()
         report['junctionCases'][0]['alias'] = {'available': False, 'name': None}
         verify_shell_matrix.validate(report, require_junction_cases=True)
+
+    def test_fresh_shell_observations_preserve_failures_and_reject_inconsistent_metadata(self):
+        for change in ('missing', 'wrong-folder', 'wrong-ini', 'bad-com', 'same-process', 'bad-display',
+                       'bad-hr', 'success-without-module', 'failure-with-module'):
+            with self.subTest(change=change):
+                report = sample_report()
+                case = report['junctionCases'][0]
+                value = case['aliasFresh']
+                if change == 'missing':
+                    case.pop('aliasFresh')
+                elif change == 'wrong-folder':
+                    value['folderIdentitySha256'] = 'f' * 64
+                elif change == 'wrong-ini':
+                    value['iniIdentitySha256'] = 'f' * 64
+                elif change == 'bad-com':
+                    value['comInitializationResult'] = -1
+                elif change == 'same-process':
+                    value['processId'] = value['parentProcessId']
+                elif change == 'bad-display':
+                    value['display']['name'] = ''
+                elif change == 'bad-hr':
+                    value['localized']['hresult'] = True
+                elif change == 'success-without-module':
+                    value['localized']['resourceModuleSha256'] = None
+                else:
+                    value['localized']['hresult'] = -1
+                with self.assertRaises(ValueError):
+                    verify_shell_matrix.validate(report, require_fresh_names=True)
+        report = sample_report()
+        fresh = report['junctionCases'][0]['aliasFresh']
+        fresh['display'] = {'available': False, 'name': ''}
+        fresh['localized'] = {'hresult': -2147024809, 'resourceModuleSha256': None, 'resourceId': None}
+        verify_shell_matrix.validate(report, require_fresh_names=True)
 
     @unittest.skipUnless(sys.platform == 'win32' and shutil.which('pwsh'), 'requires Windows PowerShell 7')
     def test_read_only_path_facts_on_owned_file(self):
@@ -412,6 +539,10 @@ class ShellMatrixTests(unittest.TestCase):
 
     def test_legacy_reports_remain_readable_but_not_sufficient_for_new_ci(self):
         report = sample_report()
+        report['schemaVersion'] = 5
+        verify_shell_matrix.validate(report, require_junction_cases=True)
+        with self.assertRaisesRegex(ValueError, 'missing-fresh-shell-names'):
+            verify_shell_matrix.validate(report, require_fresh_names=True)
         report['schemaVersion'] = 4
         report.pop('junctionCases')
         verify_shell_matrix.validate(report, require_path_facts=True)

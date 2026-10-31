@@ -75,9 +75,10 @@ def validate_observation(case, require_path_facts=False):
 
 
 def validate(report, expected_identity=None, require_parent_cases=False, require_acl_cases=False,
-             expected_module_sha256=None, require_path_facts=False, require_junction_cases=False):
+             expected_module_sha256=None, require_path_facts=False, require_junction_cases=False,
+             require_fresh_names=False):
     require(isinstance(report, dict) and type(report.get('schemaVersion')) is int and
-            report['schemaVersion'] in (1, 2, 3, 4, 5) and
+            report['schemaVersion'] in (1, 2, 3, 4, 5, 6) and
             report.get('status') == 'passed' and report.get('cleanupComplete') is True and
             report.get('errors') == [] and type(report.get('comInitializationResult')) is int and
             report['comInitializationResult'] >= 0, 'incomplete-shell-matrix')
@@ -85,6 +86,7 @@ def validate(report, expected_identity=None, require_parent_cases=False, require
     require(not require_acl_cases or report['schemaVersion'] >= 3, 'missing-acl-matrix')
     require(not require_path_facts or report['schemaVersion'] >= 4, 'missing-shell-path-facts')
     require(not require_junction_cases or report['schemaVersion'] >= 5, 'missing-junction-matrix')
+    require(not require_fresh_names or report['schemaVersion'] >= 6, 'missing-fresh-shell-names')
     identity = report.get('identity')
     require(isinstance(identity, dict) and isinstance(identity.get('sha'), str) and
             re.fullmatch(r'[0-9a-f]{40}', identity['sha']) is not None and
@@ -132,11 +134,36 @@ def validate(report, expected_identity=None, require_parent_cases=False, require
     if report['schemaVersion'] >= 3:
         validate_acl_cases(report, locations, modules, module_paths['workspace'])
     if report['schemaVersion'] >= 5:
-        validate_junction_cases(report)
+        validate_junction_cases(report, report['schemaVersion'] >= 6)
     return report
 
 
-def validate_junction_cases(report):
+def validate_fresh_shell_name(observation, folder_identity, ini_identity):
+    require(isinstance(observation, dict) and type(observation.get('comInitializationResult')) is int and
+            observation['comInitializationResult'] >= 0 and
+            type(observation.get('processId')) is int and observation['processId'] > 0 and
+            type(observation.get('parentProcessId')) is int and observation['parentProcessId'] > 0 and
+            observation['processId'] != observation['parentProcessId'] and
+            observation.get('folderIdentitySha256') == folder_identity and
+            observation.get('iniIdentitySha256') == ini_identity, 'fresh-shell-identity-mismatch')
+    display = observation.get('display')
+    require(isinstance(display, dict) and type(display.get('available')) is bool and
+            isinstance(display.get('name'), str) and
+            (not display['available'] or bool(display['name'])), 'invalid-fresh-shell-display')
+    localized = observation.get('localized')
+    require(isinstance(localized, dict) and
+            {'hresult', 'resourceModuleSha256', 'resourceId'} <= localized.keys() and
+            type(localized['hresult']) is int and -(2 ** 31) <= localized['hresult'] < 2 ** 31,
+            'invalid-fresh-shell-localized-name')
+    if localized['hresult'] >= 0:
+        require(is_hash(localized['resourceModuleSha256']) and type(localized['resourceId']) is int and
+                -(2 ** 31) <= localized['resourceId'] < 2 ** 31, 'invalid-fresh-shell-localized-name')
+    else:
+        require(localized['resourceModuleSha256'] is None and localized['resourceId'] is None,
+                'invalid-fresh-shell-localized-name')
+
+
+def validate_junction_cases(report, require_fresh_names=False):
     cases = report.get('junctionCases')
     require(isinstance(cases, list) and len(cases) == 4 and all(isinstance(c, dict) for c in cases),
             'incomplete-junction-matrix')
@@ -163,6 +190,9 @@ def validate_junction_cases(report):
             require(isinstance(value, dict) and type(value.get('available')) is bool and
                     (isinstance(value.get('name'), str) or value.get('name') is None) and
                     (not value['available'] or bool(value.get('name'))), 'invalid-junction-shell-observation')
+        if require_fresh_names:
+            for key in ('directFresh', 'aliasFresh'):
+                validate_fresh_shell_name(case.get(key), folder, ini)
 
 
 def validate_acl_cases(report, locations, modules, workspace_module_path):
@@ -255,7 +285,7 @@ def main():
     parser.add_argument('report', type=Path)
     parser.add_argument('--helper', type=Path, help='verify the preserved resource module against the report')
     parser.add_argument('--allow-legacy', action='store_true',
-                        help='read a schema 1, 2, 3 or 4 report without the latest observations')
+                        help='read a schema 1 through 5 report without the latest observations')
     args = parser.parse_args()
     helper_sha256 = None
     if args.helper is not None:
@@ -265,7 +295,8 @@ def main():
     report = validate(json.loads(args.report.read_text(encoding='utf-8')),
                       require_parent_cases=not args.allow_legacy,
                       require_acl_cases=not args.allow_legacy, expected_module_sha256=helper_sha256,
-                      require_path_facts=not args.allow_legacy, require_junction_cases=not args.allow_legacy)
+                      require_path_facts=not args.allow_legacy, require_junction_cases=not args.allow_legacy,
+                      require_fresh_names=not args.allow_legacy)
     if report['schemaVersion'] == 1:
         print('Legacy Shell cross-location observations verified; parent observations unavailable.')
     elif report['schemaVersion'] == 2:
@@ -274,8 +305,10 @@ def main():
         print('Legacy Shell cross-location, parent and access observations verified; path facts unavailable.')
     elif report['schemaVersion'] == 4:
         print('Legacy Shell path observations verified; junction observations unavailable.')
+    elif report['schemaVersion'] == 5:
+        print('Legacy Shell junction observations verified; fresh-process names unavailable.')
     else:
-        print('Shell cross-location, parent, access and path observations and cleanup verified.')
+        print('Shell cross-location, access, junction and fresh-process observations and cleanup verified.')
 
 
 if __name__ == '__main__':
