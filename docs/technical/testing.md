@@ -167,6 +167,8 @@ PR #54 的首轮 [Windows CI](https://github.com/xiaodaozhi/xdstarter/actions/ru
 
 脚本仅在 GitHub 托管 Windows 运行，验证临时根路径并清理自建目录，证据门禁要求同一运行身份、四组模块交叉、四组父目录及四组访问规则交叉记录。Shell 工件和同轮证据还保存测试 helper 的实际二进制，并核对其 SHA-256 与矩阵记录一致，便于在后续隔离运行中使用相同字节复现；这是测试工件，按 CI 的七天保留期管理，不进入发行包。旧版报告可通过 `--allow-legacy` 参数读取，但不能作为新 CI 的完整证据。该对照不改变原有严格用户目录和带来源标记用例的断言，也不修改系统信任策略。
 
+工作区的系统显示名对照每轮另保存四个自有目录的字面文本、中文路径模块、ASCII 路径模块及系统模块观察，包括 `SHGetLocalizedName`、`SHLoadIndirectString` 的返回值、资源身份和 Shell 显示名；即使系统返回物理名称、测试按约定通过也保留这些数据。证据门禁检查四组均已配置并实际观察，不要求每个资源解析结果成功，以免隐藏需要调查的失败。严格用户目录断言仍独立执行；这些结果不能单独证明 Shell 选择物理名称的原因。
+
 ## 按点透视与内容对齐（Issue #50）
 
 磁贴左键按下采用带透视分母的视觉矩阵，三档尺寸按归一化按点倾斜，90 ms按下、180 ms复原；按钮命中与拖放坐标保持原几何。滚动条进入既有正文右边距，磁贴视口、组操作、窄模式目录与右上关闭按钮共享内容右缘；关于框“项目主页”使用明确左对齐的零水平内距文本。参数与行为见[交互说明](../product/interaction.md)和[布局说明](tile-layout.md)，不改变布局格式或Windows接管。
@@ -1005,7 +1007,7 @@ $env:PATH = "$PWD/build/Qt/6.8.2/msvc2022_64/bin;$env:PATH"
 
 快捷栏实际验证选择文档等已知入口，检查新系统窗口打开、产品收起及托盘恢复；不批量打开用户目录或设置。托盘文字菜单与 QML 电源菜单分别验收，不将其中一个通过记作另一个通过。测试无托盘恢复和 Explorer 重注册时，分别注明假平台结果与真实系统操作。
 
-Shell 本地化夹具失败时额外记录自有目录的字面文本、ASCII/中文资源路径与系统资源对照，严格本地化断言保持；对照不扫描用户目录、不更改信任策略。#56 跟踪 Windows CI 返回物理名称的问题。[Microsoft KB5103160](https://support.microsoft.com/en-us/servicing/os/windows/docs/2026/06/custom-folder-icons-or-localized-folder-names-might-not-appear-after-installing-the-june-2026-window) 说明 desktop.ini 来源信任硬化是可能影响因素；MOTW、系统版本和原生 API 返回值只是诊断信息，不能单凭该公告确认本机根因或将失败视为通过。
+Shell 本地化的工作区系统对照及断言失败时均记录自有目录的字面文本、ASCII/中文资源路径与系统资源对照，严格本地化断言保持；对照不扫描用户目录、不更改信任策略。#56 跟踪 Windows CI 返回物理名称的问题。[Microsoft KB5103160](https://support.microsoft.com/en-us/servicing/os/windows/docs/2026/06/custom-folder-icons-or-localized-folder-names-might-not-appear-after-installing-the-june-2026-window) 说明 desktop.ini 来源信任硬化是可能影响因素；MOTW、系统版本和原生 API 返回值只是诊断信息，不能单凭该公告确认本机根因或将失败视为通过。
 
 针对 #56，hosted Windows 在工作区继续验证目录合并和路径身份，并将产品名称与独立调用的 Shell 正常显示名逐项比较：系统返回中文或物理名时均不得由产品自行改写。另在同一一次性 runner 的用户配置临时目录运行完整的严格本地化夹具，仍必须得到精确中文名称，且同显示名、不同路径不得合并；任一用例失败都使 CI 失败。CI 连续运行两轮并分别保存两个位置的证据。无 `desktop.ini` 的受控目录另验证物理名与路径身份；只给自建夹具的另一份 `desktop.ini` 添加来源标记，核对产品遵循系统选择，并在清理夹具时一同删除；独立目录记录先读后配置、通知与等待时序及文件系统信息。夹具不扫描用户目录、不修改系统信任策略；这一区分修正了测试对 Shell 始终采用自定义名称的假设，不声称已确定特定 runner 忽略该文件的系统原因。
 
