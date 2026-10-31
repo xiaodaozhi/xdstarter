@@ -10,6 +10,7 @@ if (!$IsWindows -or $env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -
     throw 'The cross-location Shell fixture runs only on a GitHub-hosted Windows runner.'
 }
 . (Join-Path $PSScriptRoot 'windows_access_descriptor.ps1')
+. (Join-Path $PSScriptRoot 'shell_path_facts.ps1')
 
 $workspace = (Resolve-Path -LiteralPath $env:GITHUB_WORKSPACE).Path
 $workParent = (Resolve-Path -LiteralPath (Join-Path $workspace 'build')).Path
@@ -177,6 +178,7 @@ function New-ShellObservation($FolderRoot, $ModuleRoot, [string]$Physical, $Acce
                   moduleSha256 = $ModuleRoot.moduleSha256; modulePathSha256 = (Get-PathHash $ModuleRoot.module);
                   module = (Get-FileFacts $ModuleRoot.module);
                   ini = (Get-FileFacts $ini); folderAttributes = [int](Get-Item -LiteralPath $folder -Force).Attributes;
+                  folderPathFacts = (Get-XDStarterPathFacts $folder); iniPathFacts = (Get-XDStarterPathFacts $ini);
                   folderAclSha256 = (Get-AclHash $folder); setLocalizedName = $configured;
                   indirectResult = $indirectResult; indirectName = $indirect.ToString();
                   shellDisplayAvailable = ($displayResult -ne [IntPtr]::Zero); shellDisplayName = $info.displayName }
@@ -313,7 +315,7 @@ finally {
     }
 }
 $remaining = @($created | Where-Object { Test-Path -LiteralPath $_.path })
-$report = @{ schemaVersion = 3; cases = $cases; parentCases = $parentCases; parentComparisons = $parentComparisons;
+$report = @{ schemaVersion = 4; cases = $cases; parentCases = $parentCases; parentComparisons = $parentComparisons;
              aclCases = $aclCases;
              comInitializationResult = $comResult;
              cleanupComplete = ($cleanupErrors.Count -eq 0 -and $remaining.Count -eq 0);
@@ -324,6 +326,8 @@ $report = @{ schemaVersion = 3; cases = $cases; parentCases = $parentCases; pare
                                              $parentCases.Count -eq 4 -and $parentComparisons.Count -eq 2 -and
                                              $aclCases.Count -eq 4) { 'passed' } else { 'failed' });
              limitations = @('Fixture compares native Shell observations, not the cause of historical failures.',
+                             'URL zone mapping is not a documented equivalent of the Shell desktop.ini trust decision.',
+                             'A volume GUID comparison identifies a mounted volume, not a physical disk or trust policy.',
                              'Volume roots and resolved parent path spellings do not establish physical volume or directory identity.',
                              'ACL summaries do not establish effective permissions or parent-path effects.',
                              'Access templates apply to owned children, not parent directories or inherited-path policy.',

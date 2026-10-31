@@ -17,7 +17,41 @@ def is_hash(value):
     return isinstance(value, str) and re.fullmatch(r'[0-9a-f]{64}', value) is not None
 
 
-def validate_observation(case):
+def validate_path_facts(facts):
+    require(isinstance(facts, dict), 'missing-shell-path-facts')
+    zone, volume = facts.get('urlZone'), facts.get('volume')
+    require(isinstance(zone, dict) and isinstance(volume, dict), 'missing-shell-path-facts')
+    require({'managerHResult', 'managerAvailable', 'mapHResult', 'zone', 'errorType', 'errorHResult'} <= zone.keys() and
+            {'mountPathAvailable', 'mountPathError', 'mountPathSha256', 'volumeNameAvailable',
+             'volumeNameError', 'volumeNameSha256'} <= volume.keys(), 'missing-shell-path-facts')
+    for key in ('managerHResult', 'mapHResult', 'errorHResult'):
+        require(zone.get(key) is None or type(zone[key]) is int and -(2 ** 31) <= zone[key] < 2 ** 31,
+                'invalid-shell-url-zone')
+    require(type(zone.get('managerAvailable')) is bool and
+            (zone.get('zone') is None or type(zone['zone']) is int and 0 <= zone['zone'] < 2 ** 32) and
+            (zone.get('errorType') is None or isinstance(zone['errorType'], str) and
+             re.fullmatch(r'[A-Za-z0-9_.]+', zone['errorType']) is not None),
+            'invalid-shell-url-zone')
+    if zone.get('errorType') is not None:
+        require(type(zone.get('errorHResult')) is int, 'invalid-shell-url-zone')
+    else:
+        require(zone.get('errorHResult') is None and type(zone.get('managerHResult')) is int,
+                'invalid-shell-url-zone')
+        if zone['managerHResult'] >= 0 and zone['managerAvailable']:
+            require(type(zone.get('mapHResult')) is int and
+                    ((zone['mapHResult'] >= 0 and type(zone.get('zone')) is int) or
+                     (zone['mapHResult'] < 0 and zone.get('zone') is None)), 'invalid-shell-url-zone')
+        else:
+            require(zone.get('mapHResult') is None and zone.get('zone') is None, 'invalid-shell-url-zone')
+    for prefix in ('mountPath', 'volumeName'):
+        available, error, digest = (volume.get(prefix + suffix) for suffix in ('Available', 'Error', 'Sha256'))
+        require(type(available) is bool and type(error) is int and error >= 0 and
+                ((available and error == 0 and is_hash(digest)) or (not available and digest is None)),
+                'invalid-shell-volume-identity')
+    require(not volume['volumeNameAvailable'] or volume['mountPathAvailable'], 'invalid-shell-volume-identity')
+
+
+def validate_observation(case, require_path_facts=False):
     require(is_hash(case.get('moduleSha256')) and is_hash(case.get('folderAclSha256')),
             'missing-shell-matrix-hash')
     require(type(case.get('folderAttributes')) is int and not case['folderAttributes'] & 1024,
@@ -35,17 +69,21 @@ def validate_observation(case):
             case.get('shellDisplayAvailable') is True and
             isinstance(case.get('shellDisplayName'), str) and bool(case['shellDisplayName']),
             'incomplete-shell-matrix-observation')
+    if require_path_facts:
+        for key in ('folderPathFacts', 'iniPathFacts'):
+            validate_path_facts(case.get(key))
 
 
 def validate(report, expected_identity=None, require_parent_cases=False, require_acl_cases=False,
-             expected_module_sha256=None):
+             expected_module_sha256=None, require_path_facts=False):
     require(isinstance(report, dict) and type(report.get('schemaVersion')) is int and
-            report['schemaVersion'] in (1, 2, 3) and
+            report['schemaVersion'] in (1, 2, 3, 4) and
             report.get('status') == 'passed' and report.get('cleanupComplete') is True and
             report.get('errors') == [] and type(report.get('comInitializationResult')) is int and
             report['comInitializationResult'] >= 0, 'incomplete-shell-matrix')
     require(not require_parent_cases or report['schemaVersion'] >= 2, 'missing-parent-matrix')
     require(not require_acl_cases or report['schemaVersion'] >= 3, 'missing-acl-matrix')
+    require(not require_path_facts or report['schemaVersion'] >= 4, 'missing-shell-path-facts')
     identity = report.get('identity')
     require(isinstance(identity, dict) and isinstance(identity.get('sha'), str) and
             re.fullmatch(r'[0-9a-f]{40}', identity['sha']) is not None and
@@ -75,7 +113,7 @@ def validate(report, expected_identity=None, require_parent_cases=False, require
             require(location not in locations or locations[location] == (drive, filesystem),
                     'inconsistent-shell-matrix-volume')
             locations[location] = (drive, filesystem)
-        validate_observation(case)
+        validate_observation(case, report['schemaVersion'] >= 4)
         modules.add(case['moduleSha256'])
         if report['schemaVersion'] >= 2:
             path_hash = case.get('modulePathSha256')
@@ -106,7 +144,7 @@ def validate_acl_cases(report, locations, modules, workspace_module_path):
         require(target in ('workspace', 'profile') and template in ('workspace', 'profile') and
                 (target, template) not in pairs, 'invalid-acl-matrix-pair')
         pairs.add((target, template))
-        validate_observation(case)
+        validate_observation(case, report['schemaVersion'] >= 4)
         require(case.get('physicalName') == f'acl-{target}-{template}' and
                 (case.get('folderDrive'), case.get('folderFileSystem')) == locations[target] and
                 (case.get('moduleDrive'), case.get('moduleFileSystem')) == locations['workspace'] and
@@ -135,7 +173,7 @@ def validate_parent_cases(report, locations, modules, workspace_module_path):
         name = case.get('parentName')
         require(isinstance(name, str) and name in names and name not in by_name, 'invalid-parent-matrix-name')
         by_name[name] = case
-        validate_observation(case)
+        validate_observation(case, report['schemaVersion'] >= 4)
         require(case.get('moduleSha256') in modules and case.get('modulePathSha256') == workspace_module_path and
                 case.get('physicalName') == f'parent-{name}',
                 'invalid-parent-matrix-module')
@@ -185,7 +223,7 @@ def main():
     parser.add_argument('report', type=Path)
     parser.add_argument('--helper', type=Path, help='verify the preserved resource module against the report')
     parser.add_argument('--allow-legacy', action='store_true',
-                        help='read a schema 1 or 2 report without the latest observations')
+                        help='read a schema 1, 2 or 3 report without the latest observations')
     args = parser.parse_args()
     helper_sha256 = None
     if args.helper is not None:
@@ -194,13 +232,16 @@ def main():
             helper_sha256 = hashlib.file_digest(helper, 'sha256').hexdigest()
     report = validate(json.loads(args.report.read_text(encoding='utf-8')),
                       require_parent_cases=not args.allow_legacy,
-                      require_acl_cases=not args.allow_legacy, expected_module_sha256=helper_sha256)
+                      require_acl_cases=not args.allow_legacy, expected_module_sha256=helper_sha256,
+                      require_path_facts=not args.allow_legacy)
     if report['schemaVersion'] == 1:
         print('Legacy Shell cross-location observations verified; parent observations unavailable.')
     elif report['schemaVersion'] == 2:
         print('Legacy Shell cross-location and parent observations verified; access observations unavailable.')
+    elif report['schemaVersion'] == 3:
+        print('Legacy Shell cross-location, parent and access observations verified; path facts unavailable.')
     else:
-        print('Shell cross-location, parent and access observations and cleanup verified.')
+        print('Shell cross-location, parent, access and path observations and cleanup verified.')
 
 
 if __name__ == '__main__':

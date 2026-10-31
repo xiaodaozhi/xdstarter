@@ -15,6 +15,10 @@ import verify_shell_matrix
 
 def sample_report():
     facts = {'attributes': 6, 'aclSha256': 'b' * 64, 'aclProtected': False, 'zonePresent': False}
+    path_facts = {'urlZone': {'managerHResult': 0, 'managerAvailable': True, 'mapHResult': 0,
+                              'zone': 0, 'errorType': None, 'errorHResult': None},
+                  'volume': {'mountPathAvailable': True, 'mountPathError': 0, 'mountPathSha256': 'a' * 64,
+                             'volumeNameAvailable': True, 'volumeNameError': 0, 'volumeNameSha256': 'b' * 64}}
     cases = []
     for folder in ('workspace', 'profile'):
         for module in ('workspace', 'profile'):
@@ -25,6 +29,7 @@ def sample_report():
                           'folderAclSha256': 'c' * 64, 'moduleSha256': 'a' * 64,
                           'modulePathSha256': ('1' if module == 'workspace' else '2') * 64,
                           'module': {**facts, 'attributes': 32}, 'ini': dict(facts),
+                          'folderPathFacts': copy.deepcopy(path_facts), 'iniPathFacts': copy.deepcopy(path_facts),
                           'setLocalizedName': 0, 'indirectResult': 0, 'indirectName': '本地化工具',
                           'shellDisplayAvailable': True, 'shellDisplayName': '本地化工具'})
     parents = []
@@ -56,7 +61,7 @@ def sample_report():
                         iniAccessSha256=ini_access, iniTemplateSha256=ini_access)
             case['ini']['aclProtected'] = True
             acl_cases.append(case)
-    return {'schemaVersion': 3, 'status': 'passed', 'cleanupComplete': True, 'errors': [],
+    return {'schemaVersion': 4, 'status': 'passed', 'cleanupComplete': True, 'errors': [],
             'comInitializationResult': 0, 'osVersion': 'synthetic Windows',
             'identity': {'sha': 'd' * 40, 'runId': '123', 'attempt': '1',
                          'runnerOs': 'Windows', 'runnerArch': 'X64'}, 'cases': cases,
@@ -64,6 +69,54 @@ def sample_report():
 
 
 class ShellMatrixTests(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == 'win32' and shutil.which('pwsh'), 'requires Windows PowerShell 7')
+    def test_read_only_path_facts_on_owned_file(self):
+        root = Path(verify_shell_matrix.__file__).resolve().parents[1]
+        build = root / 'build'
+        build.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix='path-facts-', dir=build) as directory:
+            fixture = Path(directory) / '本地化.ini'
+            fixture.write_bytes(b'owned fixture')
+            env = os.environ.copy()
+            env['XDSTARTER_TEST_PATH_FACTS_SCRIPT'] = str(root / 'scripts/shell_path_facts.ps1')
+            env['XDSTARTER_TEST_PATH_FACTS_FILE'] = str(fixture)
+            env['TEMP'] = env['TMP'] = str(build)
+            command = r'''
+                $ErrorActionPreference = 'Stop'
+                . $env:XDSTARTER_TEST_PATH_FACTS_SCRIPT
+                Get-XDStarterPathFacts $env:XDSTARTER_TEST_PATH_FACTS_FILE | ConvertTo-Json -Depth 5 -Compress
+            '''
+            result = subprocess.run([shutil.which('pwsh'), '-NoProfile', '-NonInteractive', '-Command', command],
+                                    capture_output=True, text=True, encoding='utf-8', env=env, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            verify_shell_matrix.validate_path_facts(json.loads(result.stdout))
+            self.assertEqual(fixture.read_bytes(), b'owned fixture')
+
+    def test_path_facts_reject_missing_or_inconsistent_values_but_preserve_api_failures(self):
+        for change in ('missing', 'success-without-zone', 'failure-with-zone', 'bad-hash', 'boolean-hr'):
+            with self.subTest(change=change):
+                report = sample_report()
+                facts = report['cases'][0]['iniPathFacts']
+                if change == 'missing':
+                    report['cases'][0].pop('iniPathFacts')
+                elif change == 'success-without-zone':
+                    facts['urlZone']['zone'] = None
+                elif change == 'failure-with-zone':
+                    facts['urlZone']['mapHResult'] = -1
+                elif change == 'bad-hash':
+                    facts['volume']['volumeNameSha256'] = 'not-a-hash'
+                else:
+                    facts['urlZone']['mapHResult'] = True
+                with self.assertRaises(ValueError):
+                    verify_shell_matrix.validate(report, require_path_facts=True)
+        report = sample_report()
+        facts = report['cases'][0]['iniPathFacts']
+        facts['urlZone'].update(managerHResult=-1, managerAvailable=False, mapHResult=None, zone=None)
+        facts['volume'].update(volumeNameAvailable=False, volumeNameError=5, volumeNameSha256=None)
+        verify_shell_matrix.validate(report, require_path_facts=True)
+        facts['urlZone'].update(managerHResult=None, errorType='System.InvalidOperationException', errorHResult=-1)
+        verify_shell_matrix.validate(report, require_path_facts=True)
+
     @unittest.skipUnless(sys.platform == 'win32' and shutil.which('pwsh'), 'requires Windows PowerShell 7')
     def test_restoration_allows_only_auto_inherited_control_flag(self):
         script = r'''
@@ -237,6 +290,10 @@ class ShellMatrixTests(unittest.TestCase):
 
     def test_legacy_reports_remain_readable_but_not_sufficient_for_new_ci(self):
         report = sample_report()
+        report['schemaVersion'] = 3
+        verify_shell_matrix.validate(report, require_acl_cases=True)
+        with self.assertRaisesRegex(ValueError, 'missing-shell-path-facts'):
+            verify_shell_matrix.validate(report, require_path_facts=True)
         report['schemaVersion'] = 2
         report.pop('aclCases')
         verify_shell_matrix.validate(report, require_parent_cases=True)
