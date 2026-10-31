@@ -1,10 +1,12 @@
 function Test-RestoredAccess([string]$Original, [string]$Actual) {
     $before = [Security.AccessControl.RawSecurityDescriptor]::new($Original)
     $after = [Security.AccessControl.RawSecurityDescriptor]::new($Actual)
-    # Windows can set this metadata flag while restoring inheritance. Preserve
-    # every other control flag and compare the ordered DACL bytes exactly.
-    $mask = -bnot [int][Security.AccessControl.ControlFlags]::DiscretionaryAclAutoInherited
-    if (([int]$before.ControlFlags -band $mask) -ne ([int]$after.ControlFlags -band $mask)) {
+    # Windows can set this metadata flag while restoring inheritance. Only
+    # that observed addition is allowed; ordered DACL bytes remain exact.
+    $autoInherited = [int][Security.AccessControl.ControlFlags]::DiscretionaryAclAutoInherited
+    $beforeFlags = [int]$before.ControlFlags
+    $afterFlags = [int]$after.ControlFlags
+    if ($afterFlags -ne $beforeFlags -and $afterFlags -ne ($beforeFlags -bor $autoInherited)) {
         return $false
     }
     if ($null -eq $before.DiscretionaryAcl -or $null -eq $after.DiscretionaryAcl) {
