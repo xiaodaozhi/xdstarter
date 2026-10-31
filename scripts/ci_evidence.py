@@ -114,6 +114,24 @@ def require(ok, message):
         raise ValueError(message)
 
 
+def validate_shell_localization_controls(controls):
+    require(isinstance(controls, list) and len(controls) == 4, 'missing-shell-localization-controls')
+    for index, (kind, control) in enumerate(zip(
+            ('literal', 'unicode-module', 'ascii-module', 'system-module'), controls)):
+        require(isinstance(control, dict) and type(control.get('case')) is int and
+                control['case'] == index and control.get('kind') == kind and
+                control.get('configured') is True and control.get('asciiModuleCopied') is True and
+                control.get('displayAvailable') is True and
+                isinstance(control.get('reference'), str) and bool(control['reference']) and
+                isinstance(control.get('displayName'), str) and bool(control['displayName']) and
+                isinstance(control.get('indirectName'), str) and
+                isinstance(control.get('localizedModule'), str) and
+                type(control.get('localizedResourceId')) is int and
+                all(isinstance(control.get(key), str) and re.fullmatch(r'[0-9a-f]{1,8}', control[key])
+                    for key in ('indirectResultHex', 'localizedResultHex')),
+                'incomplete-shell-localization-controls')
+
+
 def identity(env):
     result = {key: env.get(key, '') for key in
               ('GITHUB_SHA', 'GITHUB_RUN_ID', 'GITHUB_RUN_ATTEMPT', 'RUNNER_OS', 'RUNNER_ARCH')}
@@ -293,24 +311,7 @@ def validate_role(directory, role, expected):
                         display.get('mode') == ('system' if fixture == 'workspace' else 'strict-localized'),
                         'incomplete-or-misattributed-shell-evidence')
                 if fixture == 'workspace':
-                    controls = shell.get('shellLocalizationControls')
-                    require(isinstance(controls, list) and len(controls) == 4,
-                            'missing-shell-localization-controls')
-                    for index, (kind, control) in enumerate(zip(
-                            ('literal', 'unicode-module', 'ascii-module', 'system-module'), controls)):
-                        require(isinstance(control, dict) and type(control.get('case')) is int and
-                                control['case'] == index and control.get('kind') == kind and
-                                control.get('configured') is True and control.get('asciiModuleCopied') is True and
-                                control.get('displayAvailable') is True and
-                                isinstance(control.get('reference'), str) and bool(control['reference']) and
-                                isinstance(control.get('displayName'), str) and bool(control['displayName']) and
-                                isinstance(control.get('indirectName'), str) and
-                                isinstance(control.get('localizedModule'), str) and
-                                type(control.get('localizedResourceId')) is int and
-                                all(isinstance(control.get(key), str) and
-                                    re.fullmatch(r'[0-9a-f]{1,8}', control[key]) for key in
-                                    ('indirectResultHex', 'localizedResultHex')),
-                                'incomplete-shell-localization-controls')
+                    validate_shell_localization_controls(shell.get('shellLocalizationControls'))
         matrix = json.loads((directory / 'shell-matrix.json').read_text(encoding='utf-8'))
         verify_shell_matrix.validate(matrix, {'sha': expected['GITHUB_SHA'], 'runId': expected['GITHUB_RUN_ID'],
                                                'attempt': expected['GITHUB_RUN_ATTEMPT'],
