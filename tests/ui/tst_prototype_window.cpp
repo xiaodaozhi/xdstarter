@@ -557,6 +557,7 @@ class PrototypeWindowTest : public QObject {
     void groupChangesPreserveSearchFocus();
     void applicationLayoutRestoresUnavailableTarget();
     void unrelatedApplicationIconPreservesPinnedTile();
+    void iconUpdatesAreScopedAndRetired();
     void shortcutRailAssetsAndTheme();
     void desktopShortcutActions();
     void auxiliaryMenusRespectEscape();
@@ -4970,6 +4971,107 @@ void PrototypeWindowTest::unrelatedApplicationIconPreservesPinnedTile() {
     QVERIFY(controller_->unpinTile(tileId));
     QCOMPARE(tileGeometries().size(), 0);
     QVERIFY(controller_->iconVersions().isEmpty());
+    QVERIFY(state->workerOnly);
+}
+
+void PrototypeWindowTest::iconUpdatesAreScopedAndRetired() {
+    const auto state = std::make_shared<CatalogTestState>();
+    destroyWindow();
+    createWindow({}, false, state);
+    QTRY_COMPARE(catalog_->applicationsModel()->rowCount(), state->applications.size());
+    const auto firstId = state->applications.first().id;
+    const auto secondId = state->applications.last().id;
+    QVERIFY(controller_->pinApplication(firstId));
+    QVERIFY(controller_->pinApplication(secondId));
+    QTRY_COMPARE(tileGeometries().size(), 2);
+    QTRY_VERIFY(!catalog_->cachedIcon(firstId).isNull());
+    QTRY_VERIFY(!catalog_->cachedIcon(secondId).isNull());
+
+    const auto groups = service_->previewGroups();
+    QString firstTileId, secondTileId;
+    for (const auto& group : groups) {
+        for (const auto& tile : group.tiles) {
+            if (tile.targetId == firstId) firstTileId = tile.id;
+            if (tile.targetId == secondId) secondTileId = tile.id;
+        }
+    }
+    QVERIFY(!firstTileId.isEmpty() && !secondTileId.isEmpty());
+    auto* firstTile = item(QStringLiteral("tile-") + firstTileId);
+    auto* secondTile = item(QStringLiteral("tile-") + secondTileId);
+    QVERIFY(firstTile && secondTile);
+    auto* firstIcon = visualItem(firstTile, QStringLiteral("tileIcon"));
+    auto* secondIcon = visualItem(secondTile, QStringLiteral("tileIcon"));
+    QVERIFY(firstIcon && secondIcon);
+    QTRY_COMPARE(firstIcon->property("status").toInt(), 1);
+    QTRY_COMPARE(secondIcon->property("status").toInt(), 1);
+
+    auto* firstVersion = controller_->iconVersionState(firstId);
+    auto* secondVersion = controller_->iconVersionState(secondId);
+    QVERIFY(firstVersion && secondVersion && firstVersion != secondVersion);
+    QCOMPARE(controller_->iconVersionState(firstId), firstVersion);
+    QCOMPARE(QQmlEngine::objectOwnership(firstVersion), QQmlEngine::CppOwnership);
+    engine_->collectGarbage();
+    QCOMPARE(controller_->iconVersionState(firstId), firstVersion);
+    QSignalSpy firstChanged(firstVersion, SIGNAL(versionChanged()));
+    QSignalSpy secondChanged(secondVersion, SIGNAL(versionChanged()));
+    QVERIFY(firstChanged.isValid() && secondChanged.isValid());
+    const auto firstBefore = firstIcon->property("source").toUrl();
+    const auto secondBefore = secondIcon->property("source").toUrl();
+    emit catalog_->iconReady(firstId);
+    QTRY_VERIFY(firstIcon->property("source").toUrl() != firstBefore);
+    QCOMPARE(firstChanged.count(), 1);
+    QCOMPARE(secondChanged.count(), 0);
+    QCOMPARE(secondIcon->property("source").toUrl(), secondBefore);
+
+    auto* field = item(QStringLiteral("searchField"));
+    QVERIFY(field);
+    field->setProperty("text", QStringLiteral("测试"));
+    QTRY_VERIFY(!controller_->searchBusy());
+    QTRY_COMPARE(controller_->searchResults().size(), 2);
+    const auto firstRowName = QStringLiteral("searchResult-") + firstId;
+    const auto secondRowName = QStringLiteral("searchResult-") + secondId;
+    // The model can be ready before ListView has instantiated its delegates.
+    QTRY_VERIFY(item(firstRowName));
+    QTRY_VERIFY(item(secondRowName));
+    auto* firstRow = item(firstRowName);
+    auto* secondRow = item(secondRowName);
+    QVERIFY(firstRow && secondRow);
+    auto* firstSearchIcon = visualItem(firstRow, QStringLiteral("searchResultIcon"));
+    auto* secondSearchIcon = visualItem(secondRow, QStringLiteral("searchResultIcon"));
+    QVERIFY(firstSearchIcon && secondSearchIcon);
+    const auto firstSearchBefore = firstSearchIcon->property("source").toUrl();
+    const auto secondSearchBefore = secondSearchIcon->property("source").toUrl();
+    const auto firstTileBeforeSearchUpdate = firstIcon->property("source").toUrl();
+    emit catalog_->iconReady(firstId);
+    QTRY_VERIFY(firstSearchIcon->property("source").toUrl() != firstSearchBefore);
+    QTRY_VERIFY(firstIcon->property("source").toUrl() != firstTileBeforeSearchUpdate);
+    QCOMPARE(secondSearchIcon->property("source").toUrl(), secondSearchBefore);
+    QCOMPARE(secondIcon->property("source").toUrl(), secondBefore);
+    QCOMPARE(secondChanged.count(), 0);
+
+    QPointer<QObject> retired(firstVersion);
+    QVERIFY(controller_->unpinApplication(firstId));
+    QCOMPARE(controller_->iconVersionState(firstId), firstVersion);
+    QTRY_COMPARE(controller_->searchResults().size(), 2);
+    QTRY_VERIFY(item(firstRowName));
+    auto* retainedRow = item(firstRowName);
+    QVERIFY(retainedRow);
+    auto* retainedIcon = visualItem(retainedRow, QStringLiteral("searchResultIcon"));
+    QVERIFY(retainedIcon);
+    const auto retainedBefore = retainedIcon->property("source").toUrl();
+    emit catalog_->iconReady(firstId);
+    QTRY_VERIFY(retainedIcon->property("source").toUrl() != retainedBefore);
+    const auto retiredVersion = firstVersion->property("version").toULongLong();
+    field->setProperty("text", QString{});
+    QTRY_VERIFY(!controller_->searchActive());
+    QVERIFY(!controller_->iconVersionState(firstId));
+    QTRY_VERIFY(retired.isNull());
+    emit catalog_->iconReady(firstId);
+    QVERIFY(!controller_->iconVersionState(firstId));
+    QVERIFY(controller_->pinApplication(firstId));
+    auto* repinnedVersion = controller_->iconVersionState(firstId);
+    QVERIFY(repinnedVersion);
+    QVERIFY(repinnedVersion->property("version").toULongLong() > retiredVersion);
     QVERIFY(state->workerOnly);
 }
 

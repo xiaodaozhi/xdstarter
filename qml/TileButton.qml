@@ -21,7 +21,8 @@ Button {
     property bool readOnly: false
     property bool dragging: false
     property int iconRevision: 0
-    property var iconVersions: ({})
+    property var iconVersionSource: null
+    readonly property var iconVersionState: iconVersionSource && iconSource.length > 0 ? iconVersionSource.iconVersionState(tile.targetId) : null
     readonly property bool pointerHovered: tileHover.hovered
     property bool pointerPressActive: false
     property bool pressComponentReady: false
@@ -429,7 +430,7 @@ Button {
             anchors.verticalCenterOffset: tileButton.tile.small ? 0 : -20
             width: tileButton.iconSizeDip
             height: tileButton.iconSizeDip
-            source: tileButton.iconSource.length > 0 ? tileButton.iconSource + "?g=" + tileButton.iconRevision + "&v=" + (tileButton.iconVersions[tileButton.tile.targetId] || 0) : ""
+            source: tileButton.iconSource.length > 0 ? tileButton.iconSource + "?g=" + tileButton.iconRevision + "&v=" + (tileButton.iconVersionState ? tileButton.iconVersionState.version : 0) : ""
             sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
             sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
             fillMode: Image.PreserveAspectFit
