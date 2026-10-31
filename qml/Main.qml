@@ -200,6 +200,7 @@ ApplicationWindow {
     property string draggedTileId: ""
     property string draggedApplicationId: ""
     readonly property bool dragActive: draggedTileId.length > 0 || draggedApplicationId.length > 0
+    property bool dragPreviewReady: false
     property real dragPointerX: 0
     property real dragPointerY: 0
     property real dragOffsetX: 0
@@ -1167,6 +1168,7 @@ ApplicationWindow {
     function startDrag(tileId: string, sceneX: real, sceneY: real, offsetX: real, offsetY: real, tileWidth: real, tileHeight: real): void {
         if (!controller.editMode || controller.readOnly)
             return;
+        dragPreviewReady = false;
         draggedTileId = tileId;
         focusedTileId = tileId;
         dragOffsetX = offsetX;
@@ -1174,11 +1176,13 @@ ApplicationWindow {
         draggedWidth = tileWidth;
         draggedHeight = tileHeight;
         updateDrag(sceneX, sceneY);
+        dragPreviewReady = true;
     }
 
     function startApplicationDrag(applicationId: string, sceneX: real, sceneY: real): void {
         if (controller.readOnly || controller.importCommitting || controller.isApplicationPinned(applicationId))
             return;
+        dragPreviewReady = false;
         draggedApplicationId = applicationId;
         focusedTileId = "";
         draggedWidth = controller.previewApplicationPlacement(applicationId, "", 0, 0).width;
@@ -1186,6 +1190,7 @@ ApplicationWindow {
         dragOffsetX = draggedWidth / 2;
         dragOffsetY = draggedHeight / 2;
         updateDrag(sceneX, sceneY);
+        dragPreviewReady = true;
     }
 
     function updateDrag(sceneX: real, sceneY: real): void {
@@ -1255,6 +1260,7 @@ ApplicationWindow {
     }
 
     function clearDragPreview(): void {
+        dragPreviewReady = false;
         dragValid = false;
         dragTargetGroupId = "";
         dragMessage = "";
@@ -3409,11 +3415,11 @@ ApplicationWindow {
         id: dragPlacementPreview
         objectName: "dragPlacementPreview"
         z: 1000
-        visible: window.dragActive
+        visible: window.dragActive && window.dragPreviewReady
         scale: window.dragActive ? 1.025 : 1
         readonly property color targetColor: window.highContrast ? window.theme.opaqueFallback : Qt.alpha(window.dragValid ? window.tokens.brand.cyan : window.tokens.status.error, window.dragValid ? 0.2 : 0.27)
         Behavior on x {
-            enabled: window.animationsEnabled
+            enabled: window.animationsEnabled && window.dragPreviewReady
             onEnabledChanged: {
                 if (!enabled)
                     dragPlacementPreview.x = Qt.binding(function () { return window.previewX; });
@@ -3424,7 +3430,7 @@ ApplicationWindow {
             }
         }
         Behavior on y {
-            enabled: window.animationsEnabled
+            enabled: window.animationsEnabled && window.dragPreviewReady
             onEnabledChanged: {
                 if (!enabled)
                     dragPlacementPreview.y = Qt.binding(function () { return window.previewY; });
