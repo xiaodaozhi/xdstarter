@@ -1,6 +1,6 @@
 {
   "name": "Issue 56 ACL restore diagnostic",
-  "on": {"push": {"branches": ["exp/56-acl-restore-probe"]}},
+  "on": {"push": {"branches": ["exp/56-replay-physical-helper"]}},
   "permissions": {"contents": "read", "actions": "read"},
   "jobs": {
     "probe": {
@@ -8,7 +8,7 @@
       "timeout-minutes": 8,
       "steps": [
         {"name": "Checkout", "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1", "with": {"persist-credentials": false}},
-        {"name": "Download verified source fixture", "uses": "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093", "with": {"name": "xdstarter-shell-localization-96ec8e780ee3f9ae7ed9d5249314619469427f2b", "run-id": "41211992144", "github-token": "${{ github.token }}", "path": "build/replay-origin"}},
+        {"name": "Download verified source fixture", "uses": "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093", "with": {"name": "xdstarter-shell-localization-7d341bc9b728fdfd36dd08b89427e7dd7ad1b758", "run-id": "41214992633", "github-token": "${{ github.token }}", "path": "build/replay-origin"}},
         {"name": "Compare owned access descriptors", "shell": "pwsh", "run": "New-Item -ItemType Directory -Path build -Force | Out-Null\n& ./.github/diagnostics/acl-restore-probe.ps1"},
         {"name": "Compare minimal and preserved resource modules", "shell": "pwsh", "run": "& ./.github/diagnostics/shell-matrix-probe.ps1"},
         {"name": "Upload replay matrices", "if": "always() && !cancelled()", "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9", "with": {"name": "xdstarter-shell-replay-${{ github.sha }}", "path": "build/app-release/shell-localization-history/*.json", "if-no-files-found": "warn", "retention-days": 7}}

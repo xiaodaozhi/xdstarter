@@ -28,7 +28,7 @@ $output = Join-Path $history 'cross-matrix.json'
 $origin = Join-Path $workspace 'build/replay-origin'
 $preserved = Join-Path $origin 'xdstarter_launch_fixture.exe'
 $originReport = Join-Path $origin 'shell-localization-history/cross-matrix.json'
-$expectedHash = 'c640725bccb6d6c6c4666b2ecdda628b24e60abfc377f1d2a5ee1cc9b6a382c2'
+$expectedHash = 'effaf2f3375390eca6f3e01e52e3a719bb5100e7d3edb393af685750f83d698a'
 if (!(Test-Path -LiteralPath $preserved) -or !(Test-Path -LiteralPath $originReport) -or
     (Get-FileHash -LiteralPath $preserved -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedHash) {
     throw 'Preserved resource helper is missing or has the wrong hash.'
@@ -36,8 +36,10 @@ if (!(Test-Path -LiteralPath $preserved) -or !(Test-Path -LiteralPath $originRep
 & python (Join-Path $workspace 'scripts/verify_shell_matrix.py') $originReport
 if ($LASTEXITCODE -ne 0) { throw 'Original Shell matrix evidence is invalid.' }
 $original = Get-Content -LiteralPath $originReport -Raw | ConvertFrom-Json
-if ($original.identity.runId -ne '41211992144' -or
-    @($original.cases | Where-Object moduleSha256 -ne $expectedHash).Count -ne 0) {
+if ($original.identity.runId -ne '41214992633' -or $original.identity.attempt -ne '1' -or
+    $original.identity.sha -ne '7d341bc9b728fdfd36dd08b89427e7dd7ad1b758' -or
+    @(@($original.cases) + @($original.aclCases) + @($original.parentCases) |
+        Where-Object moduleSha256 -ne $expectedHash).Count -ne 0) {
     throw 'Preserved helper is not bound to the expected source run.'
 }
 $env:XDSTARTER_SHELL_PARENT_ACCESS_PROBE = '1'
