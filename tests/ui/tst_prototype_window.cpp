@@ -530,6 +530,7 @@ class PrototypeWindowTest : public QObject {
     void futureConfigurationIsReadOnly();
     void applicationDirectoryAndPinning();
     void lateApplicationMenuClosePreservesTileFocus();
+    void explicitSearchSurvivesMissingApplicationMenuSource();
     void equivalentShortcutsPreserveOldTilesAndSearch();
     void applicationLaunchLifecycle();
     void searchFocusCompositionAndEscape();
@@ -540,6 +541,8 @@ class PrototypeWindowTest : public QObject {
     void lateMoreMenuClosePreservesGroupFocus();
     void explicitGroupFocusSurvivesLateMenuClose();
     void explicitSearchFocusSurvivesLateMenuClose();
+    void explicitSearchCancelsPendingGroupFocus_data();
+    void explicitSearchCancelsPendingGroupFocus();
     void moreMenuCloseReturnsFocus();
     void groupNameCompositionAndCancellation();
     void groupCatalogMoveAndRestart();
@@ -3523,6 +3526,41 @@ void PrototypeWindowTest::lateApplicationMenuClosePreservesTileFocus() {
     QTRY_VERIFY(sizeMenu()->property("opened").toBool());
 }
 
+void PrototypeWindowTest::explicitSearchSurvivesMissingApplicationMenuSource() {
+    auto* search = item(QStringLiteral("searchField"));
+    auto* more = item(QStringLiteral("moreMenuButton"));
+    QVERIFY(search && more);
+    QTRY_VERIFY(!window_->property("internalPopupVisible").toBool());
+    QTRY_VERIFY(!window_->property("presentationFocusPending").toBool());
+    more->forceActiveFocus(Qt::OtherFocusReason);
+    QVERIFY(more->hasActiveFocus());
+    // A destroyed catalogue delegate makes its QML Item reference null.
+    QVERIFY(window_->property("pinMenuReturnTarget").isNull());
+    const auto originalName = window_->objectName();
+    const auto marker = QStringLiteral("missingApplicationCallbackExecuted");
+    const auto fence = QStringLiteral("afterExplicitSearchCallback");
+    QSignalSpy nameChanges(window_, &QObject::objectNameChanged);
+    QVERIFY(queueFocusReplay(QStringLiteral("restoreApplicationMenuFocus"), marker));
+    QCOMPARE(window_->objectName(), originalName);
+    QVERIFY(QMetaObject::invokeMethod(window_, "focusSearch"));
+    QVERIFY(search->hasActiveFocus());
+    // Both unique closures use the same Qt 6.8.2 delayed-call queue; a later
+    // callback provides a bounded fence after the invalidated callback.
+    QVERIFY(queueFocusReplay(QStringLiteral("restoreMoreMenuFocus"), fence));
+    QTRY_COMPARE(window_->objectName(), fence);
+    for (const auto& change : nameChanges)
+        QVERIFY(change.at(0).toString() != marker);
+    QVERIFY2(search->hasActiveFocus(), "A missing application source stole explicit search focus");
+    more->forceActiveFocus(Qt::OtherFocusReason);
+    QVERIFY(more->hasActiveFocus());
+    QVERIFY(window_->setProperty("pinMenuReturnTarget", QVariant::fromValue(more)));
+    const auto freshMarker = QStringLiteral("freshApplicationCallbackExecuted");
+    QVERIFY(queueFocusReplay(QStringLiteral("restoreApplicationMenuFocus"), freshMarker));
+    QTRY_COMPARE(window_->objectName(), freshMarker);
+    QVERIFY2(more->hasActiveFocus(), "A later application-menu restore was incorrectly canceled");
+    window_->setObjectName(originalName);
+}
+
 void PrototypeWindowTest::applicationDirectoryAndPinning() {
     const auto state = std::make_shared<CatalogTestState>();
     destroyWindow();
@@ -4145,6 +4183,48 @@ void PrototypeWindowTest::explicitSearchFocusSurvivesLateMenuClose() {
     QVERIFY(!window_->property("internalPopupVisible").toBool());
     QVERIFY(QMetaObject::invokeMethod(window_, "restoreMoreMenuFocus"));
     QVERIFY2(search->hasActiveFocus(), "A stale menu close stole focus from search");
+}
+
+void PrototypeWindowTest::explicitSearchCancelsPendingGroupFocus_data() {
+    QTest::addColumn<QString>("restoreMethod");
+    QTest::newRow("more-menu-close") << QStringLiteral("restoreMoreMenuFocus");
+    QTest::newRow("group-operation") << QStringLiteral("restoreGroupFocus");
+}
+
+void PrototypeWindowTest::explicitSearchCancelsPendingGroupFocus() {
+    QFETCH(QString, restoreMethod);
+    controller_->setEditMode(true);
+    auto* search = item(QStringLiteral("searchField"));
+    auto* more = item(QStringLiteral("moreMenuButton"));
+    auto* actions = item(QStringLiteral("groupActions-work"));
+    QVERIFY(search && more && actions && actions->isVisible());
+    QTRY_VERIFY(!window_->property("internalPopupVisible").toBool());
+    QTRY_VERIFY(!window_->property("presentationFocusPending").toBool());
+    more->forceActiveFocus(Qt::OtherFocusReason);
+    QVERIFY(more->hasActiveFocus());
+    QVERIFY(window_->setProperty("focusedGroupId", QStringLiteral("work")));
+    QVERIFY(window_->setProperty("groupFocusPending", true));
+    const auto originalName = window_->objectName();
+    const auto marker = QStringLiteral("pendingGroupCallbackExecuted");
+    const auto fence = QStringLiteral("afterExplicitGroupSearchCallback");
+    QSignalSpy nameChanges(window_, &QObject::objectNameChanged);
+    QVERIFY(queueFocusReplay(restoreMethod, marker));
+    QCOMPARE(window_->objectName(), originalName);
+    // This is the same synchronous action used by Ctrl+F, before the queued
+    // close callback is delivered. The pending group state is injected.
+    QVERIFY(QMetaObject::invokeMethod(window_, "focusSearch"));
+    QVERIFY(search->hasActiveFocus());
+    QVERIFY(queueFocusReplay(QStringLiteral("restoreMoreMenuFocus"), fence));
+    QTRY_COMPARE(window_->objectName(), fence);
+    for (const auto& change : nameChanges)
+        QVERIFY(change.at(0).toString() != marker);
+    QVERIFY2(search->hasActiveFocus(), "A pending group restore stole explicit search focus");
+    QVERIFY(!window_->property("groupFocusPending").toBool());
+    // Group operations can also queue this function directly, without the
+    // popup wrapper. It must still respect the explicit search focus.
+    QVERIFY(QMetaObject::invokeMethod(window_, "restoreGroupFocus"));
+    QVERIFY(search->hasActiveFocus());
+    window_->setObjectName(originalName);
 }
 
 void PrototypeWindowTest::explicitGroupFocusSurvivesLateMenuClose() {

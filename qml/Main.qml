@@ -189,6 +189,7 @@ ApplicationWindow {
     property bool dismissalFocusSaved: false
     property string focusedGroupId: ""
     property bool groupFocusPending: false
+    property int popupFocusGeneration: 0
     property string managedGroupId: ""
     property string namingGroupId: ""
     property string namingTileId: ""
@@ -833,6 +834,10 @@ ApplicationWindow {
 
     function focusSearch(): void {
         cancelDrag();
+        // Explicit search supersedes older popup and group-focus restores.
+        ++popupFocusGeneration;
+        groupFocusPending = false;
+        pinMenuReturnTarget = null;
         searchField.forceActiveFocus(Qt.ShortcutFocusReason);
         searchField.selectAll();
     }
@@ -1080,8 +1085,9 @@ ApplicationWindow {
         if (presentationSuspended || presentationFocusPending)
             return;
         const generation = presentationGeneration;
+        const focusGeneration = popupFocusGeneration;
         Qt.callLater(function () {
-            if (generation === window.presentationGeneration && window.visible && !window.presentationSuspended && !window.presentationFocusPending && !window.internalPopupVisible)
+            if (generation === window.presentationGeneration && focusGeneration === window.popupFocusGeneration && window.visible && !window.presentationSuspended && !window.presentationFocusPending && !window.internalPopupVisible)
                 action();
         });
     }
