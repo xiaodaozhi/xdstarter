@@ -81,7 +81,7 @@ class ContrastFrameTraceTests(unittest.TestCase):
         self.assertNotIn('renderingComplete', report)
 
     def test_missing_invalid_or_duplicate_hint_state_is_rejected(self):
-        for change in ('missing', 'incomplete', 'duplicate', 'wrong-type', 'event-missing'):
+        for change in ('missing', 'incomplete', 'empty', 'duplicate', 'wrong-type', 'event-missing'):
             with self.subTest(change=change):
                 original = json.loads(json.dumps(self.trace))
                 state = self.trace['captures'][0]['state']
@@ -89,6 +89,8 @@ class ContrastFrameTraceTests(unittest.TestCase):
                     state.pop('tileHints')
                 elif change == 'incomplete':
                     state['tileHintsComplete'] = False
+                elif change == 'empty':
+                    state.update(tileHints=[], tileCount=0)
                 elif change == 'duplicate':
                     state['tileHints'].append(dict(state['tileHints'][0]))
                     state['tileCount'] = 2

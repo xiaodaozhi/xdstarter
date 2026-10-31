@@ -18,7 +18,7 @@ PNG_SIGNATURE = b'\x89PNG\r\n\x1a\n'
 
 def tile_hints(state: dict) -> dict:
     hints, count = state.get('tileHints'), state.get('tileCount')
-    if (state.get('tileHintsComplete') is not True or type(count) is not int or count < 0 or
+    if (state.get('tileHintsComplete') is not True or type(count) is not int or count <= 0 or
             not isinstance(hints, list) or len(hints) != count):
         raise ValueError('missing tile hint state')
     result = {}
