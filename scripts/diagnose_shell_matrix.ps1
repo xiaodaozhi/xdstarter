@@ -9,6 +9,7 @@ if (!$IsWindows -or $env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -
     $env:GITHUB_RUN_ID -notmatch '^[1-9][0-9]*$' -or $env:GITHUB_RUN_ATTEMPT -notmatch '^[1-9][0-9]*$') {
     throw 'The cross-location Shell fixture runs only on a GitHub-hosted Windows runner.'
 }
+. (Join-Path $PSScriptRoot 'windows_access_descriptor.ps1')
 
 $workspace = (Resolve-Path -LiteralPath $env:GITHUB_WORKSPACE).Path
 $workParent = (Resolve-Path -LiteralPath (Join-Path $workspace 'build')).Path
@@ -111,7 +112,9 @@ function New-AccessTemplate([string]$Path, [string]$Root) {
         $persisted = Get-AccessDescriptor $probe
     } finally {
         Set-OwnedAccess $probe $Root $original
-        if ((Get-AccessDescriptor $probe) -ne $original) { throw 'Access template probe was not restored.' }
+        if (!(Test-RestoredAccess $original (Get-AccessDescriptor $probe))) {
+            throw 'Access template probe rules were not restored.'
+        }
         Remove-Item -LiteralPath $probe -Force
     }
     return @{ descriptor = $persisted; sha256 = (Get-DescriptorHash $persisted) }
@@ -190,9 +193,9 @@ function New-ShellObservation($FolderRoot, $ModuleRoot, [string]$Physical, $Acce
             # Restore the folder first so its child is traversable, then restore the file.
             Set-OwnedAccess $folder $FolderRoot.path $originalFolderAccess
             Set-OwnedAccess $ini $FolderRoot.path $originalIniAccess
-            if ((Get-AccessDescriptor $folder) -ne $originalFolderAccess -or
-                (Get-AccessDescriptor $ini) -ne $originalIniAccess) {
-                throw 'The owned fixture access descriptors were not restored.'
+            if (!(Test-RestoredAccess $originalFolderAccess (Get-AccessDescriptor $folder)) -or
+                !(Test-RestoredAccess $originalIniAccess (Get-AccessDescriptor $ini))) {
+                throw 'The owned fixture access rules were not restored.'
             }
         }
     }
