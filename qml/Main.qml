@@ -8,6 +8,18 @@ import XDStarter
 ApplicationWindow {
     id: window
 
+    component DescriptiveTextField: TextField {
+        id: descriptiveField
+        required property string instruction
+        Accessible.description: descriptiveField.instruction
+        // Qt TextField writes its placeholder into this property when
+        // accessibility becomes active. Preserve the application guidance.
+        Accessible.onDescriptionChanged: {
+            if (Accessible.description !== descriptiveField.instruction)
+                Accessible.description = Qt.binding(function () { return descriptiveField.instruction; });
+        }
+    }
+
     required property MenuController controller
 
     readonly property var tokens: controller.visualTokens
@@ -1553,7 +1565,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     spacing: 8
 
-                    TextField {
+                    DescriptiveTextField {
                         id: searchField
 
                         objectName: "searchField"
@@ -1568,7 +1580,7 @@ ApplicationWindow {
                         maximumLength: 128
                         selectByMouse: true
                         Accessible.name: qsTr("搜索应用")
-                        Accessible.description: qsTr("输入名称、拼音或首字母。向下键选择结果，Enter 启动，Esc 清空搜索。")
+                        instruction: qsTr("输入名称、拼音或首字母。向下键选择结果，Enter 启动，Esc 清空搜索。")
                         onTextChanged: {
                             if (!inputMethodComposing)
                                 window.controller.searchQuery = text;
@@ -3011,7 +3023,7 @@ ApplicationWindow {
                 wrapMode: Text.WordWrap
             }
 
-            TextField {
+            DescriptiveTextField {
                 id: groupNameField
 
                 objectName: "groupNameField"
@@ -3022,7 +3034,7 @@ ApplicationWindow {
                 selectByMouse: true
                 color: window.theme.foreground
                 Accessible.name: qsTr("分组名称")
-                Accessible.description: qsTr("输入名称后按 Enter 保存，Esc 取消。允许重名。")
+                instruction: qsTr("输入名称后按 Enter 保存，Esc 取消。允许重名。")
                 background: Rectangle {
                     radius: 6
                     color: window.theme.searchBackground
@@ -3157,7 +3169,7 @@ ApplicationWindow {
                 wrapMode: Text.WordWrap
             }
 
-            TextField {
+            DescriptiveTextField {
                 id: tileNameField
 
                 objectName: "tileNameField"
@@ -3168,7 +3180,7 @@ ApplicationWindow {
                 selectByMouse: true
                 color: window.theme.foreground
                 Accessible.name: qsTr("磁贴显示名称")
-                Accessible.description: qsTr("输入名称后按 Enter 保存，Esc 取消。原名称保留为搜索别名。")
+                instruction: qsTr("输入名称后按 Enter 保存，Esc 取消。原名称保留为搜索别名。")
                 background: Rectangle {
                     radius: 6
                     color: window.theme.searchBackground
