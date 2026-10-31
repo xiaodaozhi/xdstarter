@@ -167,7 +167,15 @@ class EvidenceTests(TemporaryRepository):
                     trace = json.loads(path.read_text(encoding='utf-8'))
                     # Synthetic native identity tests validation only; this is
                     # not a claim that the archived offscreen sample is D3D11.
-                    trace.update(qpa=qpa, graphicsApi=graphics_api)
+                    trace.update(qpa=qpa, graphicsApi=graphics_api, schemaVersion=2)
+                    # These hint states are synthetic; the archived trace predates them.
+                    states = [event['state'] for event in trace['events'] if event['event'] == 'gui-state']
+                    states += [capture['state'] for capture in trace['captures']]
+                    for state in states:
+                        state['tileHintsComplete'] = True
+                        state['tileHints'] = [{'tileId': f'synthetic-{index}', 'hovered': False,
+                                               'visible': False, 'opened': False}
+                                              for index in range(state['tileCount'])]
                     path.write_text(json.dumps(trace), encoding='utf-8')
                 resident = {name: self.root / ci_evidence.COPIES[f'resident-sample/{name}']
                             for name in ci_evidence.RESIDENT_FILES}
@@ -483,6 +491,19 @@ class EvidenceTests(TemporaryRepository):
         report['files']['frame-offscreen/test.log'] = ci_evidence.checksum(path)
         manifest.write_text(json.dumps(report), encoding='utf-8')
         with self.assertRaisesRegex(ValueError, 'incomplete-frame-trace:offscreen'):
+            ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
+
+    def test_current_ci_rejects_legacy_frame_trace_without_hint_states(self):
+        directory = self.root / 'build/ci-evidence/windows'
+        path = directory / 'frame-native/frame-trace.json'
+        trace = json.loads(path.read_text(encoding='utf-8'))
+        trace['schemaVersion'] = 1
+        path.write_text(json.dumps(trace), encoding='utf-8')
+        manifest = directory / 'manifest.json'
+        report = json.loads(manifest.read_text(encoding='utf-8'))
+        report['files']['frame-native/frame-trace.json'] = ci_evidence.checksum(path)
+        manifest.write_text(json.dumps(report), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'incomplete-frame-trace:native'):
             ci_evidence.validate(self.root / 'build/ci-evidence', self.env)
 
     def test_missing_frame_image_or_audit_step_is_not_green(self):

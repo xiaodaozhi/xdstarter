@@ -176,7 +176,7 @@ bool ContrastFrameTrace::finish() {
     {
         QMutexLocker lock(&shared_->mutex);
         shared_->active = false;
-        result = {{QStringLiteral("schemaVersion"), 1},
+        result = {{QStringLiteral("schemaVersion"), 2},
                   {QStringLiteral("qpa"), QGuiApplication::platformName()},
                   {QStringLiteral("graphicsApi"), int(window_->rendererInterface()->graphicsApi())},
                   {QStringLiteral("qtVersion"), QStringLiteral(QT_VERSION_STR)},

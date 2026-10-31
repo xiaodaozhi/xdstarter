@@ -56,9 +56,11 @@
 
 首轮模拟切换暴露颜色与启用状态通知顺序导致 QML 未定义颜色警告，调整绑定与保留有效配色后定向测试通过；先前一次短等待抓帧出现局部绘制不完整，offscreen/software 中等待两次 `frameSwapped` 未达到要求，后续分时抓帧完整，但未定位该次画面异常原因。真实 Windows 主题切换、屏幕阅读器及更多系统组合仍未完成，不能以模拟结果宣称通过。
 
-[#85](https://github.com/xiaodaozhi/xdstarter/issues/85) 增加仅用于研究的显式帧跟踪：在相同匿名高对比度场景中记录单调时间、同步／渲染／提交事件、测试线程、布局和搜索图标 `Image.status`；保存状态检查后立即、该图标 Ready 后立即及原有两个时间点的图像。证据脚本核对事件顺序、场景、图像尺寸与哈希，并仅对该图标区域检查 Ready 后抓帧的稳定性。一次性 hosted Windows 另收集 offscreen/software 与 Windows QPA/D3D11 两组原始日志、事件和截图。额外的抓帧、像素比较与事件观察会改变时序；特定图标 Ready 和某次 frameSwapped 都不构成整个界面已完整或实际屏幕已呈现的保证。具体结果与未复现情况保留在 Issue。
+[#85](https://github.com/xiaodaozhi/xdstarter/issues/85) 增加仅用于研究的显式帧跟踪：在相同匿名高对比度场景中记录单调时间、同步／渲染／提交事件、测试线程、布局和搜索图标 `Image.status`；保存状态检查后立即、该图标 Ready 后立即及原有两个时间点的图像。另记录样例磁贴的悬停及提示框可见／打开状态，并汇总相邻抓帧之间的状态变化，帮助解释提示框出现造成的像素差异。状态在抓帧调用前后采样，不保证与图像生成时刻同步；额外观察也会改变时序。
 
-本机三次 offscreen/software 对照中，早期抓帧时搜索图标仍在加载，之前每次已有一次 frameSwapped；图标 Ready 后的抓帧在该图标区域与后续抓帧一致。一个样本的[环境与源码哈希](validation/issue-85/offscreen/context.json)、[帧事件及状态](validation/issue-85/offscreen/frame-trace.json)、[早期截图](validation/issue-85/offscreen/contrast-dark-early.png)与[图标就绪截图](validation/issue-85/offscreen/contrast-dark-ready.png)保留在仓库，完整图像可由 `scripts/inspect_contrast_frame_trace.py` 复核。该观察不能证明先前未复现的整块内容缺失具有相同原因，也不能代替 Windows 原生或真实显示验收。
+证据脚本核对事件顺序、场景、图像尺寸与哈希、每个样例磁贴的提示框状态完整性，并仅对搜索图标区域检查 Ready 后抓帧的稳定性。一次性 hosted Windows 收集 offscreen/software 与 Windows QPA/D3D11 两组原始日志、事件和截图；旧版无提示框状态的报告可使用 `--allow-legacy` 参数读取，但不能作为新 CI 的完整证据。特定图标 Ready 和某次 frameSwapped 都不构成整个界面已完整或实际屏幕已呈现的保证。具体结果与未复现情况保留在 Issue。
+
+本机三次 offscreen/software 对照中，早期抓帧时搜索图标仍在加载，之前每次已有一次 frameSwapped；图标 Ready 后的抓帧在该图标区域与后续抓帧一致。一个样本的[环境与源码哈希](validation/issue-85/offscreen/context.json)、[帧事件及状态](validation/issue-85/offscreen/frame-trace.json)、[早期截图](validation/issue-85/offscreen/contrast-dark-early.png)与[图标就绪截图](validation/issue-85/offscreen/contrast-dark-ready.png)保留在仓库，可用 `python3 scripts/inspect_contrast_frame_trace.py docs/technical/validation/issue-85/offscreen --allow-legacy` 复核。该观察不能证明先前未复现的整块内容缺失具有相同原因，也不能代替 Windows 原生或真实显示验收。
 
 进一步用独立测试窗口和受控异步图片提供器暂停加载，在图片仍为 Loading 时显式请求更新并要求至少一次 `frameSwapped`，检查抓帧中心仍为背景；释放加载后，等待 Ready 和最终图片颜色。本机 Qt 6.8.2、Windows 11、附加 MSVC v142 下，offscreen/software 和 Windows QPA/D3D11 各通过 3/3；该 D3D11 后端断言不区分硬件和 WARP。测试只证明该受控场景可以在图片未就绪时提交一帧，不能推断先前界面异常原因、整个界面完整性或物理显示时刻。测试固定 8 秒等待上限，失败路径会释放图片提供器，避免阻塞窗口销毁。
 
