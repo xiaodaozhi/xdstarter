@@ -732,6 +732,8 @@ python scripts/benchmark_ui_search.py --executable build/app-release/bin/xdstart
 
 针对 [#132](https://github.com/xiaodaozhi/xdstarter/issues/132)，匿名双磁贴回归只改变一个目标的可用性，检查另一磁贴及分组的对象身份和焦点，并核对失效标记、原因、无障碍说明、拖动中与菜单打开时更新、状态恢复和重新固定。原始公开分组数据仍用于检查状态，发行包验证分别运行软件渲染、D3D11 和 WARP 版本的该用例；这些受控输入与后端检查不等同真人操作或真实设备性能验收。
 
+2026-11-01 在同一台 Windows 11 26300、Qt 6.8.2、备用 MSVC v142 的 offscreen/software 环境，按修复前、修复后、再测修复前的顺序各运行 100 个新进程，均使用 100 磁贴及 1000 个匿名目录项。首次唤起至焦点 P95 分别为 207.08、110.84、206.53 ms；从夹具开始至焦点 P95 分别为 712.70、663.07、720.70 ms。[逐次数据和程序散列](validation/issue-35/availability-preservation-offscreen-2026-11-01.json)保留三组样本与子日志散列。系统负载及缓存未隔离，两种测试程序的测试注册不同；这组观察不能把全部差异归因于修复，也不代表真实输入、物理显示或性能目标验收。
+
 ```powershell
 python scripts/benchmark_ui_reveal.py --executable build/app-release/bin/xdstarter_ui_tests.exe --output-dir build/validation/ui-reveal-local
 python scripts/benchmark_ui_reveal_fresh.py --executable build/app-release/bin/xdstarter_ui_tests.exe --output-dir build/validation/ui-reveal-fresh-local
