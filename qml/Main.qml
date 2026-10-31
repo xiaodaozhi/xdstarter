@@ -558,9 +558,10 @@ ApplicationWindow {
         if (!visible || presentationSuspended || internalPopupVisible || dragActive)
             return;
         const focused = activeFocusItem;
-        // A delayed close must not undo focus explicitly moved after the menu closed.
-        if (target && target.visible && target.enabled && focused && focused !== contentItem &&
-                focused !== target && focused.visible && focused.enabled)
+        // Preserve newer focus even if the source disappeared or another
+        // queued close already consumed the return target. A catalog whose
+        // focused delegate disappeared leaves only the ListView focus scope.
+        if (focused && focused !== contentItem && focused !== applicationsList && focused !== target && focused.visible && focused.enabled)
             return;
         if (target && target.visible && target.enabled)
             target.forceActiveFocus(Qt.OtherFocusReason);
