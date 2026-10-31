@@ -111,9 +111,12 @@ function Get-XDStarterIdentityHash([string]$Path) {
         [Text.Encoding]::UTF8.GetBytes($identity))).ToLowerInvariant()
 }
 
-function Get-XDStarterFreshShellName([string]$Path, [string]$ProbeScript) {
+function Get-XDStarterFreshShellName([string]$Path, [string]$ProbeScript, [int]$TimeoutMilliseconds = 30000) {
     if (![IO.Path]::IsPathFullyQualified($Path) -or ![IO.Directory]::Exists($Path)) {
         throw 'A fully qualified fixture directory is required for the fresh process.'
+    }
+    if ($TimeoutMilliseconds -lt 1 -or $TimeoutMilliseconds -gt 30000) {
+        throw 'Fresh Shell name probe timeout is outside the allowed range.'
     }
     $script = (Resolve-Path -LiteralPath $ProbeScript).Path
     $start = [Diagnostics.ProcessStartInfo]::new((Get-Process -Id $PID).Path)
@@ -130,11 +133,13 @@ function Get-XDStarterFreshShellName([string]$Path, [string]$ProbeScript) {
     $start.Environment['XDSTARTER_SHELL_NAME_PROBE_PATH'] = $Path
     $process = [Diagnostics.Process]::new()
     $process.StartInfo = $start
+    $started = $false
     try {
         if (!$process.Start()) { throw 'Cannot start the fresh Shell name probe.' }
+        $started = $true
         $stdoutTask = $process.StandardOutput.ReadToEndAsync()
         $stderrTask = $process.StandardError.ReadToEndAsync()
-        if (!$process.WaitForExit(30000)) {
+        if (!$process.WaitForExit($TimeoutMilliseconds)) {
             $process.Kill($true)
             if (!$process.WaitForExit(5000)) { throw 'Timed-out Shell probe did not exit after termination.' }
             throw 'Fresh Shell name probe timed out.'
@@ -151,6 +156,13 @@ function Get-XDStarterFreshShellName([string]$Path, [string]$ProbeScript) {
         $observation.parentProcessId = $PID
         return $observation
     } finally {
-        $process.Dispose()
+        try {
+            if ($started -and !$process.HasExited) {
+                $process.Kill($true)
+                if (!$process.WaitForExit(5000)) { throw 'Fresh Shell probe remained running during cleanup.' }
+            }
+        } finally {
+            $process.Dispose()
+        }
     }
 }

@@ -172,6 +172,44 @@ class ShellMatrixTests(unittest.TestCase):
             self.assertTrue(value['iniUnchanged'])
 
     @unittest.skipUnless(sys.platform == 'win32' and shutil.which('pwsh'), 'requires Windows PowerShell 7')
+    def test_fresh_shell_name_probe_terminates_its_timed_out_child(self):
+        root = Path(verify_shell_matrix.__file__).resolve().parents[1]
+        build = root / 'build'
+        build.mkdir(exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix='自有 timeout & ', dir=build) as directory:
+            self.assertTrue(Path(directory).resolve().is_relative_to(build.resolve()))
+            probe = Path(directory) / 'sleep.ps1'
+            marker = Path(directory) / 'child-pid.txt'
+            probe.write_text('[IO.File]::WriteAllText($env:XDSTARTER_TEST_TIMEOUT_MARKER, [string]$PID)\n'
+                             'Start-Sleep -Seconds 60\n', encoding='utf-8')
+            env = os.environ.copy()
+            env.update(XDSTARTER_TEST_JUNCTION_SCRIPT=str(root / 'scripts/shell_junction_probe.ps1'),
+                       XDSTARTER_TEST_NAME_DIRECTORY=directory, XDSTARTER_TEST_SLEEP_PROBE=str(probe),
+                       XDSTARTER_TEST_TIMEOUT_MARKER=str(marker), TEMP=str(build), TMP=str(build))
+            command = r'''
+                $ErrorActionPreference = 'Stop'
+                . $env:XDSTARTER_TEST_JUNCTION_SCRIPT
+                $timedOut = $false
+                try {
+                    Get-XDStarterFreshShellName $env:XDSTARTER_TEST_NAME_DIRECTORY $env:XDSTARTER_TEST_SLEEP_PROBE 4000 |
+                        Out-Null
+                } catch {
+                    if ($_.Exception.Message -ne 'Fresh Shell name probe timed out.') { throw }
+                    $timedOut = $true
+                }
+                if (!$timedOut -or !(Test-Path -LiteralPath $env:XDSTARTER_TEST_TIMEOUT_MARKER)) {
+                    throw 'The owned child did not start and time out as expected.'
+                }
+                $childPid = [int](Get-Content -LiteralPath $env:XDSTARTER_TEST_TIMEOUT_MARKER -Raw)
+                if (Get-Process -Id $childPid -ErrorAction SilentlyContinue) {
+                    throw 'The timed-out owned child is still running.'
+                }
+            '''
+            result = subprocess.run([shutil.which('pwsh'), '-NoProfile', '-NonInteractive', '-Command', command],
+                                    capture_output=True, text=True, encoding='utf-8', env=env, timeout=20)
+            self.assertEqual(result.returncode, 0, result.stderr)
+
+    @unittest.skipUnless(sys.platform == 'win32' and shutil.which('pwsh'), 'requires Windows PowerShell 7')
     def test_owned_junction_identity_and_non_recursive_cleanup(self):
         root = Path(verify_shell_matrix.__file__).resolve().parents[1]
         build = root / 'build'
