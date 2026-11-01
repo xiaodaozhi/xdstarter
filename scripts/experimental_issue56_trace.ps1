@@ -135,7 +135,10 @@ try {
         $q.name = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($parts[2]))
     }
     Wait-Tool (Start-Tool $Procmon @('/Terminate','/Quiet')) 30 'Procmon termination'
-    Wait-Tool $monitor 30 'Procmon capture'
+    if (!$monitor.WaitForExit(30000)) { throw 'Procmon capture did not terminate.' }
+    # Procmon 4.12 can return 1 after an explicit /Terminate. Record it and
+    # require a readable export with events from all four probes below.
+    $captureExitCode = $monitor.ExitCode
     $monitor = $null
     if (!(Test-Path -LiteralPath $pml)) { throw 'Procmon capture is missing.' }
     Wait-Tool (Start-Tool $Procmon @('/OpenLog',$pml,'/SaveAs',$csv,'/Quiet','/NoConnect')) 120 'Procmon export'
@@ -149,7 +152,8 @@ try {
     $report = @{sha=$env:GITHUB_SHA; runId=$env:GITHUB_RUN_ID; attempt=$env:GITHUB_RUN_ATTEMPT;
         os=[Environment]::OSVersion.VersionString; expectedName=$indirect.ToString();
         workspaceDrive=[IO.Path]::GetPathRoot($roots[0].path); profileDrive=[IO.Path]::GetPathRoot($roots[1].path);
-        probesSha256=(Get-FileHash -LiteralPath $probe -Algorithm SHA256).Hash.ToLowerInvariant(); queries=$publicQueries}
+        probesSha256=(Get-FileHash -LiteralPath $probe -Algorithm SHA256).Hash.ToLowerInvariant();
+        captureExitCode=$captureExitCode; queries=$publicQueries}
     $report | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $artifact 'probes.json') -Encoding utf8NoBOM
     @{work=$roots[0].path; profile=$roots[1].path; workspace=$workspace;
       userprofile=$env:USERPROFILE; windir=$env:WINDIR} | ConvertTo-Json |
