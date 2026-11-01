@@ -30,8 +30,29 @@ class SmokeObserverTests(unittest.TestCase):
         self.assertTrue(result['readerFinished'])
         self.assertLessEqual(result['createReturnMilliseconds'], result['firstStageMilliseconds'])
         self.assertLessEqual(result['firstByteMilliseconds'], result['firstStageMilliseconds'])
+        self.assertLessEqual(result['createReturnMilliseconds'], result['processExitObservedMilliseconds'])
+        self.assertLessEqual(result['createReturnMilliseconds'], result['pipeEofObservedMilliseconds'])
+        self.assertLessEqual(result['processExitObservedMilliseconds'], result['finishedMilliseconds'])
+        self.assertLessEqual(result['pipeEofObservedMilliseconds'], result['finishedMilliseconds'])
         self.assertEqual([row['name'] for row in result['stages']], ['before-application', 'event-loop-returned'])
         self.assertIn(b'event-loop-returned', raw)
+
+    def test_eof_and_process_exit_are_independent_boundaries(self):
+        source = ("import os,time; print('Smoke stage before-application 0 ms',flush=True); "
+                  "print('Smoke stage event-loop-returned 1 ms',flush=True); "
+                  "os.close(1); os.close(2); time.sleep(.5)")
+        result, _ = self.run_child(source, timeout=4)
+        self.assertEqual(result['status'], 'passed')
+        self.assertLess(result['pipeEofObservedMilliseconds'], result['processExitObservedMilliseconds'])
+
+    def test_process_exit_can_precede_eof_from_inherited_pipe(self):
+        source = ("import subprocess,sys; "
+                  "subprocess.Popen([sys.executable,'-c','import time;time.sleep(.6)']); "
+                  "print('Smoke stage before-application 0 ms',flush=True); "
+                  "print('Smoke stage event-loop-returned 1 ms',flush=True)")
+        result, _ = self.run_child(source, timeout=4)
+        self.assertEqual(result['status'], 'passed')
+        self.assertLess(result['processExitObservedMilliseconds'], result['pipeEofObservedMilliseconds'])
 
     def test_stall_before_first_log_is_bounded_and_preserved(self):
         result, raw = self.run_child('import time; time.sleep(30)', timeout=0.6)

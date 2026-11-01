@@ -230,6 +230,8 @@ def validate_role(directory, role, expected):
         smoke_raw = (directory / 'smoke-startup.log').read_bytes()
         timing_values = [smoke.get(name) for name in ('createReturnMilliseconds', 'firstByteMilliseconds',
                          'firstStageMilliseconds', 'finishedMilliseconds')]
+        exit_boundaries = [smoke.get(name) for name in ('processExitObservedMilliseconds',
+                                                        'pipeEofObservedMilliseconds')]
         stage_names = [stage.get('name') for stage in smoke.get('stages', [])]
         require(smoke.get('status') == 'passed' and smoke.get('exitCode') == 0 and
                 smoke.get('readerFinished') is True and smoke.get('outputTruncated') is False and
@@ -238,6 +240,8 @@ def validate_role(directory, role, expected):
                 smoke.get('outputSha256') == hashlib.sha256(smoke_raw).hexdigest() and
                 all(type(value) in (int, float) and 0 <= value < 60000 for value in timing_values) and
                 timing_values[0] <= timing_values[1] <= timing_values[2] <= timing_values[3] and
+                all(type(value) in (int, float) and timing_values[0] <= value <= timing_values[3]
+                    for value in exit_boundaries) and
                 'before-application' in stage_names and 'event-loop-returned' in stage_names and
                 b'Smoke stage before-application' in smoke_raw and b'Smoke stage event-loop-returned' in smoke_raw,
                 'incomplete-smoke-startup-evidence')
