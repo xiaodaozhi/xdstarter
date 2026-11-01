@@ -18,12 +18,20 @@ using System.Text;
 public static class Issue56Setup {
     [DllImport("kernel32.dll", CharSet=CharSet.Unicode)]
     public static extern uint GetDriveTypeW(string root);
+    [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetVolumeInformationW(string root, StringBuilder name, uint nameSize,
+        out uint serial, out uint maxComponent, out uint flags, StringBuilder filesystem, uint filesystemSize);
+    [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+    [return: MarshalAs(UnmanagedType.Bool)] public static extern bool SetVolumeLabelW(string root, string label);
     [DllImport("shlwapi.dll", CharSet=CharSet.Unicode, SetLastError=true)]
     [return: MarshalAs(UnmanagedType.Bool)] public static extern bool PathMakeSystemFolderW(string path);
     [DllImport("shlwapi.dll", CharSet=CharSet.Unicode)]
     public static extern int SHLoadIndirectString(string source, StringBuilder output, uint length, IntPtr reserved);
     [DllImport("shell32.dll", CharSet=CharSet.Unicode)]
     public static extern int SHSetLocalizedName(string path, string resource, int resourceId);
+    [DllImport("shell32.dll", CharSet=CharSet.Unicode)]
+    public static extern void SHChangeNotify(int eventId, uint flags, string path, IntPtr unused);
     [DllImport("ole32.dll")] public static extern int CoInitializeEx(IntPtr reserved, uint flags);
     [DllImport("ole32.dll")] public static extern void CoUninitialize();
 }
@@ -85,6 +93,23 @@ function Remove-OwnedRoot($Root) {
     foreach ($entry in $entries) { [IO.File]::SetAttributes($entry.FullName, [IO.FileAttributes]::Normal) }
     Remove-Item -LiteralPath $resolved -Recurse -Force
 }
+function Get-VolumeLabel([string]$Root) {
+    $name = [Text.StringBuilder]::new(261)
+    $filesystem = [Text.StringBuilder]::new(261)
+    [uint32]$serial = 0; [uint32]$component = 0; [uint32]$flags = 0
+    if (![Issue56Setup]::GetVolumeInformationW($Root, $name, 261, [ref]$serial,
+            [ref]$component, [ref]$flags, $filesystem, 261)) {
+        throw "Cannot read volume label: $([Runtime.InteropServices.Marshal]::GetLastWin32Error())"
+    }
+    return $name.ToString()
+}
+function Set-TemporaryVolumeLabel([string]$Root, [string]$Label) {
+    if (![Issue56Setup]::SetVolumeLabelW($Root, $Label)) {
+        throw "Cannot set volume label: $([Runtime.InteropServices.Marshal]::GetLastWin32Error())"
+    }
+    [Issue56Setup]::SHChangeNotify(0x2000, 0x1005, $Root, [IntPtr]::Zero)
+    if ((Get-VolumeLabel $Root) -ne $Label) { throw 'Volume label readback did not match.' }
+}
 
 $workspace = (Resolve-Path -LiteralPath $env:GITHUB_WORKSPACE).Path
 $build = Join-Path $workspace 'build'
@@ -104,6 +129,9 @@ $created = @()
 $junctions = @()
 $monitor = $null
 $com = $null
+$labelChanged = $false
+$labelRoot = $null
+$originalLabel = $null
 try {
     $com = [Issue56Setup]::CoInitializeEx([IntPtr]::Zero, 2)
     if ($com -lt 0) { throw "COM setup failed: $com" }
@@ -128,6 +156,8 @@ try {
                 if ((Get-Content -LiteralPath $ini -Stream 'Zone.Identifier' -Raw) -notmatch 'ZoneId=3') {
                     throw 'Owned source marker did not persist.'
                 }
+            } elseif (@(Get-Item -LiteralPath $ini -Stream '*' -Force | Where-Object Stream -eq 'Zone.Identifier').Count -ne 0) {
+                throw 'The unmarked owned fixture unexpectedly has a source marker.'
             }
         }
     }
@@ -217,6 +247,40 @@ try {
         throw 'Marked aliases do not identify the same owned objects.'
     }
 
+    # Only the disposable runner's workspace volume can be tested. This never
+    # touches the system drive and restores its original label on every exit.
+    $labelRoot = [IO.Path]::GetPathRoot($roots[0].path)
+    $systemRoot = [IO.Path]::GetPathRoot($env:WINDIR)
+    $labelExperiment = @{ status='skipped'; reason='Workspace and system volume are not distinct fixed drives.' }
+    if (!$labelRoot.Equals($systemRoot, [StringComparison]::OrdinalIgnoreCase) -and
+        [Issue56Setup]::GetDriveTypeW($labelRoot) -eq 3 -and
+        $workspace.StartsWith($labelRoot, [StringComparison]::OrdinalIgnoreCase)) {
+        $originalLabel = Get-VolumeLabel $labelRoot
+        $alternateLabel = if ($originalLabel -eq 'Temp') { 'Temporary Storage' } else { 'Temp' }
+        # Register restoration before making the first mutation.
+        $labelChanged = $true
+        Set-TemporaryVolumeLabel $labelRoot $alternateLabel
+        $alternateQueries = @()
+        foreach ($original in $queries) {
+            $q = @{label=$original.label; path=$original.path; folderId=$original.folderId; iniId=$original.iniId}
+            Read-Query $q
+            $alternateQueries += @{label=$q.label; name=$q.name; route=$q.route;
+                                   computerName=$q.computerName; computerSameObject=$q.computerSameObject}
+        }
+        Set-TemporaryVolumeLabel $labelRoot $originalLabel
+        $labelChanged = $false
+        $restoredQueries = @()
+        foreach ($original in $queries) {
+            $q = @{label=$original.label; path=$original.path; folderId=$original.folderId; iniId=$original.iniId}
+            Read-Query $q
+            $restoredQueries += @{label=$q.label; name=$q.name; route=$q.route;
+                                  computerName=$q.computerName; computerSameObject=$q.computerSameObject}
+        }
+        $labelExperiment = @{status='completed'; original=$originalLabel; alternate=$alternateLabel;
+                             restored=(Get-VolumeLabel $labelRoot); alternateQueries=$alternateQueries;
+                             restoredQueries=$restoredQueries}
+    }
+
     $indirect = [Text.StringBuilder]::new(1024)
     $indirectResult = [Issue56Setup]::SHLoadIndirectString(('@'+$module+',-21799'), $indirect, 1024, [IntPtr]::Zero)
     if ($indirectResult -lt 0 -or $indirect.Length -eq 0) { throw 'System resource did not resolve.' }
@@ -233,7 +297,8 @@ try {
         profileDriveType=[Issue56Setup]::GetDriveTypeW($profileDrive);
         namespaceLabel=[Microsoft.Win32.Registry]::GetValue('HKEY_CLASSES_ROOT\CLSID\{F5FB2C77-0E2F-4A16-A381-3E560C68BC83}', '', $null);
         probesSha256=(Get-FileHash -LiteralPath $probe -Algorithm SHA256).Hash.ToLowerInvariant();
-        captureExitCode=$captureExitCode; queries=$publicQueries; markedZoneId=3; markedQueries=$publicMarked}
+        captureExitCode=$captureExitCode; queries=$publicQueries; markedZoneId=3; markedQueries=$publicMarked;
+        volumeLabelExperiment=$labelExperiment}
     $report | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $artifact 'probes.json') -Encoding utf8NoBOM
     @{work=$roots[0].path; profile=$roots[1].path; workspace=$workspace;
       userprofile=$env:USERPROFILE; windir=$env:WINDIR} | ConvertTo-Json |
@@ -245,6 +310,7 @@ try {
         try { Wait-Tool (Start-Tool $Procmon @('/Terminate','/Quiet')) 20 'Procmon cleanup' } catch { Write-Warning $_ }
         if (!$monitor.WaitForExit(20000)) { $monitor.Kill($true); $monitor.WaitForExit() }
     }
+    if ($labelChanged) { Set-TemporaryVolumeLabel $labelRoot $originalLabel }
     if ($null -ne $com -and $com -ge 0) { [Issue56Setup]::CoUninitialize() }
     foreach ($junction in $junctions) { Remove-XDStarterFixtureJunction $junction }
     foreach ($root in $created) { Remove-OwnedRoot $root }
