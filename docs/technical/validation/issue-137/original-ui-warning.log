@@ -1,0 +1,9 @@
+********* Start testing of PrototypeWindowTest *********
+Config: Using QtTest library 6.8.2, Qt 6.8.2 (x86_64-little_endian-llp64 shared (dynamic) release build; by MSVC 2022), windows 11
+PASS   : PrototypeWindowTest::initTestCase()
+QWARN  : PrototypeWindowTest::tileDisplayNameEditingAndRestart() QQuickPixmap: connectFinished() called when not loading.
+QWARN  : PrototypeWindowTest::tileDisplayNameEditingAndRestart() QQuickPixmap: connectDownloadProgress() called when not loading.
+PASS   : PrototypeWindowTest::tileDisplayNameEditingAndRestart()
+PASS   : PrototypeWindowTest::cleanupTestCase()
+Totals: 3 passed, 0 failed, 0 skipped, 0 blacklisted, 12811ms
+********* Finished testing of PrototypeWindowTest *********

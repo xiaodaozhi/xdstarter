@@ -44,6 +44,7 @@ LOGS = {
     },
 }
 COPIES = {
+    'ctest-raw.log': 'build/app-release/main-ctest-raw.log',
     'lifecycle.json': 'build/package/lifecycle-evidence/result.json',
     'install.log': 'build/package/lifecycle-evidence/install.log',
     'install-newer-fixture.log': 'build/package/lifecycle-evidence/install-newer-fixture.log',
@@ -117,6 +118,27 @@ STEPS = {'core': ('build',),
 def require(ok, message):
     if not ok:
         raise ValueError(message)
+
+
+def validate_prototype_ctest_raw(text):
+    blocks = re.split(r'(?m)^\d+/\d+ Testing: ', text)
+    blocks = [block for block in blocks if re.match(r'ui\.prototype\r?\n', block)]
+    require(len(blocks) == 1, 'missing-or-ambiguous-prototype-raw-log')
+    block = blocks[0]
+    output = re.findall(r'(?ms)^Output:\r?\n-+\r?\n(.*?)^<end of output>\r?$', block)
+    require(len(output) == 1 and re.search(r'(?m)^Test Passed\.\r?$', block),
+            'incomplete-prototype-raw-log')
+    text = output[0]
+    totals = re.findall(r'Totals:\s+([1-9][0-9]*) passed,\s+0 failed,\s+(\d+) skipped,\s+0 blacklisted', text)
+    passes = re.findall(r'(?m)^PASS\s*:\s*PrototypeWindowTest::([^\r\n]+)', text)
+    skips = re.findall(r'(?m)^SKIP\s*:\s*PrototypeWindowTest::([^\r\n]+)', text)
+    required = {'initTestCase()', 'prototypeWindowLoads()', 'applicationDirectoryAndPinning()',
+                'tileDisplayNameEditingAndRestart()', 'cleanupTestCase()'}
+    require(len(totals) == 1 and len(passes) == int(totals[0][0]) and len(skips) == int(totals[0][1]) and
+            required <= set(passes) and 'Start testing of PrototypeWindowTest' in text and
+            'Finished testing of PrototypeWindowTest' in text and
+            not re.search(r'\bQ(?:CRITICAL|FATAL)\s*:|FAIL\s*!', text),
+            'failed-or-incomplete-prototype-raw-log')
 
 
 def validate_shell_localization_controls(controls):
@@ -217,6 +239,7 @@ def validate_role(directory, role, expected):
                 all(row[1] == 'Passed' for row in rows) and set(tests) <= set(names),
                 'incomplete-or-failed-test-log')
     if role == 'windows':
+        validate_prototype_ctest_raw((directory / 'ctest-raw.log').read_text(encoding='utf-8', errors='replace'))
         try:
             warm_reveal = benchmark_ui_reveal.inspect(directory / 'ui-reveal', expected)
             fresh_reveal = benchmark_ui_reveal_fresh.inspect(directory / 'ui-reveal-fresh', expected)
