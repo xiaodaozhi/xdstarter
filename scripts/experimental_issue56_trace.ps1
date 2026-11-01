@@ -34,6 +34,11 @@ public static class Issue56Setup {
         public uint busType;
         public string vendor;
         public string product;
+        public int hotplugError;
+        public uint hotplugBytes;
+        public int hotplugMediaRemovable;
+        public int mediaHotplug;
+        public int deviceHotplug;
     }
     [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
     private static extern SafeFileHandle CreateFileW(string path, uint access, uint share,
@@ -65,6 +70,18 @@ public static class Issue56Setup {
                 result.busType = BitConverter.ToUInt32(data, 28);
                 result.vendor = Field(data, count, BitConverter.ToUInt32(data, 12));
                 result.product = Field(data, count, BitConverter.ToUInt32(data, 16));
+            }
+            // IOCTL_STORAGE_GET_HOTPLUG_INFO is read-only; no device property is set.
+            var hotplug = new byte[8]; hotplug[0] = 8; uint hotplugCount;
+            if (!DeviceIoControl(handle, 0x002D0C14, null, 0, hotplug, (uint)hotplug.Length,
+                                 out hotplugCount, IntPtr.Zero)) {
+                result.hotplugError = Marshal.GetLastWin32Error();
+            } else {
+                result.hotplugBytes = hotplugCount;
+                if (hotplugCount >= 8) {
+                    result.hotplugMediaRemovable = hotplug[4]; result.mediaHotplug = hotplug[5];
+                    result.deviceHotplug = hotplug[6];
+                }
             }
             return result;
         }
