@@ -276,8 +276,8 @@ try {
     )
     function Read-Query($q) {
         $line = Invoke-Probe $probe $q.path
-        $parts = $line -split '\|', 5
-        if ($parts.Count -ne 5 -or $parts[0] -notmatch '^[1-9][0-9]*$' -or $parts[1] -ne '1') {
+        $parts = $line -split '\|', 6
+        if ($parts.Count -ne 6 -or $parts[0] -notmatch '^[1-9][0-9]*$' -or $parts[1] -ne '1') {
             throw "Malformed Shell probe result: $($q.label)"
         }
         $q.pid = [int]$parts[0]
@@ -286,6 +286,12 @@ try {
         $computer = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($parts[4]))
         $computerParts = $computer -split "`t", 2
         $q.computerName = $computerParts[0]
+        $itemNames = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($parts[5])) -split "`t", 2
+        if ($itemNames.Count -ne 2 -or $itemNames[0] -like '<HRESULT:*' -or $itemNames[1] -like '<HRESULT:*') {
+            throw "Shell item query failed: $($q.label)"
+        }
+        $q.itemName = $itemNames[0]
+        $q.computerItemName = $itemNames[1]
         $q.computerSameObject = $false
         if ($computerParts.Count -eq 2 -and [IO.Directory]::Exists($computerParts[1])) {
             $q.computerSameObject = (Get-XDStarterIdentityHash $computerParts[1]) -eq $q.folderId
@@ -309,8 +315,9 @@ try {
     $monitor = Start-Tool $Procmon @('/AcceptEula','/Quiet','/Minimized','/NoFilter','/Runtime','50','/BackingFile',$pml)
     Wait-Tool (Start-Tool $Procmon @('/WaitForIdle','/Quiet')) 30 'Procmon readiness'
     foreach ($q in $queries) {
-        # Each fresh process calls the production API first; it then records
-        # the parsed Shell item hierarchy without an earlier parent query.
+        # Each fresh process calls SHGetFileInfo first and then records the
+        # Shell hierarchy and the application's IShellItem API; the parent has
+        # not queried a display name for these objects.
         Read-Query $q
     }
     # Allow the bounded capture consumer to flush the last completed probe.
@@ -362,7 +369,8 @@ try {
             $q = @{label=$original.label; path=$original.path; folderId=$original.folderId; iniId=$original.iniId}
             Read-Query $q
             $alternateQueries += @{label=$q.label; name=$q.name; route=$q.route;
-                                   computerName=$q.computerName; computerSameObject=$q.computerSameObject}
+                computerName=$q.computerName; computerSameObject=$q.computerSameObject;
+                itemName=$q.itemName; computerItemName=$q.computerItemName}
         }
         Set-TemporaryVolumeLabel $labelRoot $originalLabel
         $labelChanged = $false
@@ -371,7 +379,8 @@ try {
             $q = @{label=$original.label; path=$original.path; folderId=$original.folderId; iniId=$original.iniId}
             Read-Query $q
             $restoredQueries += @{label=$q.label; name=$q.name; route=$q.route;
-                                  computerName=$q.computerName; computerSameObject=$q.computerSameObject}
+                computerName=$q.computerName; computerSameObject=$q.computerSameObject;
+                itemName=$q.itemName; computerItemName=$q.computerItemName}
         }
         $labelExperiment = @{status='completed'; original=$originalLabel; alternate=$alternateLabel;
                              restored=(Get-VolumeLabel $labelRoot); alternateQueries=$alternateQueries;
@@ -408,7 +417,8 @@ try {
         $q = @{label=$original.label; path=$original.path; folderId=$original.folderId; iniId=$original.iniId}
         Read-Query $q
         $hiddenNamespaceQueries += @{label=$q.label; name=$q.name; route=$q.route;
-                                     computerName=$q.computerName; computerSameObject=$q.computerSameObject}
+            computerName=$q.computerName; computerSameObject=$q.computerSameObject;
+            itemName=$q.itemName; computerItemName=$q.computerItemName}
     }
     Restore-OwnedNamespacePolicy $namespaceState
     $namespaceState = $null
@@ -417,7 +427,8 @@ try {
         $q = @{label=$original.label; path=$original.path; folderId=$original.folderId; iniId=$original.iniId}
         Read-Query $q
         $restoredNamespaceQueries += @{label=$q.label; name=$q.name; route=$q.route;
-                                       computerName=$q.computerName; computerSameObject=$q.computerSameObject}
+            computerName=$q.computerName; computerSameObject=$q.computerSameObject;
+            itemName=$q.itemName; computerItemName=$q.computerItemName}
     }
     $namespaceExperiment = @{status='completed'; keyPreviouslyExisted=$policyKeyExisted;
                              valuePreviouslyExisted=$valueExisted; hiddenQueries=$hiddenNamespaceQueries;
@@ -427,9 +438,11 @@ try {
     $indirectResult = [Issue56Setup]::SHLoadIndirectString(('@'+$module+',-21799'), $indirect, 1024, [IntPtr]::Zero)
     if ($indirectResult -lt 0 -or $indirect.Length -eq 0) { throw 'System resource did not resolve.' }
     $publicQueries = @($queries | ForEach-Object { @{label=$_.label; pid=$_.pid; name=$_.name; route=$_.route;
-        computerName=$_.computerName; computerSameObject=$_.computerSameObject; folderId=$_.folderId; iniId=$_.iniId} })
+        computerName=$_.computerName; computerSameObject=$_.computerSameObject; itemName=$_.itemName;
+        computerItemName=$_.computerItemName; folderId=$_.folderId; iniId=$_.iniId} })
     $publicMarked = @($marked | ForEach-Object { @{label=$_.label; pid=$_.pid; name=$_.name; route=$_.route;
-        computerName=$_.computerName; computerSameObject=$_.computerSameObject; folderId=$_.folderId; iniId=$_.iniId} })
+        computerName=$_.computerName; computerSameObject=$_.computerSameObject; itemName=$_.itemName;
+        computerItemName=$_.computerItemName; folderId=$_.folderId; iniId=$_.iniId} })
     $workDrive = [IO.Path]::GetPathRoot($roots[0].path)
     $profileDrive = [IO.Path]::GetPathRoot($roots[1].path)
     $report = @{sha=$env:GITHUB_SHA; runId=$env:GITHUB_RUN_ID; attempt=$env:GITHUB_RUN_ATTEMPT;

@@ -4,6 +4,13 @@ using System.Text;
 
 internal static class ShellNameProbe
 {
+    [ComImport, Guid("43826D1E-E718-42EE-BC55-A1E261C37BFE"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IShellItem
+    {
+        [PreserveSig] int BindToHandler(IntPtr context, ref Guid handler, ref Guid iid, out IntPtr result);
+        [PreserveSig] int GetParent(out IntPtr parent);
+        [PreserveSig] int GetDisplayName(uint format, out IntPtr name);
+    }
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct SHFILEINFO
     {
@@ -20,6 +27,9 @@ internal static class ShellNameProbe
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern int SHParseDisplayName(string name, IntPtr binding, out IntPtr idList,
         uint attributes, out uint requestedAttributes);
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    private static extern int SHCreateItemFromParsingName(string name, IntPtr binding, ref Guid iid,
+        [MarshalAs(UnmanagedType.Interface)] out IShellItem item);
     [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     private static extern int SHGetNameFromIDList(IntPtr idList, uint format, out IntPtr name);
     [DllImport("shell32.dll")]
@@ -41,6 +51,23 @@ internal static class ShellNameProbe
         if (result < 0) return String.Format("<HRESULT:{0:X8}>", result);
         try { return Marshal.PtrToStringUni(value) ?? ""; }
         finally { Marshal.FreeCoTaskMem(value); }
+    }
+
+    private static string ItemName(string path)
+    {
+        var iid = new Guid("43826D1E-E718-42EE-BC55-A1E261C37BFE");
+        IShellItem item;
+        int result = SHCreateItemFromParsingName(path, IntPtr.Zero, ref iid, out item);
+        if (result < 0) return String.Format("<HRESULT:{0:X8}>", result);
+        try
+        {
+            IntPtr name;
+            result = item.GetDisplayName(0, out name);
+            if (result < 0) return String.Format("<HRESULT:{0:X8}>", result);
+            try { return Marshal.PtrToStringUni(name) ?? ""; }
+            finally { Marshal.FreeCoTaskMem(name); }
+        }
+        finally { Marshal.ReleaseComObject(item); }
     }
 
     [STAThread]
@@ -92,8 +119,11 @@ internal static class ShellNameProbe
                 finally { Marshal.FreeCoTaskMem(computerItem); }
             }
             string encodedComputer = Convert.ToBase64String(Encoding.UTF8.GetBytes(computer));
-            Console.WriteLine("{0}|{1}|{2}|{3}|{4}", System.Diagnostics.Process.GetCurrentProcess().Id,
-                result == IntPtr.Zero ? 0 : 1, encoded, encodedRoute, encodedComputer);
+            string itemNames = ItemName(args[0]) + "\t" +
+                ItemName(@"::{20D04FE0-3AEA-1069-A2D8-08002B30309D}\" + args[0]);
+            string encodedItems = Convert.ToBase64String(Encoding.UTF8.GetBytes(itemNames));
+            Console.WriteLine("{0}|{1}|{2}|{3}|{4}|{5}", System.Diagnostics.Process.GetCurrentProcess().Id,
+                result == IntPtr.Zero ? 0 : 1, encoded, encodedRoute, encodedComputer, encodedItems);
             return result == IntPtr.Zero ? 4 : 0;
         }
         catch (Exception error)
