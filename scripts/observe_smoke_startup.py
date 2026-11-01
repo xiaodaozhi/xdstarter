@@ -21,8 +21,8 @@ STAGE = re.compile(rb'^Smoke stage ([a-z0-9-]+) ([0-9]+) ms\r?$')
 MAX_OUTPUT = 1024 * 1024
 
 
-def observe(command, *, timeout, cwd, env):
-    """Measure receipt times, bound output, and terminate only the spawned child."""
+def observe(command, *, timeout, cwd, env, _on_boundary=None):
+    """Measure bounded child output; the optional boundary callback supports test handshakes."""
     started = time.monotonic_ns()
     process = subprocess.Popen(command, cwd=cwd, env=env, stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT, bufsize=0)
@@ -55,6 +55,8 @@ def observe(command, *, timeout, cwd, env):
         code = process.poll()
         if code is not None and process_exit_observed is None:
             process_exit_observed = time.monotonic_ns()
+            if _on_boundary:
+                _on_boundary('process-exit')
         return code
 
     def consume(received, chunk):
@@ -62,6 +64,8 @@ def observe(command, *, timeout, cwd, env):
         if chunk is None:
             eof = True
             pipe_eof_observed = received
+            if _on_boundary:
+                _on_boundary('pipe-eof')
             return
         if first_byte is None:
             first_byte = received
