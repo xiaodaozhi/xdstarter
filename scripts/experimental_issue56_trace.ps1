@@ -114,14 +114,22 @@ try {
         if (Test-Path -LiteralPath $root.path) { throw 'Fixture path exists.' }
         New-Item -ItemType Directory -Path $root.path | Out-Null
         $created += $root
-        $folder = Join-Path $root.path ('target-' + $root.name)
-        New-Item -ItemType Directory -Path $folder | Out-Null
-        if (![Issue56Setup]::PathMakeSystemFolderW($folder)) { throw 'Folder setup failed.' }
-        $module = Join-Path $env:WINDIR 'System32/shell32.dll'
-        $result = [Issue56Setup]::SHSetLocalizedName($folder, $module, 21799)
-        if ($result -lt 0) { throw "SHSetLocalizedName failed: $result" }
-        [IO.File]::SetAttributes((Join-Path $folder 'desktop.ini'),
-            [IO.FileAttributes]::Hidden -bor [IO.FileAttributes]::System)
+        foreach ($kind in @('target', 'marked')) {
+            $folder = Join-Path $root.path ($kind + '-' + $root.name)
+            New-Item -ItemType Directory -Path $folder | Out-Null
+            if (![Issue56Setup]::PathMakeSystemFolderW($folder)) { throw 'Folder setup failed.' }
+            $module = Join-Path $env:WINDIR 'System32/shell32.dll'
+            $result = [Issue56Setup]::SHSetLocalizedName($folder, $module, 21799)
+            if ($result -lt 0) { throw "SHSetLocalizedName failed: $result" }
+            $ini = Join-Path $folder 'desktop.ini'
+            [IO.File]::SetAttributes($ini, [IO.FileAttributes]::Hidden -bor [IO.FileAttributes]::System)
+            if ($kind -eq 'marked') {
+                Set-Content -LiteralPath $ini -Stream 'Zone.Identifier' -Encoding ascii -Value "[ZoneTransfer]`r`nZoneId=3"
+                if ((Get-Content -LiteralPath $ini -Stream 'Zone.Identifier' -Raw) -notmatch 'ZoneId=3') {
+                    throw 'Owned source marker did not persist.'
+                }
+            }
+        }
     }
     foreach ($pair in @(@($roots[0],$roots[1]), @($roots[1],$roots[0]))) {
         $spec = New-XDStarterJunctionSpec $pair[0] $pair[1]
@@ -139,6 +147,28 @@ try {
         @{label='profile-direct'; path=(Join-Path $roots[1].path 'target-profile')},
         @{label='profile-via-workspace'; path=(Join-Path $junctions[0].path 'target-profile')}
     )
+    function Read-Query($q) {
+        $line = Invoke-Probe $probe $q.path
+        $parts = $line -split '\|', 5
+        if ($parts.Count -ne 5 -or $parts[0] -notmatch '^[1-9][0-9]*$' -or $parts[1] -ne '1') {
+            throw "Malformed Shell probe result: $($q.label)"
+        }
+        $q.pid = [int]$parts[0]
+        $q.name = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($parts[2]))
+        $route = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($parts[3]))
+        $computer = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($parts[4]))
+        $computerParts = $computer -split "`t", 2
+        $q.computerName = $computerParts[0]
+        $q.computerSameObject = $false
+        if ($computerParts.Count -eq 2 -and [IO.Directory]::Exists($computerParts[1])) {
+            $q.computerSameObject = (Get-XDStarterIdentityHash $computerParts[1]) -eq $q.folderId
+        }
+        foreach ($substitution in @(@($roots[0].path, '$WORK'), @($roots[1].path, '$PROFILE'),
+                                     @($workspace, '$WORKSPACE'), @($env:USERPROFILE, '$USERPROFILE'))) {
+            $route = $route.Replace($substitution[0], $substitution[1], [StringComparison]::OrdinalIgnoreCase)
+        }
+        $q.route = $route.Trim()
+    }
     foreach ($q in $queries) {
         $q.folderId = Get-XDStarterIdentityHash $q.path
         $q.iniId = Get-XDStarterIdentityHash (Join-Path $q.path 'desktop.ini')
@@ -154,19 +184,7 @@ try {
     foreach ($q in $queries) {
         # Each fresh process calls the production API first; it then records
         # the parsed Shell item hierarchy without an earlier parent query.
-        $line = Invoke-Probe $probe $q.path
-        $parts = $line -split '\|', 4
-        if ($parts.Count -ne 4 -or $parts[0] -notmatch '^[1-9][0-9]*$' -or $parts[1] -ne '1') {
-            throw "Malformed Shell probe result: $($q.label)"
-        }
-        $q.pid = [int]$parts[0]
-        $q.name = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($parts[2]))
-        $route = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($parts[3]))
-        foreach ($substitution in @(@($roots[0].path, '$WORK'), @($roots[1].path, '$PROFILE'),
-                                     @($workspace, '$WORKSPACE'), @($env:USERPROFILE, '$USERPROFILE'))) {
-            $route = $route.Replace($substitution[0], $substitution[1], [StringComparison]::OrdinalIgnoreCase)
-        }
-        $q.route = $route.Trim()
+        Read-Query $q
     }
     # Allow the bounded capture consumer to flush the last completed probe.
     # Completeness is still checked independently from the exported events.
@@ -181,11 +199,31 @@ try {
     Wait-Tool (Start-Tool $Procmon @('/OpenLog',$pml,'/SaveAs',$csv,'/Quiet','/NoConnect')) 120 'Procmon export'
     if (!(Test-Path -LiteralPath $csv)) { throw 'Procmon export is missing.' }
 
+    # Compare the same two namespace entry points on freshly-created marked
+    # fixtures. These separate probes occur after the captured unmarked cases.
+    $marked = @(
+        @{label='marked-workspace-direct'; path=(Join-Path $roots[0].path 'marked-workspace')},
+        @{label='marked-workspace-via-profile'; path=(Join-Path $junctions[1].path 'marked-workspace')},
+        @{label='marked-profile-direct'; path=(Join-Path $roots[1].path 'marked-profile')},
+        @{label='marked-profile-via-workspace'; path=(Join-Path $junctions[0].path 'marked-profile')}
+    )
+    foreach ($q in $marked) {
+        $q.folderId = Get-XDStarterIdentityHash $q.path
+        $q.iniId = Get-XDStarterIdentityHash (Join-Path $q.path 'desktop.ini')
+        Read-Query $q
+    }
+    if ($marked[0].folderId -ne $marked[1].folderId -or $marked[0].iniId -ne $marked[1].iniId -or
+        $marked[2].folderId -ne $marked[3].folderId -or $marked[2].iniId -ne $marked[3].iniId) {
+        throw 'Marked aliases do not identify the same owned objects.'
+    }
+
     $indirect = [Text.StringBuilder]::new(1024)
     $indirectResult = [Issue56Setup]::SHLoadIndirectString(('@'+$module+',-21799'), $indirect, 1024, [IntPtr]::Zero)
     if ($indirectResult -lt 0 -or $indirect.Length -eq 0) { throw 'System resource did not resolve.' }
     $publicQueries = @($queries | ForEach-Object { @{label=$_.label; pid=$_.pid; name=$_.name; route=$_.route;
-        folderId=$_.folderId; iniId=$_.iniId} })
+        computerName=$_.computerName; computerSameObject=$_.computerSameObject; folderId=$_.folderId; iniId=$_.iniId} })
+    $publicMarked = @($marked | ForEach-Object { @{label=$_.label; pid=$_.pid; name=$_.name; route=$_.route;
+        computerName=$_.computerName; computerSameObject=$_.computerSameObject; folderId=$_.folderId; iniId=$_.iniId} })
     $workDrive = [IO.Path]::GetPathRoot($roots[0].path)
     $profileDrive = [IO.Path]::GetPathRoot($roots[1].path)
     $report = @{sha=$env:GITHUB_SHA; runId=$env:GITHUB_RUN_ID; attempt=$env:GITHUB_RUN_ATTEMPT;
@@ -195,7 +233,7 @@ try {
         profileDriveType=[Issue56Setup]::GetDriveTypeW($profileDrive);
         namespaceLabel=[Microsoft.Win32.Registry]::GetValue('HKEY_CLASSES_ROOT\CLSID\{F5FB2C77-0E2F-4A16-A381-3E560C68BC83}', '', $null);
         probesSha256=(Get-FileHash -LiteralPath $probe -Algorithm SHA256).Hash.ToLowerInvariant();
-        captureExitCode=$captureExitCode; queries=$publicQueries}
+        captureExitCode=$captureExitCode; queries=$publicQueries; markedZoneId=3; markedQueries=$publicMarked}
     $report | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $artifact 'probes.json') -Encoding utf8NoBOM
     @{work=$roots[0].path; profile=$roots[1].path; workspace=$workspace;
       userprofile=$env:USERPROFILE; windir=$env:WINDIR} | ConvertTo-Json |

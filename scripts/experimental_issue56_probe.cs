@@ -80,8 +80,20 @@ internal static class ShellNameProbe
                 finally { Marshal.FreeCoTaskMem(idList); }
             }
             string encodedRoute = Convert.ToBase64String(Encoding.UTF8.GetBytes(route.ToString()));
-            Console.WriteLine("{0}|{1}|{2}|{3}", System.Diagnostics.Process.GetCurrentProcess().Id,
-                result == IntPtr.Zero ? 0 : 1, encoded, encodedRoute);
+            IntPtr computerItem;
+            uint computerAttrs;
+            int computerResult = SHParseDisplayName(
+                @"::{20D04FE0-3AEA-1069-A2D8-08002B30309D}\" + args[0], IntPtr.Zero,
+                out computerItem, 0, out computerAttrs);
+            string computer = String.Format("<HRESULT:{0:X8}>", computerResult);
+            if (computerResult >= 0)
+            {
+                try { computer = Name(computerItem, 0) + "\t" + Name(computerItem, 0x80058000); }
+                finally { Marshal.FreeCoTaskMem(computerItem); }
+            }
+            string encodedComputer = Convert.ToBase64String(Encoding.UTF8.GetBytes(computer));
+            Console.WriteLine("{0}|{1}|{2}|{3}|{4}", System.Diagnostics.Process.GetCurrentProcess().Id,
+                result == IntPtr.Zero ? 0 : 1, encoded, encodedRoute, encodedComputer);
             return result == IntPtr.Zero ? 4 : 0;
         }
         catch (Exception error)
