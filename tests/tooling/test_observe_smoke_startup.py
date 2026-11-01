@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -18,9 +19,9 @@ class SmokeObserverTests(unittest.TestCase):
         raw = (evidence / 'smoke-startup-local.log').read_bytes()
         self.assertEqual(hashlib.sha256(raw).hexdigest(), record['outputSha256'])
 
-    def run_child(self, source, timeout=2):
+    def run_child(self, source, timeout=2, **kwargs):
         return observe([sys.executable, '-u', '-c', source], timeout=timeout,
-                       cwd=ROOT, env=dict(os.environ))
+                       cwd=ROOT, env=dict(os.environ), **kwargs)
 
     def test_success_records_real_stage_and_creation_boundaries(self):
         result, raw = self.run_child("print('Smoke stage before-application 0 ms'); "
@@ -30,8 +31,44 @@ class SmokeObserverTests(unittest.TestCase):
         self.assertTrue(result['readerFinished'])
         self.assertLessEqual(result['createReturnMilliseconds'], result['firstStageMilliseconds'])
         self.assertLessEqual(result['firstByteMilliseconds'], result['firstStageMilliseconds'])
+        self.assertLessEqual(result['createReturnMilliseconds'], result['processExitObservedMilliseconds'])
+        self.assertLessEqual(result['createReturnMilliseconds'], result['pipeEofObservedMilliseconds'])
+        self.assertLessEqual(result['processExitObservedMilliseconds'], result['finishedMilliseconds'])
+        self.assertLessEqual(result['pipeEofObservedMilliseconds'], result['finishedMilliseconds'])
         self.assertEqual([row['name'] for row in result['stages']], ['before-application', 'event-loop-returned'])
         self.assertIn(b'event-loop-returned', raw)
+
+    def test_eof_and_process_exit_are_independent_boundaries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            release = Path(directory) / 'release'
+            source = ("import os,time\nprint('Smoke stage before-application 0 ms',flush=True)\n"
+                      "print('Smoke stage event-loop-returned 1 ms',flush=True)\n"
+                      "os.close(1); os.close(2)\n"
+                      f"while not os.path.exists({str(release)!r}): time.sleep(.01)\n")
+            try:
+                result, _ = self.run_child(source, timeout=6,
+                    _on_boundary=lambda name: release.touch() if name == 'pipe-eof' else None)
+            finally:
+                release.touch()
+            self.assertEqual(result['status'], 'passed')
+            self.assertLess(result['pipeEofObservedMilliseconds'], result['processExitObservedMilliseconds'])
+
+    def test_process_exit_can_precede_eof_from_inherited_pipe(self):
+        with tempfile.TemporaryDirectory() as directory:
+            release = Path(directory) / 'release'
+            child = ("import os,time\nend=time.monotonic()+5\n"
+                     f"while not os.path.exists({str(release)!r}) and time.monotonic()<end: time.sleep(.01)\n")
+            source = ("import subprocess,sys\n"
+                      f"subprocess.Popen([sys.executable,'-c',{child!r}])\n"
+                      "print('Smoke stage before-application 0 ms',flush=True)\n"
+                      "print('Smoke stage event-loop-returned 1 ms',flush=True)\n")
+            try:
+                result, _ = self.run_child(source, timeout=6,
+                    _on_boundary=lambda name: release.touch() if name == 'process-exit' else None)
+            finally:
+                release.touch()
+            self.assertEqual(result['status'], 'passed')
+            self.assertLess(result['processExitObservedMilliseconds'], result['pipeEofObservedMilliseconds'])
 
     def test_stall_before_first_log_is_bounded_and_preserved(self):
         result, raw = self.run_child('import time; time.sleep(30)', timeout=0.6)

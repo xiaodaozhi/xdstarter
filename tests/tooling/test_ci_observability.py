@@ -326,6 +326,7 @@ class EvidenceTests(TemporaryRepository):
                 smoke = {'status': 'passed', 'exitCode': 0, 'readerFinished': True, 'outputTruncated': False,
                          'executableSha256': 'a' * 64, 'outputSha256': hashlib.sha256(smoke_raw).hexdigest(),
                          'createReturnMilliseconds': 1, 'firstByteMilliseconds': 2, 'firstStageMilliseconds': 2,
+                         'processExitObservedMilliseconds': 6, 'pipeEofObservedMilliseconds': 6.5,
                          'finishedMilliseconds': 7, 'stages': [{'name': 'before-application'},
                                                                {'name': 'event-loop-returned'}]}
                 (self.root / ci_evidence.COPIES['smoke-startup.json']).write_text(json.dumps(smoke), encoding='utf-8')
@@ -388,7 +389,7 @@ class EvidenceTests(TemporaryRepository):
         original = json.loads(path.read_text(encoding='utf-8'))
         manifest = directory / 'manifest.json'
         report = json.loads(manifest.read_text(encoding='utf-8'))
-        for mutation in ('timeout', 'output-hash', 'missing-stage', 'impossible-time'):
+        for mutation in ('timeout', 'output-hash', 'missing-stage', 'impossible-time', 'missing-exit', 'late-eof'):
             data = json.loads(json.dumps(original))
             if mutation == 'timeout':
                 data['status'] = 'timeout-before-first-stage'
@@ -396,8 +397,12 @@ class EvidenceTests(TemporaryRepository):
                 data['outputSha256'] = 'b' * 64
             elif mutation == 'missing-stage':
                 data['stages'] = []
-            else:
+            elif mutation == 'impossible-time':
                 data['firstStageMilliseconds'] = 0
+            elif mutation == 'missing-exit':
+                data.pop('processExitObservedMilliseconds')
+            else:
+                data['pipeEofObservedMilliseconds'] = data['finishedMilliseconds'] + 1
             path.write_text(json.dumps(data), encoding='utf-8')
             report['files']['smoke-startup.json'] = ci_evidence.checksum(path)
             manifest.write_text(json.dumps(report), encoding='utf-8')

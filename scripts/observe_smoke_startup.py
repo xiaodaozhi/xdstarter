@@ -21,8 +21,8 @@ STAGE = re.compile(rb'^Smoke stage ([a-z0-9-]+) ([0-9]+) ms\r?$')
 MAX_OUTPUT = 1024 * 1024
 
 
-def observe(command, *, timeout, cwd, env):
-    """Measure receipt times, bound output, and terminate only the spawned child."""
+def observe(command, *, timeout, cwd, env, _on_boundary=None):
+    """Measure bounded child output; the optional boundary callback supports test handshakes."""
     started = time.monotonic_ns()
     process = subprocess.Popen(command, cwd=cwd, env=env, stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT, bufsize=0)
@@ -45,13 +45,27 @@ def observe(command, *, timeout, cwd, env):
     deadline = started + int(timeout * 1_000_000_000)
     raw, pending, stages = bytearray(), bytearray(), []
     first_byte = None
+    process_exit_observed = None
+    pipe_eof_observed = None
     eof = False
     output_exceeded = False
 
+    def observe_exit():
+        nonlocal process_exit_observed
+        code = process.poll()
+        if code is not None and process_exit_observed is None:
+            process_exit_observed = time.monotonic_ns()
+            if _on_boundary:
+                _on_boundary('process-exit')
+        return code
+
     def consume(received, chunk):
-        nonlocal first_byte, eof, output_exceeded
+        nonlocal first_byte, pipe_eof_observed, eof, output_exceeded
         if chunk is None:
             eof = True
+            pipe_eof_observed = received
+            if _on_boundary:
+                _on_boundary('pipe-eof')
             return
         if first_byte is None:
             first_byte = received
@@ -71,7 +85,8 @@ def observe(command, *, timeout, cwd, env):
 
     while True:
         now = time.monotonic_ns()
-        if output_exceeded or now >= deadline or (eof and process.poll() is not None):
+        code = observe_exit()
+        if output_exceeded or now >= deadline or (eof and code is not None):
             break
         try:
             consume(*events.get(timeout=min(0.05, (deadline - now) / 1_000_000_000)))
@@ -82,10 +97,11 @@ def observe(command, *, timeout, cwd, env):
             consume(*events.get_nowait())
         except queue.Empty:
             break
-    timed_out = time.monotonic_ns() >= deadline and not (eof and process.poll() is not None)
-    if (timed_out or output_exceeded) and process.poll() is None:
+    timed_out = time.monotonic_ns() >= deadline and not (eof and observe_exit() is not None)
+    if (timed_out or output_exceeded) and observe_exit() is None:
         process.kill()
     exit_code = process.wait(timeout=5)
+    observe_exit()
     reader.join(timeout=1)
     while True:
         try:
@@ -109,6 +125,8 @@ def observe(command, *, timeout, cwd, env):
             'createReturnMilliseconds': (created - started) / 1_000_000,
             'firstByteMilliseconds': None if first_byte is None else (first_byte - started) / 1_000_000,
             'firstStageMilliseconds': None if not first_stage else first_stage['observedMilliseconds'],
+            'processExitObservedMilliseconds': (process_exit_observed - started) / 1_000_000,
+            'pipeEofObservedMilliseconds': None if pipe_eof_observed is None else (pipe_eof_observed - started) / 1_000_000,
             'finishedMilliseconds': (finished - started) / 1_000_000,
             'stages': stages, 'outputTruncated': output_exceeded,
             'readerFinished': not reader.is_alive()}, bytes(raw)
@@ -146,6 +164,7 @@ def main() -> int:
                       platform=platform.platform(), scope='independent offscreen smoke process',
                       limitations=['Popen itself is not interrupted if process creation blocks.',
                                    'Pipe receipt includes scheduling and is not the exact emission time.',
+                                   'Process exit is observed by polling and may include scheduling delay.',
                                    'A separate smoke run cannot locate an earlier failed process.'])
         (output / 'result.json').write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
         print(f"Smoke startup observation: {result['status']} ({output})")
