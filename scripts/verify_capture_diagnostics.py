@@ -13,6 +13,37 @@ import sys
 import time
 
 
+def await_snapshot(read, accept, timeout, *, process=None, interval=.05):
+    """Wait for a readable and acceptable snapshot, without hiding malformed data."""
+    deadline = time.monotonic() + timeout
+    retries = 0
+    last_error = None
+    while time.monotonic() < deadline:
+        if process is not None and process.poll() is not None:
+            raise RuntimeError("product exited while awaiting diagnostics")
+        try:
+            value = read()
+        except (FileNotFoundError, PermissionError) as error:
+            retries += 1
+            last_error = error
+        else:
+            if accept(value):
+                return value, retries
+        time.sleep(interval)
+    raise RuntimeError(
+        f"diagnostic snapshot did not become available and acceptable within {timeout}s; "
+        f"read retries={retries}, last read error={last_error!r}"
+    )
+
+
+def recovery_observed(candidate, old, pid, digest):
+    if (candidate["processId"] != pid or candidate["executableSha256"] != digest or
+            candidate["runId"] != old["runId"]):
+        raise ValueError("diagnostic process/binary/run identity mismatch")
+    return (candidate["exportedAt"] > old["exportedAt"] and
+            candidate.get("diagnosticWriteFailures", 0) >= 1)
+
+
 def verify(executable, directory, mode="point"):
     root = Path(__file__).resolve().parents[1]
     executable = executable.resolve(strict=True)
@@ -33,27 +64,18 @@ def verify(executable, directory, mode="point"):
             "--start-capture-duration", "10"], env=environment, stdout=output, stderr=errors,
             creationflags=subprocess.CREATE_NO_WINDOW)
         try:
-            deadline = time.monotonic() + 6
-            while not snapshot.exists() and time.monotonic() < deadline:
-                if process.poll() is not None:
-                    raise RuntimeError("product exited before diagnostics; exit any existing instance first")
-                time.sleep(.05)
-            with snapshot.open("rb") as held:
+            held, initial_retries = await_snapshot(
+                lambda: snapshot.open("rb"), lambda _: True, 6, process=process)
+            with held:
                 old = json.load(held)
                 if old["processId"] != process.pid or old["executableSha256"] != digest:
                     raise ValueError("diagnostic process/binary identity mismatch")
                 # This is an intentional deny-delete reader. Qt 6.8.2's Windows
                 # replacement must fail while held and recover after it closes.
                 time.sleep(1)
-            deadline = time.monotonic() + 2
-            while time.monotonic() < deadline:
-                recovered = api["read_json"](snapshot)
-                if (recovered["exportedAt"] > old["exportedAt"] and
-                        recovered.get("diagnosticWriteFailures", 0) >= 1):
-                    break
-                time.sleep(.05)
-            else:
-                raise RuntimeError("diagnostic writer did not recover after reader release")
+            recovered, recovery_retries = await_snapshot(
+                lambda: api["read_json"](snapshot),
+                lambda candidate: recovery_observed(candidate, old, process.pid, digest), 2, process=process)
             collection = subprocess.run([sys.executable, str(root / "scripts/start_capture_acceptance.py"),
                 "collect", "--snapshot", str(snapshot), "--output", str(directory / "events.ndjson"),
                 "--executable", str(executable), "--mode", mode, "--seconds", "2"],
@@ -63,6 +85,7 @@ def verify(executable, directory, mode="point"):
             result = {"mode": mode, "productExit": exit_code, "collectorExit": collection.returncode,
                 "recoveredWriteFailures": recovered["diagnosticWriteFailures"],
                 "exportResumed": recovered["exportedAt"] > old["exportedAt"],
+                "initialReadRetries": initial_retries, "recoveryReadRetries": recovery_retries,
                 "finalHookInstalled": final["hookInstalled"],
                 "finalSessionActive": final["sessionActive"], "sha256": digest,
                 "windowEventSequence": final["windowEventSequence"],
