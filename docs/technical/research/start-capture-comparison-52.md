@@ -26,6 +26,8 @@ Windows读者短暂占用目标文件可能使原子替换失败。显式导出�
 ./build/tooling/Scripts/python.exe scripts/verify_capture_diagnostics.py --executable ./build/app-release/bin/xdstarter.exe --mode area-cache --output ./build/validation/area-diagnostics-recovery
 ```
 
+[#140](https://github.com/xiaodaozhi/xdstarter/issues/140) 的验证脚本在首次打开及释放读句柄后的轮询中，对文件暂不存在或访问被拒绝进行有界重试，并记录两阶段的读取重试次数；持续不可读、产品提前退出、无效 JSON、运行身份变化、写失败计数未增加或导出时间未推进仍会失败。Windows 独占句柄测试只证明受控冲突可产生同类读取异常，不确定历史 CI 冲突的句柄持有者，也不代表实际开始按钮接管结果。
+
 区域模式的原生窗口失效现在区分窗口自身与共享HWND里的可访问对象。`recentWindowEvents`保留最近128条相关通知及分类；输入中的`nativeWindowEventSequence`指向当时最近记录，不自动证明因果。`epochBefore/epochAfter`是本事件的原生失效决定，不表示期间没有其他线程的UIA失效。`eventTime32`为WinEvent产生时的32位值，不与64位`at`直接相减。报告将同会话的引用及试次时间窗内的事件作为上下文，观察到原生菜单与否仍由独立标注决定。
 
 Windows的`platform.start-button-window-events`只注册本进程／本线程的WinEvent Hook，使用自有隐藏窗口和NotifyWinEvent，覆盖对象通知、窗口通知、恢复后新旧资格、成对释放和有界覆盖。不加载Explorer、不安装低级鼠标Hook、不生成鼠标输入，手势使用虚拟时钟。接口语义依据微软[WinEventProc](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nc-winuser-wineventproc)及[对象标识符](https://learn.microsoft.com/en-us/windows/win32/winauto/object-identifiers)；现场故障是否由这条路径触发仍需新版本物理复测。
