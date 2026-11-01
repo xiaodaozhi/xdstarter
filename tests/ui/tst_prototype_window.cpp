@@ -36,6 +36,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJSValue>
+#include <QKeyEvent>
 #include <QLineF>
 #include <QLockFile>
 #include <QMap>
@@ -3299,34 +3300,91 @@ QObject* PrototypeWindowTest::sizeMenu() const {
 
 void PrototypeWindowTest::openSizeMenu(const QString& tileId, bool keyboard) {
     settleMenus();
+    class InputFocusTrace final : public QObject {
+      public:
+        InputFocusTrace(QQuickWindow* window, QQuickItem* tile) : window_(window), tile_(tile) {}
+        QString report() const {
+            return events_.join(QLatin1Char(';')) + (truncated_ ? QStringLiteral(";truncated") : QString{});
+        }
+      protected:
+        bool eventFilter(QObject* watched, QEvent* event) override {
+            const auto type = event->type();
+            const bool keyEvent = type == QEvent::KeyPress || type == QEvent::KeyRelease ||
+                                  type == QEvent::ShortcutOverride;
+            const bool target = watched == window_.data() || watched == tile_.data();
+            if (keyEvent) {
+                if (!target) return false;
+                const auto key = static_cast<QKeyEvent*>(event)->key();
+                if (key != Qt::Key_Shift && key != Qt::Key_F10) return false;
+            } else if (type == QEvent::FocusIn || type == QEvent::FocusOut) {
+                if (!target) return false;
+            } else if (type == QEvent::WindowActivate || type == QEvent::WindowDeactivate) {
+                if (!qobject_cast<QWindow*>(watched)) return false;
+            } else if (type != QEvent::Shortcut) {
+                return false;
+            }
+            if (events_.size() >= 32) { truncated_ = true; return false; }
+            const auto object = watched->objectName().isEmpty()
+                                    ? QString::fromLatin1(watched->metaObject()->className())
+                                    : watched->objectName();
+            events_.append(QStringLiteral("type=%1 object=%2 key=%3 active=%4 focusWindow=%5 tileFocus=%6")
+                .arg(int(type)).arg(object)
+                .arg(keyEvent ? static_cast<QKeyEvent*>(event)->key() : 0)
+                .arg(window_ && window_->isActive())
+                .arg(window_ && QGuiApplication::focusWindow() == window_)
+                .arg(tile_ && tile_->hasActiveFocus()));
+            return false;
+        }
+      private:
+        QPointer<QQuickWindow> window_;
+        QPointer<QQuickItem> tile_;
+        QStringList events_;
+        bool truncated_ = false;
+    };
     const auto diagnostics = [this, &tileId, keyboard] {
         const auto* tile = item(QStringLiteral("tile-") + tileId);
         const auto* focus = window_->activeFocusItem();
         const auto* menu = sizeMenu();
+        const auto* shortcut = window_->findChild<QObject*>(QStringLiteral("tileContextShortcut"));
         return QStringLiteral("input=%1 target=%2 targetVisible=%3 targetEnabled=%4 targetFocus=%5 "
-                              "activeFocus=%6 menuVisible=%7 menuOpened=%8 popup=%9 suspended=%10 pending=%11")
+                              "activeFocus=%6 windowActive=%7 focusWindowIsTest=%8 shortcutEnabled=%9 "
+                              "menuVisible=%10 menuOpened=%11 popup=%12 suspended=%13 pending=%14")
             .arg(keyboard ? QStringLiteral("Shift+F10") : QStringLiteral("right-click"))
             .arg(tileId)
             .arg(tile && tile->isVisible()).arg(tile && tile->isEnabled()).arg(tile && tile->hasActiveFocus())
             .arg(focus ? focus->objectName() : QStringLiteral("none"))
+            .arg(window_->isActive()).arg(QGuiApplication::focusWindow() == window_)
+            .arg(shortcut && shortcut->property("enabled").toBool())
             .arg(menu && menu->property("visible").toBool()).arg(menu && menu->property("opened").toBool())
             .arg(window_->property("internalPopupVisible").toBool())
             .arg(window_->property("presentationSuspended").toBool())
             .arg(window_->property("presentationFocusPending").toBool());
     };
-    auto* tile = item(QStringLiteral("tile-") + tileId);
+    QPointer<QQuickItem> tile = item(QStringLiteral("tile-") + tileId);
     QVERIFY(tile);
+    if (keyboard)
+        QTRY_VERIFY2(window_->isActive() && QGuiApplication::focusWindow() == window_, qPrintable(diagnostics()));
+    QVERIFY2(tile, "Tile was destroyed while waiting for the active window");
     tile->forceActiveFocus(Qt::TabFocusReason);
-    QTRY_VERIFY2(tile->hasActiveFocus(), qPrintable(diagnostics()));
+    QTRY_VERIFY2(tile && tile->hasActiveFocus(), qPrintable(diagnostics()));
+    const auto beforeInput = diagnostics();
+    InputFocusTrace trace(window_, tile);
     if (keyboard) {
+        QCoreApplication::instance()->installEventFilter(&trace);
         QTest::keyClick(window_, Qt::Key_F10, Qt::ShiftModifier);
+        QCoreApplication::instance()->removeEventFilter(&trace);
     } else {
         QTest::mouseClick(window_, Qt::RightButton, Qt::NoModifier,
                           tile->mapToScene(tile->boundingRect().center()).toPoint());
     }
+    const auto afterInput = diagnostics();
+    const auto inputDiagnostics = [&] {
+        return QStringLiteral("before={%1} after={%2} current={%3} events={%4}")
+            .arg(beforeInput, afterInput, diagnostics(), trace.report());
+    };
     QTRY_VERIFY(sizeMenu());
-    QTRY_VERIFY2(sizeMenu()->property("visible").toBool(), qPrintable(diagnostics()));
-    QTRY_VERIFY2(sizeMenu()->property("opened").toBool(), qPrintable(diagnostics()));
+    QTRY_VERIFY2(sizeMenu()->property("visible").toBool(), qPrintable(inputDiagnostics()));
+    QTRY_VERIFY2(sizeMenu()->property("opened").toBool(), qPrintable(inputDiagnostics()));
 }
 
 bool PrototypeWindowTest::queueFocusReplay(const QString& method, const QString& marker) {
