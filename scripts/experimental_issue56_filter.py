@@ -25,25 +25,28 @@ def run(csv_path, roots_path, probes_path, output_dir):
             value = re.sub(re.escape(old), lambda _: new, value, flags=re.IGNORECASE)
         return re.sub(r'S-1-5-21-(?:\d+-){3}\d+', '<RUNNER_SID>', value, flags=re.IGNORECASE)
 
-    fields = ['query', 'time', 'operation', 'path', 'result', 'detail']
+    # Procmon's Process Start detail contains the entire process environment.
+    # Never export detail or process/thread lifecycle records into an artifact.
+    fields = ['query', 'time', 'operation', 'path', 'result']
     counts = {label: 0 for label in labels.values()}
     with csv_path.open(encoding=text_encoding(csv_path), newline='', errors='replace') as source, \
             (output_dir / 'filtered.csv').open('w', encoding='utf-8', newline='') as destination:
         reader = csv.DictReader(source)
-        required = {'Time of Day', 'Process Name', 'PID', 'Operation', 'Path', 'Result', 'Detail'}
+        required = {'Time of Day', 'Process Name', 'PID', 'Operation', 'Path', 'Result'}
         if not required.issubset(set(reader.fieldnames or [])):
             raise ValueError('Procmon CSV does not have the expected columns')
         writer = csv.DictWriter(destination, fieldnames=fields)
         writer.writeheader()
         for row in reader:
             pid = row['PID'].strip()
-            if pid not in labels or row['Process Name'].casefold() != 'shell-name-probe.exe':
+            if (pid not in labels or row['Process Name'].casefold() != 'shell-name-probe.exe' or
+                    row['Operation'].startswith(('Process ', 'Thread '))):
                 continue
             label = labels[pid]
             counts[label] += 1
             writer.writerow({'query': label, 'time': row['Time of Day'],
                              'operation': row['Operation'], 'path': clean(row['Path']),
-                             'result': row['Result'], 'detail': clean(row['Detail'])})
+                             'result': row['Result']})
     if any(value == 0 for value in counts.values()):
         raise ValueError('Capture is incomplete for at least one probe: ' + repr(counts))
     (output_dir / 'trace-summary.json').write_text(json.dumps({'counts': counts}, indent=2), encoding='utf-8')
