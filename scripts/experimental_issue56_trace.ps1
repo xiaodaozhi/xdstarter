@@ -110,6 +110,26 @@ function Set-TemporaryVolumeLabel([string]$Root, [string]$Label) {
     [Issue56Setup]::SHChangeNotify(0x2000, 0x1005, $Root, [IntPtr]::Zero)
     if ((Get-VolumeLabel $Root) -ne $Label) { throw 'Volume label readback did not match.' }
 }
+function Restore-OwnedNamespacePolicy($State) {
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($State.path, $true)
+    if (!$key) { throw 'Temporary namespace policy key disappeared.' }
+    try {
+        if ($State.written) {
+            if ($key.GetValue($State.name, $null) -ne 1 -or
+                $key.GetValueKind($State.name) -ne [Microsoft.Win32.RegistryValueKind]::DWord) {
+                throw 'Temporary namespace policy value changed unexpectedly.'
+            }
+            if ($State.valueExisted) { $key.SetValue($State.name, $State.oldValue, $State.oldKind) }
+            else { $key.DeleteValue($State.name, $false) }
+            $key.Flush()
+        }
+        $empty = $key.GetValueNames().Count -eq 0 -and $key.GetSubKeyNames().Count -eq 0
+    } finally { $key.Dispose() }
+    if (!$State.keyExisted -and $empty) {
+        [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKey($State.path, $false)
+    }
+    [Issue56Setup]::SHChangeNotify(0x08000000, 0x1000, $null, [IntPtr]::Zero)
+}
 
 $workspace = (Resolve-Path -LiteralPath $env:GITHUB_WORKSPACE).Path
 $build = Join-Path $workspace 'build'
@@ -132,6 +152,7 @@ $com = $null
 $labelChanged = $false
 $labelRoot = $null
 $originalLabel = $null
+$namespaceState = $null
 try {
     $com = [Issue56Setup]::CoInitializeEx([IntPtr]::Zero, 2)
     if ($com -lt 0) { throw "COM setup failed: $com" }
@@ -281,6 +302,51 @@ try {
                              restoredQueries=$restoredQueries}
     }
 
+    # Only the disposable runner account's Explorer namespace visibility is
+    # changed. Preserve and restore the exact previous value and type; do not
+    # touch source-zone or security policy.
+    $policyPath = 'Software\Microsoft\Windows\CurrentVersion\Policies\NonEnum'
+    $policyName = '{F5FB2C77-0E2F-4A16-A381-3E560C68BC83}'
+    $policyParent = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey(
+        'Software\Microsoft\Windows\CurrentVersion\Policies', $false)
+    if (!$policyParent) { throw 'Expected disposable namespace policy parent is missing.' }
+    $policyParent.Dispose()
+    $policyKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($policyPath, $true)
+    $policyKeyExisted = $null -ne $policyKey
+    if (!$policyKey) { $policyKey = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($policyPath) }
+    if (!$policyKey) { throw 'Unable to open the disposable namespace policy key.' }
+    try {
+        $valueExisted = @($policyKey.GetValueNames()) -contains $policyName
+        $oldValue = if ($valueExisted) { $policyKey.GetValue($policyName, $null,
+            [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames) } else { $null }
+        $oldKind = if ($valueExisted) { $policyKey.GetValueKind($policyName) } else { $null }
+        $namespaceState = @{path=$policyPath; name=$policyName; keyExisted=$policyKeyExisted;
+                            valueExisted=$valueExisted; oldValue=$oldValue; oldKind=$oldKind; written=$false}
+        $policyKey.SetValue($policyName, 1, [Microsoft.Win32.RegistryValueKind]::DWord)
+        $namespaceState.written = $true
+        $policyKey.Flush()
+    } finally { $policyKey.Dispose() }
+    [Issue56Setup]::SHChangeNotify(0x08000000, 0x1000, $null, [IntPtr]::Zero)
+    $hiddenNamespaceQueries = @()
+    foreach ($original in $queries) {
+        $q = @{label=$original.label; path=$original.path; folderId=$original.folderId; iniId=$original.iniId}
+        Read-Query $q
+        $hiddenNamespaceQueries += @{label=$q.label; name=$q.name; route=$q.route;
+                                     computerName=$q.computerName; computerSameObject=$q.computerSameObject}
+    }
+    Restore-OwnedNamespacePolicy $namespaceState
+    $namespaceState = $null
+    $restoredNamespaceQueries = @()
+    foreach ($original in $queries) {
+        $q = @{label=$original.label; path=$original.path; folderId=$original.folderId; iniId=$original.iniId}
+        Read-Query $q
+        $restoredNamespaceQueries += @{label=$q.label; name=$q.name; route=$q.route;
+                                       computerName=$q.computerName; computerSameObject=$q.computerSameObject}
+    }
+    $namespaceExperiment = @{status='completed'; keyPreviouslyExisted=$policyKeyExisted;
+                             valuePreviouslyExisted=$valueExisted; hiddenQueries=$hiddenNamespaceQueries;
+                             restoredQueries=$restoredNamespaceQueries}
+
     $indirect = [Text.StringBuilder]::new(1024)
     $indirectResult = [Issue56Setup]::SHLoadIndirectString(('@'+$module+',-21799'), $indirect, 1024, [IntPtr]::Zero)
     if ($indirectResult -lt 0 -or $indirect.Length -eq 0) { throw 'System resource did not resolve.' }
@@ -298,7 +364,7 @@ try {
         namespaceLabel=[Microsoft.Win32.Registry]::GetValue('HKEY_CLASSES_ROOT\CLSID\{F5FB2C77-0E2F-4A16-A381-3E560C68BC83}', '', $null);
         probesSha256=(Get-FileHash -LiteralPath $probe -Algorithm SHA256).Hash.ToLowerInvariant();
         captureExitCode=$captureExitCode; queries=$publicQueries; markedZoneId=3; markedQueries=$publicMarked;
-        volumeLabelExperiment=$labelExperiment}
+        volumeLabelExperiment=$labelExperiment; namespaceVisibilityExperiment=$namespaceExperiment}
     $report | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $artifact 'probes.json') -Encoding utf8NoBOM
     @{work=$roots[0].path; profile=$roots[1].path; workspace=$workspace;
       userprofile=$env:USERPROFILE; windir=$env:WINDIR} | ConvertTo-Json |
@@ -310,9 +376,14 @@ try {
         try { Wait-Tool (Start-Tool $Procmon @('/Terminate','/Quiet')) 20 'Procmon cleanup' } catch { Write-Warning $_ }
         if (!$monitor.WaitForExit(20000)) { $monitor.Kill($true); $monitor.WaitForExit() }
     }
-    if ($labelChanged) { Set-TemporaryVolumeLabel $labelRoot $originalLabel }
-    if ($null -ne $com -and $com -ge 0) { [Issue56Setup]::CoUninitialize() }
-    foreach ($junction in $junctions) { Remove-XDStarterFixtureJunction $junction }
-    foreach ($root in $created) { Remove-OwnedRoot $root }
+    try { if ($namespaceState) { Restore-OwnedNamespacePolicy $namespaceState } }
+    finally {
+        try { if ($labelChanged) { Set-TemporaryVolumeLabel $labelRoot $originalLabel } }
+        finally {
+            if ($null -ne $com -and $com -ge 0) { [Issue56Setup]::CoUninitialize() }
+            foreach ($junction in $junctions) { Remove-XDStarterFixtureJunction $junction }
+            foreach ($root in $created) { Remove-OwnedRoot $root }
+        }
+    }
 }
 Write-Host 'Completed the bounded owned-process Shell trace; raw system-wide capture remains on the disposable runner.'
