@@ -15,7 +15,66 @@ Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
 using System.Text;
+using Microsoft.Win32.SafeHandles;
 public static class Issue56Setup {
+    [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)]
+    private struct SHFILEINFO {
+        public IntPtr icon;
+        public int iconIndex;
+        public uint attributes;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst=260)] public string display;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst=80)] public string type;
+    }
+    public sealed class StorageFacts {
+        public int openError;
+        public int queryError;
+        public uint returned;
+        public int deviceType;
+        public int removableMedia;
+        public uint busType;
+        public string vendor;
+        public string product;
+    }
+    [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
+    private static extern SafeFileHandle CreateFileW(string path, uint access, uint share,
+        IntPtr security, uint creation, uint flags, IntPtr template);
+    [DllImport("kernel32.dll", SetLastError=true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DeviceIoControl(SafeFileHandle handle, uint control,
+        [In] byte[] input, uint inputSize, [Out] byte[] output, uint outputSize, out uint returned, IntPtr overlapped);
+    [DllImport("shell32.dll", CharSet=CharSet.Unicode)]
+    private static extern IntPtr SHGetFileInfoW(string path, uint attributes, ref SHFILEINFO info, uint size, uint flags);
+    private static string Field(byte[] data, uint count, uint offset) {
+        if (offset == 0 || offset >= count) return null;
+        int start = (int)offset, end = start;
+        while (end < count && end - start < 128 && data[end] != 0) ++end;
+        return Encoding.ASCII.GetString(data, start, end - start).Trim();
+    }
+    public static StorageFacts QueryStorage(string root) {
+        var result = new StorageFacts();
+        using (var handle = CreateFileW(@"\\.\" + root.Substring(0, 2), 0, 7, IntPtr.Zero, 3, 0, IntPtr.Zero)) {
+            if (handle.IsInvalid) { result.openError = Marshal.GetLastWin32Error(); return result; }
+            var query = new byte[12]; var data = new byte[4096]; uint count;
+            if (!DeviceIoControl(handle, 0x002D1400, query, (uint)query.Length, data, (uint)data.Length,
+                                 out count, IntPtr.Zero)) {
+                result.queryError = Marshal.GetLastWin32Error(); return result;
+            }
+            result.returned = count;
+            if (count >= 36) {
+                result.deviceType = data[8]; result.removableMedia = data[10];
+                result.busType = BitConverter.ToUInt32(data, 28);
+                result.vendor = Field(data, count, BitConverter.ToUInt32(data, 12));
+                result.product = Field(data, count, BitConverter.ToUInt32(data, 16));
+            }
+            return result;
+        }
+    }
+    public static long[] ShellDriveAttributes(string root) {
+        var info = new SHFILEINFO();
+        info.attributes = 0x62000000; // FILESYSTEM, FOLDER, REMOVABLE
+        var result = SHGetFileInfoW(root, 0, ref info, (uint)Marshal.SizeOf(typeof(SHFILEINFO)), 0x20800);
+        return new long[] {result == IntPtr.Zero ? 0 : 1, info.attributes};
+    }
     [DllImport("kernel32.dll", CharSet=CharSet.Unicode)]
     public static extern uint GetDriveTypeW(string root);
     [DllImport("kernel32.dll", CharSet=CharSet.Unicode, SetLastError=true)]
@@ -361,6 +420,10 @@ try {
         workspaceDrive=$workDrive; profileDrive=$profileDrive;
         workspaceDriveType=[Issue56Setup]::GetDriveTypeW($workDrive);
         profileDriveType=[Issue56Setup]::GetDriveTypeW($profileDrive);
+        workspaceStorage=[Issue56Setup]::QueryStorage($workDrive);
+        profileStorage=[Issue56Setup]::QueryStorage($profileDrive);
+        workspaceShellAttributes=[Issue56Setup]::ShellDriveAttributes($workDrive);
+        profileShellAttributes=[Issue56Setup]::ShellDriveAttributes($profileDrive);
         namespaceLabel=[Microsoft.Win32.Registry]::GetValue('HKEY_CLASSES_ROOT\CLSID\{F5FB2C77-0E2F-4A16-A381-3E560C68BC83}', '', $null);
         probesSha256=(Get-FileHash -LiteralPath $probe -Algorithm SHA256).Hash.ToLowerInvariant();
         captureExitCode=$captureExitCode; queries=$publicQueries; markedZoneId=3; markedQueries=$publicMarked;
