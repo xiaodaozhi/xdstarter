@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import platform
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -39,6 +40,13 @@ def run(command, *, phase='tool', **kwargs):
 def capture(command, **kwargs):
     return subprocess.check_output([str(part) for part in command], cwd=ROOT,
                                    text=True, encoding='utf-8', errors='replace', **kwargs).strip()
+
+
+def preserve_ctest_raw(build_directory):
+    """Save this run before later CTest invocations replace LastTest.log."""
+    source = build_directory / 'Testing/Temporary/LastTest.log'
+    if source.is_file():
+        shutil.copyfile(source, build_directory / 'main-ctest-raw.log')
 
 
 def require_python():
@@ -197,7 +205,11 @@ def build(args):
         directory = Path(evidence).resolve()
         directory.mkdir(parents=True, exist_ok=True)
         ctest += ['--output-log', str(directory / 'ctest.log')]
-    run(ctest, env=environment, phase='ctest')
+    try:
+        run(ctest, env=environment, phase='ctest')
+    finally:
+        if evidence and WINDOWS:
+            preserve_ctest_raw(ROOT / 'build' / args.preset)
     if not args.core_only:
         if source != source_identity():
             raise ValueError('Source changed during build/test; repeat with stable source.')

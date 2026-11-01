@@ -17,8 +17,22 @@ import ci_classify
 import ci_evidence
 import ci_package_inputs
 import benchmark_resident
+import toolchain
 from test_shell_matrix import sample_report as sample_shell_matrix
 from test_ui_reveal_benchmark import example_100 as sample_reveal, fresh_example
+
+
+def prototype_raw_fixture():
+    cases = ('initTestCase()', 'prototypeWindowLoads()', 'applicationDirectoryAndPinning()',
+             'tileDisplayNameEditingAndRestart()', 'cleanupTestCase()')
+    rows = ['********* Start testing of PrototypeWindowTest *********']
+    rows += [f'PASS   : PrototypeWindowTest::{case}' for case in cases]
+    rows += ['SKIP   : PrototypeWindowTest::nativeOnly()',
+             'QWARN  : PrototypeWindowTest::prototypeWindowLoads() retained warning',
+             'Totals: 5 passed, 0 failed, 1 skipped, 0 blacklisted, 10ms',
+             '********* Finished testing of PrototypeWindowTest *********']
+    return ('1/1 Testing: ui.prototype\n1/1 Test: ui.prototype\nOutput:\n-----\n' +
+            '\n'.join(rows) + '\n<end of output>\nTest Passed.\n')
 
 
 class TemporaryRepository(unittest.TestCase):
@@ -136,6 +150,37 @@ class CacheTests(TemporaryRepository):
             ci_package_inputs.verify(rows, self.root, restored=True)
 
 
+class PrototypeRawEvidenceTests(TemporaryRepository):
+    def test_preserved_raw_log_survives_later_ctest(self):
+        build = self.root / 'app-release'
+        source = build / 'Testing/Temporary/LastTest.log'
+        source.parent.mkdir(parents=True)
+        source.write_text(prototype_raw_fixture(), encoding='utf-8')
+        toolchain.preserve_ctest_raw(build)
+        source.write_text('a later CTest invocation', encoding='utf-8')
+        saved = (build / 'main-ctest-raw.log').read_text(encoding='utf-8')
+        self.assertIn('retained warning', saved)
+        ci_evidence.validate_prototype_ctest_raw(saved)
+
+    def test_truncated_ambiguous_failed_or_severe_output_is_rejected(self):
+        valid = prototype_raw_fixture()
+        variants = (
+            valid.replace('Finished testing of PrototypeWindowTest', 'truncated'),
+            valid.replace('<end of output>', 'truncated'),
+            valid + valid,
+            valid.replace('5 passed, 0 failed', '5 passed, 1 failed'),
+            valid.replace('PASS   : PrototypeWindowTest::applicationDirectoryAndPinning()',
+                          'QCRITICAL: PrototypeWindowTest::applicationDirectoryAndPinning()'),
+            valid.replace('1 skipped', '0 skipped'),
+        )
+        for text in variants:
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                ci_evidence.validate_prototype_ctest_raw(text)
+        # Other tests' diagnostics are not attributed to ui.prototype.
+        ci_evidence.validate_prototype_ctest_raw(valid +
+            '2/2 Testing: another.test\nOutput:\n-----\nQFATAL: unrelated\n<end of output>\n')
+
+
 class EvidenceTests(TemporaryRepository):
     def setUp(self):
         super().setUp()
@@ -160,6 +205,8 @@ class EvidenceTests(TemporaryRepository):
                     path = self.root / source
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_text('{}', encoding='utf-8')
+                (self.root / ci_evidence.COPIES['ctest-raw.log']).write_text(prototype_raw_fixture(),
+                                                                            encoding='utf-8')
                 reveal, reveal_events = sample_reveal()
                 reveal.update(qpa='windows', graphicsApi='Direct3D11')
                 reveal_paths = {name: self.root / ci_evidence.COPIES[f'ui-reveal/{name}']

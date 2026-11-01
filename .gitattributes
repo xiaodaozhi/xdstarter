@@ -12,3 +12,5 @@ CMakeLists.txt text eol=lf
 *.png binary
 # Preserve the exact pipe bytes referenced by the local startup evidence.
 docs/technical/validation/issue-86/*.log -text whitespace=cr-at-eol
+# Preserve the original QtTest warning bytes and their recorded SHA-256.
+docs/technical/validation/issue-137/*.log -text whitespace=cr-at-eol
