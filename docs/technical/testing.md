@@ -34,6 +34,8 @@
 
 [#115](https://github.com/xiaodaozhi/xdstarter/issues/115) 在测试进程中向 Qt 6.8.2 无障碍观察者发送激活通知，检查搜索、分组名称和磁贴名称输入框的名称、角色及说明；修复前三者的说明分别变成占位文字或空值。修复后重复通知、变更说明和占位文字，再检查说明绑定及搜索、分组和磁贴名称的既有交互。本机 Qt 6.8.2、附加 MSVC v142 19.29.30159 的 offscreen/software 与 Windows QPA／Intel D3D11 组合用例各 11/11（含初始化和清理），测试程序 SHA-256 为 `8515e10de6162571f1167e031ae2e949ac42a16b9e1c4a09e309b1e372164751`。通知仅作用于测试进程，没有修改系统辅助功能设置；Qt 接口检查不代替 Windows UI Automation 或真实屏幕阅读器验收，也不能确定此前偶发失败的触发原因。
 
+磁贴名称保存测试在一次沙箱默认临时目录对照中失败时未记录产品保存错误。后续同类受控重现中，目录可以创建但内部文件创建被 Windows 拒绝，`LayoutStore` 在保存锁阶段返回权限错误；同程序使用仓库内临时目录成功。测试现将保存失败时的 `persistenceStatus` 写入断言日志；先前失败缺少该状态，不能仅凭症状断言当时的错误完全相同。测试进程可单独设置 `TEMP` 和 `TMP`，不改变用户系统设置或产品保存目录。
+
 2026-11-01 在本机 Windows QPA 中增加[三个输入框的原生 UI Automation 前后对照](https://github.com/xiaodaozhi/xdstarter/issues/115#issuecomment-6547298211)：测试窗口位于屏幕外且不接受焦点，独立只读客户端只查询启动它的测试进程，核对名称、Edit 类型与 `FullDescription`。仅撤回原 QML 修复时三项说明均不匹配，恢复修复后三项均匹配；各用例和进程均有时限。托管 Windows CI 单独运行该原生测试，证据门禁要求三个结果齐全且无严重 Qt 日志。这验证的是 UIA 属性，并不证明具体屏幕阅读器的朗读或原始偶发失败的触发时序。
 
 本机 Windows 可通过 `XDSTARTER_BUILD_LOCAL_NATIVE_PICKER_TESTS=ON` 构建测试程序、应用辅助程序和驱动，再显式运行 `python scripts/verify_native_picker_local.py --run --executable build/app-release/bin/xdstarter_ui_tests.exe --output-dir build/validation/native-picker-local`。输出目录必须是 `build/` 下尚不存在的独立目录；脚本为测试临时文件另建目录，窗口短暂显示并可能获取焦点。驱动在本机核对父测试程序身份、驱动和选择器的直接父进程、目标窗口 PID／owner、目标文件位于临时目录且不是重解析点；反例检查拒绝临时目录外的文件。每个测试进程限时，超时仅清理它及其子进程，记录原始日志和程序散列。不安装、修改系统设置或启用全局输入 Hook；自动操作不替代真人键盘、屏幕阅读器和完整系统入口验收。

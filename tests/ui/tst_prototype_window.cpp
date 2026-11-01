@@ -6560,7 +6560,7 @@ void PrototypeWindowTest::tileDisplayNameEditingAndRestart() {
     QVERIFY(controller_->renameTile(tileId, name));
     QCOMPARE(unchanged.count(), 0);
     controller_->setSearchQuery({});
-    QVERIFY(controller_->flushSave());
+    QVERIFY2(controller_->flushSave(), qUtf8Printable(controller_->persistenceStatus()));
     QFile savedFile(path);
     QVERIFY(savedFile.open(QIODevice::ReadOnly));
     const auto saved = QJsonDocument::fromJson(savedFile.readAll()).object();
@@ -6590,7 +6590,7 @@ void PrototypeWindowTest::tileDisplayNameEditingAndRestart() {
     controller_->setSearchQuery(QStringLiteral("办公工具"));
     QTRY_VERIFY(!controller_->searchBusy());
     QTRY_VERIFY(controller_->searchResults().isEmpty());
-    QVERIFY(controller_->flushSave());
+    QVERIFY2(controller_->flushSave(), qUtf8Printable(controller_->persistenceStatus()));
     destroyWindow();
 }
 
