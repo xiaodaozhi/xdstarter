@@ -16,6 +16,8 @@ using System;
 using System.Runtime.InteropServices;
 using System.Text;
 public static class Issue56Setup {
+    [DllImport("kernel32.dll", CharSet=CharSet.Unicode)]
+    public static extern uint GetDriveTypeW(string root);
     [DllImport("shlwapi.dll", CharSet=CharSet.Unicode, SetLastError=true)]
     [return: MarshalAs(UnmanagedType.Bool)] public static extern bool PathMakeSystemFolderW(string path);
     [DllImport("shlwapi.dll", CharSet=CharSet.Unicode)]
@@ -44,6 +46,32 @@ function Wait-Tool($Process, [int]$Seconds, [string]$Operation) {
         throw "$Operation timed out."
     }
     if ($Process.ExitCode -ne 0) { throw "$Operation failed: $($Process.ExitCode)" }
+}
+function Invoke-Probe([string]$Executable, [string]$Path) {
+    $info = [Diagnostics.ProcessStartInfo]::new($Executable)
+    $info.UseShellExecute = $false
+    $info.CreateNoWindow = $true
+    $info.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
+    $info.RedirectStandardOutput = $true
+    $info.RedirectStandardError = $true
+    $info.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)
+    $info.StandardErrorEncoding = [Text.UTF8Encoding]::new($false)
+    $info.ArgumentList.Add($Path)
+    $process = [Diagnostics.Process]::Start($info)
+    if (!$process) { throw 'Unable to start the Shell probe.' }
+    try {
+        $stdout = $process.StandardOutput.ReadToEndAsync()
+        $stderr = $process.StandardError.ReadToEndAsync()
+        if (!$process.WaitForExit(15000)) {
+            $process.Kill($true)
+            $process.WaitForExit()
+            throw 'Shell probe timed out.'
+        }
+        $output = $stdout.GetAwaiter().GetResult().Trim()
+        $errorText = $stderr.GetAwaiter().GetResult().Trim()
+        if ($process.ExitCode -ne 0 -or $errorText) { throw "Shell probe failed ($($process.ExitCode)): $errorText" }
+        return $output
+    } finally { $process.Dispose() }
 }
 function Remove-OwnedRoot($Root) {
     $resolved = Get-XDStarterOwnedRoot $Root
@@ -124,16 +152,25 @@ try {
     $monitor = Start-Tool $Procmon @('/AcceptEula','/Quiet','/Minimized','/NoFilter','/Runtime','50','/BackingFile',$pml)
     Wait-Tool (Start-Tool $Procmon @('/WaitForIdle','/Quiet')) 30 'Procmon readiness'
     foreach ($q in $queries) {
-        # One process makes only this one Shell name query; no earlier parent display query.
-        $lines = @(& $probe $q.path)
-        if ($LASTEXITCODE -ne 0 -or $lines.Count -ne 1) { throw "Shell probe failed: $($q.label)" }
-        $parts = $lines[0] -split '\|', 3
-        if ($parts.Count -ne 3 -or $parts[0] -notmatch '^[1-9][0-9]*$' -or $parts[1] -ne '1') {
+        # Each fresh process calls the production API first; it then records
+        # the parsed Shell item hierarchy without an earlier parent query.
+        $line = Invoke-Probe $probe $q.path
+        $parts = $line -split '\|', 4
+        if ($parts.Count -ne 4 -or $parts[0] -notmatch '^[1-9][0-9]*$' -or $parts[1] -ne '1') {
             throw "Malformed Shell probe result: $($q.label)"
         }
         $q.pid = [int]$parts[0]
         $q.name = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($parts[2]))
+        $route = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($parts[3]))
+        foreach ($substitution in @(@($roots[0].path, '$WORK'), @($roots[1].path, '$PROFILE'),
+                                     @($workspace, '$WORKSPACE'), @($env:USERPROFILE, '$USERPROFILE'))) {
+            $route = $route.Replace($substitution[0], $substitution[1], [StringComparison]::OrdinalIgnoreCase)
+        }
+        $q.route = $route.Trim()
     }
+    # Allow the bounded capture consumer to flush the last completed probe.
+    # Completeness is still checked independently from the exported events.
+    Start-Sleep -Seconds 3
     Wait-Tool (Start-Tool $Procmon @('/Terminate','/Quiet')) 30 'Procmon termination'
     if (!$monitor.WaitForExit(30000)) { throw 'Procmon capture did not terminate.' }
     # Procmon 4.12 can return 1 after an explicit /Terminate. Record it and
@@ -147,11 +184,16 @@ try {
     $indirect = [Text.StringBuilder]::new(1024)
     $indirectResult = [Issue56Setup]::SHLoadIndirectString(('@'+$module+',-21799'), $indirect, 1024, [IntPtr]::Zero)
     if ($indirectResult -lt 0 -or $indirect.Length -eq 0) { throw 'System resource did not resolve.' }
-    $publicQueries = @($queries | ForEach-Object { @{label=$_.label; pid=$_.pid; name=$_.name;
+    $publicQueries = @($queries | ForEach-Object { @{label=$_.label; pid=$_.pid; name=$_.name; route=$_.route;
         folderId=$_.folderId; iniId=$_.iniId} })
+    $workDrive = [IO.Path]::GetPathRoot($roots[0].path)
+    $profileDrive = [IO.Path]::GetPathRoot($roots[1].path)
     $report = @{sha=$env:GITHUB_SHA; runId=$env:GITHUB_RUN_ID; attempt=$env:GITHUB_RUN_ATTEMPT;
         os=[Environment]::OSVersion.VersionString; expectedName=$indirect.ToString();
-        workspaceDrive=[IO.Path]::GetPathRoot($roots[0].path); profileDrive=[IO.Path]::GetPathRoot($roots[1].path);
+        workspaceDrive=$workDrive; profileDrive=$profileDrive;
+        workspaceDriveType=[Issue56Setup]::GetDriveTypeW($workDrive);
+        profileDriveType=[Issue56Setup]::GetDriveTypeW($profileDrive);
+        namespaceLabel=[Microsoft.Win32.Registry]::GetValue('HKEY_CLASSES_ROOT\CLSID\{F5FB2C77-0E2F-4A16-A381-3E560C68BC83}', '', $null);
         probesSha256=(Get-FileHash -LiteralPath $probe -Algorithm SHA256).Hash.ToLowerInvariant();
         captureExitCode=$captureExitCode; queries=$publicQueries}
     $report | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $artifact 'probes.json') -Encoding utf8NoBOM

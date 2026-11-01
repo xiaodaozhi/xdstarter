@@ -29,6 +29,7 @@ def run(csv_path, roots_path, probes_path, output_dir):
     # Never export detail or process/thread lifecycle records into an artifact.
     fields = ['query', 'time', 'operation', 'path', 'result']
     counts = {label: 0 for label in labels.values()}
+    fixture_reads = {label: 0 for label in labels.values()}
     with csv_path.open(encoding=text_encoding(csv_path), newline='', errors='replace') as source, \
             (output_dir / 'filtered.csv').open('w', encoding='utf-8', newline='') as destination:
         reader = csv.DictReader(source)
@@ -44,12 +45,17 @@ def run(csv_path, roots_path, probes_path, output_dir):
                 continue
             label = labels[pid]
             counts[label] += 1
+            target = 'target-workspace' if label.startswith('workspace') else 'target-profile'
+            if (row['Operation'] == 'ReadFile' and target in row['Path'].casefold() and
+                    'desktop.ini' in row['Path'].casefold() and row['Result'] == 'SUCCESS'):
+                fixture_reads[label] += 1
             writer.writerow({'query': label, 'time': row['Time of Day'],
                              'operation': row['Operation'], 'path': clean(row['Path']),
                              'result': row['Result']})
-    if any(value == 0 for value in counts.values()):
-        raise ValueError('Capture is incomplete for at least one probe: ' + repr(counts))
-    (output_dir / 'trace-summary.json').write_text(json.dumps({'counts': counts}, indent=2), encoding='utf-8')
+    (output_dir / 'trace-summary.json').write_text(json.dumps(
+        {'counts': counts, 'fixtureReads': fixture_reads}, indent=2), encoding='utf-8')
+    if any(value == 0 for value in counts.values()) or any(value == 0 for value in fixture_reads.values()):
+        raise ValueError('Capture is incomplete: counts=' + repr(counts) + '; fixture reads=' + repr(fixture_reads))
 
 
 if __name__ == '__main__':
