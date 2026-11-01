@@ -48,7 +48,7 @@
 
 ## 当前自动检查
 
-为追踪 [#137](https://github.com/xiaodaozhi/xdstarter/issues/137) 的偶发图片警告，Windows CI 在主 CTest 结束后立即保存 `Testing/Temporary/LastTest.log`，避免后续 CTest 覆盖通过用例的详细输出；证据清单记录该原始文件的散列。证据门要求 `ui.prototype` 的关键用例、通过与跳过计数、结束标记及无严重 Qt 日志，并保留普通警告。缺少警告不能证明它不会发生，当前运行的结果以其工件为准。
+为追踪 [#137](https://github.com/xiaodaozhi/xdstarter/issues/137) 的偶发图片警告，Windows CI 在主 CTest 结束后立即保存 `Testing/Temporary/LastTest.log`，避免后续 CTest 覆盖通过用例的详细输出；证据清单记录该原始文件的散列。证据门要求 `ui.prototype` 的关键用例、通过与跳过计数、结束标记及无严重 Qt 日志，并保留普通警告。[首次观察的原始日志及环境](validation/issue-137/README.md)已保留；缺少警告不能证明它不会发生，当前运行的结果以其工件为准。
 
 [#86](https://github.com/xiaodaozhi/xdstarter/issues/86) 增加独立离屏 smoke 进程的外部观察：从调用创建进程前开始计时，记录创建调用返回、首个输出字节、首条启动阶段日志及退出；超时只结束本次启动的子进程，保留阶段、原始日志、散列和超时发生在首条阶段日志之前还是之后。受控子进程分别模拟两种卡住情况及输出超限，验证不会误报通过。CI 保留原有 15 秒 CTest 门槛和结果，额外观察失败也会失败；独立进程不能定位此前失败进程的阶段，管道接收时间包含调度延迟，创建调用本身若阻塞也不受进程内看门狗中断。
 
