@@ -1,4 +1,5 @@
 // Controlled image readiness experiment; no product window or system settings.
+#include "ready_image_capture.h"
 #include <QGuiApplication>
 #include <QImage>
 #include <QQmlComponent>
@@ -10,6 +11,7 @@
 #include <QSemaphore>
 #include <QSGRendererInterface>
 #include <QSignalSpy>
+#include <QTimer>
 #include <QtTest>
 
 #include <atomic>
@@ -56,6 +58,7 @@ class DelayedAssetTests final : public QObject {
     Q_OBJECT
   private slots:
     void loadingFrameAndLaterReadyFrame();
+    void captureWaitsForDelayedPixels();
 };
 
 void DelayedAssetTests::loadingFrameAndLaterReadyFrame() {
@@ -121,6 +124,59 @@ void DelayedAssetTests::loadingFrameAndLaterReadyFrame() {
             << "loadingSwaps=" << loadingSwaps << "totalSwaps=" << swaps.count()
             << "early=" << center(early) << "firstReady=" << center(firstReady)
             << "eventual=" << center(final);
+    window->close();
+}
+
+void DelayedAssetTests::captureWaitsForDelayedPixels() {
+    auto gate = std::make_shared<Gate>();
+    QQmlEngine engine;
+    engine.addImageProvider(QStringLiteral("delayed-fixture"), new DelayedProvider(gate));
+    QScopedPointer<QObject> root;
+    ReleaseOnExit release{gate};
+    QQmlComponent component(&engine);
+    component.setData(R"(
+        import QtQuick
+        Window {
+            width: 96; height: 96; visible: true; color: "#202020"
+            Image {
+                objectName: "delayedImage"
+                x: 24; y: 24; width: 48; height: 48
+                source: "image://delayed-fixture/capture"
+                asynchronous: true; cache: false
+            }
+        }
+    )", QUrl(QStringLiteral("inline:delayed-capture.qml")));
+    QTRY_VERIFY_WITH_TIMEOUT(!component.isLoading(), 5000);
+    QVERIFY2(component.isReady(), qPrintable(component.errorString()));
+    root.reset(component.create());
+    QVERIFY2(root, qPrintable(component.errorString()));
+    auto* window = qobject_cast<QQuickWindow*>(root.data());
+    QVERIFY(window);
+    auto* item = window->findChild<QQuickItem*>(QStringLiteral("delayedImage"));
+    QVERIFY(item);
+    QTRY_VERIFY_WITH_TIMEOUT(window->isExposed(), 5000);
+    QTRY_VERIFY_WITH_TIMEOUT(gate->entered.load(std::memory_order_acquire), 5000);
+    QCOMPARE(item->property("status").toInt(), 2); // Image.Loading
+    const QColor expected(QStringLiteral("#18d759"));
+    const auto pixelsMatch = [expected](const QImage& image) { return center(image) == expected; };
+    const auto blocked = captureReadyImage(window, item, pixelsMatch, 100);
+    QCOMPARE(blocked.status, ReadyImageCaptureStatus::TimedOut);
+    QVERIFY(blocked.image.isNull());
+    QCOMPARE(center(window->grabWindow()), QColor(QStringLiteral("#202020")));
+    // Ready is not sufficient: keep the loaded image invisible to model a
+    // frame that does not yet contain its pixels.
+    item->setOpacity(0);
+    QTimer::singleShot(100, root.data(), [gate] { gate->release.release(); });
+    QTRY_COMPARE_WITH_TIMEOUT(item->property("status").toInt(), 1, 5000);
+    const auto notPainted = captureReadyImage(window, item, pixelsMatch, 100);
+    QCOMPARE(notPainted.status, ReadyImageCaptureStatus::TimedOut);
+    QVERIFY(notPainted.image.isNull());
+    QTimer::singleShot(100, root.data(), [item] { item->setOpacity(1); });
+    const auto captured = captureReadyImage(window, item, pixelsMatch);
+    QCOMPARE(captured.status, ReadyImageCaptureStatus::Captured);
+    QCOMPARE(item->property("status").toInt(), 1); // Image.Ready
+    QCOMPARE(center(captured.image), expected);
+    QVERIFY(!gate->timedOut.load(std::memory_order_acquire));
     window->close();
 }
 

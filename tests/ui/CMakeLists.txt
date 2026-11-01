@@ -1,5 +1,5 @@
 find_package(Qt6 REQUIRED COMPONENTS Test)
-qt_add_executable(xdstarter_delayed_asset_tests delayed_asset_tests.cpp)
+qt_add_executable(xdstarter_delayed_asset_tests delayed_asset_tests.cpp ready_image_capture.h)
 target_link_libraries(xdstarter_delayed_asset_tests PRIVATE Qt6::Gui Qt6::Qml Qt6::Quick Qt6::Test)
 add_test(NAME ui.delayed-asset-offscreen COMMAND xdstarter_delayed_asset_tests)
 set_tests_properties(ui.delayed-asset-offscreen PROPERTIES
@@ -48,6 +48,7 @@ qt_add_executable(xdstarter_ui_tests
     ui_search_benchmark.cpp
     contrast_frame_trace.h
     contrast_frame_trace.cpp
+    ready_image_capture.h
 )
 xdstarter_add_ui(xdstarter_ui_tests "${PROJECT_BINARY_DIR}/test-qml")
 target_link_libraries(xdstarter_ui_tests PRIVATE Qt6::Test)
