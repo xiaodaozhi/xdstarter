@@ -1,5 +1,6 @@
 #include "native_chrome_probe.h"
 #include "contrast_frame_trace.h"
+#include "ready_image_capture.h"
 #include "visual_acceptance_probe.h"
 #include "ui_search_benchmark.h"
 
@@ -41,6 +42,7 @@
 #include <QMatrix4x4>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QPointer>
 #include <QProcess>
 #include <QQmlApplicationEngine>
 #include <QQmlComponent>
@@ -1324,11 +1326,13 @@ void PrototypeWindowTest::highContrastTracksSystemPalette() {
     const auto traceDirectory = qEnvironmentVariable("XDSTARTER_FRAME_TRACE_DIR");
     std::unique_ptr<ContrastFrameTrace> frameTrace;
     auto* traceSearchField = item(QStringLiteral("searchField"));
-    QQuickItem* traceSearchGlyph = nullptr;
-    if (!traceDirectory.isEmpty()) {
-        QVERIFY(QDir().mkpath(traceDirectory));
+    QPointer<QQuickItem> traceSearchGlyph;
+    if (!traceDirectory.isEmpty() || !qEnvironmentVariable("XDSTARTER_CONTRAST_CAPTURE_DIR").isEmpty()) {
         traceSearchGlyph = namedGlyph(traceSearchField, QStringLiteral("search"));
         QVERIFY(traceSearchField && traceSearchGlyph);
+    }
+    if (!traceDirectory.isEmpty()) {
+        QVERIFY(QDir().mkpath(traceDirectory));
         frameTrace = std::make_unique<ContrastFrameTrace>(window_, traceDirectory);
     }
     const auto frameState = [&]() -> QJsonObject {
@@ -1401,16 +1405,44 @@ void PrototypeWindowTest::highContrastTracksSystemPalette() {
             const auto ready = window_->grabWindow();
             QVERIFY(frameTrace->capture(scene, QStringLiteral("ready"), ready, frameState()));
         }
+        // A ready image can still be absent from a particular grabbed frame.
+        // Check only the search glyph, not the completeness of the whole UI.
+        const auto glyphPixelsMatch = [traceSearchGlyph](const QImage& image) {
+            if (!traceSearchGlyph) return false;
+            const auto rect = traceSearchGlyph->mapRectToScene(traceSearchGlyph->boundingRect());
+            const qreal dpr = image.devicePixelRatio();
+            const QRect pixels(QPoint(int(std::floor(rect.left() * dpr)), int(std::floor(rect.top() * dpr))),
+                               QPoint(int(std::ceil(rect.right() * dpr)) - 1, int(std::ceil(rect.bottom() * dpr)) - 1));
+            if (pixels.isEmpty() || !image.rect().contains(pixels)) return false;
+            const auto color = traceSearchGlyph->property("color").value<QColor>();
+            int matched = 0;
+            for (int y = pixels.top(); y <= pixels.bottom(); ++y)
+                for (int x = pixels.left(); x <= pixels.right(); ++x) {
+                    const auto pixel = image.pixelColor(x, y);
+                    if (std::abs(pixel.red() - color.red()) <= 8 &&
+                        std::abs(pixel.green() - color.green()) <= 8 &&
+                        std::abs(pixel.blue() - color.blue()) <= 8 && ++matched >= 3)
+                        return true;
+                }
+            return false;
+        };
+        const auto rendered = captureReadyImage(window_, traceSearchGlyph, glyphPixelsMatch);
+        QVERIFY2(rendered.status == ReadyImageCaptureStatus::Captured,
+                 qPrintable(QStringLiteral("Search glyph failed to render (capture status %1, image status %2)")
+                                .arg(int(rendered.status))
+                                .arg(traceSearchGlyph ? traceSearchGlyph->property("status").toInt() : -1)));
         QTest::qWait(250);
         if (frameTrace) frameTrace->mark(scene + QStringLiteral(":before-first-grab"), frameState());
         const auto initial = window_->grabWindow();
         QVERIFY(!initial.isNull());
+        QVERIFY2(glyphPixelsMatch(initial), "Search glyph missing from first capture");
         QVERIFY(initial.save(QDir(destination).filePath(QStringLiteral("first-") + name)));
         if (frameTrace) QVERIFY(frameTrace->capture(scene, QStringLiteral("first"), initial, frameState()));
         QTest::qWait(350);
         if (frameTrace) frameTrace->mark(scene + QStringLiteral(":before-later-grab"), frameState());
         const auto frame = window_->grabWindow();
         QVERIFY(!frame.isNull());
+        QVERIFY2(glyphPixelsMatch(frame), "Search glyph missing from later capture");
         QVERIFY(frame.save(QDir(destination).filePath(name)));
         if (frameTrace) QVERIFY(frameTrace->capture(scene, QStringLiteral("later"), frame, frameState()));
     };
