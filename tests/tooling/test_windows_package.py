@@ -58,6 +58,28 @@ class WindowsPackageTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             package.verify_inventory(self.directory, record)
 
+    def test_runtime_notices_include_project_and_unicode_licenses(self):
+        qt = self.directory / 'qt'
+        (qt / 'sbom').mkdir(parents=True)
+        for module in ('qtbase', 'qtdeclarative', 'qtsvg', 'qttranslations'):
+            (qt / 'sbom' / (module + '-6.8.2.spdx.json')).write_text(
+                json.dumps({'spdxVersion': 'SPDX-2.3'}), encoding='utf-8')
+        configurations = {
+            'qt-license-sources.json': {'licenses': []},
+            'sources.json': {'archives': []},
+            'installer-toolchain.json': {'inno_setup': {'materials': []}},
+        }
+        payload = self.directory / 'runtime'
+        with patch.object(package, 'config', side_effect=configurations.__getitem__):
+            package.collect_notices(self.directory / 'cache', qt, payload)
+        notice = payload / 'share/notices'
+        self.assertEqual((notice / 'XDStarter-LICENSE.txt').read_bytes(),
+                         (ROOT / 'LICENSE').read_bytes())
+        self.assertEqual((notice / 'Unicode/LICENSE.txt').read_bytes(),
+                         (ROOT / 'third_party/unicode/LICENSE.txt').read_bytes())
+        self.assertIn('XDStarter-LICENSE.txt',
+                      (notice / 'Windows-runtime-NOTICE.txt').read_text(encoding='utf-8-sig'))
+
     def test_versioned_lifecycle_fixtures_are_distinct_and_preserve_source(self):
         root = self.directory / 'candidate'
         root.mkdir()

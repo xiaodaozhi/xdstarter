@@ -87,4 +87,4 @@ $env:PATH = "$PWD/build/Qt/6.8.2/msvc2022_64/bin;$env:PATH"
 
 ## 许可
 
-项目代码与原创设计资产的发布许可证尚待项目所有者确定，暂未授予通用开源许可。Qt 及其他第三方组件遵循各自许可证；设计稿中的第三方应用图标为视觉示意。详见[许可与依赖决策](docs/governance/licensing.md)。
+项目代码、文档与原创设计资产采用 [Apache License 2.0](LICENSE)。Qt、Unicode 数据及其他第三方组件遵循各自许可证；设计稿中的第三方应用图标为视觉示意。详见[许可与依赖决策](docs/governance/licensing.md)。

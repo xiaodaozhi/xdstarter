@@ -8,7 +8,7 @@ Windows 11 x64、Qt 6.8.2 动态库、普通用户运行。保留本机 v142 开
 
 Qt 部署使用 CMake 部署脚本或 `windeployqt`，明确扫描 QML imports，包含 Quick、平台插件、图像插件和匹配的运行库。必须在没有 Qt 开发环境的干净机器验证，不能只在开发者机器运行。
 
-Qt 运行库许可与应用许可证分别处理，依赖清单、许可证文本及所需源代码/重新链接材料随实际组件选择准备。许可未完成决定前，公开发行是阻塞事项。
+项目采用 [Apache-2.0](../../LICENSE)，Qt 运行库和其他第三方组件的许可分别处理。依赖清单、许可证文本及所需源代码／重新链接材料须随实际组件和许可渠道准备；第三方发行审查完成前，公开发行仍受阻。
 
 ## 版本与更新
 
@@ -70,7 +70,7 @@ Qt 运行库许可与应用许可证分别处理，依赖清单、许可证文�
 
 输出含 ZIP、安装 EXE、应用源码 TAR、materials.tar.xz、SHA256SUMS，以及 deployment-audit、runtime-attribution、size-report、runtime-verification 与 package 报告。ZIP／EXE 来自同一审计目录，逐项核对哈希，体积以实际报告建立基线；生成物只在 build/ 或 CI 工件。
 
-包内携带 Qt、Unicode、CRT、SDK 和安装器引擎通知，配套固定哈希的 Qt 模块与构建工具源码。原先随软件 OpenGL 提供的 Mesa 11.2.2／LLVM 3.6.2 材料不再列为该包来源；SDK 自身协议及第三方通知继续保留。SDK SPDX 与实际字节用于观察文件归属，未匹配、内嵌组件及源码对应关系明确为 incomplete。保守许可集合不表示所有组件被使用，源码归档存在不证明 SDK 二进制等价，应用许可仍由 [#3](https://github.com/xiaodaozhi/xdstarter/issues/3) 决定。
+包内携带项目 Apache-2.0 许可原文及 Qt、Unicode、CRT、SDK 和安装器引擎通知，配套固定哈希的 Qt 模块与构建工具源码。原先随软件 OpenGL 提供的 Mesa 11.2.2／LLVM 3.6.2 材料不再列为该包来源；SDK 自身协议及第三方通知继续保留。SDK SPDX 与实际字节用于观察文件归属，未匹配、内嵌组件及源码对应关系明确为 incomplete。保守许可集合不表示所有组件被使用，源码归档存在不证明 SDK 二进制等价；Qt 许可渠道及发行义务继续由 [#3](https://github.com/xiaodaozhi/xdstarter/issues/3) 跟踪。
 
 审计递归核对普通与延迟 DLL 导入，CRT 必须来自包内，第三方 DLL 不回退到 SDK 或 System32；同时拒绝 app-local `d3d11.dll` 与测试代理。无 SDK 搜索路径和软件 OpenGL DLL 的独立副本验证 Qt Quick 软件、D3D11、显式 WARP 及设备创建失败后的处理；测试代理仅存在于临时副本。硬件设备创建失败时检查自动 WARP，硬件与 WARP 均失败时检查非零退出；默认设备已是软件适配器时，硬件回退结果记录跳过。注入 API 失败不代表真实驱动损坏、运行中设备丢失或干净 Windows 11 验收。
 
