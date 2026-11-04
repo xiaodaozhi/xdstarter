@@ -48,7 +48,7 @@ schema 3 的每磁贴显示名称扩展由 [ADR-0011](0011-tile-display-names.md
 
 官方源 ZIP 的本地计算 SHA256、提取文本哈希、转换方式及输出统计保存在 [manifest](../../../third_party/unicode/manifest.json)。原始 ZIP 留在构建缓存，不提交；规范 TSV、C++ 表、来源说明及完整 [Unicode License v3](../../../third_party/unicode/LICENSE.txt) 一同入库。生成器只接受明确指定且哈希一致的本地源，或使用已入库 TSV 离线重建；检查器核对输出、许可及常见多音，均不下载数据。普通构建直接编译表，无需生成期或运行期网络。
 
-[Unicode 数据使用条款](https://www.unicode.org/copyright.html)指定 Unicode License v3；派生分发需在副本或随附文档保留版权与许可通知。未来二进制／安装包必须带上这些材料。该决定不确定项目自身许可证，不替代 Qt 或整体发行审查；详见[数据来源说明](../../../third_party/unicode/README.md)与[许可治理](../../governance/licensing.md)。
+[Unicode 数据使用条款](https://www.unicode.org/copyright.html)指定 Unicode License v3；派生分发需在副本或随附文档保留版权与许可通知。未来二进制／安装包必须带上这些材料。该数据许可不替代项目自身许可、Qt 或整体发行审查；详见[数据来源说明](../../../third_party/unicode/README.md)与[许可治理](../../governance/licensing.md)。
 
 ## 验证边界
 

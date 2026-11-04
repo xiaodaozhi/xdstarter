@@ -121,7 +121,7 @@
     {
       "key": "license",
       "title": "[决策] 确认项目代码、文档与原创设计资产的许可证",
-      "body": "需要项目所有者决定应用代码、文档、原创 Logo/设计的授权方式，并确认 Qt 许可渠道。\n\n验收：\n- [ ] 所有者确认许可方案并说明应用、文档、资产的适用范围\n- [ ] 添加相应 LICENSE/NOTICE，更新 README 与 docs/governance/licensing.md\n- [ ] 按选用 Qt 模块和动态部署方式记录再分发义务及维护渠道\n\n当前未选择 MIT/GPL 等项目许可证；这是公开发行前置条件，不阻止通用原型验证。",
+      "body": "项目代码、文档及原创 Logo/设计采用 Apache-2.0；Qt 许可渠道和第三方组件发行义务仍需确认。\n\n验收：\n- [x] 所有者确认许可方案并说明应用、文档、资产的适用范围\n- [x] 添加项目 LICENSE，更新 README 与 docs/governance/licensing.md\n- [ ] 按选用 Qt 模块和动态部署方式记录再分发义务及维护渠道\n\n项目许可的确定不替代第三方发行审查；公开发行继续受相应门槛约束。",
       "milestone": "M0-Foundation",
       "labels": [
         "type:research",

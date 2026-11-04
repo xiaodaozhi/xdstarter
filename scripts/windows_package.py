@@ -326,6 +326,7 @@ def collect_notices(cache, qt, root):
     notice = root / 'share/notices'
     qt_notice = notice / 'Qt'
     qt_notice.mkdir(parents=True)
+    shutil.copyfile(ROOT / 'LICENSE', notice / 'XDStarter-LICENSE.txt')
     for record in config('qt-license-sources.json')['licenses']:
         source = cache / 'licenses' / (record['id'] + '.txt')
         if digest(source) != record['sha256']:
@@ -534,7 +535,7 @@ def attribution(qt, root):
     return {'schemaVersion': 1, 'completeness': 'incomplete', 'files': records, 'gaps': gaps,
         'limits': ['SDK declarations may omit QML resources or embedded components.',
                    'Original sources do not establish complete SDK build correspondence.',
-                   'Project license decision and public distribution review remain #3/#36.']}
+                   'Qt licensing and public distribution review remain #3/#36.']}
 
 
 class Workflow:

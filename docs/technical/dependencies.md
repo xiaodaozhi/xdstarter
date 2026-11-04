@@ -54,7 +54,7 @@ Qt 官方 6.8 Windows 支持配置列出 MSVC 2022；本项目按所有者要求
 
 固定版本不是永久冻结：补丁、安全更新或工具链变更通过依赖 PR 更新清单、文档及适用回归；Qt 升级至少覆盖布局、焦点、输入与部署。当前没有第三方二进制入库或应用安装包，不将工具缓存捆绑入产品。
 
-应用、文档及原创资产的许可仍由 [#3](https://github.com/xiaodaozhi/xdstarter/issues/3) 决定；本表不替代[发行许可审查](../governance/licensing.md)，也不为项目添加授权。拼音采用上述有完整通知的派生数据表，未引入其他拼音运行库、应用图标集合或字体包。
+应用、文档及原创资产采用 [Apache-2.0](../../LICENSE)；本表不替代[发行许可审查](../governance/licensing.md)，Qt 许可渠道和再分发义务继续由 [#3](https://github.com/xiaodaozhi/xdstarter/issues/3) 跟踪。拼音采用上述有完整通知的派生数据表，未引入其他拼音运行库、应用图标集合或字体包。
 
 ## Windows 菜单原生缩放
 
