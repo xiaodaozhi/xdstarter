@@ -94,10 +94,16 @@ class ShellMatrixTests(unittest.TestCase):
         root = Path(verify_shell_matrix.__file__).resolve().parents[1]
         build = (root / 'build').resolve()
         build.mkdir(exist_ok=True)
-        base = build / f'long-identity-{uuid.uuid4().hex}'
+        with tempfile.TemporaryDirectory(prefix='long-parent-' + 'p' * 80, dir=build) as longer_parent:
+            for parent in (build, Path(longer_parent)):
+                with self.subTest(parent_length=len(str(parent))):
+                    self.check_long_owned_path_identity(root, build, parent)
+
+    def check_long_owned_path_identity(self, root, build, parent):
+        base = parent / f'long-identity-{uuid.uuid4().hex}'
         directories = [base]
-        for character in 'abc':
-            directories.append(directories[-1] / (character * 55))
+        while len(str(directories[-1] / 'desktop.ini')) <= 260:
+            directories.append(directories[-1] / ('a' * 55))
         marker = directories[-1] / 'desktop.ini'
         self.assertTrue(base.is_relative_to(build))
         self.assertGreater(len(str(marker)), 260)
