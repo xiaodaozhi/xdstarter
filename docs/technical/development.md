@@ -144,6 +144,6 @@ MSVC/Ninja 构建在配置与编译阶段统一 `VSLANG`，并按原始字节探
 
 正式构建入口将 Windows 构建子进程的 `TEMP`/`TMP` 指向本项目 `build/tmp/`，避免 MSVC v142 经由 CMake 调用时错误解码中文用户临时目录，导致编译器探测报 C1083。该设置只存在于构建子进程，不改变系统或用户环境变量；实际目录写入工具验证记录。
 
-[应用工作流](../../.github/workflows/application-build.yml) 读取本项目工具清单，定义 Ubuntu 核心构建及额外 MSVC 2022 Windows Qt 构建、lint、CTest；它与原有文档检查并行保留。[#12](https://github.com/xiaodaozhi/xdstarter/issues/12) 保存早期 Actions 额度阻塞及恢复记录，不代表当前 PR 的状态。当前 head 的适用检查以关联 PR 为准，各版本的本地、CI 与真实窗口证据统一见[测试策略](testing.md)，不以历史运行结果替代新提交检查。
+[应用工作流](../../.github/workflows/application-build.yml) 读取本项目工具清单，定义 Ubuntu 核心构建及额外 MSVC 2022 Windows Qt 构建、lint、CTest；它仅手动触发；日常 PR 和 main 推送运行仓库检查，不自动运行应用构建。[#12](https://github.com/xiaodaozhi/xdstarter/issues/12) 保存早期 Actions 额度阻塞及恢复记录，不代表当前 PR 的状态。当前 head 的适用检查以关联 PR 为准，各版本的本地、CI 与真实窗口证据统一见[测试策略](testing.md)，不以历史运行结果替代新提交检查。
 
 官方依据：[Qt 6.8 Windows 支持配置](https://doc.qt.io/qt-6.8/windows.html)、[MSVC 二进制兼容性及 linker 限制](https://learn.microsoft.com/en-us/cpp/porting/binary-compat-2015-2017?view=msvc-170)、[CMake 要求](https://doc.qt.io/qt-6/cmake-supported-cmake-versions.html)。

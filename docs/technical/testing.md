@@ -1107,9 +1107,11 @@ $env:XDSTARTER_QT_ROOT = "$PWD/build/Qt/6.8.2/msvc2022_64"
 
 ## CI 计时、输入缓存与影子证据
 
-[#92](https://github.com/xiaodaozhi/xdstarter/issues/92) 保留仓库检查、Linux 核心和 Windows Server 应用作业的既有测试与名称。工具获取、Qt 下载、配置、编译、QML lint 和 CTest 的阶段耗时与退出码关联到运行 ID、尝试次数和提交；Windows 打包只缓存固定来源、哈希锁定的原始输入，规则见[工程依赖](dependencies.md)。不缓存 SDK、测试结果或构建产物。仓库检查仅取消同一 PR 的旧运行；应用作业包含独立实验，故不启用自动取消。`main` 推送、手动运行及项目初始化的既有入口保持原样。
+[#148](https://github.com/xiaodaozhi/xdstarter/issues/148) 起，日常 PR 和 main 推送仅运行仓库检查；完整应用工作流通过 Actions 的 `workflow_dispatch` 选择目标分支或标签手动运行。该工作流仍包含下述完整作业与证据，不因日常 CI 成功而被视为已运行。按变更进行本地构建或针对性测试，必要时对同一提交运行完整工作流；记录实际运行身份、失败和缺失。它不替代真实 Windows 11 系统集成和发行验收。
 
-PR 的 Windows runner 仓库检出设置 5 分钟上限，超时即失败，不跳过后续测试或记为通过；主分支、手动运行以及其余构建和测试的超时不变。该限制用于留下异常卡住的检出结果，不代表已经确定 [PR #94](https://github.com/xiaodaozhi/xdstarter/pull/94) 首轮 runner 卡住的原因。
+[#92](https://github.com/xiaodaozhi/xdstarter/issues/92) 保留仓库检查、Linux 核心和 Windows Server 应用作业的既有测试与名称。工具获取、Qt 下载、配置、编译、QML lint 和 CTest 的阶段耗时与退出码关联到运行 ID、尝试次数和提交；Windows 打包只缓存固定来源、哈希锁定的原始输入，规则见[工程依赖](dependencies.md)。不缓存 SDK、测试结果或构建产物。仓库检查仅取消同一 PR 的旧运行；手动应用作业包含独立实验，不启用自动取消。项目初始化入口保持原样。
+
+原 PR Windows runner 仓库检出设置 5 分钟上限，超时即失败；现应用工作流仅手动触发，手动检出上限为 60 分钟。该限制用于留下异常卡住的检出结果，不代表已经确定 [PR #94](https://github.com/xiaodaozhi/xdstarter/pull/94) 首轮 runner 卡住的原因。
 
 分类作业当前只观察完整 Git 对比中仅修改 `docs/README.md` 的情况；字体、QML、视觉 JSON、接口与安装或发行契约以及其他未知路径均按全量处理。无基线、手动触发、标签、fork、提交身份不匹配或读取失败也按全量处理。无论观察结果如何，所有既有作业照常运行；不能据此声称已启用文档跳过。
 
