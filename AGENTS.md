@@ -9,7 +9,7 @@
 - 通用布局、领域模型和 QML 不依赖 Win32；系统接管由 Windows 平台模块承担，输入回调仅派发事件，保留原生系统恢复路径。
 - 代码、文档、设计变更在同一 PR 中保持一致。涉及范围/架构/数据兼容性时更新对应文档与 ADR。
 - 已授权的开发、修复、“按项目约定推进”及“提交推送”默认由代理完成验证、提交推送、创建 PR、等待当前 head 的适用检查与审查通过、使用 merge commit 合并到 main、更新 Issue 并安全同步本地 main，无需用户逐步提醒；保留原始 commit 与 SHA。纯讨论、只读审查不触发交付；用户明确要求只实现、仅提交推送、草稿 PR 或暂不合并时遵守指定边界。完整流程见 `docs/process/workflow.md`。
-- 修改后运行 `python3 scripts/check_repository.py`，再根据变更执行适用检查；仅在新增风险或失败时扩大验证。
+- 提交和推送前运行 `python3 scripts/check_repository.py`，并根据变更在本地完成适用的构建或验证；影响结果的源码或配置变化后重新验证。完整应用 CI 按需手动运行，不以未执行的检查代替通过，详见 `docs/process/workflow.md`。
 - 不提交密钥、机器路径配置、构建目录或发布 ZIP。项目代码、文档和原创设计资产采用 Apache-2.0；第三方组件保留各自许可。
 
 遵循 `CONTRIBUTING.md`、`docs/process/` 与 `docs/standards/`。用户在当前会话中的明确指令优先。
