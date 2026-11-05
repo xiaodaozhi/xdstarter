@@ -19,8 +19,8 @@ class SmokeObserverTests(unittest.TestCase):
         raw = (evidence / 'smoke-startup-local.log').read_bytes()
         self.assertEqual(hashlib.sha256(raw).hexdigest(), record['outputSha256'])
 
-    def run_child(self, source, timeout=2, **kwargs):
-        return observe([sys.executable, '-u', '-c', source], timeout=timeout,
+    def run_child(self, source, timeout=2, *, executable=None, **kwargs):
+        return observe([executable or sys.executable, '-u', '-c', source], timeout=timeout,
                        cwd=ROOT, env=dict(os.environ), **kwargs)
 
     def test_success_records_real_stage_and_creation_boundaries(self):
@@ -45,8 +45,11 @@ class SmokeObserverTests(unittest.TestCase):
                       "print('Smoke stage event-loop-returned 1 ms',flush=True)\n"
                       "os.close(1); os.close(2)\n"
                       f"while not os.path.exists({str(release)!r}): time.sleep(.01)\n")
+            # On Windows a venv launcher can keep the output pipe open while
+            # waiting for Python, so observe the interpreter process itself.
+            executable = getattr(sys, '_base_executable', sys.executable) if os.name == 'nt' else sys.executable
             try:
-                result, _ = self.run_child(source, timeout=6,
+                result, _ = self.run_child(source, timeout=6, executable=executable,
                     _on_boundary=lambda name: release.touch() if name == 'pipe-eof' else None)
             finally:
                 release.touch()
