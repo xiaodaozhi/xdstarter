@@ -239,6 +239,7 @@ class SearchServiceTests final : public QObject {
     void pinyinMatchesFullInitialsPolyphonicAndMixedNames();
     void commonPolyphonicAlternativesRemainSearchable();
     void normalizationKeepsLiteralPunctuationAndAcceptsUmlautVariants();
+    void unicodeScalarSearchKeepsSupplementaryCharacters();
     void emptyUnknownAndLongQueriesStayBounded();
     void resultLimitPreservesTotalMatchCount();
     void latestQueryWinsWithoutPublishingOldMatches();
@@ -350,6 +351,16 @@ void SearchServiceTests::normalizationKeepsLiteralPunctuationAndAcceptsUmlautVar
     QCOMPARE(index.search(QStringLiteral("!!!")).matchCount, 0);
     QCOMPARE(resultIds(index.search(QStringLiteral("u:"))),
              QStringList{QStringLiteral("green")});
+}
+
+void SearchServiceTests::unicodeScalarSearchKeepsSupplementaryCharacters() {
+    SearchIndex index;
+    index.setEntries({{QStringLiteral("emoji"), QStringLiteral("画😀图"), {}},
+                      {QStringLiteral("punctuation"), QStringLiteral("画𐄀图"), {}},
+                      {QStringLiteral("accent"), QStringLiteral("Café"), {}}});
+    QCOMPARE(resultIds(index.search(QStringLiteral("😀"))), QStringList{QStringLiteral("emoji")});
+    QCOMPARE(resultIds(index.search(QStringLiteral("huatu"))), QStringList{QStringLiteral("punctuation")});
+    QCOMPARE(resultIds(index.search(QStringLiteral("cafe"))), QStringList{QStringLiteral("accent")});
 }
 
 void SearchServiceTests::commonPolyphonicAlternativesRemainSearchable() {
