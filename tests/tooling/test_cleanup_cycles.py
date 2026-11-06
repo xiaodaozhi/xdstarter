@@ -96,7 +96,7 @@ class CleanupTests(unittest.TestCase):
     def test_nested_git_metadata_is_protected(self):
         self.run_cleanup('--init', 'owned')
         path = self.cycles / 'owned'
-        (path / '.git').write_text('gitdir: elsewhere')
+        (path / '.GIT').write_text('gitdir: elsewhere')
         self.assertEqual(self.run_cleanup('--path', 'owned', '--apply', '--yes'), 1)
         self.assertTrue(path.exists())
 

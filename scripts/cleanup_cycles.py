@@ -105,7 +105,7 @@ def newest(path):
     for directory, dirs, files in os.walk(path, followlinks=False, onerror=failed):
         for name in dirs + files:
             item = Path(directory) / name
-            if name == '.git':
+            if name.casefold() == '.git':
                 raise ValueError(f'cycle contains Git metadata: {item}')
             if linked(item):
                 raise ValueError(f'cycle contains a link or reparse point: {item}')
