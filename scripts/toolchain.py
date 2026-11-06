@@ -88,6 +88,54 @@ def check_qt(prefix):
     return actual
 
 
+def patch_qt_msvc_c4702(prefix):
+    """Apply the small Qt 6.8.2/MSVC template-control-flow compatibility patch."""
+    if MANIFEST['qt']['version'] != '6.8.2':
+        raise ValueError('The Qt C4702 compatibility patch is only defined for Qt 6.8.2.')
+    replacements = {
+        'include/QtCore/qvariant.h': [
+            ('        QMetaType mt = QMetaType::fromType<Type>();',
+             '        else {\n        QMetaType mt = QMetaType::fromType<Type>();'),
+            ('            return copyConstruct(mt, std::addressof(value));\n    }',
+             '            return copyConstruct(mt, std::addressof(value));\n        }\n    }'),
+            ('        return QVariant(QMetaType::fromType<T>(), std::addressof(value));',
+             '        else\n            return QVariant(QMetaType::fromType<T>(), std::addressof(value));'),
+        ],
+        'include/QtQml/qjsengine.h': [],
+        'include/QtCore/qmetatype.h': [
+            ('    explicit constexpr QMetaType(const QtPrivate::QMetaTypeInterface *d) : d_ptr(d) {}',
+             '    explicit QMetaType(const QtPrivate::QMetaTypeInterface *d) : d_ptr(d) {}'),
+        ],
+    }
+    marker = '/* XDSTARTER_QT_MSVC_C4702_PATCH */\n'
+    for relative, edits in replacements.items():
+        path = prefix / relative
+        text = path.read_text(encoding='utf-8')
+        if marker in text:
+            continue
+        if relative == 'include/QtQml/qjsengine.h':
+            start = text.index('    inline T fromPrimitiveValue(const QJSPrimitiveValue &value)')
+            end = text.index('\n    template <typename T>\n    inline T fromVariant', start)
+            section = text[start:end]
+            for old, new in (
+                ('        if constexpr (std::is_same_v<T, bool>)', '        else if constexpr (std::is_same_v<T, bool>)'),
+                ('        if constexpr (std::is_same_v<T, double>)', '        else if constexpr (std::is_same_v<T, double>)'),
+                ('        if constexpr (std::is_same_v<T, QString>)', '        else if constexpr (std::is_same_v<T, QString>)'),
+                ('        if constexpr (std::is_same_v<T, QVariant>)', '        else if constexpr (std::is_same_v<T, QVariant>)'),
+                ('        if constexpr (std::is_pointer_v<T>)', '        else if constexpr (std::is_pointer_v<T>)'),
+                ('        return qjsvalue_cast<T>(value);', '        else return qjsvalue_cast<T>(value);'),
+            ):
+                if old not in section:
+                    raise ValueError(f'Qt 6.8.2 header does not match the expected C4702 patch context: {path}')
+                section = section.replace(old, new, 1)
+            text = text[:start] + section + text[end:]
+        for old, new in edits:
+            if old not in text:
+                raise ValueError(f'Qt 6.8.2 header does not match the expected C4702 patch context: {path}')
+            text = text.replace(old, new, 1)
+        path.write_text(marker + text, encoding='utf-8', newline='')
+
+
 def install(args):
     require_python()
     if not PYTHON.is_file():
@@ -112,6 +160,7 @@ def install(args):
                    qt['version'], qt['architecture'], '-O', ROOT / MANIFEST['cache']['qt']]
         run(command, cwd=work, phase='qt-download')
     check_qt(prefix)
+    patch_qt_msvc_c4702(prefix)
 
 
 def check(args):
@@ -165,6 +214,7 @@ def build(args):
     source = source_identity() if not args.core_only else None
     report = check(args)
     prefix = qt_prefix(args.qt_prefix)
+    patch_qt_msvc_c4702(prefix)
     environment = build_environment(None if args.core_only else prefix)
     configure = [tool('cmake'), '--preset', args.preset]
     if args.fresh:

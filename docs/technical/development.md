@@ -148,6 +148,8 @@ macOS 可使用对应的 Qt 6.8.2 Kit 和相同 app presets，界面明确标记
 
 MSVC/Ninja 构建在配置与编译阶段统一 `VSLANG`，并按原始字节探测实际 `/showIncludes` 前缀，防止中文输出编码使头文件依赖遗漏。无法识别前缀时配置直接失败；不要绕过探测后继续依赖增量构建。工具链或语言环境变化后，应重新配置，并验证修改共享头文件会触发相关目标重编译。
 
+Qt 6.8.2 的 QML 缓存生成代码会实例化 Qt 头文件中互相独立的 `if constexpr` 分支。MSVC 将这些特化后的后续语句报告为 C4702，且 MSVC 2019 与 2022 都可复现。`scripts/toolchain.py` 在确认 Qt 版本、架构和 MSVC Kit 后，对本项目缓存中的三个公共头应用带标记、幂等的控制流补丁：将 `QVariant`/`QJSPrimitiveValue` 的通用路径置于 `else`，并移除触发该诊断的 `QMetaType` 构造函数 `constexpr`。补丁只改变已确定不可达分支的编译时结构，不修改运行时语义；不使用 `/wd4702`，也不修改仓库或分发包中的 Qt 源码。Qt 版本或头文件上下文变化时入口会拒绝静默套用，需重新评估并更新补丁和验证记录。
+
 正式构建入口将 Windows 构建子进程的 `TEMP`/`TMP` 指向本项目 `build/tmp/`，避免 MSVC v142 经由 CMake 调用时错误解码中文用户临时目录，导致编译器探测报 C1083。该设置只存在于构建子进程，不改变系统或用户环境变量；实际目录写入工具验证记录。
 
 [应用工作流](../../.github/workflows/application-build.yml) 读取本项目工具清单，定义 Ubuntu 核心构建及额外 MSVC 2022 Windows Qt 构建、lint、CTest；它仅手动触发；日常 PR 和 main 推送运行仓库检查，不自动运行应用构建。[#12](https://github.com/xiaodaozhi/xdstarter/issues/12) 保存早期 Actions 额度阻塞及恢复记录，不代表当前 PR 的状态。当前 head 的适用检查以关联 PR 为准，各版本的本地、CI 与真实窗口证据统一见[测试策略](testing.md)，不以历史运行结果替代新提交检查。
