@@ -47,6 +47,12 @@ ctest --preset core-debug
 
 将 preset 改成 `core-release` 可验证优化构建。核心预设设置 `XDSTARTER_BUILD_APP=OFF`，不会查找 Qt，也不能用来证明 Qt 或 Windows 系统集成通过。
 
+## 本地共享工具与周期目录
+
+`toolchain.json` 是共享路径的唯一配置：Python 构建环境为 `build/tooling/`，Qt 为 `build/Qt/6.8.2/msvc2022_64/`，其中 `bin/qmllint.exe` 与 `qmake.exe` 来自同一 SDK；Qt 下载暂存为 `build/qt-install/`，默认应用构建为 `build/app-release/`。这些目录均不提交，也不按每个 Issue 重新安装。环境版本不匹配时先核实并使用显式参数隔离，不能静默覆盖其他任务的缓存。
+
+周期专用日志和实验可登记到 `build/cycles/`，通过[研发流程](../process/workflow.md)中的预览和逐项清理入口收尾；原有构建、发行候选与验证证据按实际用途保留。手动过期扫描不清理开发机之外的 Actions runner。
+
 ## Windows 应用获取、构建与运行
 
 先安装清单中的 Python 3.12.13、VS 2019 C++ x64/v142 工具集与 Windows SDK 10.0.19041.0。在 PowerShell 中执行以下正式入口，`-Python` 指向所装解释器或使用已正确配置的 `python`：

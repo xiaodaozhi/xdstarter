@@ -10,9 +10,11 @@ import sys
 from urllib.parse import unquote, urlsplit
 import xml.etree.ElementTree as ET
 
+from repository_walk import repository_files
+
 ROOT = Path(__file__).resolve().parents[1]
 EXCLUDED = {'.git', 'artifacts', 'build', '.venv', '__pycache__', '.codex', '.agents'}
-FILES = [p for p in ROOT.rglob('*') if p.is_file() and not EXCLUDED.intersection(p.relative_to(ROOT).parts)]
+FILES = repository_files(ROOT, EXCLUDED)
 errors = []
 
 def require(ok, message):

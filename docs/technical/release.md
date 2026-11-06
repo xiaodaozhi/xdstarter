@@ -41,6 +41,8 @@ Qt 部署使用 CMake 部署脚本或 `windeployqt`，明确扫描 QML imports�
 
 首次获取工具另传 `-InstallTools -Python <解释器>`。`-Stage all` 依次构建、准备与打包；`-Kind runtime|installer|all` 控制交付类型。runtime 先部署、验证再生成 ZIP；installer 要求同一目录已有审计通过的运行目录；all 默认同时生成 ZIP／EXE。候选使用新 OutputDirectory，拒绝覆盖 staging。Python 入口为 `toolchain.py prepare-package|package|verify`，参数见 `--help`。
 
+同一候选优先复用一次已验证的 distribution 构建及其回执，随后分阶段准备、打包和验证；启动前核对提交、配置与现有运行，避免重复触发相同候选。源码或配置影响候选时必须重新构建和验证，不能复用不匹配的工件。当前本项目没有自动发布 Release 工作流；手动应用 CI 及本机候选各自记录实际身份，不互相冒充。
+
 干净候选拒绝 dirty 源码、Debug、旧构建回执及变化后的文件。`--build-info` 返回版本、完整 commit、build、dirty、Qt 和布局 schema，`--version` 与 Windows VERSIONINFO 使用相同身份。记录实际编译器、linker、SDK，核对固定 CRT 不早于应用与 Qt 工具链。
 
 显式 `--development`／`-DevelopmentPackage` 允许本机兼容夹具，带 development 后缀，不能转成干净候选。此时源码附件仅代表 HEAD，不含 dirty 编辑，不是 dirty 二进制的完整对应源码。
