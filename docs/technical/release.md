@@ -72,7 +72,7 @@ Qt 部署使用 CMake 部署脚本或 `windeployqt`，明确扫描 QML imports�
 
 输出含 ZIP、安装 EXE、应用源码 TAR、materials.tar.xz、SHA256SUMS，以及 deployment-audit、runtime-attribution、size-report、runtime-verification 与 package 报告。ZIP／EXE 来自同一审计目录，逐项核对哈希，体积以实际报告建立基线；生成物只在 build/ 或 CI 工件。
 
-包内携带项目 Apache-2.0 许可原文及 Qt、Unicode、CRT、SDK 和安装器引擎通知，配套固定哈希的 Qt 模块与构建工具源码。原先随软件 OpenGL 提供的 Mesa 11.2.2／LLVM 3.6.2 材料不再列为该包来源；SDK 自身协议及第三方通知继续保留。SDK SPDX 与实际字节用于观察文件归属，未匹配、内嵌组件及源码对应关系明确为 incomplete。保守许可集合不表示所有组件被使用，源码归档存在不证明 SDK 二进制等价；Qt 许可渠道及发行义务继续由 [#3](https://github.com/xiaodaozhi/xdstarter/issues/3) 跟踪。
+包内携带项目 Apache-2.0 许可原文及 Qt、Unicode、CRT、SDK 和安装器引擎通知，配套固定哈希的 Qt 模块与构建工具源码。原先随软件 OpenGL 提供的 Mesa 11.2.2／LLVM 3.6.2 材料不再列为该包来源；SDK 自身协议及第三方通知继续保留。SDK SPDX 与实际字节用于观察文件归属，未匹配、内嵌组件及源码对应关系明确为 incomplete。保守许可集合不表示所有组件被使用，源码归档存在不证明 SDK 二进制等价；Qt 开源渠道与再分发要求见[许可治理](../governance/licensing.md)，实际候选的完整发行审查由 [#36](https://github.com/xiaodaozhi/xdstarter/issues/36) 跟踪。
 
 审计递归核对普通与延迟 DLL 导入，CRT 必须来自包内，第三方 DLL 不回退到 SDK 或 System32；同时拒绝 app-local `d3d11.dll` 与测试代理。无 SDK 搜索路径和软件 OpenGL DLL 的独立副本验证 Qt Quick 软件、D3D11、显式 WARP 及设备创建失败后的处理；测试代理仅存在于临时副本。硬件设备创建失败时检查自动 WARP，硬件与 WARP 均失败时检查非零退出；默认设备已是软件适配器时，硬件回退结果记录跳过。注入 API 失败不代表真实驱动损坏、运行中设备丢失或干净 Windows 11 验收。
 
