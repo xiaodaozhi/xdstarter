@@ -71,7 +71,8 @@ QVector<QStringList> readingTokens(const QString& name, bool initials) {
         } else {
             readings = pinyinReadings(codepoint);
             if (readings.isEmpty()) {
-                const QString character = QString::fromUcs4(&codepoint, 1);
+                const char32_t scalar = static_cast<char32_t>(codepoint);
+                const QString character = QString::fromUcs4(&scalar, 1);
                 const auto latin = pinyinQuery(character);
                 if (!latin.isEmpty())
                     readings.append(latin);
