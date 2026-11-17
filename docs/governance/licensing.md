@@ -8,6 +8,8 @@
 
 项目许可证的选定与下述 Qt 许可记录不等于第三方组件或安装包的发行审查已完成；具体候选和发行验证由 [#36](https://github.com/xiaodaozhi/xdstarter/issues/36) 跟踪。
 
+2026-11-17 所有者确认仅在 Windows 平台发行，Windows 不进行项目方数字证书签名，后续走 MSIX/Microsoft Store。许可核验和发行检查直接复用 xdzip 的候选绑定、实际组件归属、通知、对应源码及动态替换核验实践，固定来源见[发行设计](../technical/release.md#xdzip-实践复用依据)。自购证书、Developer ID、Apple 公证或付费审查服务不作为本项目发行前提；实际第三方许可义务及本项目尚未完成的检查继续按候选处理。Store 的包完整性及安装策略须按真实渠道核验，不由“未做证书签名”或上游项目通过记录推定满足。
+
 ## Qt 许可渠道与发行义务
 
 当前工程从公开 Qt 6.8.2 归档获取 Windows x64 动态 SDK，候选以 LGPL 3.0 开源许可作为 Qt 库的审查路径；这不是商业授权或商业支持资格的声明。按本机该版本 SDK 的 SPDX 声明，直接依赖的 Core、Gui、Network（qtbase），Qml、QmlModels、Quick、QuickControls2、QuickDialogs2（qtdeclarative）及 Svg（qtsvg）均列有 `LGPL-3.0-only` 等许可选项。Test 仅用于测试，不进入产品；Qt 平台插件、QML 导入、翻译及嵌入的第三方代码需按实际发行文件逐项核对，不能把上述模块结论扩大到整个 SDK。Qt 有仅 GPL 或其他条款的组件，升级或新增模块时须重新核对[版本许可说明](https://doc.qt.io/qt-6.8/licensing.html)、随该版 SDK 的 SPDX 和组件许可。

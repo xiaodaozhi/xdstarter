@@ -1,6 +1,9 @@
 # XDStarter 工作约定
 
 - 产品是 Windows 11 磁贴开始菜单工具；已选定 Qt Quick / QML + C++，不要自行改回 WinUI、WebView 或其他 UI 技术栈。
+- 产品仅在 Windows 平台发行，没有 macOS 产品；不建设 macOS 构建发行、Developer ID、ad-hoc 签名、Apple 公证或 Sparkle 更新流程。
+- Windows 不进行项目方数字证书签名；后续构建 MSIX，经 Microsoft Store 发行，由商店处理其平台签名与更新。平台证书签名与独立更新清单验签分开处理。
+- 许可核验、发行检查与更新直接复用 xdzip 已有实践和实现入口，只适配本项目身份、依赖及驻留/布局保存生命周期，不另造流程；基线和适用范围见 `docs/technical/release.md`。项目记忆只存本仓库文档、约定及本项目 Issue，不写入 Codex 全局记忆。
 - 开始任务先阅读 `docs/README.md`、相关产品/技术文档和对应 GitHub Issue。
 - 需求、Bug 和进展统一跟踪于 `xiaodaozhi/xdstarter` 的 GitHub Issues。先查重再建 Issue；更新实现进展、验证证据与阻塞原因，不以本地 TODO 文档替代 GitHub 状态。
 - 仓库当前以文档与设计准备为主。明确区分已实现、待验证、规划目标；不要宣称尚未运行的构建、测试或 Windows 兼容性通过。

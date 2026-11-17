@@ -1,10 +1,12 @@
 # 发行与维护设计
 
-状态：开发候选流程已接入，工程跟踪 [#64](https://github.com/xiaodaozhi/xdstarter/issues/64)。干净 Windows 11、签名和公开发行验收继续由 [#36](https://github.com/xiaodaozhi/xdstarter/issues/36) 跟踪，当前不提供公开发行下载。
+状态：Windows 开发候选流程已接入，工程跟踪 [#64](https://github.com/xiaodaozhi/xdstarter/issues/64)。干净 Windows 11、许可核验和公开发行验收继续由 [#36](https://github.com/xiaodaozhi/xdstarter/issues/36) 跟踪，当前不提供公开发行下载。2026-11-17 的所有者发行决策见 [#161](https://github.com/xiaodaozhi/xdstarter/issues/161)。
 
 ## 首版发行方向
 
-Windows 11 x64、Qt 6.8.2 动态库、普通用户运行。保留本机 v142 开发基线，新增 MSVC 2022 CI distribution 候选，见 [ADR-0017](adr/0017-windows-packaging.md)。采用当前用户 Inno Setup 6.7.3 安装器与便携 ZIP；开发候选记录 signed=false，公开发行保持原有签名和许可门槛。
+产品仅在 Windows 平台发行，支持目标为 Windows 11 x64、Qt 6.8.2 动态库、普通用户运行。没有 macOS 产品；仓库的通用代码、stub 或其他平台核心检查不构成跨平台发行承诺。保留本机 v142 开发基线，新增 MSVC 2022 CI distribution 候选，见 [ADR-0017](adr/0017-windows-packaging.md)。现有产物为当前用户 Inno Setup 6.7.3 安装器与便携 ZIP。
+
+Windows 不进行项目方数字证书签名，未签名安装器和便携程序如实记录 `signed=false`；缺少发行者证书不作为发行阻塞。后续构建 MSIX 并通过 Microsoft Store 发行，使用商店提供的平台签名，不购买或配置项目方 Windows 代码签名证书。[Microsoft 的 MSIX 签名说明](https://learn.microsoft.com/en-us/windows/msix/package/signing-package-overview)明确区分商店签名与其他分发签名。MSIX 构建、包身份、商店安装及上架尚未实现或验收，不能将未签名 MSIX 视为可直接侧载的交付包。
 
 Qt 部署使用 CMake 部署脚本或 `windeployqt`，明确扫描 QML imports，包含 Quick、平台插件、图像插件和匹配的运行库。必须在没有 Qt 开发环境的干净机器验证，不能只在开发者机器运行。
 
@@ -15,6 +17,23 @@ Qt 部署使用 CMake 部署脚本或 `windeployqt`，明确扫描 QML imports�
 使用 `v0.x.y` 表示早期版本。Release notes 链接对应 Milestone 和已关闭 Issues，列出已验证的 Windows 构建、已知问题、包校验值及恢复方法。
 
 首版由用户主动下载安装更新。更新前暂停接管、退出进程并保留有效配置备份。数据 schema 独立版本，降级遇到较新 schema 时不覆盖用户数据。
+
+后续 Store/MSIX 版复用 xdzip 的包身份判定及渠道隔离：由 Microsoft Store 管理商店版更新，不使用普通安装器覆盖 MSIX，不显示或启用 GitHub 安装器更新入口；身份查询异常时拒绝误入普通安装器更新。普通安装版若接入应用内更新，直接复用 xdzip 的候选选择、清单验签、下载核验、安装交接与恢复机制，适配 XDStarter 的接管释放、单例、布局保存和退出屏障。该更新集成属于后续工作，当前手动更新方式不变。
+
+不做 Windows 证书签名不等于取消可信更新：xdzip 的 Ed25519 清单签名验证精确原始字节，信任根内置于客户端及安装助手，下载另核对大小和 SHA-256；缺签名、未知公钥或身份不合格时沿用其拒绝安装/手动下载路径。实际接入时使用 XDStarter 独立的产品身份、仓库及信任根，不借用 xdzip 的生产私钥或公钥身份。
+
+## xdzip 实践复用依据
+
+固定参考 [xdzip 提交 `84685a4`](https://github.com/xiaodaozhi/xdzip/commit/84685a460a4fc43c08fd3be2f115b0225f8b75a6)（2026-11-17 核对）。下列入口作为后续实施的直接复用来源；移植时核对源版本、保留原许可与通知，只适配产品标识、平台/包型集合、配置路径、依赖清单和本项目生命周期，避免重写一套同用途流程。xdzip 的 macOS 部署、ad-hoc 签名、Developer ID、公证与 Sparkle 均不接入 XDStarter。
+
+| 范围 | xdzip 已有依据与实现入口 | XDStarter 接入边界 |
+| --- | --- | --- |
+| 发行、版本与附件复核 | [发布协议](https://github.com/xiaodaozhi/xdzip/blob/84685a460a4fc43c08fd3be2f115b0225f8b75a6/docs/zh-CN/engineering/release-protocol.md)、[发布手册](https://github.com/xiaodaozhi/xdzip/blob/84685a460a4fc43c08fd3be2f115b0225f8b75a6/docs/zh-CN/engineering/release-runbook.md)；`scripts/release_protocol.py`、`prepare-release.py`、`publish-release.py` | 复用固定候选、版本/构建身份、不可变附件、一次构建复用及公开后复核；目标集合适配 Windows，不要求 xdzip 的三平台六类包 |
+| 许可来源、归属与完整性 | [发行许可复核](https://github.com/xiaodaozhi/xdzip/blob/84685a460a4fc43c08fd3be2f115b0225f8b75a6/docs/zh-CN/qa/release-review.md)、[运行时归属](https://github.com/xiaodaozhi/xdzip/blob/84685a460a4fc43c08fd3be2f115b0225f8b75a6/docs/zh-CN/engineering/runtime-attribution.md)、[SDK 对应核验](https://github.com/xiaodaozhi/xdzip/blob/84685a460a4fc43c08fd3be2f115b0225f8b75a6/docs/zh-CN/engineering/qt-sdk-correspondence.md)；`scripts/runtime_attribution.py`、`sbom.py`、`validate-sbom.py` | 绑定本候选的真实组件、Qt 补丁、通知、对应源码及替换材料；哈希、文件枚举或机器检查不直接变为许可批准，现有材料缺口继续由 #36 跟踪 |
+| Windows 部署与 MSIX | [安装与关联](https://github.com/xiaodaozhi/xdzip/blob/84685a460a4fc43c08fd3be2f115b0225f8b75a6/docs/zh-CN/engineering/installers-associations.md)；`scripts/verify_windows_runtime.py`、`build-windows-msix.py`、`check-windows-msix-install.ps1` | 复用审计过的运行目录、包身份/渠道、安装升级卸载检查；适配本项目托盘、输入接管、启动项、单例和布局，不照搬归档文件关联与 Explorer 扩展 |
+| 检查更新、安装与恢复 | [用户主动更新契约](https://github.com/xiaodaozhi/xdzip/blob/84685a460a4fc43c08fd3be2f115b0225f8b75a6/docs/zh-CN/engineering/software-update.md)；`apps/desktop/UpdateController.cpp`、`crates/xdzip-update`、`crates/xdzip-update-helper`、`scripts/check-native-qt-update.py` | 复用 Windows 普通安装版可信更新与 MSIX 商店更新隔离；只在用户主动发起时执行，实际迁入前不得将其写成本项目已实现功能 |
+
+本次只固定发行决策及复用方法，不运行源码收集器、打包、签名或发行，也不改动现有候选材料脚本。采用 xdzip 的核验实践时，许可结论仍绑定 XDStarter 实际交付组件与证据；不能继承 xdzip 某个版本的通过状态。
 
 ## 安装与卸载验收
 

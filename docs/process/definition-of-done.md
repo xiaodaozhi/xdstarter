@@ -19,4 +19,4 @@
 
 ## 发布
 
-Milestone 中阻塞项关闭，支持矩阵与已知问题完整，安装/更新/卸载和原生菜单恢复通过。依赖、许可证、签名与校验值符合发布清单，Release notes 链接 Issues。
+Milestone 中阻塞项关闭，支持矩阵与已知问题完整，安装/更新/卸载和原生菜单恢复通过。依赖、许可证、工件身份与校验值符合发布清单，Release notes 链接 Issues。产品仅在 Windows 发行；项目方数字证书签名不作为门槛，现有安装器如实标注未签名，后续 MSIX 按 Microsoft Store 渠道处理平台签名和更新。独立更新验签及许可核验仍按实际交付检查，采用[发行设计](../technical/release.md)列出的 xdzip 实践；不要求 macOS 发行、签名或公证。
